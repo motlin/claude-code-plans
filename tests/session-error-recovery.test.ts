@@ -252,43 +252,129 @@ describe("errorRecoveryHandlers rewind", () =>
 
 describe("sendCompact", () =>
 {
-	it("types /compact, queueing it when the agent is not ready", async () =>
+	type CompactSend = (
+		text: string,
+		options:
+		{
+			rejection: "throw";
+		},
+	) => Promise<DeliveryResult>;
+	const deps = (send: CompactSend, isBusy = false, signal?: AbortSignal) =>
 	{
-		const sent = vi.fn<(text: string) => Promise<DeliveryResult>>(async () => Promise.resolve("sent"));
-		const notReady = vi.fn<(text: string) => Promise<DeliveryResult>>(async () => Promise.resolve("not-ready"));
 		const enqueue = vi.fn<(text: string) => void>();
 		const toast = vi.fn<(options: ToastOptions) => void>();
-		await sendCompact(sent, enqueue, toast);
-		await sendCompact(notReady, enqueue, toast);
+		return {
+			send: vi.fn<CompactSend>(send),
+			enqueue,
+			toast,
+			isBusy: () => isBusy,
+			...(signal !== undefined &&
+			{
+				signal,
+			}),
+		};
+	};
+	const THROW =
+	{
+		rejection: "throw",
+	} as const;
+
+	it("types /compact with throw-on-rejection, queueing it when the agent is not ready", async () =>
+	{
+		const sent = deps(async () => Promise.resolve("sent"));
+		const notReady = deps(async () => Promise.resolve("not-ready"));
+		const held = deps(async () => Promise.resolve("failed"));
+		await sendCompact(sent);
+		await sendCompact(notReady);
+		await sendCompact(held);
 		expect(
 			{
-				sent: sent.mock.calls,
-				notReady: notReady.mock.calls,
-				enqueued: enqueue.mock.calls,
-				toasts: toast.mock.calls,
+				sent: sent.send.mock.calls,
+				notReady: notReady.send.mock.calls,
+				enqueued: [...sent.enqueue.mock.calls, ...notReady.enqueue.mock.calls, ...held.enqueue.mock.calls],
+				toasts: [...sent.toast.mock.calls, ...notReady.toast.mock.calls, ...held.toast.mock.calls],
 			},
 		).toStrictEqual(
 			{
-				sent: [["/compact"]],
-				notReady: [["/compact"]],
+				sent: [["/compact", THROW]],
+				notReady: [["/compact", THROW]],
 				enqueued: [["/compact"]],
 				toasts: [],
 			},
 		);
 	});
 
-	it("toasts upstream's failure when the send throws", async () =>
+	it("toasts upstream's failure with Try again, scoped to the signal, when the send throws", async () =>
 	{
-		const toast = vi.fn<(options: ToastOptions) => void>();
-		await sendCompact(async () => Promise.reject(new Error("boom")), vi.fn<(text: string) => void>(), toast);
-		expect(toast.mock.calls).toStrictEqual([
+		const signal = new AbortController().signal;
+		const failing = deps(async () => Promise.reject(new Error("boom")), false, signal);
+		await sendCompact(failing);
+		expect(failing.toast.mock.calls).toStrictEqual([
 			[
 				{
 					kind: "error",
 					message: "Couldn’t start compacting.",
+					action:
+					{
+						label: "Try again",
+						onAction: expect.any(Function),
+					},
+					signal,
 				},
 			],
 		]);
+	});
+
+	it("re-sends on Try again while idle, and stays silent while a send is pending", async () =>
+	{
+		const idle = deps(async () => Promise.reject(new Error("boom")));
+		const busy = deps(async () => Promise.reject(new Error("boom")), true);
+		await sendCompact(idle);
+		await sendCompact(busy);
+		idle.toast.mock.calls[0]?.[0].action?.onAction();
+		busy.toast.mock.calls[0]?.[0].action?.onAction();
+		await vi.waitFor(() =>
+		{
+			expect(idle.toast.mock.calls.length).toBe(2);
+		});
+		expect(
+			{
+				idleSends: idle.send.mock.calls,
+				busySends: busy.send.mock.calls,
+				busyToasts: busy.toast.mock.calls.length,
+			},
+		).toStrictEqual(
+			{
+				idleSends: [
+					["/compact", THROW],
+					["/compact", THROW],
+				],
+				busySends: [["/compact", THROW]],
+				busyToasts: 1,
+			},
+		);
+	});
+
+	it("is what the error card's Compact session runs", async () =>
+	{
+		const compact = deps(async () => Promise.reject(new Error("boom")));
+		errorRecoveryHandlers(
+			{
+				retryable: true,
+				idle: true,
+			},
+			vi.fn<(text: string) => Promise<DeliveryResult>>(),
+			vi.fn<(text: string) => void>(),
+			undefined,
+			undefined,
+			compact,
+		)?.onCompact?.();
+		await vi.waitFor(() =>
+		{
+			expect(compact.toast.mock.calls.map(([options]) => options.message)).toStrictEqual([
+				"Couldn’t start compacting.",
+			]);
+		});
 	});
 });
 

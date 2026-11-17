@@ -231,6 +231,10 @@ export function ToastProvider({
 						?
 							{
 								...entry,
+								...(options.action !== undefined &&
+								{
+									action: options.action,
+								}),
 								count: entry.count + 1,
 								repeat: entry.repeat + 1,
 							}
@@ -531,20 +535,24 @@ function ToastItem({
 							{description}
 						</p>
 					)}
+					<div className="mt-3 empty:hidden">
+						{action && (
+							<button
+								type="button"
+								data-cds="Button"
+								data-size="sm"
+								className="inline-flex h-7 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg bg-fill-secondary px-[9px] text-body font-normal text-primary shadow-field-drop hover:bg-fill-secondary-hover focus-visible:shadow-focus focus-visible:outline-hidden"
+								onClick={() =>
+								{
+									close();
+									action.onAction();
+								}}
+							>
+								<span className="inline-flex min-w-0 items-center gap-1">{action.label}</span>
+							</button>
+						)}
+					</div>
 				</div>
-				{action && (
-					<button
-						type="button"
-						className="shrink-0 rounded-md border border-border px-2 py-0.5 text-sm font-medium hover:bg-fill-ghost-hover"
-						onClick={() =>
-						{
-							close();
-							action.onAction();
-						}}
-					>
-						{action.label}
-					</button>
-				)}
 				<button
 					type="button"
 					aria-label="Dismiss"

@@ -278,6 +278,7 @@ import
 	errorRecoveryHandlers,
 	lastEntryIsError,
 	sendCompact,
+	type CompactDeps,
 	switchModelForRetry,
 } from "../lib/session-error-recovery";
 import {compactActionState} from "../lib/compact-action";
@@ -1825,12 +1826,39 @@ function SessionView({
 	const compactSendPending = liveHerdrPrompt.state.isPending;
 	const compactSendPendingRef = useRef(compactSendPending);
 	compactSendPendingRef.current = compactSendPending;
+	// Upstream `Da`: the retry toasts belong to this session and close when it changes or the page unmounts.
+	const [compactToastScope, setCompactToastScope] = useState<AbortController | null>(null);
+	useEffect(() =>
+	{
+		const scope = new AbortController();
+		setCompactToastScope(scope);
+		return () =>
+		{
+			scope.abort();
+		};
+	}, [sessionId]);
+	const compactToastSignal = compactToastScope?.signal;
+	const compactDeps = useMemo<CompactDeps>(
+		() => (
+		{
+			send: sendCompactPrompt,
+			enqueue: enqueuePrompt,
+			toast,
+			// Upstream `xS`, read at click time: a prompt of ours in flight or held for a pane.
+			isBusy: () => compactSendPendingRef.current,
+			...(compactToastSignal !== undefined &&
+			{
+				signal: compactToastSignal,
+			}),
+		}),
+		[sendCompactPrompt, enqueuePrompt, toast, compactToastSignal],
+	);
 	const compactFromRail = useCallback(() =>
 	{
 		// Upstream `Dx`: a send already in flight makes the click a no-op.
 		if (compactSendPendingRef.current) return;
-		void sendCompact(sendCompactPrompt, enqueuePrompt, toast);
-	}, [sendCompactPrompt, enqueuePrompt, toast]);
+		void sendCompact(compactDeps);
+	}, [compactDeps]);
 	const railContextPct = railContextPercent(composerChin.usage, contextBreakdown);
 	const compactReach = canTypeCompact ? (herdrReconnecting ? "detached" : "live") : "dormant";
 	const compactResponding = workingMarkerState.status !== "idle" || compactSendPending || promptCardPending;
@@ -1974,6 +2002,7 @@ function SessionView({
 				},
 				// A click is an explicit open, like the composer's /rewind, so a draft doesn't block it.
 				rewindAvailableFromComposer,
+				compactDeps,
 			),
 		[
 			errorRetryable,
@@ -1984,6 +2013,7 @@ function SessionView({
 			sessionId,
 			toast,
 			rewindAvailableFromComposer,
+			compactDeps,
 		],
 	);
 	const sendLivePrompt = useCallback(

@@ -396,6 +396,82 @@ describe("useLiveHerdrPrompt records a rejected send", () =>
 			},
 		);
 	});
+
+	it("throws a rejection back to a caller that asks for it, leaving the composer and draft alone", async () =>
+	{
+		localStorage.clear();
+		const error = new HerdrRequestError("boom", 502, "x");
+		const {hook, onRejected} = rejectingHook(error);
+		let thrown: unknown;
+		await act(async () =>
+		{
+			await hook.result.current
+				.send(
+					"/compact",
+					{
+						rejection: "throw",
+					},
+				)
+				.catch((caught: unknown) =>
+				{
+					thrown = caught;
+				});
+		});
+
+		expect(
+			{
+				thrown,
+				state: hook.result.current.state,
+				refills: onRejected.mock.calls,
+				draft: localStorage.getItem("ccp-composer-draft:s1"),
+			},
+		).toStrictEqual(
+			{
+				thrown: error,
+				state: CLEARED,
+				refills: [],
+				draft: null,
+			},
+		);
+	});
+
+	it("still holds a throw-on-rejection send that finds no live pane, and leaves not-ready to the queue", async () =>
+	{
+		const held = rejectingHook(new HerdrRequestError("gone", 404, "session-not-found"));
+		const notReady = rejectingHook(new HerdrRequestError("busy", 409, "agent_not_ready"));
+		const results: string[] = [];
+		await act(async () =>
+		{
+			results.push(
+				await held.hook.result.current.send(
+					"/compact",
+					{
+						rejection: "throw",
+					},
+				),
+				await notReady.hook.result.current.send(
+					"/compact",
+					{
+						rejection: "throw",
+					},
+				),
+			);
+		});
+
+		expect(
+			{
+				results,
+				phase: held.hook.result.current.state.phase,
+				refills: [...held.onRejected.mock.calls, ...notReady.onRejected.mock.calls],
+			},
+		).toStrictEqual(
+			{
+				results: ["failed", "not-ready"],
+				phase: "held",
+				refills: [],
+			},
+		);
+	});
 });
 
 describe("useLiveHerdrPrompt routes a rejection to the session that sent it", () =>

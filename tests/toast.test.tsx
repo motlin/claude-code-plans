@@ -396,6 +396,120 @@ describe("ToastProvider", () =>
 		expect(toastTexts()).toEqual([]);
 	});
 
+	it("renders the action as upstream's cds sm secondary Button in a row under the title", () =>
+	{
+		renderWithToast(
+			{
+				message: "Couldn’t start compacting.",
+				kind: "warning",
+				action:
+				{
+					label: "Try again",
+					onAction: vi.fn<() => void>(),
+				},
+			},
+		);
+
+		const button = screen.getByRole(
+			"button",
+			{
+				name: "Try again",
+			},
+		);
+		const row = button.parentElement;
+		const title = notifications().querySelector("[data-toast-message]");
+		expect(
+			{
+				cds: button.dataset["cds"],
+				size: button.dataset["size"],
+				classes: [...button.classList].filter((c) =>
+					[
+						"h-7",
+						"rounded-lg",
+						"bg-fill-secondary",
+						"px-[9px]",
+						"shadow-field-drop",
+						"hover:bg-fill-secondary-hover",
+						"focus-visible:shadow-focus",
+						"border",
+					].includes(c),
+				),
+				row: row?.className,
+				rowFollowsTitle: title?.nextElementSibling === row,
+				inTextColumn: title?.parentElement === row?.parentElement,
+			},
+		).toStrictEqual(
+			{
+				cds: "Button",
+				size: "sm",
+				classes: [
+					"h-7",
+					"rounded-lg",
+					"bg-fill-secondary",
+					"px-[9px]",
+					"shadow-field-drop",
+					"hover:bg-fill-secondary-hover",
+					"focus-visible:shadow-focus",
+				],
+				row: "mt-3 empty:hidden",
+				rowFollowsTitle: true,
+				inTextColumn: true,
+			},
+		);
+	});
+
+	it("runs the newest action when a repeat folds into the open toast", () =>
+	{
+		const a = vi.fn<() => void>();
+		const b = vi.fn<() => void>();
+		const fire = renderTriggers([
+			{
+				message: "Couldn’t start compacting.",
+				kind: "warning",
+				action:
+				{
+					label: "Try again",
+					onAction: a,
+				},
+			},
+			{
+				message: "Couldn’t start compacting.",
+				kind: "warning",
+				action:
+				{
+					label: "Try again",
+					onAction: b,
+				},
+			},
+		]);
+		fire(0);
+		fire(1);
+		expect(toastTexts()).toStrictEqual(["Couldn’t start compacting. (×2)"]);
+
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Try again",
+				},
+			),
+		);
+
+		expect(
+			{
+				a: a.mock.calls.length,
+				b: b.mock.calls.length,
+				texts: toastTexts(),
+			},
+		).toStrictEqual(
+			{
+				a: 0,
+				b: 1,
+				texts: [],
+			},
+		);
+	});
+
 	it("lists distinct toasts newest first, as upstream's Base UI viewport", () =>
 	{
 		const fire = renderTriggers([

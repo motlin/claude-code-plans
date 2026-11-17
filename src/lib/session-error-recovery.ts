@@ -67,29 +67,69 @@ async function typePrompt(
 	if (result === "not-ready") enqueue(prompt);
 }
 
-/** Upstream `Po`'s failure toast. */
+/** Upstream `Sc`'s failure toast (intl j49tT4). */
 const COMPACT_FAILED_MESSAGE = "Couldn’t start compacting.";
 
-/** Upstream `Po` (sendCompact): types `/compact`, toasting when the send throws. */
-export async function sendCompact(
-	send: (prompt: string) => Promise<DeliveryResult>,
-	enqueue: (prompt: string) => void,
-	toast: (options: ToastOptions) => void,
-): Promise<void>
+/** What a Compact session click needs: the throwing send, the queue, the toast and upstream's `xS` guard. */
+export interface CompactDeps
 {
-	try
+	/** The live pane send; a refused send throws (a held one resolves `"failed"`, silent like `SendStoppedByPromptError`). */
+	send: (
+		prompt: string,
+		options:
+		{
+			rejection: "throw";
+		},
+	) => Promise<DeliveryResult>;
+	enqueue: (prompt: string) => void;
+	toast: (options: ToastOptions) => void;
+	/** Upstream `xS`, read when Try again is clicked: a pending turn or held input makes the retry a no-op. */
+	isBusy: () => boolean;
+	/** Closes the retry toast when aborted, as upstream `Da` clears its toasts on session change or unmount. */
+	signal?: AbortSignal;
+}
+
+/**
+ * Upstream `Sc` (sendCompact): types `/compact` without touching the composer; a refused send
+ * shows a sticky "Couldn’t start compacting." toast whose Try again sends it again.
+ */
+export async function sendCompact(deps: CompactDeps): Promise<void>
+{
+	const attempt = async (): Promise<void> =>
 	{
-		await typePrompt("/compact", send, enqueue);
-	}
-	catch
-	{
-		toast(
-			{
-				kind: "error",
-				message: COMPACT_FAILED_MESSAGE,
-			},
-		);
-	}
+		try
+		{
+			const result = await deps.send(
+				"/compact",
+				{
+					rejection: "throw",
+				},
+			);
+			if (result === "not-ready") deps.enqueue("/compact");
+		}
+		catch
+		{
+			deps.toast(
+				{
+					kind: "error",
+					message: COMPACT_FAILED_MESSAGE,
+					action:
+					{
+						label: "Try again",
+						onAction: () =>
+						{
+							if (!deps.isBusy()) void attempt();
+						},
+					},
+					...(deps.signal !== undefined &&
+					{
+						signal: deps.signal,
+					}),
+				},
+			);
+		}
+	};
+	await attempt();
 }
 
 /**
@@ -106,6 +146,8 @@ export function errorRecoveryHandlers(
 	enqueue: (prompt: string) => void,
 	model?: ModelRetry,
 	openRewindPicker?: () => void,
+	/** Routes Compact session through `sendCompact`'s retry toast; without it, `/compact` is typed like Try again. */
+	compact?: CompactDeps,
 ): ApiErrorRecovery | undefined
 {
 	if (!availability.retryable && !availability.idle) return undefined;
@@ -122,7 +164,7 @@ export function errorRecoveryHandlers(
 		{
 			onCompact: () =>
 			{
-				void type("/compact");
+				void (compact === undefined ? type("/compact") : sendCompact(compact));
 			},
 		}),
 		...(availability.retryable &&

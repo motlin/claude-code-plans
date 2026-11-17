@@ -86,9 +86,14 @@ export function useLiveHerdrPrompt(
 	const send = useCallback(
 		async (
 			prompt: string,
-			options:
+			{
+				rejection,
+				...options
+			}:
 			{
 				midTurn?: true;
+				/** Upstream `sendWithOutcome`: a refused send throws to the caller and leaves the composer alone. */
+				rejection?: "throw";
 			} = {},
 		): Promise<DeliveryResult> =>
 		{
@@ -135,6 +140,11 @@ export function useLiveHerdrPrompt(
 						},
 					);
 					return "failed";
+				}
+				if (rejection === "throw")
+				{
+					setState(EMPTY_LIVE_HERDR_PROMPT_STATE);
+					throw error;
 				}
 				// Upstream `local_send_rejected`: the bubble goes, the card and the refilled composer take over.
 				// A prompt whose tiles came back can't be resent as is, and its draft carries no failedSend.

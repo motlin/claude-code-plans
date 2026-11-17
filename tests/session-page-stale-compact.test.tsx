@@ -1,8 +1,15 @@
 // @vitest-environment jsdom
 
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
-import {createMemoryHistory, createRootRoute, createRouter, RouterProvider} from "@tanstack/react-router";
-import {act, cleanup, fireEvent, render, screen, waitFor} from "@testing-library/react";
+import
+{
+	createMemoryHistory,
+	createRootRoute,
+	createRouter,
+	RouterProvider,
+	useRouterState,
+} from "@tanstack/react-router";
+import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {ClaudeEventsProvider} from "../src/components/claude-events-provider";
 import {type HerdrPaneIndexData, herdrPanesQueryOptions} from "../src/lib/api/herdr";
@@ -22,11 +29,19 @@ import {usageQueryOptions} from "../src/lib/api/usage";
 import {ToastProvider} from "../src/components/toast";
 import {SettingsProvider} from "../src/components/settings-provider";
 
-// session-chat pulls in HMR-persisted module state that jsdom cannot evaluate; the stand-in renders only the band.
+// session-chat pulls in HMR-persisted module state that jsdom cannot evaluate; the stand-in renders the band and the API error card's Compact.
 vi.mock("../src/components/session-chat", () => (
 {
-	SessionChat: ({staleCompact}: SessionChatProps) =>
-		staleCompact === undefined ? null : <StaleCompactBand {...staleCompact} />,
+	SessionChat: ({staleCompact, errorRecovery}: SessionChatProps) => (
+		<>
+			{staleCompact !== undefined && <StaleCompactBand {...staleCompact} />}
+			{errorRecovery?.onCompact !== undefined && (
+				<button type="button" data-testid="error-card-compact" onClick={errorRecovery.onCompact}>
+					Error card compact
+				</button>
+			)}
+		</>
+	),
 }));
 
 class TestEventSource extends EventTarget
@@ -264,6 +279,17 @@ function seededQueryClient(seed: Seed)
 	return queryClient;
 }
 
+/** The session in the URL, so a test can move the page to another session under the same toast deck. */
+function RoutedSessionPage()
+{
+	const pathname = useRouterState(
+		{
+			select: (state) => state.location.pathname,
+		},
+	);
+	return <SessionPage sessionId={pathname.split("/").at(-1) ?? SESSION_ID} />;
+}
+
 async function renderSession(seed: Seed = {})
 {
 	const queryClient = seededQueryClient(seed);
@@ -274,7 +300,7 @@ async function renderSession(seed: Seed = {})
 					<SettingsProvider>
 						<ClaudeEventsProvider>
 							<ToastProvider>
-								<SessionPage sessionId={SESSION_ID} />
+								<RoutedSessionPage />
 							</ToastProvider>
 						</ClaudeEventsProvider>
 					</SettingsProvider>
@@ -588,6 +614,108 @@ describe("session page stale-compact line", () =>
 		await waitFor(() =>
 		{
 			expect(band()).not.toBeNull();
+		});
+	});
+});
+
+describe("session page Compact session failure", () =>
+{
+	const apiError =
+	{
+		type: "assistant",
+		uuid: "a-err",
+		timestamp: minutesAgo(1),
+		message:
+		{
+			role: "assistant",
+			model: "<synthetic>",
+			content: [
+				{
+					type: "text",
+					text: "API Error: 500 Internal server error",
+				},
+			],
+		},
+		isApiErrorMessage: true,
+		apiErrorStatus: 500,
+	};
+
+	it("shows upstream's retry toast instead of refilling the composer, retries, and closes on session change", async () =>
+	{
+		promptResponse = new Response(
+			"boom",
+			{
+				status: 500,
+			},
+		);
+		const {router} = await renderSession(
+			{
+				herdr: LIVE,
+				records: [prompt("u-1", 2), apiError],
+			},
+		);
+		fireEvent.click(await screen.findByTestId("error-card-compact"));
+		const alert = await screen.findByRole(
+			"dialog",
+			{
+				name: "Couldn’t start compacting.",
+			},
+		);
+		expect(
+			{
+				posts,
+				tryAgain: alert.querySelector("button[data-cds=Button]")?.textContent,
+				rejectedCard: screen.queryByText("boom"),
+				failedSend: localStorage.getItem(`ccp-composer-draft:${SESSION_ID}`),
+			},
+		).toStrictEqual(
+			{
+				posts: [
+					{
+						sessionId: SESSION_ID,
+						prompt: "/compact",
+					},
+				],
+				tryAgain: "Try again",
+				rejectedCard: null,
+				failedSend: null,
+			},
+		);
+
+		fireEvent.click(
+			within(alert).getByRole(
+				"button",
+				{
+					name: "Try again",
+				},
+			),
+		);
+		await waitFor(() =>
+		{
+			expect(posts.length).toBe(2);
+		});
+		await screen.findByRole(
+			"dialog",
+			{
+				name: "Couldn’t start compacting.",
+			},
+		);
+
+		await act(async () =>
+		{
+			router.history.push("/session/session-test-other");
+			await router.load();
+		});
+		await waitFor(() =>
+		{
+			expect(
+				screen.queryByRole(
+					"dialog",
+					{
+						name: "Couldn’t start compacting.",
+					},
+				),
+			).toBeNull();
 		});
 	});
 });
