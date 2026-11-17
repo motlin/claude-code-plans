@@ -98,6 +98,7 @@ import {recallLastHeldSteer} from "../lib/steer-recall";
 import {tailMarkerQuiet, turnTokenEstimate, workingLineWaitsOnUser} from "../lib/working-marker";
 import {WaitingForInputNotice} from "./approval-card";
 import {UrlElicitationDock} from "./url-elicitation-dock";
+import {RefusalFallbackDock} from "./refusal-fallback-dock";
 import {QuestionCard} from "./question-card";
 import {ApprovalSlot} from "./approval-slot";
 import {sessionApprovalSlotCard} from "../lib/approval-slot-card";
@@ -143,6 +144,7 @@ import {useFolderModeMemory} from "../hooks/use-folder-mode-memory";
 import {useRewindPicker} from "../hooks/use-rewind-shortcut";
 import {useRewindRequest} from "../hooks/use-rewind-request";
 import {useRefusalEditRetry} from "../hooks/use-refusal-edit-retry";
+import {useRefusalFallbackDialog} from "../hooks/use-refusal-fallback-dialog";
 import {canStopResponse, useStopResponse} from "../hooks/use-stop-response";
 import {SEND_NOW_FAILED_MESSAGE, useComposerQueue} from "../hooks/use-composer-queue";
 import
@@ -1378,6 +1380,13 @@ function SessionView({
 				: null,
 		[sessionSummaryState, promptBehavior.hasLivePane, herdr.writesEnabled, pendingElicitations],
 	);
+	// The CLI's "Session paused" refusal dialog docks upstream's card while the live pane can be typed into.
+	const refusalFallbackDialog = useRefusalFallbackDialog(
+		sessionId,
+		sessionSummaryState === "waiting" && promptBehavior.hasLivePane && herdr.writesEnabled
+			? (sessionSummary?.dialogOpenAt ?? null)
+			: null,
+	);
 	// The working line's "Needs your input" replaces the dock's waiting notice, as upstream shows only the former.
 	const workingLineWaits = workingLineWaitsOnUser(
 		{
@@ -2380,7 +2389,8 @@ function SessionView({
 																	inlineQuestion !== null ||
 																	pendingPermission !== null ||
 																	dockedPlan !== null ||
-																	urlElicitationCard !== null,
+																	urlElicitationCard !== null ||
+																	refusalFallbackDialog !== null,
 																workingLineWaits,
 															},
 														) &&
@@ -2393,6 +2403,13 @@ function SessionView({
 																key={urlElicitationCard.key}
 																sessionId={sessionId}
 																card={urlElicitationCard}
+															/>
+														)}
+														{/* The CLI's refusal-fallback dialog: Edit prompt and retry, or Switch, answered in the terminal */}
+														{refusalFallbackDialog !== null && (
+															<RefusalFallbackDock
+																sessionId={sessionId}
+																dialog={refusalFallbackDialog}
 															/>
 														)}
 														{/* Upstream docks a rejected send's session-error card above the composer */}

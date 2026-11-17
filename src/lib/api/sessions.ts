@@ -54,6 +54,8 @@ const SessionListItemSchema = z.object(
 		state: SessionSummaryStateSchema,
 		/** Blocked on a tool permission prompt; the session page docks the permission card from it. */
 		awaitingPermission: z.literal(true).optional(),
+		/** When the live CLI opened a dialog its registry names only "dialog open" (refusal fallback, usage credits, …). */
+		dialogOpenAt: z.number().optional(),
 		/** Every permission ask the live CLI holds open, oldest first; the session page queues its cards from them. */
 		pendingPermissionAsks: z.array(PermissionAskEntrySchema).optional(),
 		/** When the session's live CLI process started; in-process teammates from before it are gone. */

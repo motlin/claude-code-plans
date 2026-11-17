@@ -54,6 +54,7 @@ export const SessionSummaryPayloadSchema: z.ZodType<SessionSummaryPayload> = z
 			terminalHost: z.string().exactOptional(),
 			state: SessionSummaryStateSchema,
 			awaitingPermission: z.literal(true).exactOptional(),
+			dialogOpenAt: z.number().exactOptional(),
 			pendingPermissionAsks: z.array(PermissionAskEntrySchema).exactOptional(),
 			processStartedAt: z.number().exactOptional(),
 			bucket: SessionBucketSchema,

@@ -88,6 +88,8 @@ export interface SessionSummaryPayload
 	state: SessionSummaryState;
 	/** Blocked on a tool permission prompt (a hook notification or the registry's `waitingFor`); absent otherwise. */
 	awaitingPermission?: true;
+	/** When the live CLI opened a dialog its registry reports only as `waitingFor: "dialog open"`; absent otherwise. */
+	dialogOpenAt?: number;
 	/** Every permission ask the live CLI holds open, oldest first, from its PermissionRequest hooks; absent when none. */
 	pendingPermissionAsks?: PermissionAskEntry[];
 	/** When the session's live CLI process started, from its registry entry; absent without one. */

@@ -13,11 +13,15 @@ import
 } from "react";
 
 import {useOverflows} from "../hooks/use-overflows";
+import type {HerdrRefusalFallbackDialog, RefusalFallbackChoice} from "../lib/api/herdr";
 import type {ElicitationFocus} from "../lib/herdr/elicitation-keys";
 import {ApprovalStackGhosts} from "./approval-stack";
+import {ExternalTextLink} from "./external-text-link";
 import {StatusPulse} from "./status-dot";
 import {type CdsButtonSize, type CdsButtonVariant, cdsButtonClass} from "./ui/cds-button";
+import {CDS_BUTTON_DISABLED, CDS_ICON_ONLY_DISABLED} from "./ui/cds-button-disabled";
 import {DisabledReason} from "./ui/disabled-reason";
+import {Icon} from "./ui/icon";
 import {Spinner} from "./ui/spinner";
 
 /**
@@ -610,6 +614,133 @@ export function UrlElicitationCard({
 							Open link
 						</ApprovalActionButton>
 					</DisabledReason>
+				</>
+			}
+		/>
+	);
+}
+
+/** Upstream's learn-more article for a safeguards flag on a model before the newer generation (ca8b34310 `Xf`). */
+const REFUSAL_LEARN_MORE_URL = "https://support.claude.com/en/articles/8106465";
+/** Upstream's fallback copy when its runtime catalog lacks the category message, as it does live. */
+const REFUSAL_FALLBACK_COPY =
+	"This model's safeguards flagged this message. This sometimes happens with safe, normal conversations. ";
+/** Upstream's disabledReason on the X while a choice is in flight. */
+const REFUSAL_SENDING_REASON = "Sending response…";
+
+/**
+ * Upstream's "Session paused" card (cc43287c9 `h1`, flag-off) for the CLI's
+ * refusal-fallback dialog, docked above the composer and answered through the
+ * terminal: the title with a Dismiss X, upstream's fallback copy with Learn
+ * more and the category, then [Edit prompt and retry with …] (when `canEdit`)
+ * and [Switch to …], upstream's order rather than the CLI's. A choice marks
+ * its button busy and disables the rest until the dialog leaves; a refused one
+ * shows its error and re-enables them.
+ */
+export function RefusalFallbackPromptCard({
+	dialog,
+	canEdit,
+	onChoose,
+}: {
+	dialog: HerdrRefusalFallbackDialog;
+	canEdit: boolean;
+	onChoose: (choice: RefusalFallbackChoice) => Promise<void>;
+})
+{
+	const [sent, setSent] = useState<RefusalFallbackChoice | null>(null);
+	const [error, setError] = useState<string | null>(null);
+
+	const choose = async (choice: RefusalFallbackChoice) =>
+	{
+		setError(null);
+		setSent(choice);
+		try
+		{
+			await onChoose(choice);
+		}
+		catch (err)
+		{
+			setError(err instanceof Error ? err.message : "Failed to answer the dialog");
+			setSent(null);
+		}
+	};
+
+	return (
+		<ApprovalCardShell
+			label="Session paused"
+			body={
+				<>
+					<div className="text-primary min-h-6 shrink-0 flex items-center gap-1">
+						<span
+							data-approval-card-title
+							data-question-stop-name=""
+							className={`${APPROVAL_CARD_TITLE} min-w-0 flex-1 break-words`}
+						>
+							<span data-dialog-announce="">Session paused</span>
+						</span>
+						<span className="shrink-0 self-center">
+							<DisabledReason reason={sent === null ? null : REFUSAL_SENDING_REASON}>
+								<button
+									type="button"
+									aria-label="Dismiss"
+									disabled={sent !== null}
+									data-cds="Button"
+									className={`${cdsButtonClass("ghost")} aspect-square shrink-0 !px-0 ${CDS_BUTTON_DISABLED} ${CDS_ICON_ONLY_DISABLED}`}
+									onClick={() => void choose("cancelled")}
+								>
+									<Icon name="X" />
+								</button>
+							</DisabledReason>
+						</span>
+					</div>
+					<div data-refusal-body="" className="text-body text-secondary min-w-0 break-words">
+						<span data-dialog-announce="">
+							{REFUSAL_FALLBACK_COPY}
+							<ExternalTextLink rel="noopener" href={REFUSAL_LEARN_MORE_URL}>
+								Learn more
+							</ExternalTextLink>
+							.
+						</span>
+						{dialog.category !== null && (
+							<span className="block pt-1">
+								Details: <code className="font-mono-ui break-all">{`[${dialog.category}]`}</code>
+							</span>
+						)}
+					</div>
+					{dialog.guidance !== null && (
+						<p className="text-footnote text-muted-as-secondary whitespace-pre-wrap">{dialog.guidance}</p>
+					)}
+					{error !== null && (
+						<p role="alert" className="text-footnote text-extended-pink">
+							{error}
+						</p>
+					)}
+				</>
+			}
+			actions={
+				<>
+					{canEdit && (
+						<ApprovalActionButton
+							variant="secondary"
+							busy={sent === "edit_prompt"}
+							busyLabel={APPROVAL_SENDING_LABEL}
+							disabled={sent !== null && sent !== "edit_prompt"}
+							onClick={() => void choose("edit_prompt")}
+						>
+							{dialog.editLabel}
+						</ApprovalActionButton>
+					)}
+					<ApprovalActionButton
+						variant="secondary"
+						busy={sent === "retry_fallback"}
+						busyLabel={APPROVAL_SENDING_LABEL}
+						disabled={sent !== null && sent !== "retry_fallback"}
+						onClick={() => void choose("retry_fallback")}
+					>
+						<span className="min-w-0 truncate" title={dialog.switchLabel}>
+							{dialog.switchLabel}
+						</span>
+					</ApprovalActionButton>
 				</>
 			}
 		/>

@@ -661,3 +661,83 @@ export async function toggleRemoteControl(sessionId: string, on: boolean, fetche
 	}
 	HerdrPromptSuccessResponse.parse(json);
 }
+
+/** Mirrors `RefusalFallbackDialog` (`../herdr/refusal-fallback`): the CLI's "Session paused" dialog read off a pane. */
+const RefusalFallbackDialogSchema = z.strictObject(
+	{
+		body: z.string(),
+		guidance: z.string().nullable(),
+		category: z.string().nullable(),
+		switchLabel: z.string(),
+		switchRow: z.number(),
+		editLabel: z.string(),
+		editRow: z.number(),
+		focus: z.enum(["switch", "edit"]).nullable(),
+	},
+);
+export type HerdrRefusalFallbackDialog = z.infer<typeof RefusalFallbackDialogSchema>;
+
+const HerdrRefusalFallbackDialogResponse = z.strictObject(
+	{
+		dialog: RefusalFallbackDialogSchema.nullable(),
+	},
+);
+
+/** The session's refusal-fallback dialog as its pane shows it, or null when the pane shows none. */
+export async function fetchHerdrRefusalFallbackDialog(
+	sessionId: string,
+	fetcher: typeof fetch = fetch,
+): Promise<HerdrRefusalFallbackDialog | null>
+{
+	const response = await fetcher(
+		`/api/herdr/refusal-fallback?sessionId=${encodeURIComponent(sessionId)}`,
+		{
+			credentials: "same-origin",
+		},
+	);
+	const json: unknown = await response.json();
+	if (!response.ok) throw new Error(HerdrPromptErrorResponse.parse(json).error);
+	return HerdrRefusalFallbackDialogResponse.parse(json).dialog;
+}
+
+const HerdrRefusalFallbackChoiceResponse = z.strictObject(
+	{
+		ok: z.literal(true),
+		/** After Edit: the prompt the CLI put back in its input, now cleared there; null when it never showed. */
+		text: z.string().nullable().optional(),
+	},
+);
+
+export type RefusalFallbackChoice = "retry_fallback" | "edit_prompt" | "cancelled";
+
+/**
+ * Answer the CLI's refusal-fallback dialog in the session's live pane. Resolves
+ * to the prompt text to refill the browser composer with after Edit, else null.
+ */
+export async function sendHerdrRefusalFallbackChoice(
+	sessionId: string,
+	choice: RefusalFallbackChoice,
+	fetcher: typeof fetch = fetch,
+): Promise<string | null>
+{
+	const response = await fetcher(
+		"/api/herdr/refusal-fallback",
+		{
+			method: "POST",
+			credentials: "same-origin",
+			headers:
+			{
+				"Content-Type": "application/json",
+			},
+			body: JSON.stringify(
+				{
+					sessionId,
+					choice,
+				},
+			),
+		},
+	);
+	const json: unknown = await response.json();
+	if (!response.ok) throw new Error(HerdrPromptErrorResponse.parse(json).error);
+	return HerdrRefusalFallbackChoiceResponse.parse(json).text ?? null;
+}

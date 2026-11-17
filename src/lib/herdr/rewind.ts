@@ -390,7 +390,7 @@ const MAX_CLEARS = 200;
  * Empty the CLI input with Ctrl+U, which clears one drawn line (or joins an
  * emptied line onto the one above) per press, until it reads empty.
  */
-async function clearInput(
+export async function clearInput(
 	read: () => Promise<
 	{
 		input: string | null;

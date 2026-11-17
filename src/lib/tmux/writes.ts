@@ -41,6 +41,7 @@ export type TmuxWriteKind =
 	| "permission"
 	| "plan"
 	| "elicitation"
+	| "refusal-fallback"
 	| "live-option"
 	| "rewind"
 	| "remote-control";
@@ -63,6 +64,8 @@ const READY_STATES =
 	permission: ["working", "waiting"],
 	plan: ["working", "waiting"],
 	elicitation: ["working", "waiting"],
+	// The dialog shows while waiting; after Edit the turn is aborted, so Ctrl+U clears an idle input.
+	"refusal-fallback": ["waiting", "idle"],
 	"live-option": ["idle"],
 	rewind: ["idle"],
 	"remote-control": ["idle"],
@@ -81,6 +84,7 @@ const NAMED_KEYS: Readonly<Record<string, string>> =
 	backspace: "BSpace",
 	space: "Space",
 	"ctrl+c": "C-c",
+	"ctrl+u": "C-u",
 };
 
 /** The tmux `send-keys` name for a herdr-style key ccp sends, or null when it has none. */

@@ -22,6 +22,9 @@ import {sessionDisplayTitle} from "./session-stand-in-title";
 import {ownRepositoryPr, readOriginRepoName} from "./session-own-pr";
 import type {SessionEntry} from "./sessions";
 
+/** The registry's `waitingFor` while the CLI shows a dialog with no hook of its own, such as the refusal fallback. */
+const REGISTRY_DIALOG_WAIT = "dialog open";
+
 type IndexDb = BetterSQLite3Database<typeof schema>;
 
 /** A turn error older than this no longer marks the session failed (upstream desktop `Mv`, `RN = 6048e5`). */
@@ -208,6 +211,12 @@ export function toSessionSummaryPayload(
 			?
 				{
 					awaitingPermission: true,
+				}
+			: {}),
+		...(registrySession?.waitingFor === REGISTRY_DIALOG_WAIT
+			?
+				{
+					dialogOpenAt: registrySession.statusUpdatedAt,
 				}
 			: {}),
 		...(permissionAsks.length === 0

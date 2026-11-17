@@ -673,9 +673,38 @@ describe("buildSessionSummaryPayloadFromDb with the CLI session registry", () =>
 		await indexSession();
 		await registerProcess("waiting", 946_598_402_000);
 
+		const summary = buildSessionSummaryPayloadFromDb(db.index, "session-test-100") ?? {};
+		expect([Object.hasOwn(summary, "awaitingPermission"), Object.hasOwn(summary, "dialogOpenAt")]).toStrictEqual([
+			false,
+			false,
+		]);
+	});
+
+	it("carries when the registry's dialog opened while the CLI shows one, but no permission wait", async () =>
+	{
+		await indexSession();
+		await registerProcess(
+			"waiting",
+			946_598_402_000,
+			{
+				waitingFor: "dialog open",
+			},
+		);
+
+		const summary = buildSessionSummaryPayloadFromDb(db.index, "session-test-100");
 		expect(
-			Object.hasOwn(buildSessionSummaryPayloadFromDb(db.index, "session-test-100") ?? {}, "awaitingPermission"),
-		).toBe(false);
+			{
+				state: summary?.state,
+				dialogOpenAt: summary?.dialogOpenAt,
+				awaitingPermission: summary === null ? null : Object.hasOwn(summary, "awaitingPermission"),
+			},
+		).toStrictEqual(
+			{
+				state: "waiting",
+				dialogOpenAt: 946_598_402_000,
+				awaitingPermission: false,
+			},
+		);
 	});
 
 	it("reads a stale busy registry status as idle once the transcript records the turn ending after it", async () =>

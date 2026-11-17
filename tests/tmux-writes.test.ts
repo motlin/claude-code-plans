@@ -123,10 +123,22 @@ describe("tmuxKeyName", () =>
 	it("maps the herdr key names ccp sends to tmux send-keys names, and refuses others", () =>
 	{
 		expect(
-			["esc", "enter", "tab", "shift+tab", "down", "up", "ctrl+c", "1", "9", "f13", "ctrl+shift+x", ""].map(
-				tmuxKeyName,
-			),
-		).toStrictEqual(["Escape", "Enter", "Tab", "BTab", "Down", "Up", "C-c", "1", "9", null, null, null]);
+			[
+				"esc",
+				"enter",
+				"tab",
+				"shift+tab",
+				"down",
+				"up",
+				"ctrl+c",
+				"ctrl+u",
+				"1",
+				"9",
+				"f13",
+				"ctrl+shift+x",
+				"",
+			].map(tmuxKeyName),
+		).toStrictEqual(["Escape", "Enter", "Tab", "BTab", "Down", "Up", "C-c", "C-u", "1", "9", null, null, null]);
 	});
 });
 

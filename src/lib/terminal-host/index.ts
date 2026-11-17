@@ -42,6 +42,13 @@ import
 } from "../herdr/permission";
 import {defaultHerdrPlanDependencies, handleHerdrPlan, handleHerdrPlanDialog} from "../herdr/plan";
 import {defaultHerdrRemoteControlDependencies, handleHerdrRemoteControl} from "../herdr/remote-control";
+import
+{
+	defaultHerdrRefusalFallbackDependencies,
+	handleHerdrRefusalFallback,
+	handleHerdrRefusalFallbackDialog,
+	type HerdrRefusalFallbackDependencies,
+} from "../herdr/refusal-fallback";
 import {defaultHerdrRewindDependencies, handleHerdrRewind} from "../herdr/rewind";
 import {defaultHerdrPromptDependencies, handleHerdrPrompt, midTurnPromptReady} from "../herdr/prompt";
 import {getPendingQuestion} from "../pending-question-store";
@@ -114,6 +121,10 @@ export interface TerminalHost
 	readElicitationDialog: (request: Request) => Promise<Response>;
 	/** Send the keys that answer an MCP elicitation dialog, re-reading the screen before its final Enter. */
 	answerElicitation: (request: Request) => Promise<Response>;
+	/** Read the CLI's "Session paused" refusal-fallback dialog off the session's pane, or null when it is not shown. */
+	readRefusalFallbackDialog: (request: Request) => Promise<Response>;
+	/** Press the key that answers the refusal-fallback dialog, and after Edit hand back the prompt from the CLI input. */
+	answerRefusalFallback: (request: Request) => Promise<Response>;
 	/** Rewind the conversation to a prompt through the CLI's own message selector. */
 	rewind: (request: Request) => Promise<Response>;
 	/** Turn the session's Remote Control bridge on or off by typing `/remote-control` (and its dialog's keys). */
@@ -176,6 +187,8 @@ const herdrTerminalHost: TerminalHost =
 	answerPlan: async (request) => handleHerdrPlan(request),
 	readElicitationDialog: async (request) => handleHerdrElicitationDialog(request),
 	answerElicitation: async (request) => handleHerdrElicitation(request),
+	readRefusalFallbackDialog: async (request) => handleHerdrRefusalFallbackDialog(request),
+	answerRefusalFallback: async (request) => handleHerdrRefusalFallback(request),
 	rewind: async (request) => handleHerdrRewind(request),
 	toggleRemoteControl: async (request) => handleHerdrRemoteControl(request),
 	applyLiveOption: async (request) => handleHerdrLiveOption(request),
@@ -239,6 +252,8 @@ const noTerminalHost: TerminalHost =
 	answerPlan: noHostWrite,
 	readElicitationDialog: noHostWrite,
 	answerElicitation: noHostWrite,
+	readRefusalFallbackDialog: noHostWrite,
+	answerRefusalFallback: noHostWrite,
 	rewind: noHostWrite,
 	toggleRemoteControl: noHostWrite,
 	applyLiveOption: noHostWrite,
@@ -298,6 +313,23 @@ export function createTmuxTerminalHost(
 		...writes,
 		readScreen: async (sessionId: string, paneId: string) => readTmuxScreen(sessionId, paneId, sources),
 		...tmuxWriteDependencies("elicitation", sources, io),
+	});
+	const refusalFallbackDependencies = (): HerdrRefusalFallbackDependencies => (
+	{
+		...defaultHerdrRefusalFallbackDependencies,
+		...writes,
+		pause: io.pause,
+		readScreen: async (sessionId: string, paneId: string) =>
+			readTmuxScreen(
+				sessionId,
+				paneId,
+				sources,
+				undefined,
+				{
+					ansi: true,
+				},
+			),
+		...tmuxWriteDependencies("refusal-fallback", sources, io),
 	});
 	const stream = async (
 		sessionId: string,
@@ -370,6 +402,9 @@ export function createTmuxTerminalHost(
 		answerPlan: async (request) => handleHerdrPlan(request, planDependencies()),
 		readElicitationDialog: async (request) => handleHerdrElicitationDialog(request, elicitationDependencies()),
 		answerElicitation: async (request) => handleHerdrElicitation(request, elicitationDependencies()),
+		readRefusalFallbackDialog: async (request) =>
+			handleHerdrRefusalFallbackDialog(request, refusalFallbackDependencies()),
+		answerRefusalFallback: async (request) => handleHerdrRefusalFallback(request, refusalFallbackDependencies()),
 		rewind: async (request) =>
 			handleHerdrRewind(
 				request,
