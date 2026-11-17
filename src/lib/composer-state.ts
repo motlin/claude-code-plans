@@ -551,6 +551,8 @@ export interface ComposerServerState
 	settingsBypassPermissionsAllowed: boolean;
 	/** Settings start a fresh session in fast mode (`sessionFastMode` with no turns). */
 	settingsFastMode: boolean;
+	/** settings.json `advisorModel`: the session's advisor before its first turn, or null when unset. */
+	settingsAdvisorModel: string | null;
 	/** Why the CLI can't use fast mode here (`fastModeBlockedReason`), or null. */
 	fastModeBlocked: FastModeBlocked | null;
 	statusline: Statusline | null;
@@ -564,6 +566,7 @@ export const ComposerServerStateResponse: z.ZodType<ComposerServerState> = z.str
 		settingsEffortLevel: z.string().nullable(),
 		settingsBypassPermissionsAllowed: z.boolean(),
 		settingsFastMode: z.boolean(),
+		settingsAdvisorModel: z.string().nullable(),
 		fastModeBlocked: FastModeBlockedResponse.nullable(),
 		statusline: StatuslineSchema.nullable(),
 		statuslineUpdatedAt: z.string().nullable(),

@@ -280,6 +280,13 @@ export const FIELD_DEFINITIONS: FieldDefinition[] = [
 		type: "boolean",
 		section: "General",
 	},
+	{
+		key: "advisorModel",
+		label: "Advisor model",
+		description: "The stronger model Claude consults at key moments, as set by /advisor",
+		type: "string",
+		section: "General",
+	},
 ];
 
 export const SECTIONS_ORDER = ["General", "Data", "Updates", "MCP", "Permissions", "Advanced"];

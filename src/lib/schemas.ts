@@ -3577,6 +3577,8 @@ export const ClaudeSettingsSchema = z
 			fastMode: z.boolean().optional(),
 			/** Fast mode does not persist across sessions: each one starts off. */
 			fastModePerSessionOptIn: z.boolean().optional(),
+			/** The CLI's `/advisor` choice, an alias or model id; unset leaves the CLI's default. */
+			advisorModel: z.string().optional(),
 			autoMode: z
 				.object(
 					{

@@ -492,3 +492,88 @@ describe("session page cold-resume notice", () =>
 		expect(card()).toBeNull();
 	});
 });
+
+describe("session page /advisor dialog", () =>
+{
+	it("opens on a bare /advisor in a live session and sends the applied pick to the pane", async () =>
+	{
+		await renderSession(
+			{
+				herdr: LIVE,
+			},
+		);
+		const textarea = await screen.findByRole<HTMLTextAreaElement>(
+			"textbox",
+			{
+				name: "Prompt",
+			},
+		);
+		fireEvent.change(
+			textarea,
+			{
+				target:
+				{
+					value: "/advisor",
+				},
+			},
+		);
+		fireEvent.keyDown(
+			textarea,
+			{
+				key: "Enter",
+			},
+		);
+		const select = await screen.findByRole(
+			"combobox",
+			{
+				name: "Advisor model",
+			},
+		);
+		// The last turn ran without an advisor.
+		const shown = select.textContent;
+		fireEvent.click(select);
+		const option = await screen.findByRole(
+			"option",
+			{
+				name: "Opus",
+				hidden: true,
+			},
+		);
+		fireEvent.pointerDown(
+			option,
+			{
+				pointerType: "mouse",
+			},
+		);
+		fireEvent.click(option);
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Apply",
+				},
+			),
+		);
+		await waitFor(() =>
+		{
+			expect(
+				{
+					shown,
+					posts,
+					open: screen.queryByRole("alertdialog") !== null,
+				},
+			).toStrictEqual(
+				{
+					shown: "Off",
+					posts: [
+						{
+							sessionId: SESSION_ID,
+							prompt: "/advisor opus",
+						},
+					],
+					open: false,
+				},
+			);
+		});
+	});
+});

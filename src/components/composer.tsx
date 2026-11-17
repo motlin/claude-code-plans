@@ -41,6 +41,7 @@ import type {LiveLaunchControls} from "../hooks/use-live-launch-options";
 import {useIsMac, useIsWindows} from "../hooks/use-is-mac";
 import {useShortcut, useShortcutKeys} from "../hooks/use-shortcut";
 import {useTypeToFocus} from "../hooks/use-type-to-focus";
+import {isBareAdvisorCommand} from "../lib/advisor";
 import {assertNever} from "../lib/assert-never";
 import type {ComposerState} from "../lib/composer-state";
 import {type QueuedPrompt, parkedPrompts, queuedForLater, queuedStatusText} from "../lib/composer-queue";
@@ -406,6 +407,16 @@ interface ComposerProps
 	 * Rewind picker; the others keep the draft. Absent, `/rewind` reaches the CLI as typed.
 	 */
 	rewind?: ComposerRewind | undefined;
+	/**
+	 * A session's `/advisor` host dialog: a bare `/advisor` clears the composer and calls `open` (upstream's
+	 * `Kae(e) && advisorDialog && z("advisor")`). Absent, or with arguments, `/advisor` reaches the CLI as typed.
+	 */
+	advisor?:
+		|
+		  {
+				open: () => void;
+		  }
+		| undefined;
 	/**
 	 * Opens the session rail's Context card for a bare `/autocompact` (upstream's `context-popover`
 	 * action), after the composer clears it. Upstream's consumers take the request in order: the rail
@@ -1121,6 +1132,7 @@ export function Composer({
 	subscribePrefill,
 	active = true,
 	rewind,
+	advisor,
 	onOpenContext,
 	statusCommand,
 	usageCommand,
@@ -2214,6 +2226,7 @@ export function Composer({
 		if (
 			runFastCommand(text) ||
 			runRewindCommand(text) ||
+			runAdvisorCommand(text) ||
 			runWorkflowsCommand(text) ||
 			runAutocompactCommand(text) ||
 			runStatusCommand(text) ||
@@ -2378,6 +2391,14 @@ export function Composer({
 				message: AUTOCOMPACT_BEFORE_SESSION,
 			},
 		);
+		return true;
+	}
+	/** Upstream's bare-only `/advisor`: opens the host dialog; with arguments it reaches the CLI as typed. */
+	function runAdvisorCommand(text: string): boolean
+	{
+		if (advisor === undefined || !isBareAdvisorCommand(text)) return false;
+		clearDraft();
+		advisor.open();
 		return true;
 	}
 	/** Upstream's `/rewind` (`noArgs`) dispatch: the shape band first, then the gate's outcome. */

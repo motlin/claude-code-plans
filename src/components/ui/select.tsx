@@ -37,23 +37,52 @@ export interface SelectItem<T extends string>
 	label: string;
 }
 
-export interface SelectProps<T extends string>
+/** A visible label, or (upstream's unlabelled combobox) only an accessible name on the trigger. */
+type SelectName =
+	|
+	  {
+			label: string;
+			ariaLabel?: undefined;
+	  }
+	|
+	  {
+			label?: undefined;
+			ariaLabel: string;
+	  };
+
+export type SelectProps<T extends string> = SelectName &
 {
-	label: string;
 	items: readonly SelectItem<T>[];
-	value: T;
+	/** Null shows `placeholder` until a pick. */
+	value: T | null;
 	onChange: (value: T) => void;
 	disabled?: boolean;
-}
+	/** Upstream's Combobox placeholder, drawn in its muted ink while `value` is null. */
+	placeholder?: string;
+};
 
-export function Select<T extends string>({label, items, value, onChange, disabled = false}: SelectProps<T>)
+/** The selected value's text; upstream's Combobox draws its placeholder in `text-muted-as-secondary`. */
+const VALUE_CLASS = "min-w-0 flex-1 truncate";
+const PLACEHOLDER_CLASS = `${VALUE_CLASS} text-muted-as-secondary`;
+
+export function Select<T extends string>({
+	label,
+	ariaLabel,
+	items,
+	value,
+	onChange,
+	disabled = false,
+	placeholder,
+}: SelectProps<T>)
 {
 	const triggerId = useId();
 	return (
 		<div className={FIELD_CLASS}>
-			<label htmlFor={triggerId} className={LABEL_CLASS}>
-				{label}
-			</label>
+			{label !== undefined && (
+				<label htmlFor={triggerId} className={LABEL_CLASS}>
+					{label}
+				</label>
+			)}
 			<BaseSelect.Root
 				items={items}
 				value={value}
@@ -65,8 +94,11 @@ export function Select<T extends string>({label, items, value, onChange, disable
 				}}
 			>
 				<div data-cds="Combobox" data-disabled={disabled ? "" : undefined} className={CONTROL_CLASS}>
-					<BaseSelect.Trigger id={triggerId} className={TRIGGER_CLASS}>
-						<BaseSelect.Value className="min-w-0 flex-1 truncate" />
+					<BaseSelect.Trigger id={triggerId} aria-label={ariaLabel} className={TRIGGER_CLASS}>
+						<BaseSelect.Value
+							placeholder={placeholder}
+							className={(state) => (state.placeholder ? PLACEHOLDER_CLASS : VALUE_CLASS)}
+						/>
 						<ChevronDown aria-hidden="true" strokeWidth={2} className={CARET_CLASS} />
 					</BaseSelect.Trigger>
 				</div>

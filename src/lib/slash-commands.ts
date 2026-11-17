@@ -2,6 +2,7 @@
  * Composer "/" autocomplete: the curated CLI built-ins plus the pure merge,
  * ranking and highlight logic shared by the popup and `GET /api/commands`.
  */
+import {ADVISOR_ARGUMENT_HINT} from "./advisor";
 import {type CommandCandidate, CommandMatcher} from "./command-matcher";
 
 export const SLASH_COMMAND_SOURCES = [
@@ -132,6 +133,13 @@ export const SESSION_SLASH_COMMANDS: readonly SlashCommand[] = [
 		name: "status",
 		description: "Show this session’s version, model, environment, and account",
 		source: "builtin",
+		hostHandled: true,
+	},
+	{
+		name: "advisor",
+		description: "Let Claude consult a stronger model at key moments",
+		source: "builtin",
+		argumentHint: ADVISOR_ARGUMENT_HINT,
 		hostHandled: true,
 	},
 ];

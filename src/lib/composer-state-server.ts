@@ -91,6 +91,7 @@ async function readSettingsDefaults(
 		| "settingsEffortLevel"
 		| "settingsBypassPermissionsAllowed"
 		| "settingsFastMode"
+		| "settingsAdvisorModel"
 		| "fastModeBlocked"
 	>
 >
@@ -105,6 +106,7 @@ async function readSettingsDefaults(
 			settingsEffortLevel: null,
 			settingsBypassPermissionsAllowed: false,
 			settingsFastMode: false,
+			settingsAdvisorModel: null,
 			fastModeBlocked,
 		};
 	}
@@ -119,6 +121,7 @@ async function readSettingsDefaults(
 			},
 		),
 		settingsFastMode: sessionFastMode([], settings),
+		settingsAdvisorModel: settings.advisorModel ?? null,
 		fastModeBlocked,
 	};
 }

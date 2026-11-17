@@ -109,4 +109,36 @@ describe("Select", () =>
 			},
 		);
 	});
+
+	it("names an unlabelled trigger by aria-label and shows a placeholder in muted ink for no value", () =>
+	{
+		render(
+			<Select
+				ariaLabel="Advisor model"
+				placeholder="Choose a model"
+				items={ITEMS}
+				value={null}
+				onChange={() =>
+				{
+				}}
+			/>,
+		);
+		const trigger = screen.getByRole("combobox");
+		const placeholder = trigger.querySelector("[data-placeholder]");
+		expect(
+			{
+				ariaLabel: trigger.getAttribute("aria-label"),
+				labels: document.querySelectorAll("label").length,
+				text: trigger.textContent,
+				placeholderClass: placeholder?.className,
+			},
+		).toStrictEqual(
+			{
+				ariaLabel: "Advisor model",
+				labels: 0,
+				text: "Choose a model",
+				placeholderClass: "min-w-0 flex-1 truncate text-muted-as-secondary",
+			},
+		);
+	});
 });

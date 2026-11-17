@@ -94,6 +94,7 @@ import {useApprovalPresentation} from "../hooks/use-approval-presentation";
 import {ComposerNoticeProvider, ComposerNoticeRegion} from "./composer-notice-region";
 import {sessionProcessLive} from "../lib/session-state";
 import {sessionComposerFastMode} from "../lib/session-fast-mode";
+import {sessionAdvisorModel} from "../lib/advisor";
 import {type QueuedPrompt, steeredPrompts} from "../lib/composer-queue";
 import {recallLastHeldSteer} from "../lib/steer-recall";
 import {tailMarkerQuiet, turnTokenEstimate, workingLineWaitsOnUser} from "../lib/working-marker";
@@ -423,6 +424,14 @@ const RewindConfirm = lazy(async () =>
 	import("./rewind-confirm").then((module) => (
 	{
 		default: module.RewindConfirm,
+	})),
+);
+
+// The /advisor dialog loads on its first open.
+const AdvisorDialog = lazy(async () =>
+	import("./advisor-dialog").then((module) => (
+	{
+		default: module.AdvisorDialog,
 	})),
 );
 
@@ -1724,6 +1733,27 @@ function SessionView({
 		}),
 		[composerRewindState, requestRewindPicker],
 	);
+	// Upstream's `/advisor` dialog, per session (`eo`): only a writable live pane can take the command, and the
+	// dialog closes when that goes away, as upstream's does when the gate drops.
+	const advisorAvailable = !data.archived && promptBehavior.hasLivePane && herdr.writesEnabled;
+	const [advisorDialogFor, setAdvisorDialogFor] = useState<string | null>(null);
+	const composerAdvisor = useMemo(
+		() =>
+			advisorAvailable
+				?
+					{
+						open: () =>
+						{
+							setAdvisorDialogFor(sessionId);
+						},
+					}
+				: undefined,
+		[advisorAvailable, sessionId],
+	);
+	const closeAdvisorDialog = useCallback(() =>
+	{
+		setAdvisorDialogFor(null);
+	}, []);
 	const openContextCard = useCallback(() =>
 	{
 		requestRailContextCard(sessionId);
@@ -2347,6 +2377,25 @@ function SessionView({
 										/>
 									</Suspense>
 								)}
+								{advisorAvailable && advisorDialogFor === sessionId && (
+									<Suspense fallback={null}>
+										<AdvisorDialog
+											key={sessionId}
+											current={sessionAdvisorModel(
+												transcript.records,
+												{
+													advisorModel: composerServerState?.settingsAdvisorModel,
+												},
+											)}
+											onClose={closeAdvisorDialog}
+											onApply={(option) =>
+											{
+												closeAdvisorDialog();
+												submitComposer("send", `/advisor ${option}`, {});
+											}}
+										/>
+									</Suspense>
+								)}
 								{rewindRequest.rewindConfirm !== null && (
 									<Suspense fallback={null}>
 										<RewindConfirm
@@ -2736,6 +2785,7 @@ function SessionView({
 																		promptHistory={promptHistory?.prompts}
 																		bashHistory={promptHistory?.bashCommands}
 																		rewind={composerRewind}
+																		advisor={composerAdvisor}
 																		onOpenContext={openContextCard}
 																		onShellCommand={runShellCommand}
 																	/>

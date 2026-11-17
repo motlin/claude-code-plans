@@ -1283,6 +1283,7 @@ describe("getComposerState", () =>
 				{
 					model: "fable",
 					effortLevel: "xhigh",
+					advisorModel: "opus",
 					permissions:
 					{
 						defaultMode: "auto",
@@ -1306,6 +1307,7 @@ describe("getComposerState", () =>
 				settingsEffortLevel: "xhigh",
 				settingsBypassPermissionsAllowed: false,
 				settingsFastMode: false,
+				settingsAdvisorModel: "opus",
 				fastModeBlocked: null,
 				statusline: ALICE_STATUSLINE,
 				statuslineUpdatedAt: "2026-09-29T09:00:00.000Z",
@@ -1391,6 +1393,7 @@ describe("getComposerState", () =>
 				settingsEffortLevel: null,
 				settingsBypassPermissionsAllowed: false,
 				settingsFastMode: false,
+				settingsAdvisorModel: null,
 				fastModeBlocked: null,
 				statusline: null,
 				statuslineUpdatedAt: null,
@@ -1608,6 +1611,7 @@ describe("getComposerState", () =>
 					settingsEffortLevel: null,
 					settingsBypassPermissionsAllowed: false,
 					settingsFastMode: false,
+					settingsAdvisorModel: null,
 					fastModeBlocked: null,
 					statusline: null,
 					statuslineUpdatedAt: null,

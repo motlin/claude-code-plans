@@ -5844,21 +5844,23 @@ describe("ContentBlockSchema tool input validation", () =>
 	});
 });
 
-describe("ClaudeSettingsSchema fast mode", () =>
+describe("ClaudeSettingsSchema fast mode and advisor", () =>
 {
-	it("accepts fastMode and fastModePerSessionOptIn", () =>
+	it("accepts fastMode, fastModePerSessionOptIn and advisorModel", () =>
 	{
 		expect(
 			ClaudeSettingsSchema.parse(
 				{
 					fastMode: true,
 					fastModePerSessionOptIn: true,
+					advisorModel: "opus",
 				},
 			),
 		).toStrictEqual(
 			{
 				fastMode: true,
 				fastModePerSessionOptIn: true,
+				advisorModel: "opus",
 			},
 		);
 	});

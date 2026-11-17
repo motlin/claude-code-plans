@@ -441,7 +441,17 @@ describe("useSlashCommands", () =>
 				session:
 				{
 					header: null,
-					labels: ["rewind", "autocompact", "status", "standup", "autocompact", "rewind", "status"],
+					labels: [
+						"rewind",
+						"autocompact",
+						"status",
+						"advisor",
+						"standup",
+						"autocompact",
+						"rewind",
+						"advisor",
+						"status",
+					],
 				},
 				autoc: ["autocompact", "autocompactCustom command"],
 			},
@@ -469,6 +479,7 @@ describe("useSlashCommands", () =>
 			"workflows",
 			"btw",
 			"usage",
+			"advisor",
 			"status",
 		]);
 	});
@@ -567,6 +578,7 @@ describe("useSlashCommands", () =>
 					"workflows:cli",
 					"btw:cli",
 					"usage:cli",
+					"advisor:cli",
 					"status:cli",
 					"tools:lint",
 				],
@@ -580,7 +592,17 @@ describe("useSlashCommands", () =>
 					argumentHint: "[low|medium|high|xhigh|max|auto]",
 					shadowsHost: true,
 				},
-				noFast: ["autocompact", "effort", "permissions", "rewind", "workflows", "btw", "usage", "status"],
+				noFast: [
+					"autocompact",
+					"effort",
+					"permissions",
+					"rewind",
+					"workflows",
+					"btw",
+					"usage",
+					"advisor",
+					"status",
+				],
 				home: [],
 			},
 		);

@@ -12,6 +12,7 @@ import
 	routeStatusCommand,
 	routeUsageCommand,
 } from "../src/lib/composer-host-commands";
+import {isBareAdvisorCommand} from "../src/lib/advisor";
 import {parseBtwCommand} from "../src/lib/side-chat";
 import
 {
@@ -74,6 +75,13 @@ describe("SESSION_SLASH_COMMANDS", () =>
 						name: "status",
 						description: "Show this session’s version, model, environment, and account",
 						source: "builtin",
+						hostHandled: true,
+					},
+					{
+						name: "advisor",
+						description: "Let Claude consult a stronger model at key moments",
+						source: "builtin",
+						argumentHint: "[fable|opus|sonnet|off]",
 						hostHandled: true,
 					},
 				],
@@ -238,6 +246,7 @@ describe("hostHandled built-ins", () =>
 					turnActive: false,
 				},
 			) !== null ||
+			isBareAdvisorCommand(text) ||
 			parseCommandShape(["rewind", "workflows", "workflow"], text) !== null;
 		const builtins = [...BUILTIN_SLASH_COMMANDS, ...SESSION_SLASH_COMMANDS];
 		const labels = (commands: readonly SlashCommand[]) =>
