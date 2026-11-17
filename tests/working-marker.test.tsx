@@ -22,11 +22,13 @@ import
 	toolActivityLabel,
 	formatTokenEstimate,
 	turnTokenEstimate,
+	turnTokenUsage,
 	workingLineAnnouncement,
 	workingLineWaitsOnUser,
 	workingMarkerState,
 	workingMarkerText,
 	type WorkingMarkerEvent,
+	type WorkingMarkerState,
 } from "../src/lib/working-marker";
 
 const T0 = Date.parse("2026-09-29T12:00:00.000Z");
@@ -569,6 +571,32 @@ describe("turnTokenEstimate", () =>
 		).toStrictEqual(["100 tokens", "1 token", "50.3k tokens"]);
 	});
 
+	it("rounds chars / 4 as upstream's M6, not floor", () =>
+	{
+		expect(turnTokenEstimate([prompt("go"), assistantText("x".repeat(6))])).toStrictEqual(2);
+	});
+
+	it("formats the count as upstream's shared-8 Jt: one decimal kept, uppercase M/B, rolling over at 1000", () =>
+	{
+		expect(
+			[999, 1000, 1049, 1050, 50_000, 50_250, 999_949, 999_950, 1_000_000, 1_250_000, 2_000_000_000].map(
+				formatTokenEstimate,
+			),
+		).toStrictEqual([
+			"999 tokens",
+			"1.0k tokens",
+			"1.0k tokens",
+			"1.1k tokens",
+			"50.0k tokens",
+			"50.3k tokens",
+			"999.9k tokens",
+			"1.0M tokens",
+			"1.0M tokens",
+			"1.3M tokens",
+			"2.0B tokens",
+		]);
+	});
+
 	it("counts thinking, tool_use input JSON and tool_result content since the turn's prompt only", () =>
 	{
 		const input =
@@ -646,12 +674,41 @@ describe("turnTokenEstimate", () =>
 				},
 			},
 		];
-		expect(turnTokenEstimate(records)).toStrictEqual(Math.floor((8 + JSON.stringify(input).length + 12 + 4) / 4));
+		expect(turnTokenEstimate(records)).toStrictEqual(Math.round((8 + JSON.stringify(input).length + 12 + 4) / 4));
 	});
 
 	it("is zero before anything streams", () =>
 	{
 		expect([turnTokenEstimate([]), turnTokenEstimate([prompt("go")])]).toStrictEqual([0, 0]);
+	});
+
+	it("dates the turn's first record that adds characters, as upstream's firstPositiveAt", () =>
+	{
+		const stamped = <T extends object>(record: T, timestamp: string) => (
+		{
+			...record,
+			timestamp,
+		});
+		expect([
+			turnTokenUsage([prompt("go")]),
+			turnTokenUsage([
+				stamped(prompt("earlier"), "2026-09-29T11:59:00.000Z"),
+				stamped(assistantText("old"), "2026-09-29T11:59:01.000Z"),
+				stamped(prompt("go"), "2026-09-29T12:00:00.000Z"),
+				stamped(assistantText(""), "2026-09-29T12:00:01.000Z"),
+				stamped(assistantText("hi"), "2026-09-29T12:00:02.000Z"),
+				stamped(assistantText("more"), "2026-09-29T12:00:03.000Z"),
+			]),
+		]).toStrictEqual([
+			{
+				tokens: 0,
+				firstAt: undefined,
+			},
+			{
+				tokens: 2,
+				firstAt: at(2),
+			},
+		]);
 	});
 });
 
@@ -1258,7 +1315,12 @@ describe("WorkingMarker", () =>
 				animated: "true",
 				activity: "default",
 				visible: "7s",
-				stat: [["inline-flex h-[1lh] shrink-0 items-center text-secondary tabular-nums", "7s"]],
+				stat: [
+					[
+						"inline-flex h-[1lh] min-w-0 shrink-0 items-center overflow-visible text-secondary tabular-nums",
+						"7s",
+					],
+				],
 				busy: "running",
 				announcer: "Working…",
 				announcerLive: "polite",
@@ -2134,7 +2196,7 @@ describe("WorkingMarker pre-stream phases", () =>
 		{
 			vi.useFakeTimers(
 				{
-					toFake: ["setTimeout", "clearTimeout", "performance"],
+					toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval", "performance"],
 				},
 			);
 			stubReducedMotion(false);
@@ -2186,7 +2248,8 @@ describe("WorkingMarker pre-stream phases", () =>
 		{
 			const view = waitingShown();
 			view.rerender(<WorkingMarker state={REPLIED} tokens={400} />);
-			expect(at649And650(view)).toStrictEqual(["Waiting for Claude", "5s·400 tokens"]);
+			// A fresh turn's first count ramps up from 0 over 1200ms (upstream ut), 500ms in by now.
+			expect(at649And650(view)).toStrictEqual(["Waiting for Claude", "5s·166 tokens"]);
 		});
 
 		it("holds a fresh label 650ms before Stopping", () =>
@@ -2230,7 +2293,7 @@ describe("WorkingMarker pre-stream phases", () =>
 		{
 			vi.useFakeTimers(
 				{
-					toFake: ["setTimeout", "clearTimeout", "performance"],
+					toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval", "performance"],
 				},
 			);
 			stubReducedMotion(false);
@@ -2272,7 +2335,8 @@ describe("WorkingMarker pre-stream phases", () =>
 			expect([shownAt400, before, visibleLineText(view.container)]).toStrictEqual([
 				"Waiting for Claude",
 				"Waiting for Claude",
-				"5s·400 tokens",
+				// 700ms into the first count's 1200ms ramp from 0.
+				"5s·233 tokens",
 			]);
 		});
 
@@ -2400,7 +2464,7 @@ describe("WorkingMarker pre-stream phases", () =>
 	{
 		vi.useFakeTimers(
 			{
-				toFake: ["setTimeout", "clearTimeout", "performance"],
+				toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval", "performance"],
 			},
 		);
 		stubReducedMotion(false);
@@ -2424,7 +2488,8 @@ describe("WorkingMarker pre-stream phases", () =>
 		{
 			vi.advanceTimersByTime(1);
 		});
-		expect([settling, visibleLineText(view.container)]).toStrictEqual(["Waiting for Claude", "5s·400 tokens"]);
+		// 100ms into the first count's 1200ms ramp from 0.
+		expect([settling, visibleLineText(view.container)]).toStrictEqual(["Waiting for Claude", "5s·33 tokens"]);
 	});
 });
 
@@ -2818,5 +2883,123 @@ describe("WorkingMarker tool label hand-off", () =>
 				released: "20s",
 			},
 		);
+	});
+});
+
+describe("WorkingMarker smoothed token count", () =>
+{
+	const WORKING_7S: WorkingMarkerState =
+	{
+		status: "working",
+		label: "Working…",
+		thinking: false,
+		replied: true,
+		turnStartedAt: at(0),
+		elapsedSeconds: 7,
+	};
+
+	beforeEach(() =>
+	{
+		vi.useFakeTimers(
+			{
+				toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval", "Date", "performance"],
+			},
+		);
+		vi.setSystemTime(at(7));
+	});
+
+	function advance(ms: number)
+	{
+		act(() =>
+		{
+			vi.advanceTimersByTime(ms);
+		});
+	}
+
+	const tokensSpan = (root: ParentNode) =>
+		root.querySelector(
+			'[data-cds="TurnStatus"] span.inline-flex.h-\\[1lh\\].min-w-0.shrink-0.items-center.overflow-visible > span.epitaxy-status-control.inline-flex.min-w-0.items-center.gap-xs',
+		);
+
+	it("ramps a fresh turn's first count up from 0 over 1200ms in a stable tokens segment", () =>
+	{
+		stubReducedMotion(false);
+		const view = render(<WorkingMarker state={WORKING_7S} sessionKey="s" tokens={1000} tokenFirstAt={at(6)} />);
+		const empty = visibleLineText(view.container);
+		advance(100);
+		const firstTick = visibleLineText(view.container);
+		advance(600);
+		const half = tokensSpan(view.container);
+		const halfText = visibleLineText(view.container);
+		advance(600);
+		expect(
+			{
+				empty,
+				firstTick,
+				halfText,
+				full: visibleLineText(view.container),
+				sameNode: tokensSpan(view.container) === half && half !== null,
+			},
+		).toStrictEqual(
+			{
+				empty: "7s",
+				firstTick: "7s",
+				halfText: "7s·500 tokens",
+				full: "7s·1.0k tokens",
+				sameNode: true,
+			},
+		);
+	});
+
+	it("shows the count at once when it turned positive over 5s ago", () =>
+	{
+		stubReducedMotion(false);
+		const {container} = render(
+			<WorkingMarker state={WORKING_7S} sessionKey="s" tokens={49_700} tokenFirstAt={at(1)} />,
+		);
+		expect(tokensSpan(container)?.textContent).toStrictEqual("49.7k tokens");
+	});
+
+	it("ramps a growing count over the gap since the last update, and snaps a lower one at the next tick", () =>
+	{
+		stubReducedMotion(false);
+		const view = render(<WorkingMarker state={WORKING_7S} sessionKey="s" tokens={52_000} tokenFirstAt={at(1)} />);
+		advance(1900);
+		view.rerender(<WorkingMarker state={WORKING_7S} sessionKey="s" tokens={60_000} tokenFirstAt={at(1)} />);
+		advance(100);
+		const started = tokensSpan(view.container)?.textContent;
+		advance(1000);
+		const mid = tokensSpan(view.container)?.textContent;
+		view.rerender(<WorkingMarker state={WORKING_7S} sessionKey="s" tokens={30_000} tokenFirstAt={at(1)} />);
+		const beforeTick = tokensSpan(view.container)?.textContent;
+		advance(100);
+		expect([started, mid, beforeTick, tokensSpan(view.container)?.textContent]).toStrictEqual([
+			"52.0k tokens",
+			"56.0k tokens",
+			"56.0k tokens",
+			"30.0k tokens",
+		]);
+	});
+
+	it("snaps to the raw count every 1000ms under reduced motion", () =>
+	{
+		stubReducedMotion(true);
+		const view = render(<WorkingMarker state={WORKING_7S} sessionKey="s" tokens={1000} tokenFirstAt={at(1)} />);
+		view.rerender(<WorkingMarker state={WORKING_7S} sessionKey="s" tokens={9000} tokenFirstAt={at(1)} />);
+		const seen = new Set<string | null | undefined>();
+		for (let i = 0; i < 9; i++)
+		{
+			advance(111);
+			seen.add(tokensSpan(view.container)?.textContent);
+		}
+		advance(1);
+		expect([[...seen], tokensSpan(view.container)?.textContent]).toStrictEqual([["1.0k tokens"], "9.0k tokens"]);
+	});
+
+	it("runs no tick while the line is quiet", () =>
+	{
+		stubReducedMotion(false);
+		render(<WorkingMarker state={WORKING_7S} sessionKey="s" tokens={1000} tokenFirstAt={at(6)} quiet />);
+		expect(vi.getTimerCount()).toStrictEqual(0);
 	});
 });

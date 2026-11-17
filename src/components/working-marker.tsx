@@ -1,4 +1,5 @@
 import {Fragment, useEffect, useId, useMemo, useState} from "react";
+import {useSmoothedTokens} from "../hooks/use-smoothed-tokens";
 import {useEventStreamConnecting} from "../hooks/use-claude-events";
 import {useRestInk} from "../lib/fizzy-lake";
 import {useReducedMotion} from "../lib/reduced-motion";
@@ -19,6 +20,7 @@ import
 	workingLineLabelSource,
 	workingLineParts,
 	workingMarkerText,
+	workingStatKey,
 	type WorkingLineToolLabel,
 	type WorkingMarkerState,
 } from "../lib/working-marker";
@@ -218,6 +220,8 @@ export function WorkingMarker({
 	bare = false,
 	sending = false,
 	tokens = 0,
+	tokenFirstAt,
+	sessionKey,
 	toolLabel = null,
 	toolLabelEndedAt = null,
 }: Readonly<
@@ -234,6 +238,10 @@ export function WorkingMarker({
 	sending?: boolean;
 	/** The turn's token estimate (`turnTokenEstimate`); shown after the clock while working. */
 	tokens?: number;
+	/** When the turn's count first turned positive (`turnFirstTokenAt`); a count under 5s old ramps up from 0. */
+	tokenFirstAt?: number | undefined;
+	/** The session shown; a new one restarts the token smoother. */
+	sessionKey?: string;
 	/** A row's running words handed to the line while it holds the mark (upstream's `toolLabel`). */
 	toolLabel?: WorkingLineToolLabel | null;
 	/** When the last handed-off words cleared; the clock stays hidden for 2s after. */
@@ -264,6 +272,15 @@ export function WorkingMarker({
 	// Holding a row's words, the line holds the mark itself and is never quiet.
 	const lineQuiet = quiet && tool === null;
 	const busy = turnWorking && !lineQuiet;
+	// Upstream's `isRunning: isActuallyWorking && !quiet`: a quiet line's count snaps instead of ticking.
+	const shownTokens = useSmoothedTokens(
+		{
+			sessionKey,
+			tokens,
+			running: busy && state.status === "working",
+			firstPositiveAt: tokenFirstAt,
+		},
+	);
 	const now = "turnStartedAt" in state ? state.turnStartedAt + state.elapsedSeconds * 1000 : null;
 	const showClock =
 		now === null ||
@@ -273,7 +290,7 @@ export function WorkingMarker({
 				endedAt: toolLabelEndedAt,
 			},
 		);
-	const parts = workingLineParts(state, tokens, showClock);
+	const parts = workingLineParts(state, shownTokens, showClock);
 	const phaseWord = phase === null ? null : stripBusyEllipsis(phase);
 	const toolWords = tool === null ? null : maskWorkingLabel(tool.words);
 	const toolWord = toolWords === null ? null : stripBusyEllipsis(toolWords);
@@ -283,7 +300,7 @@ export function WorkingMarker({
 	const stats =
 		phase === null
 			? tool !== null && state.status === "working"
-				? toolLabelStats(state, tool.since, tokens)
+				? toolLabelStats(state, tool.since, shownTokens)
 				: parts.stats
 			: [];
 	const live: HeldLine =
@@ -353,7 +370,7 @@ export function WorkingMarker({
 									{held.label !== "" && (
 										<span
 											ref={labelRowCut}
-											title={workingMarkerText(state, tokens)}
+											title={workingMarkerText(state, shownTokens)}
 											className="truncate whitespace-nowrap"
 										>
 											{held.label}
@@ -364,14 +381,26 @@ export function WorkingMarker({
 								<BusyWord word={held.morphWord} />
 							)}
 						</MorphSlot>
-						{held.stats.map((stat, index) => (
-							<Fragment key={stat}>
-								{(index > 0 || held.label !== "") && <StatDot />}
-								<span className={`inline-flex h-[1lh] shrink-0 items-center ${restInk} tabular-nums`}>
-									{stat}
-								</span>
-							</Fragment>
-						))}
+						{held.stats.map((stat, index) =>
+						{
+							const key = workingStatKey(stat);
+							return (
+								<Fragment key={key}>
+									{(index > 0 || held.label !== "") && <StatDot />}
+									<span
+										className={`inline-flex h-[1lh] min-w-0 shrink-0 items-center overflow-visible ${restInk} tabular-nums`}
+									>
+										{key === "tokens" ? (
+											<span className="epitaxy-status-control inline-flex min-w-0 items-center gap-xs">
+												{stat}
+											</span>
+										) : (
+											stat
+										)}
+									</span>
+								</Fragment>
+							);
+						})}
 						{tasks && (held.label !== "" || held.stats.length > 0) && <StatDot />}
 						<RunningTasksControl count={runningTasks} />
 						<span className="sr-only">running</span>

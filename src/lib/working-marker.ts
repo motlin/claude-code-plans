@@ -218,19 +218,40 @@ function liveElapsedStats(elapsedSeconds: number): string[]
 	return elapsedSeconds < ELAPSED_MIN_SECONDS ? [] : [formatElapsed(elapsedSeconds)];
 }
 
-const COMPACT_TOKENS = new Intl.NumberFormat(
-	"en",
+/**
+ * Upstream's shared-8 `Jt`: one decimal kept ("1.0k", "50.0k"), uppercase M/B, and a unit that would read
+ * "1000.0" rolls over to the next one.
+ */
+function formatCompactTokenCount(tokens: number): string
+{
+	if (tokens >= 1e9) return `${(tokens / 1e9).toFixed(1)}B`;
+	if (tokens >= 1e6)
 	{
-		notation: "compact",
-		maximumFractionDigits: 1,
-	},
-);
+		const millions = Number((tokens / 1e6).toFixed(1));
+		return millions >= 1000 ? `${(tokens / 1e9).toFixed(1)}B` : `${millions.toFixed(1)}M`;
+	}
+	if (tokens >= 1e3)
+	{
+		const thousands = Number((tokens / 1e3).toFixed(1));
+		return thousands >= 1000 ? `${(tokens / 1e6).toFixed(1)}M` : `${thousands.toFixed(1)}k`;
+	}
+	return String(tokens);
+}
 
-/** Upstream's token stat: "1 token", else "{n} tokens" with a compact lowercase count ("50.2k tokens"). */
+/** Upstream's token stat (`q6`): "1 token", else "{n} tokens" with the compact count ("50.2k tokens"). */
 export function formatTokenEstimate(tokens: number): string
 {
 	if (tokens === 1) return "1 token";
-	return `${COMPACT_TOKENS.format(tokens).toLowerCase()} tokens`;
+	return `${formatCompactTokenCount(tokens)} tokens`;
+}
+
+/** Which segment a working-line stat is, for upstream's stable segment keys ("elapsed", "tokens", "thinking"). */
+export type WorkingStatKey = "elapsed" | "tokens" | "thinking";
+
+export function workingStatKey(stat: string): WorkingStatKey
+{
+	if (stat === THINKING_STAT) return "thinking";
+	return stat.endsWith(" tokens") || stat === "1 token" ? "tokens" : "elapsed";
 }
 
 /** Upstream shows the token stat with the clock (from 2s) and only once the count is non-zero. */
@@ -777,14 +798,24 @@ function streamedLength(block: z.infer<typeof ContentBlockSchema>): number
 	}
 }
 
+/** The turn's token estimate and when it first turned positive. */
+export interface TurnTokenUsage
+{
+	tokens: number;
+	/** When the turn's first character-adding record landed (ms), upstream's `firstPositiveAt`. */
+	firstAt: number | undefined;
+}
+
 /**
  * Upstream's token counter, locally: the main thread's streamed characters
  * since the turn's prompt (assistant text, thinking and tool_use input JSON,
- * and tool_result content) divided by 4. Scans back only to that prompt.
+ * and tool_result content) divided by 4 and rounded, as upstream's `M6`.
+ * Scans back only to that prompt.
  */
-export function turnTokenEstimate(records: readonly unknown[]): number
+export function turnTokenUsage(records: readonly unknown[]): TurnTokenUsage
 {
 	let characters = 0;
+	let firstAt: number | undefined;
 	for (let i = records.length - 1; i >= 0; i--)
 	{
 		const parsed = MarkerRecordSchema.safeParse(records[i]);
@@ -794,9 +825,24 @@ export function turnTokenEstimate(records: readonly unknown[]): number
 		if (record.type !== "user" && record.type !== "assistant") continue;
 		const content = record.message?.content;
 		if (!Array.isArray(content)) continue;
-		for (const block of content) characters += streamedLength(block);
+		let added = 0;
+		for (const block of content) added += streamedLength(block);
+		characters += added;
+		if (added > 0 && record.timestamp !== undefined)
+		{
+			const at = Date.parse(record.timestamp);
+			if (!Number.isNaN(at)) firstAt = at;
+		}
 	}
-	return Math.floor(characters / 4);
+	return {
+		tokens: Math.round(characters / 4),
+		firstAt,
+	};
+}
+
+export function turnTokenEstimate(records: readonly unknown[]): number
+{
+	return turnTokenUsage(records).tokens;
 }
 
 /** The main thread's turn signals from raw JSONL records, oldest first. */

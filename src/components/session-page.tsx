@@ -119,7 +119,7 @@ import
 {
 	tailMarkerQuiet,
 	toolLabelSince,
-	turnTokenEstimate,
+	turnTokenUsage,
 	workingLineWaitsOnUser,
 	type WorkingLineToolLabel,
 } from "../lib/working-marker";
@@ -894,7 +894,7 @@ function SessionView({
 		}),
 		[sessionHasPlan, hasUnloadedHistory],
 	);
-	const turnTokens = useMemo(() => turnTokenEstimate(transcript.records), [transcript.records]);
+	const turnTokens = useMemo(() => turnTokenUsage(transcript.records), [transcript.records]);
 	const workingMarkerState = useWorkingMarkerState(
 		{
 			records: transcript.records,
@@ -2488,7 +2488,9 @@ function SessionView({
 				inline={inline}
 				bare={bare}
 				sending={promptSending}
-				tokens={turnTokens}
+				tokens={turnTokens.tokens}
+				tokenFirstAt={turnTokens.firstAt}
+				sessionKey={sessionId}
 				toolLabel={workingToolLabel}
 				toolLabelEndedAt={toolLabelEndedAt}
 			/>
@@ -2500,6 +2502,7 @@ function SessionView({
 			runningTaskCount,
 			promptSending,
 			turnTokens,
+			sessionId,
 			workingToolLabel,
 			toolLabelEndedAt,
 		],
