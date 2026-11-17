@@ -55,7 +55,12 @@ import {LegacyMessageLinkNotice} from "./legacy-message-link-notice";
 import {TileHost} from "./panes/tile-host";
 import {PlanAutoOpen} from "./plan-auto-open";
 import {useRegisterArtifactsPane, useSessionArtifacts} from "./panes/artifacts-pane-entry";
-import {preloadBackgroundTasksPane, useRegisterBackgroundTasksPane} from "./panes/background-tasks-pane-entry";
+import
+{
+	preloadBackgroundTasksPane,
+	useRegisterBackgroundTasksPane,
+	useVisibleBackgroundTasks,
+} from "./panes/background-tasks-pane-entry";
 import {preloadLinksPane, useRegisterLinksPane} from "./panes/links-pane-entry";
 import {useRegisterSessionDetailsPane} from "./panes/session-details-pane-entry";
 import {useRegisterSubagentPane} from "./panes/subagent-pane-entry";
@@ -831,7 +836,8 @@ function SessionView({
 			hookContext?.backgroundTasks,
 		],
 	);
-	useRegisterBackgroundTasksPane(sessionId, backgroundTasks, subagents.length, workflowRuns);
+	const visibleBackgroundTasks = useVisibleBackgroundTasks(sessionId, backgroundTasks);
+	useRegisterBackgroundTasksPane(sessionId, visibleBackgroundTasks, subagents.length, workflowRuns);
 	const runningBackgroundLaunches = useMemo(
 		() =>
 			new Map(
@@ -2044,7 +2050,7 @@ function SessionView({
 								},
 								artifacts: sessionArtifacts,
 								outputFiles,
-								backgroundTasks,
+								backgroundTasks: visibleBackgroundTasks,
 								pr: data.pr ?? null,
 								prStatus: data.prStatus ?? null,
 							}}

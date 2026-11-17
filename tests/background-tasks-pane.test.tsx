@@ -647,25 +647,14 @@ describe("BackgroundTasksList", () =>
 		);
 	});
 
-	it("Clear finished tasks is an icon button that hides only the finished cards", () =>
+	it("leaves Clear finished tasks to the pane header, out of the Finished heading", () =>
 	{
 		render(<BackgroundTasksList groups={GROUPS} />);
 		fireEvent.click(finishedToggle());
-		const clear = screen.getByRole(
-			"button",
-			{
-				name: "Clear finished tasks",
-			},
-		);
-
-		const icon = clear.textContent;
-		fireEvent.click(clear);
 
 		expect(
 			{
-				icon,
 				sections: sections(),
-				cards: cards(),
 				clear: screen.queryByRole(
 					"button",
 					{
@@ -675,9 +664,7 @@ describe("BackgroundTasksList", () =>
 			},
 		).toStrictEqual(
 			{
-				icon: "",
-				sections: ["Running2"],
-				cards: ["Serve the fabricated app", "Review the fabricated diff"],
+				sections: ["Running2", "Finished1"],
 				clear: null,
 			},
 		);

@@ -164,6 +164,25 @@ export function groupBackgroundTasks(tasks: readonly BackgroundTask[]): Backgrou
 }
 
 /**
+ * Upstream `qL`'s filter: the groups without the tasks "Clear finished tasks" dismissed. Local ids carry no run id, so a
+ * dismissed id hides whatever its status (upstream's `CI` without `runId`); the prune below un-dismisses running ones.
+ */
+export function withoutDismissed(groups: BackgroundTaskGroups, dismissed: ReadonlySet<string>): BackgroundTaskGroups
+{
+	if (dismissed.size === 0) return groups;
+	return {
+		running: groups.running.filter((task) => !dismissed.has(task.id)),
+		finished: groups.finished.filter((task) => !dismissed.has(task.id)),
+	};
+}
+
+/** Upstream `XL`'s prune: dismissed ids whose task is running again, to un-dismiss. */
+export function runningDismissedIds(groups: BackgroundTaskGroups, dismissed: ReadonlySet<string>): string[]
+{
+	return groups.running.filter((task) => dismissed.has(task.id)).map((task) => task.id);
+}
+
+/**
  * View options facts for the pane: `total` counts what the pane lists (task
  * rows, plus the session's subagents, which the pane links to).
  */

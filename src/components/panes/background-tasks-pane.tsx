@@ -1,6 +1,6 @@
 import {useQuery} from "@tanstack/react-query";
 import {Link} from "@tanstack/react-router";
-import {ChevronRight, Trash2} from "lucide-react";
+import {ChevronRight} from "lucide-react";
 import {type RefObject, useEffect, useId, useLayoutEffect, useRef, useState} from "react";
 
 import {useNow} from "../../hooks/use-now";
@@ -21,7 +21,6 @@ import {requestSubagentFocus} from "../../lib/subagent-focus-requests";
 import {CommandTokens} from "../tool-renderers/bash-renderer";
 import {AnsiText} from "../tool-renderers/shared";
 import {Icon} from "../ui/icon";
-import {Tooltip} from "../ui/tooltip";
 import {nonEmpty} from "../../lib/non-empty";
 import {taskDescriptionSegments} from "../../lib/task-description-segments";
 import {TaskDescriptionLinks} from "../task-event-run-row";
@@ -30,9 +29,6 @@ import {WorkflowTaskCard} from "./workflow-task-card";
 
 const NO_WORKFLOW_RUNS: readonly SessionWorkflowRun[] = [];
 
-// Upstream's 20x20 ghost icon button for "Clear finished tasks".
-const ICON_BUTTON =
-	"flex size-5 cursor-pointer items-center justify-center rounded-r4 text-ink-muted transition-colors hover:bg-fill-ghost-hover hover:text-primary";
 /** Upstream `gap-xs` (6px, 8px comfortable): between a section's heading, rows and pieces. */
 const GAP_XS = "gap-g5 comfortable:gap-g6";
 /** Upstream `KL`'s heading. */
@@ -636,7 +632,7 @@ function useFocusedTaskId(rootRef: RefObject<HTMLDivElement | null>): string | u
 
 /**
  * Upstream's Background tasks pane: a "Running" section, then a collapsible "Finished" one (open by default when
- * nothing runs) whose trash button hides the rows it lists for this view only (the transcript still has them).
+ * nothing runs). The groups arrive without the tasks the header's "Clear finished tasks" dismissed.
  */
 export function BackgroundTasksList({
 	groups,
@@ -657,8 +653,7 @@ export function BackgroundTasksList({
 	};
 })
 {
-	const [clearedIds, setClearedIds] = useState<ReadonlySet<string>>(new Set());
-	const finished = groups.finished.filter((task) => !clearedIds.has(task.id));
+	const finished = groups.finished;
 	const subagentCount = subagents?.count ?? 0;
 	const {finishedExpanded, setFinished, openRows, setRowOpen} = usePaneViewState(sessionId);
 	// Upstream: the section's own state, else open when nothing runs or while it holds an open row.
@@ -691,36 +686,21 @@ export function BackgroundTasksList({
 			)}
 			{finished.length > 0 && (
 				<section className={`flex flex-col ${GAP_XS}`}>
-					<div className="flex items-center justify-between gap-2">
-						<h3 className={SECTION_HEADING}>
-							<button
-								type="button"
-								aria-expanded={finishedOpen}
-								onClick={() =>
-								{
-									setFinished(!finishedOpen);
-								}}
-								className="-mx-1.5 flex min-h-5 cursor-pointer items-center gap-1 rounded px-1.5 hide-focus-ring hover:text-secondary-control focus-visible:shadow-focus focus-visible:outline-hidden"
-							>
-								<Caret open={finishedOpen} />
-								<span>Finished</span>
-								<span className="text-ink-muted">{finished.length}</span>
-							</button>
-						</h3>
-						<Tooltip content="Clear finished tasks">
-							<button
-								type="button"
-								aria-label="Clear finished tasks"
-								onClick={() =>
-								{
-									setClearedIds(new Set([...clearedIds, ...finished.map((task) => task.id)]));
-								}}
-								className={ICON_BUTTON}
-							>
-								<Trash2 aria-hidden="true" className="size-3.5" />
-							</button>
-						</Tooltip>
-					</div>
+					<h3 className={SECTION_HEADING}>
+						<button
+							type="button"
+							aria-expanded={finishedOpen}
+							onClick={() =>
+							{
+								setFinished(!finishedOpen);
+							}}
+							className="-mx-1.5 flex min-h-5 cursor-pointer items-center gap-1 rounded px-1.5 hide-focus-ring hover:text-secondary-control focus-visible:shadow-focus focus-visible:outline-hidden"
+						>
+							<Caret open={finishedOpen} />
+							<span>Finished</span>
+							<span className="text-ink-muted">{finished.length}</span>
+						</button>
+					</h3>
 					{finishedOpen && (
 						// oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- upstream's capture latch: a press on a control inside keeps the section open
 						<div

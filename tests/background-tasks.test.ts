@@ -6,6 +6,8 @@ import
 	backgroundTasksFacts,
 	extractBackgroundTasks,
 	groupBackgroundTasks,
+	runningDismissedIds,
+	withoutDismissed,
 	type BackgroundTask,
 } from "../src/lib/background-tasks";
 import type {JsonValue} from "../src/lib/hook-events";
@@ -1298,5 +1300,68 @@ describe("extractBackgroundTasks running count, from 01d132c8's real record shap
 			["agent", "apr845-rework-c818", "Rework #845 with array and test"],
 			["agent", "agrammar-fix-5", "Grammar fix: primitives not identifiers"],
 		]);
+	});
+});
+
+describe("dismissed background tasks, as upstream's qL filter and XL prune", () =>
+{
+	const r1 = task(
+		{
+			id: "r1",
+		},
+	);
+	const f1 = task(
+		{
+			id: "f1",
+			status: "completed",
+		},
+	);
+	const f2 = task(
+		{
+			id: "f2",
+			status: "failed",
+		},
+	);
+
+	it("drops dismissed ids from both sections", () =>
+	{
+		expect(
+			withoutDismissed(
+				{
+					running: [r1],
+					finished: [f1, f2],
+				},
+				new Set(["f1"]),
+			),
+		).toStrictEqual(
+			{
+				running: [r1],
+				finished: [f2],
+			},
+		);
+	});
+
+	it("returns the same groups when nothing is dismissed", () =>
+	{
+		const groups =
+		{
+			running: [r1],
+			finished: [f1],
+		};
+
+		expect(withoutDismissed(groups, new Set())).toBe(groups);
+	});
+
+	it("lists the dismissed ids that are running again", () =>
+	{
+		expect(
+			runningDismissedIds(
+				{
+					running: [r1],
+					finished: [f1],
+				},
+				new Set(["r1", "f1"]),
+			),
+		).toStrictEqual(["r1"]);
 	});
 });
