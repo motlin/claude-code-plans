@@ -4,6 +4,7 @@ import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {WorktreeToggleChip} from "../src/components/home/worktree-toggle-chip";
+import {EnvironmentBarIconOnlyContext} from "../src/components/use-environment-bar-icon-only";
 
 afterEach(() =>
 {
@@ -16,18 +17,21 @@ function renderChip(
 	{
 		on?: boolean;
 		pending?: boolean;
+		iconOnly?: boolean;
 	} = {},
 )
 {
 	const onChange = vi.fn<(on: boolean) => void>();
 	const onPressed = vi.fn<() => void>();
 	const {container} = render(
-		<WorktreeToggleChip
-			on={props.on ?? false}
-			pending={props.pending ?? false}
-			onChange={onChange}
-			onPressed={onPressed}
-		/>,
+		<EnvironmentBarIconOnlyContext.Provider value={props.iconOnly ?? false}>
+			<WorktreeToggleChip
+				on={props.on ?? false}
+				pending={props.pending ?? false}
+				onChange={onChange}
+				onPressed={onPressed}
+			/>
+		</EnvironmentBarIconOnlyContext.Provider>,
 	);
 	return {
 		container,
@@ -184,10 +188,34 @@ describe("WorktreeToggleChip", () =>
 		);
 	});
 
-	it("shows the description as its hover tooltip", () =>
+	it.each([
+		[
+			false,
+			{
+				label: "pointer-events-none text-muted-as-secondary",
+				name: "Worktree",
+				tooltip: "Work in an isolated copy of the repository",
+				detail: null,
+			},
+		],
+		[
+			true,
+			{
+				label: "sr-only",
+				name: "Worktree",
+				tooltip: "Worktree Work in an isolated copy of the repository",
+				detail: "Work in an isolated copy of the repository",
+			},
+		],
+	])("with the bar icon-only %s, labels and tooltips the switch as upstream does", (iconOnly, expected) =>
 	{
 		vi.useFakeTimers();
-		const {toggle} = renderChip();
+		const {toggle} = renderChip(
+			{
+				iconOnly,
+			},
+		);
+		const label = document.getElementById(toggle.getAttribute("aria-labelledby") ?? "");
 		fireEvent.pointerEnter(
 			toggle.parentElement!,
 			{
@@ -198,7 +226,15 @@ describe("WorktreeToggleChip", () =>
 		{
 			vi.advanceTimersByTime(1000);
 		});
+		const tooltip = screen.getByRole("tooltip");
 
-		expect(screen.getByRole("tooltip").textContent).toBe("Work in an isolated copy of the repository");
+		expect(
+			{
+				label: label?.className,
+				name: label?.textContent,
+				tooltip: tooltip.textContent,
+				detail: tooltip.querySelector("[data-tooltip-detail]")?.textContent ?? null,
+			},
+		).toStrictEqual(expected);
 	});
 });

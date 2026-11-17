@@ -474,6 +474,68 @@ describe("HomeComposer", () =>
 		);
 	});
 
+	it("collapses the folder chip to its icon once the bar's pickers overflow the row", async () =>
+	{
+		const resizeCallbacks: ResizeObserverCallback[] = [];
+		vi.stubGlobal(
+			"ResizeObserver",
+			class
+			{
+				constructor(callback: ResizeObserverCallback)
+				{
+					resizeCallbacks.push(callback);
+				}
+				observe()
+				{
+				}
+				unobserve()
+				{
+				}
+				disconnect()
+				{
+				}
+			},
+		);
+		const box = (left: number, right: number) =>
+			DOMRect.fromRect(
+				{
+					x: left,
+					y: 0,
+					width: right - left,
+					height: 24,
+				},
+			);
+		vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement)
+		{
+			if (this.dataset["testid"] === "environment-bar-row") return box(0, 400);
+			// The pickers group ends 20px past the row.
+			if (this.querySelector(":scope > [data-testid=environment-bar-model]") !== null) return box(250, 420);
+			return box(0, 0);
+		});
+		// One line: the pickers sit beside the chips, not below them.
+		vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockReturnValue(24);
+		try
+		{
+			await renderApp();
+			const folder = await screen.findByRole(
+				"combobox",
+				{
+					name: "Folder: it's",
+				},
+			);
+			act(() =>
+			{
+				for (const callback of resizeCallbacks) callback([], {} as ResizeObserver);
+			});
+
+			expect(folder.hasAttribute("data-icon-only")).toBe(true);
+		}
+		finally
+		{
+			vi.unstubAllGlobals();
+		}
+	});
+
 	it("leaves the Clawd mascot off the home composer; it peeks over the start card instead", async () =>
 	{
 		await renderApp();

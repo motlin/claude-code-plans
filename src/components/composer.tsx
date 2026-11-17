@@ -4,6 +4,7 @@ import
 	Fragment,
 	memo,
 	type ReactNode,
+	type Ref,
 	useCallback,
 	useContext,
 	useEffect,
@@ -104,6 +105,7 @@ import {useBackgroundTasksOpener} from "./background-tasks-opener-context";
 import {ComposerCommandNotice} from "./composer-command-notice";
 import {type ChinLaunchControls, type ChinPickHandle, ComposerAddMenu, ComposerChin} from "./composer-chin";
 import {ComposerChinFrame} from "./composer-chin-frame";
+import {EnvironmentBarIconOnlyContext, useEnvironmentBarIconOnly} from "./use-environment-bar-icon-only";
 import type {UsageRingContext} from "./usage-popover-context";
 import {ErrorCardShell} from "./error-card-shell";
 import type {ChinMenu} from "./composer-launch-menus";
@@ -468,6 +470,54 @@ type TouchSubmitLane = "send" | "later";
  * Upstream's send-cell crossfade (`Jd`): Stop and Send share one grid cell. When the face flips, the new one
  * fades in while the old one stays mounted, `inert` and hidden, until its `visibility` transition ends.
  */
+/**
+ * The home composer's environment bar: the place chips, then the chin's pickers. Upstream's collapse hook watches
+ * the row and turns the chips to icons once the pickers (or the wrapped chips line) overflow it. Memoized so a
+ * keystroke in the composer doesn't re-render it.
+ */
+const EnvironmentBar = memo(function EnvironmentBar({
+	environment,
+	worktreeToggle,
+	chin,
+	launch,
+	pickRef,
+}: {
+	environment: ReactNode;
+	worktreeToggle: ReactNode;
+	chin: ComposerState | undefined;
+	launch: ChinLaunchControls;
+	pickRef: Ref<ChinPickHandle>;
+})
+{
+	const {iconOnly, rowRef, chipsRef, pickersRef, modeRef} = useEnvironmentBarIconOnly();
+	return (
+		<div data-testid="epitaxy-environment-bar" className={ENVIRONMENT_BAR_CLASS}>
+			<div ref={rowRef} data-testid="environment-bar-row" className={ENVIRONMENT_BAR_ROW_CLASS}>
+				<div ref={chipsRef} className={ENVIRONMENT_BAR_CHIPS_CLASS}>
+					<EnvironmentBarIconOnlyContext.Provider value={iconOnly}>
+						<div data-testid="environment-bar-place" className={ENVIRONMENT_BAR_PLACE_SLOT_CLASS}>
+							{environment}
+						</div>
+						{worktreeToggle !== undefined && worktreeToggle !== null && (
+							<div className={ENVIRONMENT_BAR_WORKTREE_SLOT_CLASS}>{worktreeToggle}</div>
+						)}
+					</EnvironmentBarIconOnlyContext.Provider>
+				</div>
+				{chin && (
+					<ComposerChin
+						state={chin}
+						launch={launch}
+						surface="bar"
+						pickRef={pickRef}
+						pickersRef={pickersRef}
+						modeRef={modeRef}
+					/>
+				)}
+			</div>
+		</div>
+	);
+});
+
 function SendCrossfade({showStop, stop, send}: {showStop: boolean; stop: ReactNode; send: ReactNode})
 {
 	const face: SendFace = showStop ? "stop" : "send";
@@ -2716,21 +2766,13 @@ export function Composer({
 					<ComposerChinFrame />
 				)
 			) : (
-				<div data-testid="epitaxy-environment-bar" className={ENVIRONMENT_BAR_CLASS}>
-					<div data-testid="environment-bar-row" className={ENVIRONMENT_BAR_ROW_CLASS}>
-						<div className={ENVIRONMENT_BAR_CHIPS_CLASS}>
-							<div data-testid="environment-bar-place" className={ENVIRONMENT_BAR_PLACE_SLOT_CLASS}>
-								{environment}
-							</div>
-							{worktreeToggle !== undefined && worktreeToggle !== null && (
-								<div className={ENVIRONMENT_BAR_WORKTREE_SLOT_CLASS}>{worktreeToggle}</div>
-							)}
-						</div>
-						{chin && (
-							<ComposerChin state={chin} launch={launchControls} surface="bar" pickRef={chinPickRef} />
-						)}
-					</div>
-				</div>
+				<EnvironmentBar
+					environment={environment}
+					worktreeToggle={worktreeToggle}
+					chin={chin}
+					launch={launchControls}
+					pickRef={chinPickRef}
+				/>
 			)}
 		</div>
 	);

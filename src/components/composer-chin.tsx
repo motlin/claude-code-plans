@@ -1,6 +1,18 @@
 import {useQuery} from "@tanstack/react-query";
 import {ArrowRight, Plus, SquareSlash} from "lucide-react";
-import {lazy, memo, type Ref, Suspense, useEffect, useImperativeHandle, useRef, useState} from "react";
+import
+{
+	lazy,
+	memo,
+	type Ref,
+	type RefObject,
+	Suspense,
+	useCallback,
+	useEffect,
+	useImperativeHandle,
+	useRef,
+	useState,
+} from "react";
 
 import
 {
@@ -398,17 +410,31 @@ export const ComposerChin = memo(function ComposerChin({
 	surface,
 	pickRef,
 	usageContext,
+	pickersRef,
+	modeRef,
 }: {
 	state: ComposerState;
 	launch: ChinLaunchControls;
 	surface: ChinSurface;
 	pickRef?: Ref<ChinPickHandle> | undefined;
+	/** The bar's pickers group, measured by the environment bar's icon-only collapse. */
+	pickersRef?: RefObject<HTMLDivElement | null> | undefined;
+	/** The bar's mode slot, whose resizes the collapse also watches. */
+	modeRef?: RefObject<HTMLDivElement | null> | undefined;
 	/** The session's context breakdown and compact action for the usage ring's context-mode popover. */
 	usageContext?: UsageRingContext | undefined;
 })
 {
 	const ringRef = useRef<UsageRingHandle>(null);
 	const [modeSlot, setModeSlot] = useState<HTMLDivElement | null>(null);
+	const attachModeSlot = useCallback(
+		(el: HTMLDivElement | null) =>
+		{
+			setModeSlot(el);
+			if (modeRef !== undefined) modeRef.current = el;
+		},
+		[modeRef],
+	);
 	const {launchOptions, onLaunchOptionsChange, openMenu, onOpenMenuChange} = launch;
 	// Keeps the picked level while the confirm fades out, so its copy doesn't flicker.
 	const [effortConfirm, setEffortConfirm] = useState<
@@ -590,12 +616,12 @@ export const ComposerChin = memo(function ComposerChin({
 				/>
 			) : (
 				/* The new-session bar's pickers group; it has no live region. */
-				<div className={ENVIRONMENT_PICKERS_CLASS}>
+				<div ref={pickersRef} className={ENVIRONMENT_PICKERS_CLASS}>
 					<div data-testid="environment-bar-model" className="flex items-center gap-1">
 						<div className={ENVIRONMENT_SLOT_CLASS}>{modelMenu}</div>
 					</div>
 					<div
-						ref={setModeSlot}
+						ref={attachModeSlot}
 						data-testid="environment-bar-mode"
 						className={`${ENVIRONMENT_SLOT_CLASS} shrink-0`}
 					>

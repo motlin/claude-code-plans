@@ -1,7 +1,8 @@
-import {type MouseEvent, useId} from "react";
+import {type MouseEvent, useContext, useId} from "react";
 
 import {Switch} from "../ui/switch";
 import {Tooltip} from "../ui/tooltip";
+import {EnvironmentBarIconOnlyContext} from "../use-environment-bar-icon-only";
 
 const WORKTREE_DESCRIPTION = "Work in an isolated copy of the repository";
 
@@ -25,6 +26,7 @@ interface WorktreeToggleChipProps
  */
 export function WorktreeToggleChip({on, pending, onChange, onPressed}: WorktreeToggleChipProps)
 {
+	const iconOnly = useContext(EnvironmentBarIconOnlyContext);
 	const labelId = useId();
 	const descriptionId = useId();
 	const handleClick = (event: MouseEvent) =>
@@ -35,7 +37,11 @@ export function WorktreeToggleChip({on, pending, onChange, onPressed}: WorktreeT
 	return (
 		// oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- upstream's presentation row: the switch inside it is the keyboard control, the row only refocuses after a pointer toggle
 		<span role="presentation" onClick={handleClick} className={CHIP_CLASS}>
-			<Tooltip content={WORKTREE_DESCRIPTION}>
+			{/* Collapsed, the label is screen-reader text, so the tip names the chip and adds the description. */}
+			<Tooltip
+				content={iconOnly ? "Worktree" : WORKTREE_DESCRIPTION}
+				detail={iconOnly ? WORKTREE_DESCRIPTION : undefined}
+			>
 				<Switch
 					size="xxs"
 					className="hit-row-main"
@@ -47,7 +53,7 @@ export function WorktreeToggleChip({on, pending, onChange, onPressed}: WorktreeT
 					onCheckedChange={onChange}
 				/>
 			</Tooltip>
-			<span id={labelId} className="pointer-events-none text-muted-as-secondary">
+			<span id={labelId} className={iconOnly ? "sr-only" : "pointer-events-none text-muted-as-secondary"}>
 				Worktree
 			</span>
 			<span id={descriptionId} hidden>

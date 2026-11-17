@@ -1,12 +1,15 @@
 // Base UI Popover, not ui/popover: combobox picker, anchored like Add repository.
 import {Popover} from "@base-ui/react/popover";
 import {Check, ChevronDown, Folder} from "lucide-react";
-import {type KeyboardEvent, type Ref, useId, useRef, useState} from "react";
+import {type KeyboardEvent, type Ref, useContext, useId, useMemo, useRef, useState} from "react";
 
 import {useShortcut} from "../../hooks/use-shortcut";
 import type {StartProject} from "../../lib/palette-start-session";
 import {PLACE_CHIP_CLASS} from "../composer-tokens";
 import {overlayAttrs} from "../../lib/overlay";
+import {PathBreak} from "../ui/path-break";
+import {Tooltip} from "../ui/tooltip";
+import {EnvironmentBarIconOnlyContext} from "../use-environment-bar-icon-only";
 
 /*
  * The home composer's folder picker, copied from claude.ai/code's repository
@@ -29,6 +32,22 @@ const SEARCH_CLASS =
 
 const OPTION_CLASS =
 	"flex h-6 shrink-0 cursor-default items-center gap-1 rounded-r5 px-2 select-none data-[highlighted]:bg-fill-ghost-hover";
+
+/**
+ * Upstream's collapsed place-chip tooltip box, `max-w-[min(480px,var(--available-width))]`; the local tooltip is not
+ * Base UI-positioned, so the viewport less its 8px insets stands in for `--available-width`.
+ */
+const PLACE_TOOLTIP_MAX_WIDTH = "max-w-[min(480px,calc(100vw-16px))]";
+
+/**
+ * Upstream's place-chip icon margins inside the Button's `-ms-1` icon slot: `ms-0.5 me-0.5` at rest, `ms-0.5 -me-0.5`
+ * once the bar collapses to icons, where a placeholder chip's icon also takes the muted ink.
+ */
+function placeIconMargins(iconOnly: boolean, placeholder: boolean): string
+{
+	if (!iconOnly) return "ms-0.5 me-0.5";
+	return placeholder ? "ms-0.5 -me-0.5 text-muted-control" : "ms-0.5 -me-0.5";
+}
 
 /** The start card's "Choose environment" row, which opens the same picker below it. */
 const CHOOSE_CLASS =
@@ -65,6 +84,13 @@ export function ProjectPicker({projects, selected, onSelect, variant = "chip", t
 	const [open, setOpen] = useState(false);
 	const [query, setQuery] = useState("");
 	const [activeIndex, setActiveIndex] = useState(0);
+	const iconOnly = useContext(EnvironmentBarIconOnlyContext);
+	const placeLabel = selected?.name ?? "Select project…";
+	const selectedPath = selected?.projectPath;
+	const placeTooltip = useMemo(
+		() => (selectedPath === undefined ? placeLabel : <PathBreak path={selectedPath} />),
+		[selectedPath, placeLabel],
+	);
 
 	const needle = query.trim().toLowerCase();
 	const filtered =
@@ -151,17 +177,33 @@ export function ProjectPicker({projects, selected, onSelect, variant = "chip", t
 					</Popover.Trigger>
 				</div>
 			) : (
-				<Popover.Trigger
-					// oxlint-disable-next-line jsx-a11y/role-has-required-aria-props -- Base UI's Popover.Trigger sets aria-controls to the popup it opens
-					role="combobox"
-					aria-label={selected === undefined ? "Select project" : `Folder: ${selected.name}`}
-					aria-haspopup="dialog"
-					aria-expanded={open}
-					className={PLACE_CHIP_CLASS}
+				<Tooltip
+					content={placeTooltip}
+					openWhen={() => iconOnly}
+					side="bottom"
+					align="start"
+					maxWidth={PLACE_TOOLTIP_MAX_WIDTH}
+					className="flex min-w-0"
 				>
-					<Folder aria-hidden="true" className="-ms-1 size-4 shrink-0" />
-					<span className="truncate">{selected?.name ?? "Select project…"}</span>
-				</Popover.Trigger>
+					<Popover.Trigger
+						// oxlint-disable-next-line jsx-a11y/role-has-required-aria-props -- Base UI's Popover.Trigger sets aria-controls to the popup it opens
+						role="combobox"
+						aria-label={selected === undefined ? "Select project" : `Folder: ${selected.name}`}
+						aria-haspopup="dialog"
+						aria-expanded={open}
+						data-icon-only={iconOnly ? "" : undefined}
+						title={iconOnly ? undefined : selected?.projectPath}
+						className={PLACE_CHIP_CLASS}
+					>
+						<span className="-ms-1 inline-flex">
+							<Folder
+								aria-hidden="true"
+								className={`${placeIconMargins(iconOnly, selected === undefined)} size-4 shrink-0`}
+							/>
+						</span>
+						<span className={iconOnly ? "sr-only" : "truncate"}>{placeLabel}</span>
+					</Popover.Trigger>
+				</Tooltip>
 			)}
 			<Popover.Portal>
 				<Popover.Positioner
