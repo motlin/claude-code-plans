@@ -2,6 +2,7 @@
 
 import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {actAndSettle} from "./act-and-settle";
+import {queueFrames} from "./frame-queue";
 import type {ComponentProps} from "react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
@@ -24,11 +25,27 @@ import
 import type {PermissionDialogShape} from "../src/lib/herdr/permission-screen";
 import type {PersistentAllowKind, PersistentAllowSave} from "../src/lib/permission-suggestions";
 
+let frameQueue: ReturnType<typeof queueFrames>;
+beforeEach(() =>
+{
+	frameQueue = queueFrames();
+});
+
 afterEach(() =>
 {
 	cleanup();
 	localStorage.removeItem(APPROVAL_LEADING_ALLOW_KEY);
+	// Uninstall fake timers first: installed over the frame queue, they would put it back after it was restored.
+	vi.useRealTimers();
+	vi.restoreAllMocks();
+	frameQueue.restore();
 });
+
+/** Lets every mounted card's paint sentinel see two visible frames. */
+function paint()
+{
+	frameQueue.paint();
+}
 
 function assistantToolUse(id: string, name: string, input: Record<string, unknown>, extra = {})
 {
@@ -2303,6 +2320,7 @@ describe("permission title copy", () =>
 				onDecision={async () => new Promise<void>(() => {})}
 			/>,
 		);
+		paint();
 		fireEvent.click(
 			screen.getByRole(
 				"button",
@@ -2519,6 +2537,7 @@ function renderCard({
 		</div>
 	);
 	const utils = render(card(dialog));
+	paint();
 	return {
 		...utils,
 		onDecision,
@@ -3634,6 +3653,7 @@ describe("PermissionCard", () =>
 				onDecision={onDecision}
 			/>,
 		);
+		paint();
 		fireEvent.click(
 			screen.getByRole(
 				"button",
@@ -3679,6 +3699,7 @@ describe("PermissionCard", () =>
 				onDecision={async () => answer.promise}
 			/>,
 		);
+		paint();
 		fireEvent.click(
 			screen.getByRole(
 				"button",
@@ -3711,6 +3732,7 @@ describe("PermissionCard", () =>
 				onDecision={async () => refused.promise}
 			/>,
 		);
+		paint();
 		fireEvent.click(
 			screen.getByRole(
 				"button",
@@ -3912,6 +3934,7 @@ describe("PermissionCard", () =>
 					onDecision={onDecision}
 				/>,
 			);
+			paint();
 			vi.advanceTimersByTime(400);
 			fireEvent.keyDown(
 				document.body,
@@ -4331,7 +4354,7 @@ describe("PermissionCard", () =>
 			);
 		});
 
-		it("swallows Esc and ⌘⏎ within 400ms of mounting, then answers", () =>
+		it("denies on Esc at once after paint: Esc has no arm grace", () =>
 		{
 			const {onDecision} = renderCard();
 			const early = fireEvent.keyDown(
@@ -4340,6 +4363,49 @@ describe("PermissionCard", () =>
 					key: "Escape",
 				},
 			);
+			expect(
+				{
+					early,
+					calls: onDecision.mock.calls,
+				},
+			).toStrictEqual(
+				{
+					early: false,
+					calls: [["deny"]],
+				},
+			);
+		});
+
+		it("leaves ⌘⏎ inside the arm grace to the page, then allows at 400ms; a repeat is consumed", () =>
+		{
+			const {onDecision} = renderCard();
+			vi.advanceTimersByTime(100);
+			const later = vi.fn<(event: Event) => void>();
+			window.addEventListener("keydown", later);
+			const inGrace = new KeyboardEvent(
+				"keydown",
+				{
+					key: "Enter",
+					metaKey: true,
+					bubbles: true,
+					cancelable: true,
+				},
+			);
+			document.body.dispatchEvent(inGrace);
+			const callsInGrace = [...onDecision.mock.calls];
+			vi.advanceTimersByTime(400);
+			const repeat = new KeyboardEvent(
+				"keydown",
+				{
+					key: "Enter",
+					metaKey: true,
+					repeat: true,
+					bubbles: true,
+					cancelable: true,
+				},
+			);
+			document.body.dispatchEvent(repeat);
+			const callsAfterRepeat = [...onDecision.mock.calls];
 			fireEvent.keyDown(
 				document.body,
 				{
@@ -4347,32 +4413,24 @@ describe("PermissionCard", () =>
 					metaKey: true,
 				},
 			);
-			vi.advanceTimersByTime(399);
-			fireEvent.keyDown(
-				document.body,
-				{
-					key: "Escape",
-				},
-			);
-			const callsInGrace = [...onDecision.mock.calls];
-			vi.advanceTimersByTime(1);
-			fireEvent.keyDown(
-				document.body,
-				{
-					key: "Escape",
-				},
-			);
+			window.removeEventListener("keydown", later);
 			expect(
 				{
-					early,
+					inGraceDefaultPrevented: inGrace.defaultPrevented,
+					laterSawGracePress: later.mock.calls[0]?.[0] === inGrace,
 					callsInGrace,
+					repeatDefaultPrevented: repeat.defaultPrevented,
+					callsAfterRepeat,
 					calls: onDecision.mock.calls,
 				},
 			).toStrictEqual(
 				{
-					early: false,
+					inGraceDefaultPrevented: false,
+					laterSawGracePress: true,
 					callsInGrace: [],
-					calls: [["deny"]],
+					repeatDefaultPrevented: true,
+					callsAfterRepeat: [],
+					calls: [["allow"]],
 				},
 			);
 		});
@@ -4971,6 +5029,7 @@ describe("permission prompt answered across a signal handoff", () =>
 			},
 		);
 		const {container, rerender} = render(<PermissionSlot {...props} notifications={[notification]} />);
+		paint();
 		fireEvent.click(
 			screen.getByRole(
 				"button",
@@ -5662,6 +5721,67 @@ describe("PermissionCard read gates", () =>
 				{
 					read: false,
 					moved: true,
+				},
+			);
+		});
+
+		it("swallows ⌘⏎ for 400ms after the gate releases, the window sliding to each press, as upstream's onceLive", async () =>
+		{
+			vi.useFakeTimers(
+				{
+					toFake: ["performance"],
+				},
+			);
+			const {container, onDecision} = renderOverflowingRows();
+			await flushFrames();
+			vi.advanceTimersByTime(1000);
+			place(
+				rowsPanel(container),
+				{
+					top: -600,
+					height: 900,
+				},
+			);
+			scroll();
+			await flushFrames();
+			const released = state(container).disabled;
+			const chord = () =>
+			{
+				fireEvent.keyDown(
+					document.body,
+					{
+						key: "Enter",
+						metaKey: true,
+					},
+				);
+				return onDecision.mock.calls.length;
+			};
+			vi.advanceTimersByTime(300);
+			const at300 = chord();
+			vi.advanceTimersByTime(300);
+			const at600 = chord();
+			// 300+400 has passed, but the press at 600 slid the window to 1000.
+			vi.advanceTimersByTime(399);
+			const at999 = chord();
+			vi.advanceTimersByTime(400);
+			const at1399 = chord();
+			expect(
+				{
+					released,
+					at300,
+					at600,
+					at999,
+					at1399,
+					calls: onDecision.mock.calls,
+				},
+			).toStrictEqual(
+				{
+					released: false,
+					at300: 0,
+					at600: 0,
+					at999: 0,
+					at1399: 1,
+					calls: [["allow"]],
 				},
 			);
 		});
@@ -6443,6 +6563,7 @@ describe("PermissionCard Allow and switch to Auto, as upstream's approval_card a
 				},
 			),
 		);
+		paint();
 		return {
 			...utils,
 			onDecision,
@@ -6686,6 +6807,243 @@ describe("PermissionCard Allow and switch to Auto, as upstream's approval_card a
 			{
 				buttons: ["Deny", "Allow onceCtrl⏎Enter", "More allow options"],
 				error: "The terminal’s permission dialog doesn’t match this card",
+			},
+		);
+	});
+});
+
+describe("PermissionCard paint guard, as upstream's lS sentinel and gr() hold", () =>
+{
+	let shown = true;
+
+	beforeEach(() =>
+	{
+		vi.useFakeTimers(
+			{
+				toFake: ["performance", "setInterval", "clearInterval"],
+			},
+		);
+		shown = true;
+		HTMLElement.prototype.checkVisibility = () => shown;
+	});
+	afterEach(() =>
+	{
+		vi.useRealTimers();
+		Reflect.deleteProperty(HTMLElement.prototype, "checkVisibility");
+	});
+
+	function renderGuarded({
+		hideOnDecision = true,
+	}:
+	{
+		hideOnDecision?: boolean;
+	} = {})
+	{
+		const onDecision = vi.fn<ComponentProps<typeof PermissionCard>["onDecision"]>(async () => {});
+		const card = (canAnswer: boolean) => (
+			<PermissionCard
+				title={
+				{
+					action: "run this command",
+					meta: null,
+				}}
+				detail="rm -rf dist"
+				canAnswer={canAnswer}
+				hideOnDecision={hideOnDecision}
+				onDecision={onDecision}
+			/>
+		);
+		const utils = render(card(true));
+		return {
+			...utils,
+			onDecision,
+			rerenderAnswerable: (canAnswer: boolean) =>
+			{
+				utils.rerender(card(canAnswer));
+			},
+		};
+	}
+
+	function chord()
+	{
+		fireEvent.keyDown(
+			document.body,
+			{
+				key: "Enter",
+				metaKey: true,
+			},
+		);
+	}
+
+	function click(name: RegExp | string)
+	{
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name,
+				},
+			),
+		);
+	}
+
+	it("drops an Allow click on an unpainted card, which doesn't look disabled, but lets Deny through", () =>
+	{
+		const {onDecision} = renderGuarded();
+		frameQueue.flush(1);
+		click(/^Allow once/);
+		const allowDisabled = screen
+			.getByRole(
+				"button",
+				{
+					name: /^Allow once/,
+				},
+			)
+			.hasAttribute("disabled");
+		const callsAfterAllow = [...onDecision.mock.calls];
+		click("Deny");
+		expect(
+			{
+				allowDisabled,
+				callsAfterAllow,
+				calls: onDecision.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				allowDisabled: false,
+				callsAfterAllow: [],
+				calls: [["deny"]],
+			},
+		);
+	});
+
+	it("allows on click once two frames have painted", () =>
+	{
+		const {onDecision} = renderGuarded();
+		paint();
+		click(/^Allow once/);
+		expect(onDecision.mock.calls).toStrictEqual([["allow"]]);
+	});
+
+	it("counts the ⌘⏎ grace from paint, not from mount", () =>
+	{
+		const {onDecision} = renderGuarded();
+		vi.advanceTimersByTime(1000);
+		chord();
+		const unpainted = [...onDecision.mock.calls];
+		paint();
+		vi.advanceTimersByTime(399);
+		chord();
+		const inGrace = [...onDecision.mock.calls];
+		vi.advanceTimersByTime(1);
+		chord();
+		expect(
+			{
+				unpainted,
+				inGrace,
+				calls: onDecision.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				unpainted: [],
+				inGrace: [],
+				calls: [["allow"]],
+			},
+		);
+	});
+
+	it("holds a hidden card's allow and restarts the grace once it paints again", () =>
+	{
+		const {onDecision} = renderGuarded();
+		paint();
+		vi.advanceTimersByTime(1000);
+		shown = false;
+		act(() =>
+		{
+			vi.advanceTimersByTime(250);
+		});
+		click(/^Allow once/);
+		const hidden = [...onDecision.mock.calls];
+		shown = true;
+		act(() =>
+		{
+			vi.advanceTimersByTime(250);
+		});
+		paint();
+		vi.advanceTimersByTime(399);
+		chord();
+		const inGrace = [...onDecision.mock.calls];
+		vi.advanceTimersByTime(1);
+		chord();
+		expect(
+			{
+				hidden,
+				inGrace,
+				calls: onDecision.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				hidden: [],
+				inGrace: [],
+				calls: [["allow"]],
+			},
+		);
+	});
+
+	it("restarts the grace when a failed answer re-enables the card", async () =>
+	{
+		const {onDecision} = renderGuarded(
+			{
+				hideOnDecision: false,
+			},
+		);
+		paint();
+		vi.advanceTimersByTime(400);
+		onDecision.mockRejectedValueOnce(new Error("herdr pane is gone"));
+		await actAndSettle(() =>
+		{
+			chord();
+		});
+		vi.advanceTimersByTime(399);
+		chord();
+		const inGrace = [...onDecision.mock.calls];
+		vi.advanceTimersByTime(1);
+		chord();
+		expect(
+			{
+				inGrace,
+				calls: onDecision.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				inGrace: [["allow"]],
+				calls: [["allow"], ["allow"]],
+			},
+		);
+	});
+
+	it("restarts the grace when the card can answer again", () =>
+	{
+		const {onDecision, rerenderAnswerable} = renderGuarded();
+		paint();
+		vi.advanceTimersByTime(1000);
+		rerenderAnswerable(false);
+		vi.advanceTimersByTime(1000);
+		rerenderAnswerable(true);
+		vi.advanceTimersByTime(399);
+		chord();
+		const inGrace = [...onDecision.mock.calls];
+		vi.advanceTimersByTime(1);
+		chord();
+		expect(
+			{
+				inGrace,
+				calls: onDecision.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				inGrace: [],
+				calls: [["allow"]],
 			},
 		);
 	});

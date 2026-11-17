@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import {act, cleanup, fireEvent, render, screen, within} from "@testing-library/react";
+import {queueFrames} from "./frame-queue";
 import type {ReactNode} from "react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
@@ -3890,6 +3891,7 @@ describe("the session approval slot", () =>
 		endEnterSwallows();
 		clearLanding(window);
 		vi.useRealTimers();
+		vi.restoreAllMocks();
 	});
 
 	function PermissionDock({sessionId, onDecision}: {sessionId: string; onDecision: () => Promise<void>})
@@ -3940,7 +3942,9 @@ describe("the session approval slot", () =>
 		);
 		const sessionId = "slot-session";
 		const onDecision = vi.fn<() => Promise<void>>(async () => {});
+		const frames = queueFrames();
 		render(<PermissionDock sessionId={sessionId} onDecision={onDecision} />);
+		frames.paint();
 		const composer = screen.getByRole(
 			"textbox",
 			{
@@ -3980,6 +3984,7 @@ describe("the session approval slot", () =>
 				key: "Enter",
 			},
 		);
+		frames.restore();
 		unregister();
 		clearApprovalAnswered(sessionId, "toolu_slot");
 		releaseAnswered(sessionId);

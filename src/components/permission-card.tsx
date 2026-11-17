@@ -24,6 +24,7 @@ import
 import {holdAnswered, releaseAnswered} from "../lib/answered-sessions";
 import {approvalEnterSeen, markApprovalEnterSeen} from "../lib/approval-enter-seen";
 import {installLandingKeys} from "../lib/approval-slot-landing";
+import {ApprovalPaintSentinel} from "./approval-paint-sentinel";
 import {APPROVAL_ARM_GRACE_MS, approvalHotkeyFocusAllowed, isIdleComposer, onScreen} from "../lib/dock-keys";
 import {storeLeadingAllow, useLeadingAllow} from "../lib/approval-leading-allow";
 import
@@ -271,6 +272,18 @@ export function PermissionCard({
 		[decideWith, onDecision],
 	);
 
+	// Upstream's painted id (`Zn`), set by the paint sentinel: until the card has drawn two visible frames, and again
+	// while it is hidden, every allow is held (`gr()`), and painting re-arms the hotkeys' grace (the arm key `$n`).
+	const [painted, setPainted] = useState(false);
+	const onPainted = useCallback(() =>
+	{
+		setPainted(true);
+	}, []);
+	const onUnpainted = useCallback(() =>
+	{
+		setPainted(false);
+	}, []);
+
 	// Upstream's paint latch (`si`/`ii`): the offer is read once the dialog's shape is known, then kept.
 	const [autoLatched, setAutoLatched] = useState<boolean | null>(null);
 	if (autoLatched === null && dialog !== "unknown") setAutoLatched(autoSwitch?.offered === true);
@@ -283,7 +296,7 @@ export function PermissionCard({
 	const allowAndSwitch = () =>
 	{
 		const mountedAt = mountedAtRef.current ?? performance.now();
-		if (autoSwitch === null || performance.now() - mountedAt < APPROVAL_ARM_GRACE_MS) return;
+		if (autoSwitch === null || !painted || performance.now() - mountedAt < APPROVAL_ARM_GRACE_MS) return;
 		void decideWith("allowAuto", autoSwitch.onAllowAndSwitch);
 	};
 
@@ -439,6 +452,8 @@ export function PermissionCard({
 			onHeldAttempt();
 			return;
 		}
+		// Upstream's `gr()` also holds an unpainted card's allow, silently: the button doesn't look disabled.
+		if (!painted) return;
 		run();
 	};
 
@@ -447,8 +462,11 @@ export function PermissionCard({
 		cardRootRef,
 		{
 			enabled: enabled && !denyFirst && !clickOnly,
+			painted,
 			persistent: persistentAllow !== null,
 			held: readBlocked,
+			onceLive: !readHeld,
+			persistentLive: !readHeld,
 			onHeldAttempt,
 			decide,
 		},
@@ -591,42 +609,46 @@ export function PermissionCard({
 				</div>
 			}
 			body={
-				<div className="flex flex-col gap-[12px] empty:hidden">
-					{detailFirst && detailBlock}
-					{description !== null && <div className={DESCRIPTION_CLASS}>{description}</div>}
-					{!rowsTrail && hasRows && <PermissionRowsList rows={rows} />}
-					{persistentAllow !== null && persistentAllowSaves !== null && (
-						<AlwaysAllowSaves saves={persistentAllowSaves} />
-					)}
-					{fileChange === "too_large" && <p className={TOO_LARGE_CLASS}>{FILE_CHANGE_TOO_LARGE}</p>}
-					{!detailFirst && detailBlock}
-					{tokenWarning && <TokenWarning />}
-					{rowsTrail &&
-						hasRows &&
-						(rowsGated ? (
-							// Upstream's `E` wrapper, keyed by the rows so new rows start unread.
-							<div
-								ref={rowsPanelRef}
-								key={gateKey}
-								data-testid="approval-read-rows"
-								{...
-								{
-									[APPROVAL_READ_ROWS_ATTR]: "",
-								}}
-							>
-								{/* A gated panel never clamps; its groups fold only once a scrolled panel is read. */}
-								<RowsPanel
-									rows={rows}
-									foldable={gateRead?.fits === false && gateRead.state === "read"}
-									clamp={false}
-								/>
-							</div>
-						) : (
-							<RowsPanel rows={rows} foldable clamp />
-						))}
-					{!canAnswer && <ReadOnlyAnswerHint className="text-footnote text-secondary" />}
-					{error && <p className="text-footnote text-extended-pink">{error}</p>}
-				</div>
+				<>
+					<div className="flex flex-col gap-[12px] empty:hidden">
+						{detailFirst && detailBlock}
+						{description !== null && <div className={DESCRIPTION_CLASS}>{description}</div>}
+						{!rowsTrail && hasRows && <PermissionRowsList rows={rows} />}
+						{persistentAllow !== null && persistentAllowSaves !== null && (
+							<AlwaysAllowSaves saves={persistentAllowSaves} />
+						)}
+						{fileChange === "too_large" && <p className={TOO_LARGE_CLASS}>{FILE_CHANGE_TOO_LARGE}</p>}
+						{!detailFirst && detailBlock}
+						{tokenWarning && <TokenWarning />}
+						{rowsTrail &&
+							hasRows &&
+							(rowsGated ? (
+								// Upstream's `E` wrapper, keyed by the rows so new rows start unread.
+								<div
+									ref={rowsPanelRef}
+									key={gateKey}
+									data-testid="approval-read-rows"
+									{...
+									{
+										[APPROVAL_READ_ROWS_ATTR]: "",
+									}}
+								>
+									{/* A gated panel never clamps; its groups fold only once a scrolled panel is read. */}
+									<RowsPanel
+										rows={rows}
+										foldable={gateRead?.fits === false && gateRead.state === "read"}
+										clamp={false}
+									/>
+								</div>
+							) : (
+								<RowsPanel rows={rows} foldable clamp />
+							))}
+						{!canAnswer && <ReadOnlyAnswerHint className="text-footnote text-secondary" />}
+						{error && <p className="text-footnote text-extended-pink">{error}</p>}
+					</div>
+					{/* Upstream's `lS`, keyed by the placement: it watches the body wrapper. */}
+					<ApprovalPaintSentinel key={presentation} onPainted={onPainted} onUnpainted={onUnpainted} />
+				</>
 			}
 			note={
 				gated ? (
@@ -747,36 +769,59 @@ export function PermissionCard({
 }
 
 /**
- * Upstream's approval hotkeys (`c5`) on window in the capture phase. They act with focus in the card,
+ * Upstream's approval hotkeys (`Jl`) on window in the capture phase. They act with focus in the card,
  * on the page body or in the idle composer, and yield to IME, popups and other fields, and while the card is
- * off-screen. ⌘⏎ also yields to alt and a composer draft. A repeat, or a key within the 400ms arm grace,
- * is swallowed with no action. ⇧⌘⏎ needs a persistent option and focus in the card or the composer, and
- * is refused on a card focus landed on (upstream's landing keys, installed ahead of this listener).
+ * off-screen. ⌘⏎ also yields to alt and a composer draft. A repeat is swallowed with no action. Within the 400ms arm
+ * grace, counted from when the card painted or was re-enabled, ⌘⏎ and ⇧⌘⏎ fall through untouched; Esc has no grace.
+ * An unpainted card's allow does nothing, and a chord within 400ms of its option turning live is swallowed, the
+ * window sliding to the press. ⇧⌘⏎ needs a persistent option and focus in the card or the composer, and is refused
+ * on a card focus landed on (upstream's landing keys, installed ahead of this listener).
  */
 function usePermissionHotkeys(
 	cardRootRef: RefObject<HTMLDivElement | null>,
 	{
 		enabled,
+		painted,
 		persistent,
 		held,
+		onceLive,
+		persistentLive,
 		onHeldAttempt,
 		decide,
 	}:
 	{
 		enabled: boolean;
+		/** The paint sentinel saw the card: until then an allow does nothing, and each paint restarts the grace. */
+		painted: boolean;
 		persistent: boolean;
 		/** A read gate holds the allow decisions: they are swallowed and reported as attempts. */
 		held: boolean;
+		/** Upstream's `onceLive`: Allow once can act; turning true swallows ⌘⏎ for 400ms. */
+		onceLive: boolean;
+		/** Upstream's `persistentLive`: the persistent option can act; turning true swallows ⇧⌘⏎ for 400ms. */
+		persistentLive: boolean;
 		onHeldAttempt: () => void;
 		decide: (decision: PermissionDecision) => unknown;
 	},
 )
 {
-	const armedAtRef = useRef<number | null>(null);
+	// Upstream's `D`: stamped each time the listener installs, which its arm key (painted) and `enabled` drive.
+	const armedAtRef = useRef(Number.NEGATIVE_INFINITY);
 	useEffect(() =>
 	{
-		armedAtRef.current = performance.now();
-	}, []);
+		if (enabled) armedAtRef.current = performance.now();
+	}, [enabled, painted]);
+	// Upstream's `w`/`b`: when Allow once and the persistent option last turned live.
+	const onceLiveAtRef = useRef(Number.NEGATIVE_INFINITY);
+	useEffect(() =>
+	{
+		if (onceLive) onceLiveAtRef.current = performance.now();
+	}, [onceLive]);
+	const persistentLiveAtRef = useRef(Number.NEGATIVE_INFINITY);
+	useEffect(() =>
+	{
+		if (persistentLive) persistentLiveAtRef.current = performance.now();
+	}, [persistentLive]);
 	useEffect(() =>
 	{
 		if (!enabled) return undefined;
@@ -795,16 +840,30 @@ function usePermissionHotkeys(
 			if (!approvalHotkeyFocusAllowed(card) || !onScreen(card)) return;
 			const active = document.activeElement;
 			if (decision === "allow" && isIdleComposer(active) && active.value !== "") return;
+			const now = performance.now();
+			// Upstream's `O.current` branch: a chord inside the grace is left to the page, not consumed.
+			if (decision !== "deny" && !event.repeat && now - armedAtRef.current < APPROVAL_ARM_GRACE_MS) return;
 			event.preventDefault();
 			event.stopPropagation();
-			const armedAt = armedAtRef.current ?? performance.now();
-			if (event.repeat || performance.now() - armedAt < APPROVAL_ARM_GRACE_MS) return;
+			if (event.repeat) return;
+			if (decision === "deny")
+			{
+				decide(decision);
+				return;
+			}
+			const liveAt = decision === "always" ? persistentLiveAtRef : onceLiveAtRef;
+			if (now - liveAt.current < APPROVAL_ARM_GRACE_MS)
+			{
+				liveAt.current = Math.max(liveAt.current, now);
+				return;
+			}
 			if (decision === "always" && !(persistent && (card.contains(active) || isIdleComposer(active)))) return;
-			if (held && decision !== "deny")
+			if (held)
 			{
 				onHeldAttempt();
 				return;
 			}
+			if (!painted) return;
 			decide(decision);
 		};
 		window.addEventListener("keydown", onKeyDown, true);
@@ -812,7 +871,7 @@ function usePermissionHotkeys(
 		{
 			window.removeEventListener("keydown", onKeyDown, true);
 		};
-	}, [cardRootRef, enabled, persistent, held, onHeldAttempt, decide]);
+	}, [cardRootRef, enabled, painted, persistent, held, onHeldAttempt, decide]);
 }
 
 /** Upstream's body classes (`epitaxy-code-size` hooks, held at the default size by the card's data-fixed-code-size): the detail block (`Lg`), its footnote (`kg`) and the description line (`Dg`). */

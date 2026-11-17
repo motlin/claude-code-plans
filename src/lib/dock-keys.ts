@@ -16,7 +16,7 @@ export function dockKeyAllowed(target: EventTarget | null): boolean
 	);
 }
 
-/** Upstream's approval arm grace: an approval key this soon after the card mounts is swallowed. */
+/** Upstream's approval arm grace (`armGraceMs`): an approval chord this soon after the card arms (paints, is re-enabled) is left alone. */
 export const APPROVAL_ARM_GRACE_MS = 400;
 
 /** The session composer's textarea, with no slash or mention popup open. */

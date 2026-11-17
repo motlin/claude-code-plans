@@ -2264,6 +2264,20 @@ describe("SessionPage dock composition", () =>
 				};
 			};
 			const before = line();
+			// The card holds its allows until its paint sentinel has seen two frames.
+			await act(async () =>
+			{
+				await new Promise<void>((resolve) =>
+				{
+					requestAnimationFrame(() =>
+					{
+						requestAnimationFrame(() =>
+						{
+							resolve();
+						});
+					});
+				});
+			});
 			act(() =>
 			{
 				fireEvent.click(
