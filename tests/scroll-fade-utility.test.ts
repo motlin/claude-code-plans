@@ -290,3 +290,15 @@ describe("u-hidden-scrollbar", () =>
 		);
 	});
 });
+
+describe("epitaxy-scroll-clamp", () =>
+{
+	it("paints upstream's shadow-scroll hint where scroll timelines (and so the scroll-fade mask) are missing", () =>
+	{
+		const css = flatStyles();
+		const start = css.indexOf("@supports not (animation-timeline: scroll()) { .epitaxy-scroll-clamp {");
+		expect(css.slice(start, css.indexOf("}", start) + 1)).toStrictEqual(
+			"@supports not (animation-timeline: scroll()) { .epitaxy-scroll-clamp { background: linear-gradient(var(--color-surface-1), var(--color-surface-1)) top / 100% 8px no-repeat local, linear-gradient(var(--color-surface-1), var(--color-surface-1)) bottom / 100% 8px no-repeat local, linear-gradient(var(--color-border), transparent) top / 100% 8px no-repeat, linear-gradient(to top, var(--color-border), transparent) bottom / 100% 8px no-repeat; }",
+		);
+	});
+});

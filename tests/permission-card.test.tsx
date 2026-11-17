@@ -2924,7 +2924,7 @@ describe("PermissionCard", () =>
 				card: "epitaxy-approval-card @container relative isolate flex max-h-[60vh] flex-col rounded-card p-3 text-body text-primary origin-top focus-visible:outline-1 focus-visible:outline-fill-accent focus-visible:outline-offset-2 gap-[12px]",
 				backdrop:
 					'<div aria-hidden="true" data-surface="sidebar" class="absolute inset-0 -z-[1] rounded-[inherit] pointer-events-none bg-surface-2 shadow-[var(--approval-card-shadow)]"></div>',
-				body: "epitaxy-approval-body -mx-3 -mt-1 -mb-2 flex min-h-0 flex-col overflow-y-auto px-3 pt-1 pb-2 gap-[12px] overscroll-contain",
+				body: "epitaxy-scroll-clamp scroll-fade-y focus-visible:outline-hidden focus-visible:shadow-focus epitaxy-approval-body -mx-3 -mt-1 -mb-2 flex min-h-0 flex-col overflow-y-auto px-3 pt-1 pb-2 [&>*]:shrink-0 empty:hidden [&:has(~.epitaxy-approval-notices)]:shrink-[1000] [&:has(~.epitaxy-approval-notices)]:min-h-9 [&:has(~.epitaxy-approval-notices):has([data-approval-value])]:min-h-18 gap-[12px] overscroll-contain",
 				notice: ["bg-surface-2", "shadow-[var(--approval-card-shadow)]"],
 			},
 		);
@@ -2950,9 +2950,70 @@ describe("PermissionCard", () =>
 			{
 				region: null,
 				card: "epitaxy-approval-card @container relative isolate flex max-h-[60vh] flex-col rounded-card p-lg text-body text-primary origin-top focus-visible:outline-1 focus-visible:outline-fill-accent focus-visible:outline-offset-2 card-ring w-full max-w-[480px] gap-[24px]",
-				body: "epitaxy-approval-body -mx-pad-lg -mt-1 -mb-2 flex min-h-0 flex-col overflow-y-auto px-lg pt-1 pb-2 gap-[24px]",
+				body: "epitaxy-scroll-clamp scroll-fade-y focus-visible:outline-hidden focus-visible:shadow-focus epitaxy-approval-body -mx-pad-lg -mt-1 -mb-2 flex min-h-0 flex-col overflow-y-auto px-lg pt-1 pb-2 [&>*]:shrink-0 empty:hidden [&:has(~.epitaxy-approval-notices)]:shrink-[1000] [&:has(~.epitaxy-approval-notices)]:min-h-9 [&:has(~.epitaxy-approval-notices):has([data-approval-value])]:min-h-18 gap-[24px]",
 			},
 		);
+	});
+
+	it("makes an overflowing body upstream's focusable 'Request details' group inside the card, and a fitting one plain", () =>
+	{
+		const callbacks: ResizeObserverCallback[] = [];
+		vi.stubGlobal(
+			"ResizeObserver",
+			class
+			{
+				constructor(callback: ResizeObserverCallback)
+				{
+					callbacks.push(callback);
+				}
+				observe()
+				{
+				}
+				unobserve()
+				{
+				}
+				disconnect()
+				{
+				}
+			},
+		);
+		const {container} = render(
+			<ApprovalCardShell
+				presentation="dock"
+				body={<pre>{"line\n".repeat(80)}</pre>}
+				actions={<button type="button">Ok</button>}
+			/>,
+		);
+		const body = container.querySelector<HTMLElement>("[data-approval-card-body]")!;
+		const fits = body.getAttribute("role");
+		vi.spyOn(body, "scrollHeight", "get").mockReturnValue(1600);
+		vi.spyOn(body, "clientHeight", "get").mockReturnValue(300);
+		act(() =>
+		{
+			for (const callback of callbacks) callback([], {} as ResizeObserver);
+		});
+		const group = screen.getByRole(
+			"group",
+			{
+				name: "Request details",
+			},
+		);
+		expect(
+			{
+				fits,
+				isBody: group === body,
+				inCard: group.closest("[data-approval-card-root]") !== null,
+				tabIndex: group.getAttribute("tabindex"),
+			},
+		).toStrictEqual(
+			{
+				fits: null,
+				isBody: true,
+				inCard: true,
+				tabIndex: "0",
+			},
+		);
+		vi.unstubAllGlobals();
 	});
 
 	it("draws a Bash command's description and time-limit note under the title band", () =>

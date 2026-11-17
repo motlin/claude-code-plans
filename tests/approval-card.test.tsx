@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 
 import {act, cleanup, render, screen} from "@testing-library/react";
-import {afterEach, describe, expect, it} from "vite-plus/test";
+import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
-import {UrlElicitationCard} from "../src/components/approval-card";
+import {ApprovalScrollRegion, UrlElicitationCard} from "../src/components/approval-card";
 import {ElicitationFormCard} from "../src/components/elicitation-form-card";
 import {InlinePlanApproval} from "../src/components/inline-plan-approval";
 import {PermissionCard} from "../src/components/permission-card";
@@ -554,5 +554,159 @@ describe("approval queue ghost stack (upstream shared-40 Re, c2d1aeb56 w)", () =
 	it("draws no ghost on the inline card, whatever the depth", () =>
 	{
 		expect(ghosts("card", 3)).toStrictEqual([]);
+	});
+});
+
+describe("approval scroll region (upstream c2d1aeb56 scroller)", () =>
+{
+	const callbacks: ResizeObserverCallback[] = [];
+
+	class CapturingResizeObserver
+	{
+		constructor(callback: ResizeObserverCallback)
+		{
+			callbacks.push(callback);
+		}
+		observe()
+		{
+		}
+		unobserve()
+		{
+		}
+		disconnect()
+		{
+		}
+		takeRecords()
+		{
+			return [];
+		}
+	}
+
+	beforeEach(() =>
+	{
+		callbacks.length = 0;
+		vi.stubGlobal("ResizeObserver", CapturingResizeObserver);
+	});
+
+	afterEach(() =>
+	{
+		vi.unstubAllGlobals();
+		vi.restoreAllMocks();
+	});
+
+	function region()
+	{
+		render(
+			<ApprovalScrollRegion data-testid="region" label="Request details" className="flex flex-col">
+				<button type="button">Inside</button>
+			</ApprovalScrollRegion>,
+		);
+		return screen.getByTestId("region");
+	}
+
+	function overflow(element: HTMLElement)
+	{
+		vi.spyOn(element, "scrollHeight", "get").mockReturnValue(200);
+		vi.spyOn(element, "clientHeight", "get").mockReturnValue(100);
+		act(() =>
+		{
+			for (const callback of callbacks) callback([], {} as ResizeObserver);
+		});
+	}
+
+	const attributes = (element: HTMLElement) => (
+	{
+		tabindex: element.getAttribute("tabindex"),
+		role: element.getAttribute("role"),
+		"aria-label": element.getAttribute("aria-label"),
+		"data-fixed-code-size": element.getAttribute("data-fixed-code-size"),
+	});
+
+	it("is a plain box while it fits and a focusable labelled group once it overflows, with upstream's clamp classes", () =>
+	{
+		const element = region();
+		const fits = attributes(element);
+		overflow(element);
+		expect(
+			{
+				fits,
+				overflowing: attributes(element),
+				group:
+					screen.getByRole(
+						"group",
+						{
+							name: "Request details",
+						},
+					) === element,
+				className: element.getAttribute("class"),
+			},
+		).toStrictEqual(
+			{
+				fits:
+				{
+					tabindex: null,
+					role: null,
+					"aria-label": null,
+					"data-fixed-code-size": "",
+				},
+				overflowing:
+				{
+					tabindex: "0",
+					role: "group",
+					"aria-label": "Request details",
+					"data-fixed-code-size": "",
+				},
+				group: true,
+				className:
+					"epitaxy-scroll-clamp scroll-fade-y focus-visible:outline-hidden focus-visible:shadow-focus flex flex-col",
+			},
+		);
+	});
+
+	it("scrolls itself into view only on keyboard focus of the region itself", () =>
+	{
+		const element = region();
+		overflow(element);
+		const scrollIntoView = vi.fn<(options?: ScrollIntoViewOptions) => void>();
+		element.scrollIntoView = scrollIntoView;
+		const focusVisible = vi.spyOn(element, "matches");
+		const calls = (visible: boolean, target: HTMLElement) =>
+		{
+			scrollIntoView.mockClear();
+			focusVisible.mockImplementation((selector) => selector === ":focus-visible" && visible);
+			act(() =>
+			{
+				target.blur();
+				target.focus();
+			});
+			return scrollIntoView.mock.calls;
+		};
+		expect(
+			{
+				keyboard: calls(true, element),
+				pointer: calls(false, element),
+				child: calls(
+					true,
+					screen.getByRole(
+						"button",
+						{
+							name: "Inside",
+						},
+					),
+				),
+			},
+		).toStrictEqual(
+			{
+				keyboard: [
+					[
+						{
+							block: "nearest",
+						},
+					],
+				],
+				pointer: [],
+				child: [],
+			},
+		);
 	});
 });

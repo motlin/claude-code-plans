@@ -2298,6 +2298,21 @@ input.cds-input::-webkit-search-cancel-button
 	}
 }
 
+/* Upstream's epitaxy scroll clamp fallback (`.epitaxy-root .epitaxy-scroll-clamp`): where scroll timelines are
+   missing, and so is the scroll-fade mask, scroll-attached surface covers hide two border-tinted 8px edge shadows
+   until content scrolls under them. */
+@supports not (animation-timeline: scroll())
+{
+	.epitaxy-scroll-clamp
+	{
+		background:
+			linear-gradient(var(--color-surface-1), var(--color-surface-1)) top / 100% 8px no-repeat local,
+			linear-gradient(var(--color-surface-1), var(--color-surface-1)) bottom / 100% 8px no-repeat local,
+			linear-gradient(var(--color-border), transparent) top / 100% 8px no-repeat,
+			linear-gradient(to top, var(--color-border), transparent) bottom / 100% 8px no-repeat;
+	}
+}
+
 /* Upstream cds `scroll-fade-x`: the horizontal twin of scroll-fade-y on the same
    --scroll-fade-size, fading a row's left and right edges as content scrolls past
    them. RTL rows start scrolled to the right edge, so the two depths swap. */

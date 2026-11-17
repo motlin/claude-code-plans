@@ -63,12 +63,9 @@ export function InlinePlanApproval({
 	const drawsPlan = host === null && proposed !== undefined;
 	const bodyRef = useRef<HTMLDivElement>(null);
 	const [readHeld, setReadHeld] = useState(false);
-	const [overflows, setOverflows] = useState(false);
 	const onHeld = useCallback((held: boolean) =>
 	{
 		setReadHeld(held);
-		const body = bodyRef.current;
-		setOverflows(body !== null && body.scrollHeight - body.clientHeight > 2);
 	}, []);
 	useReadGate(
 		{
@@ -115,7 +112,6 @@ export function InlinePlanApproval({
 					</div>
 				}
 				bodyRef={bodyRef}
-				bodyLabel={drawsPlan && overflows ? "Request details" : undefined}
 				body={
 					drawsPlan ? (
 						<div data-testid="approval-plan-text" className={PLAN_TEXT_CLASS}>

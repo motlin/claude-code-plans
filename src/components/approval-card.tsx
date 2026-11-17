@@ -1,5 +1,18 @@
-import {useState, type ButtonHTMLAttributes, type DragEvent, type KeyboardEvent, type ReactNode, type Ref} from "react";
+import
+{
+	type ButtonHTMLAttributes,
+	type DragEvent,
+	type FocusEvent,
+	type HTMLAttributes,
+	type KeyboardEvent,
+	type ReactNode,
+	type Ref,
+	useCallback,
+	useRef,
+	useState,
+} from "react";
 
+import {useOverflows} from "../hooks/use-overflows";
 import type {ElicitationFocus} from "../lib/herdr/elicitation-keys";
 import {ApprovalStackGhosts} from "./approval-stack";
 import {StatusPulse} from "./status-dot";
@@ -170,6 +183,74 @@ export function ApprovalDockBackdrop()
 	);
 }
 
+/** Upstream's scroller classes (c2d1aeb56), ahead of the caller's. */
+const SCROLL_REGION_CLASS =
+	"epitaxy-scroll-clamp scroll-fade-y focus-visible:outline-hidden focus-visible:shadow-focus";
+
+/**
+ * Upstream's approval scroller (c2d1aeb56): a scroll clamp with an edge fade that becomes a focusable group named
+ * `label` only while its content overflows, so keyboard users can scroll it. Keyboard focus on the region itself
+ * scrolls it into view; a pointer focus or focus on a child does not.
+ */
+export function ApprovalScrollRegion({
+	label,
+	className,
+	onFocus,
+	children,
+	ref,
+	...rest
+}:
+{
+	label: string;
+	className: string;
+	ref?: Ref<HTMLDivElement> | undefined;
+} & Omit<HTMLAttributes<HTMLDivElement>, "className" | "role" | "tabIndex" | "aria-label">)
+{
+	const inner = useRef<HTMLDivElement | null>(null);
+	const overflows = useOverflows(inner, children);
+	const merged = useCallback(
+		(node: HTMLDivElement | null) =>
+		{
+			inner.current = node;
+			if (typeof ref === "function") ref(node);
+			else if (ref !== null && ref !== undefined) ref.current = node;
+		},
+		[ref],
+	);
+	return (
+		<div
+			ref={merged}
+			tabIndex={overflows ? 0 : undefined}
+			role={overflows ? "group" : undefined}
+			aria-label={overflows ? label : undefined}
+			data-fixed-code-size=""
+			{...rest}
+			onFocus={(event: FocusEvent<HTMLDivElement>) =>
+			{
+				onFocus?.(event);
+				if (event.target === event.currentTarget && event.currentTarget.matches(":focus-visible"))
+				{
+					event.currentTarget.scrollIntoView(
+						{
+							block: "nearest",
+						},
+					);
+				}
+			}}
+			className={`${SCROLL_REGION_CLASS} ${className}`}
+		>
+			{children}
+		</div>
+	);
+}
+
+/**
+ * Upstream's body (c2d1aeb56): children never squash (the body scrolls instead), an empty body takes no room, and a
+ * "Warnings" notices region after it makes the body give way first down to a 36px floor (72px holding a value).
+ */
+const BODY_GIVE_WAY_CLASS =
+	"[&>*]:shrink-0 empty:hidden [&:has(~.epitaxy-approval-notices)]:shrink-[1000] [&:has(~.epitaxy-approval-notices)]:min-h-9 [&:has(~.epitaxy-approval-notices):has([data-approval-value])]:min-h-18";
+
 /**
  * Upstream's approval card shell for a pending permission: a scrolling body
  * and an action row, 12px radius (cds-radius + 4px) and 12px padding. Each card is its own
@@ -188,7 +269,6 @@ export function ApprovalCardShell({
 	footer,
 	titleRef,
 	bodyRef,
-	bodyLabel,
 	presentation = "dock",
 	queueDepth = 0,
 	enter = false,
@@ -216,8 +296,6 @@ export function ApprovalCardShell({
 	titleRef?: Ref<HTMLDivElement>;
 	/** The scrolling body, for the plan read gate. */
 	bodyRef?: Ref<HTMLDivElement>;
-	/** Upstream's overflowing body (`m(d,r)`): a focusable group with this label ("Request details"). */
-	bodyLabel?: string | undefined;
 	/** Upstream's inline "card" in the transcript, or the composer "dock". */
 	presentation?: "card" | "dock";
 	/** Upstream's `queueDepth`: requests pending behind this one. Only the dock draws them, as ghosts (`w`'s `V`). */
@@ -242,8 +320,7 @@ export function ApprovalCardShell({
 	const look =
 		presentation === "card" ? `card-ring w-full max-w-[480px] ${compact ? "gap-3" : "gap-[24px]"}` : "gap-[12px]";
 	// Upstream's body scrolls its overflow in place only when docked (`overscroll-contain`).
-	const bodyGap =
-		presentation === "card" ? (compact ? "gap-3 empty:hidden" : "gap-[24px]") : "gap-[12px] overscroll-contain";
+	const bodyGap = presentation === "card" ? (compact ? "gap-3" : "gap-[24px]") : "gap-[12px] overscroll-contain";
 	const band = presentation === "card" && title !== undefined;
 	// The banded card is upstream's in-flow tool card: no top padding, clipped to its radius, and a taller floor.
 	const frame = band
@@ -334,21 +411,14 @@ export function ApprovalCardShell({
 						{title}
 					</div>
 				)}
-				<div
+				<ApprovalScrollRegion
 					ref={bodyRef}
 					data-approval-card-body
-					{...(bodyLabel === undefined
-						? {}
-						:
-							{
-								tabIndex: 0,
-								role: "group",
-								"aria-label": bodyLabel,
-							})}
-					className={`epitaxy-approval-body ${inset.bleed} ${band ? "-mt-[18px]" : "-mt-1"} -mb-2 flex min-h-0 flex-col overflow-y-auto ${inset.px} pt-1 pb-2 ${bodyGap}`}
+					label="Request details"
+					className={`epitaxy-approval-body ${inset.bleed} ${band ? "-mt-[18px]" : "-mt-1"} -mb-2 flex min-h-0 flex-col overflow-y-auto ${inset.px} pt-1 pb-2 ${BODY_GIVE_WAY_CLASS} ${bodyGap}`}
 				>
 					{body}
-				</div>
+				</ApprovalScrollRegion>
 				{note}
 				<div
 					data-approval-card-actions

@@ -99,11 +99,7 @@ const ALLOWLIST: Record<string, string> =
 };
 
 /** Known-dead tokens waiting on a queued task; each must stay dead, so the entry goes once the fix lands. */
-const PENDING: Record<string, string> =
-{
-	"epitaxy-scroll-clamp":
-		"upstream's scroll clamp edge shadows (`.epitaxy-root .epitaxy-scroll-clamp`), drawn by approval-scroll-clamp-regions",
-};
+const PENDING: Record<string, string> = {};
 
 describe("no dead utility classes", () =>
 {
