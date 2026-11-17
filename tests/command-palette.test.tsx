@@ -4954,6 +4954,7 @@ function artifact(id: string, title: string, publishedAgoMs: number): ArtifactSu
 		sourcePath: null,
 		sourceExists: false,
 		sourceModifiedAt: null,
+		thumbnailUrl: null,
 		audience: null,
 		firstSeenAt: Date.now() - publishedAgoMs,
 		lastPublishedAt: Date.now() - publishedAgoMs,

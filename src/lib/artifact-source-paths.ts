@@ -18,3 +18,17 @@ export function artifactPreviewPath(id: string): string
 {
 	return `/artifact/${encodeURIComponent(id)}`;
 }
+
+const THUMBNAIL_SOURCE_PATTERN = /\.html?$/i;
+
+/** Whether the local server screenshots this source for a card cover: HTML only, since a Docs page's light rendering is undecided. */
+export function isThumbnailSourcePath(path: string): boolean
+{
+	return path.startsWith("/") && THUMBNAIL_SOURCE_PATTERN.test(path);
+}
+
+/** The cover thumbnail of an artifact's source at one version (its truncated mtime), so the URL can be cached forever. */
+export function artifactThumbnailUrl(id: string, version: number): string
+{
+	return `/api/artifacts/${encodeURIComponent(id)}/thumbnail?v=${version}`;
+}

@@ -5,7 +5,9 @@ import type {BetterSQLite3Database} from "drizzle-orm/better-sqlite3";
 import type {ArtifactSummary, SessionArtifact} from "../api/artifacts";
 import {artifactMatchesSearch} from "../artifact-gallery";
 import {ARTIFACT_TYPE_KINDS} from "../artifact-mark";
-import {isPreviewableSourcePath} from "../artifact-source-paths";
+import {artifactThumbnailUrl, isPreviewableSourcePath, isThumbnailSourcePath} from "../artifact-source-paths";
+import {cachedThumbnailVersions, thumbnailVersion} from "../artifact-thumbnail";
+import {getCacheDir} from "./connection";
 import * as schema from "./schema";
 
 type IndexDb = BetterSQLite3Database<typeof schema>;
@@ -38,7 +40,8 @@ function statSourceMtime(path: string): number | null
 /**
  * Every indexed artifact, newest publish first, titled like upstream's card label
  * (title → source basename → "Untitled artifact") and optionally narrowed to titles containing `q`.
- * A source counts as existing only when it can be previewed locally.
+ * A source counts as existing only when it can be previewed locally. An HTML artifact gets a cover thumbnail for its
+ * current source version, or for the newest one cached before its source went away.
  */
 export function getArtifacts(
 	db: IndexDb,
@@ -49,6 +52,7 @@ export function getArtifacts(
 		q?: string;
 	},
 	sourceMtime: (path: string) => number | null = statSourceMtime,
+	cachedThumbnails: ReadonlyMap<string, number> = cachedThumbnailVersions(getCacheDir()),
 ): ArtifactSummary[]
 {
 	const rows = db
@@ -65,16 +69,24 @@ export function getArtifacts(
 		{
 			const sourceModifiedAt =
 				row.sourcePath !== null && isPreviewableSourcePath(row.sourcePath) ? sourceMtime(row.sourcePath) : null;
+			const kind = artifactKind(row.typeUrl);
+			const thumbVersion =
+				kind === "html" && row.sourcePath !== null && isThumbnailSourcePath(row.sourcePath)
+					? sourceModifiedAt === null
+						? cachedThumbnails.get(row.id)
+						: thumbnailVersion(sourceModifiedAt)
+					: undefined;
 			return {
 				url: row.url,
 				id: row.id,
-				kind: artifactKind(row.typeUrl),
+				kind,
 				icon: row.icon,
 				title: row.title ?? (row.sourcePath ? basename(row.sourcePath) : UNTITLED_ARTIFACT),
 				description: row.description,
 				sourcePath: row.sourcePath,
 				sourceExists: sourceModifiedAt !== null,
 				sourceModifiedAt,
+				thumbnailUrl: thumbVersion === undefined ? null : artifactThumbnailUrl(row.id, thumbVersion),
 				audience: row.audience,
 				firstSeenAt: row.firstSeenAt,
 				lastPublishedAt: row.lastPublishedAt,

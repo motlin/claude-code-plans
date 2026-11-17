@@ -28,6 +28,7 @@ import {startLiveSubagentSweep, stopLiveSubagentSweep} from "./lib/live-subagent
 import {DOMAIN_EVENTS, type SubagentStoppedPayload} from "./lib/hook-events";
 import {broadcastTyped} from "./lib/sse-broadcast";
 import {getCacheDir} from "./lib/db/connection";
+import {enableArtifactThumbnailWarming} from "./lib/artifact-thumbnail-warm";
 import {initPendingApprovalsCache} from "./lib/db/pending-approvals-cache";
 import {startTerminalHostEvents} from "./lib/terminal-host";
 import {resolveFileSearchRoots} from "./lib/config";
@@ -208,6 +209,8 @@ void (async () =>
 
 	startSweep();
 	startNotificationsSweep();
+	// Screenshot newly published HTML artifacts for their gallery covers while their sources still exist.
+	enableArtifactThumbnailWarming(getDb().index, getCacheDir());
 	startLiveSubagentSweep((node) =>
 	{
 		broadcastTyped(

@@ -19,6 +19,12 @@ export const ARTIFACT_SOURCE_CSP = "sandbox allow-scripts; default-src * data: b
 
 const ARTIFACT_ID_PATTERN = /^[A-Za-z0-9-]+$/;
 
+/** Whether an id from a URL could name an artifact (and so is safe inside a file name). */
+export function isArtifactId(id: string): boolean
+{
+	return ARTIFACT_ID_PATTERN.test(id);
+}
+
 const SOURCE_HEADERS =
 {
 	"Content-Security-Policy": ARTIFACT_SOURCE_CSP,
@@ -46,9 +52,9 @@ function notFound(): Response
  * recorded path is ever considered, and only when both it and the file it
  * resolves to are previewable regular files.
  */
-function resolveArtifactSource(db: IndexDb, id: string): string | null
+export function resolveArtifactSource(db: IndexDb, id: string): string | null
 {
-	if (!ARTIFACT_ID_PATTERN.test(id)) return null;
+	if (!isArtifactId(id)) return null;
 	const row = db
 		.select(
 			{

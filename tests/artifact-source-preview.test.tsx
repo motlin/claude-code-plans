@@ -19,6 +19,7 @@ const ARTIFACT: ArtifactSummary =
 	sourcePath: "/Users/alice/projects/ladder/.llm/mockups/ladder.html",
 	sourceExists: true,
 	sourceModifiedAt: 2_000,
+	thumbnailUrl: null,
 	audience: "owner",
 	firstSeenAt: 1_000,
 	lastPublishedAt: 2_000,

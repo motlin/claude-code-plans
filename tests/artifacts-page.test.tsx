@@ -14,7 +14,7 @@ import
 import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
-import {artifactsQueryOptions, ArtifactListResponse} from "../src/lib/api/artifacts";
+import {artifactsQueryOptions, ArtifactListResponse, type ArtifactSummary} from "../src/lib/api/artifacts";
 import
 {
 	ARTIFACTS_LAYOUT_STORAGE_KEY,
@@ -530,16 +530,26 @@ describe("getArtifacts", () =>
 		const db = openTestDb();
 		seedArtifacts(db);
 
-		const artifacts = getArtifacts(db.index, {}, ladderMtime);
+		// The chart's source is gone but its thumbnail outlived it; Docs never get one yet.
+		const artifacts = getArtifacts(
+			db.index,
+			{},
+			ladderMtime,
+			new Map([
+				["17b8a2c1-4c41-46bf-b064-a272240be709", 1_780_000_000_000],
+				["7Hq2vXbN4pLmKcR9sTwYzA", 1_780_000_000_000],
+			]),
+		);
 
 		expect(
-			artifacts.map(({id, title, kind, sourceExists, sourceModifiedAt, sessionId}) => (
+			artifacts.map(({id, title, kind, sourceExists, sourceModifiedAt, thumbnailUrl, sessionId}) => (
 			{
 				id,
 				title,
 				kind,
 				sourceExists,
 				sourceModifiedAt,
+				thumbnailUrl,
 				sessionId,
 			})),
 		).toStrictEqual([
@@ -549,6 +559,7 @@ describe("getArtifacts", () =>
 				kind: "html",
 				sourceExists: true,
 				sourceModifiedAt: LADDER_MTIME,
+				thumbnailUrl: `/api/artifacts/546d3910-4e9a-4730-9e91-62742a47c7c6/thumbnail?v=${LADDER_MTIME}`,
 				sessionId: "session-ladder",
 			},
 			{
@@ -557,6 +568,7 @@ describe("getArtifacts", () =>
 				kind: "html",
 				sourceExists: false,
 				sourceModifiedAt: null,
+				thumbnailUrl: "/api/artifacts/17b8a2c1-4c41-46bf-b064-a272240be709/thumbnail?v=1780000000000",
 				sessionId: "session-chart",
 			},
 			{
@@ -565,9 +577,14 @@ describe("getArtifacts", () =>
 				kind: "docs",
 				sourceExists: false,
 				sourceModifiedAt: null,
+				thumbnailUrl: null,
 				sessionId: "session-docs",
 			},
 		]);
+
+		expect(
+			getArtifacts(db.index, {}, () => null, new Map()).map((artifact) => artifact.thumbnailUrl),
+		).toStrictEqual([null, null, null]);
 	});
 
 	it("titles an artifact with neither a title nor a source path \u201cUntitled artifact\u201d, as upstream", () =>
@@ -671,12 +688,23 @@ afterEach(() =>
 
 const MAC_USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36";
 
-async function renderArtifactsPage(initialEntry: string, seed: boolean | ((db: AppDb) => void))
+/** Covers draw blanks unless a test names thumbnails: jsdom never loads them, and most tests read the blank. */
+async function renderArtifactsPage(
+	initialEntry: string,
+	seed: boolean | ((db: AppDb) => void),
+	thumbnailFor: (artifact: ArtifactSummary) => string | null = () => null,
+)
 {
 	const db = openTestDb();
 	if (seed === true) seedArtifacts(db);
 	else if (typeof seed === "function") seed(db);
-	const data = ArtifactListResponse.parse(JSON.parse(JSON.stringify(getArtifacts(db.index, {}, ladderMtime))));
+	const data = ArtifactListResponse.parse(
+		JSON.parse(JSON.stringify(getArtifacts(db.index, {}, ladderMtime, new Map()))),
+	).map((artifact) => (
+	{
+		...artifact,
+		thumbnailUrl: thumbnailFor(artifact),
+	}));
 
 	const queryClient = new QueryClient(
 		{
@@ -1138,10 +1166,10 @@ describe("artifacts route", () =>
 						"border-[color:var(--color-border-line)]",
 						"shadow-lg",
 						"top-[30px]",
-						"z-2",
-						"rounded-xl",
 						"h-[190px]",
 						"w-[min(232px,100%-24px)]",
+						"z-2",
+						"rounded-xl",
 					],
 					blank: "other",
 					viewBox: "0 0 202 130",
@@ -1156,10 +1184,10 @@ describe("artifacts route", () =>
 						"border-[color:var(--color-border-line)]",
 						"shadow-lg",
 						"top-[30px]",
-						"z-2",
-						"rounded-xl",
 						"h-[200px]",
 						"w-[182px]",
+						"z-2",
+						"rounded-xl",
 					],
 					blank: "document",
 					viewBox: "0 0 180 130",
@@ -3388,6 +3416,238 @@ describe("artifacts route", () =>
 			{
 				toast: "Link copied to clipboard.",
 				copied: [[LADDER_URL]],
+			},
+		);
+	});
+});
+
+describe("artifact cover thumbnails", () =>
+{
+	const thumbFor = (artifact: ArtifactSummary) => `/api/artifacts/${artifact.id}/thumbnail?v=1`;
+
+	function coverFor(name: string): HTMLElement
+	{
+		const cover = screen
+			.getByRole(
+				"link",
+				{
+					name,
+				},
+			)
+			.closest("li")
+			?.querySelector<HTMLElement>("[data-artifact-cover]");
+		if (cover === null || cover === undefined) throw new Error(`no cover for ${name}`);
+		return cover;
+	}
+
+	function describeWashes(cover: HTMLElement)
+	{
+		return [...cover.querySelectorAll<HTMLElement>("[data-cover-wash]")].map((wash) => (
+		{
+			src: wash.dataset["coverWash"],
+			opacity: [...wash.classList].filter((name) => name.startsWith("opacity-")),
+			img: wash.querySelector("img")?.getAttribute("class") ?? null,
+			imgSrc: wash.querySelector("img")?.getAttribute("src") ?? null,
+		}));
+	}
+
+	beforeEach(() =>
+	{
+		storage.removeItem(ARTIFACTS_LAYOUT_STORAGE_KEY);
+	});
+
+	it("puts a file thumbnail in upstream's light wrapper on a cropped front sheet with the dark veil", async () =>
+	{
+		await renderArtifactsPage("/artifacts", true, (artifact) =>
+			artifact.kind === "html" ? thumbFor(artifact) : null,
+		);
+		const cover = coverFor("Asap Ladder Queue");
+		const front = cover.querySelector("[data-cover-front]");
+		const light = front?.firstElementChild;
+		const img = light?.firstElementChild;
+
+		expect(
+			{
+				front: front?.getAttribute("class"),
+				light: [light?.getAttribute("data-cover-light"), light?.getAttribute("class")],
+				img: [img?.tagName, img?.getAttribute("class"), img?.getAttribute("src")],
+				blank: front?.querySelector("svg[data-artifact-cover-blank]") ?? null,
+				fade: cover.lastElementChild?.getAttribute("class"),
+			},
+		).toStrictEqual(
+			{
+				front: "absolute overflow-hidden border border-[color:var(--color-border-line)] bg-white text-primary dark:bg-surface-1 dark:bg-clip-padding after:pointer-events-none after:absolute after:inset-0 after:content-[''] isolate shadow-lg inset-x-0 mx-auto top-[30px] h-[190px] w-[min(232px,100%-24px)] z-2 bg-clip-padding [&>img]:h-[121px] [&>[data-cover-light]>img]:h-[121px] rounded-xl dark:group-has-[[data-cover-light]>img]/cover:bg-white dark:group-has-[[data-cover-light]>img]/cover:after:bg-gray-900/20",
+				light: ["", "h-full"],
+				img: [
+					"IMG",
+					"block w-full object-cover object-left-top",
+					thumbFor(
+						{
+							id: "546d3910-4e9a-4730-9e91-62742a47c7c6",
+						} as ArtifactSummary,
+					),
+				],
+				blank: null,
+				fade: "pointer-events-none absolute inset-0 isolate z-3 mx-auto overflow-hidden group-has-[[data-cover-front]>img]/cover:opacity-50 max-w-[268px] bg-cds-gray-100 text-cds-gray-600 dark:bg-cds-gray-700 dark:text-cds-gray-200",
+			},
+		);
+	});
+
+	it("inverts a Docs thumbnail in dark mode and widens its sheet and fade, as upstream", async () =>
+	{
+		await renderArtifactsPage("/artifacts", true, thumbFor);
+		const cover = coverFor("Quarterly plan");
+		const front = cover.querySelector("[data-cover-front]");
+		const light = front?.firstElementChild;
+
+		expect(
+			{
+				front: front?.getAttribute("class"),
+				light: [light?.getAttribute("data-cover-light"), light?.getAttribute("class")],
+				img: light?.querySelector("img")?.getAttribute("class"),
+				fade: cover.lastElementChild?.getAttribute("class"),
+			},
+		).toStrictEqual(
+			{
+				front: "absolute overflow-hidden border border-[color:var(--color-border-line)] bg-white text-primary dark:bg-surface-1 dark:bg-clip-padding after:pointer-events-none after:absolute after:inset-0 after:content-[''] isolate shadow-lg inset-x-0 mx-auto top-[30px] h-[200px] w-[182px] group-has-[img]/cover:w-[min(232px,100%-24px)] z-2 bg-clip-padding [&>img]:aspect-[1005/630] [&>[data-cover-light]>img]:aspect-[1005/630] rounded-xl [&>img]:mix-blend-lighten",
+				light: [
+					"inverted",
+					"h-full dark:has-[>img]:mix-blend-screen dark:has-[>img]:hue-rotate-180 dark:has-[>img]:invert",
+				],
+				img: "block w-full object-cover object-top [mask-image:linear-gradient(to_bottom,black_84px,transparent_118px)]",
+				fade: "pointer-events-none absolute inset-0 isolate z-3 mx-auto overflow-hidden group-has-[[data-cover-front]>img]/cover:opacity-50 max-w-[240px] group-has-[img]/cover:max-w-[290px] bg-cds-blue-100 text-cds-blue-600 dark:bg-cds-blue-700 dark:text-cds-blue-200",
+			},
+		);
+	});
+
+	it("fades the hue wash in under the sheet and inside the fade once the thumbnail loads, and out again on error", async () =>
+	{
+		await renderArtifactsPage("/artifacts", true, thumbFor);
+		const cover = coverFor("Asap Ladder Queue");
+		// The wash copies the loaded img's resolved src, as upstream reads `img.src`.
+		const src = new URL(cover.querySelector("[data-cover-light] > img")?.getAttribute("src") ?? "", location.href)
+			.href;
+		const filter = cover.querySelector(":scope > svg > filter");
+		const before = describeWashes(cover);
+		fireEvent.load(cover.querySelector("[data-cover-light] > img")!);
+		const loaded = describeWashes(cover);
+		fireEvent.error(cover.querySelector("[data-cover-light] > img")!);
+
+		const resting =
+		{
+			src: "",
+			opacity: ["opacity-0"],
+			img: null,
+			imgSrc: null,
+		};
+		const shown =
+		{
+			src,
+			opacity: ["opacity-100"],
+			img: "absolute start-0 top-0 size-[4px]",
+			imgSrc: src,
+		};
+		expect(
+			{
+				svg: cover.querySelector(":scope > svg")?.getAttribute("class"),
+				filter: [
+					filter?.getAttribute("color-interpolation-filters"),
+					[...cover.querySelectorAll<HTMLElement>("[data-cover-wash]")].map(
+						(wash) => wash.style.filter === `url("#${filter?.id}")`,
+					),
+					[...(filter?.children ?? [])].map(
+						(child) => child.getAttribute("result") ?? child.getAttribute("operator"),
+					),
+				],
+				washClass: cover.querySelector("[data-cover-wash]")?.getAttribute("class"),
+				placement: [
+					cover.querySelector(":scope > [data-cover-wash]") !== null,
+					cover.lastElementChild?.lastElementChild?.hasAttribute("data-cover-wash"),
+				],
+				before,
+				loaded,
+				errored:
+				{
+					washes: describeWashes(cover),
+					blank: cover
+						.querySelector("[data-cover-front] svg[data-artifact-cover-blank]")
+						?.getAttribute("data-artifact-cover-blank"),
+				},
+			},
+		).toStrictEqual(
+			{
+				svg: "absolute size-0",
+				filter: ["sRGB", [true, true], ["one", "tiles", "mean", "above", "below", "spread", "strength", "in"]],
+				washClass:
+					"pointer-events-none absolute -inset-[8px] z-1 mix-blend-hue transition-opacity duration-base motion-reduce:transition-none opacity-0",
+				placement: [true, true],
+				before: [resting, resting],
+				loaded: [shown, shown],
+				errored:
+				{
+					washes: [resting, resting],
+					blank: "other",
+				},
+			},
+		);
+	});
+
+	it("draws no wash, filter or img for an artifact without a thumbnail", async () =>
+	{
+		await renderArtifactsPage("/artifacts", true);
+		const cover = coverFor("Asap Ladder Queue");
+
+		expect(
+			{
+				washes: cover.querySelectorAll("[data-cover-wash]").length,
+				filters: cover.querySelectorAll(":scope > svg").length,
+				imgs: cover.querySelectorAll("img").length,
+				light: cover.querySelectorAll("[data-cover-light]").length,
+			},
+		).toStrictEqual(
+			{
+				washes: 0,
+				filters: 0,
+				imgs: 0,
+				light: 0,
+			},
+		);
+	});
+
+	it("loads the first 6 thumbnails eagerly at high priority when nothing is pinned, and every one lazily after a pinned section", async () =>
+	{
+		const describeLoading = () =>
+			[...document.querySelectorAll("[data-cover-light] > img")].map((img) =>
+				[img.getAttribute("loading"), img.getAttribute("fetchpriority")].join(" "),
+			);
+		await renderArtifactsPage("/artifacts", seedMixedGallery, thumbFor);
+		const unpinned = describeLoading();
+		cleanup();
+		storage.setItem(ARTIFACT_PIN_STORAGE_KEY, JSON.stringify(["https://claude.ai/code/artifact/mixed-03"]));
+		await renderArtifactsPage("/artifacts", seedMixedGallery, thumbFor);
+
+		expect(
+			{
+				unpinned,
+				pinned: [...new Set(describeLoading())],
+			},
+		).toStrictEqual(
+			{
+				unpinned: [
+					...Array.from(
+						{
+							length: 6,
+						},
+						() => "eager high",
+					),
+					...Array.from(
+						{
+							length: 10,
+						},
+						() => "lazy ",
+					),
+				],
+				pinned: ["lazy "],
 			},
 		);
 	});

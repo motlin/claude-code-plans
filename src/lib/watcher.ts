@@ -1,4 +1,5 @@
 import {type Stats} from "node:fs";
+import {artifactsMaybePublished} from "./artifact-thumbnail-warm";
 import {canonicalPath} from "./canonical-path";
 import {stat} from "node:fs/promises";
 import {basename, dirname, join, resolve} from "node:path";
@@ -780,7 +781,7 @@ async function indexSilently(
 	try
 	{
 		const index = db ?? getDb().index;
-		return await trackActivity(`index ${path}`, async () =>
+		const result = await trackActivity(`index ${path}`, async () =>
 			retryWhileBusy(async () =>
 				indexFile(
 					index,
@@ -794,6 +795,8 @@ async function indexSilently(
 				),
 			),
 		);
+		artifactsMaybePublished();
+		return result;
 	}
 	catch
 	{

@@ -15,6 +15,8 @@ const ArtifactSummarySchema = z.strictObject(
 		sourcePath: z.string().nullable(),
 		sourceExists: z.boolean(),
 		sourceModifiedAt: z.number().nullable(),
+		/** The local cover screenshot of an HTML source (versioned by its mtime); null when there is none to show. */
+		thumbnailUrl: z.string().nullable(),
 		audience: z.string().nullable(),
 		firstSeenAt: z.number(),
 		lastPublishedAt: z.number().nullable(),

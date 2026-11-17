@@ -10,6 +10,7 @@ import {quietDependencyDirectives} from "./src/lib/build-log-filter";
 import {clientChunkGraph} from "./src/lib/client-chunk-graph";
 import {nameCodeSplittingGroups} from "./src/lib/code-splitting-debug-names";
 import {closeNitroRunnerOnServerClose} from "./src/lib/dev-env-runner-teardown";
+import {apiImagesReachNitroInDev} from "./src/lib/dev-api-image-requests";
 import {holdNitroRequestsUntilReady} from "./src/lib/dev-env-ready-gate";
 import {serializeDevServerRestarts} from "./src/lib/dev-restart-serializer";
 import {devWorkerProxy} from "./src/lib/dev-worker-proxy";
@@ -537,6 +538,8 @@ export default defineConfig(
 					rolldownVersion,
 				},
 			),
+			// Before nitro(): its dev middleware would hand an <img> of an API route to Vite's static files.
+			apiImagesReachNitroInDev(),
 			nitro(
 				{
 					features:

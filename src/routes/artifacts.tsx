@@ -14,6 +14,7 @@ import
 	type TypeMediaIconWord,
 } from "../lib/artifact-mark";
 import {ArtifactMark} from "../components/artifact-mark";
+import {CoverThumb} from "../components/cover-thumb";
 import
 {
 	activeFilterCount,
@@ -884,11 +885,57 @@ const COVER_HUE: Record<CoverKind, string> =
 	document: "bg-cds-blue-100 text-cds-blue-600 dark:bg-cds-blue-700 dark:text-cds-blue-200",
 };
 
+/** Upstream's `card` cover sizes (`Z.card`): the box, crop and fade width per kind. */
 const COVER_FRONT_SIZE: Record<CoverKind, string> =
 {
-	file: "h-[190px] w-[min(232px,100%-24px)]",
-	document: "h-[200px] w-[182px]",
+	file: "top-[30px] h-[190px] w-[min(232px,100%-24px)]",
+	// A Docs page widens to the file sheet once it holds a screenshot.
+	document: "top-[30px] h-[200px] w-[182px] group-has-[img]/cover:w-[min(232px,100%-24px)]",
 };
+
+const COVER_FRONT_CROP: Record<CoverKind, string> =
+{
+	file: "[&>img]:h-[121px] [&>[data-cover-light]>img]:h-[121px]",
+	document: "[&>img]:aspect-[1005/630] [&>[data-cover-light]>img]:aspect-[1005/630]",
+};
+
+/**
+ * Upstream's front-sheet finish per kind: a Docs screenshot lightens onto the page; in dark mode a light file
+ * screenshot sits on a white sheet under a 20% gray-900 veil instead of on surface-1.
+ */
+const COVER_FRONT_FINISH: Record<CoverKind, string> =
+{
+	file: "dark:group-has-[[data-cover-light]>img]/cover:bg-white dark:group-has-[[data-cover-light]>img]/cover:after:bg-gray-900/20",
+	document: "[&>img]:mix-blend-lighten",
+};
+
+/** Upstream's sheet (`U`): the `after:` layer hosts the dark veil. */
+const COVER_SHEET =
+	"absolute overflow-hidden border border-[color:var(--color-border-line)] bg-white text-primary dark:bg-surface-1 dark:bg-clip-padding after:pointer-events-none after:absolute after:inset-0 after:content-['']";
+
+const COVER_FADE_WIDTH: Record<CoverKind, string> =
+{
+	file: "max-w-[268px]",
+	document: "max-w-[240px] group-has-[img]/cover:max-w-[290px]",
+};
+
+/** Upstream's thumbnail img classes: a file crops from its top-left; a Docs page from its top, fading out by 118px. */
+const COVER_THUMB_IMG: Record<CoverKind, string> =
+{
+	file: "block w-full object-cover object-left-top",
+	document:
+		"block w-full object-cover object-top [mask-image:linear-gradient(to_bottom,black_84px,transparent_118px)]",
+};
+
+/** Upstream's light wrapper: in dark mode a Docs screenshot is inverted and hue-rotated, then screened onto the page. */
+const COVER_LIGHT: Record<CoverKind, string> =
+{
+	file: "h-full",
+	document: "h-full dark:has-[>img]:mix-blend-screen dark:has-[>img]:hue-rotate-180 dark:has-[>img]:invert",
+};
+
+/** Upstream's grid loads the first 6 thumbnails of the leading unpinned section eagerly (`cabf52553` `se`). */
+const PRIORITY_THUMBS = 6;
 
 /** Upstream's bottom fade (`he`): an eased 16-stop ramp from clear at 67% to 30% of the cover hue, with 12px side fades. */
 const COVER_FADE_EASING = [
@@ -997,28 +1044,115 @@ function CoverBlank({artifact}: {artifact: ArtifactSummary})
 	);
 }
 
-/** Upstream's card cover: a tinted wash with a floating front sheet and a masked bottom fade. */
-function ArtifactCover({artifact}: {artifact: ArtifactSummary})
+/**
+ * Upstream's thumbnail hue filter (`pe`): spreads a thumbnail's average colour and keeps it only where it is
+ * saturated, so the wash tints the cover with the screenshot's dominant hue.
+ */
+function CoverWashFilter({id}: {id: string})
+{
+	return (
+		<svg aria-hidden="true" className="absolute size-0">
+			<filter id={id} colorInterpolationFilters="sRGB" x="0" y="0" width="100%" height="100%">
+				<feOffset in="SourceGraphic" x="0" y="0" width="4" height="4" result="one" />
+				<feTile in="one" result="tiles" />
+				<feGaussianBlur in="tiles" stdDeviation="3" result="mean" />
+				<feColorMatrix in="mean" values="1 -1 0 0 0  0 1 -1 0 0  -1 0 1 0 0  0 0 0 1 0" result="above" />
+				<feColorMatrix in="mean" values="-1 1 0 0 0  0 -1 1 0 0  1 0 -1 0 0  0 0 0 1 0" result="below" />
+				<feComposite in="above" in2="below" operator="arithmetic" k2="1" k3="1" result="spread" />
+				<feColorMatrix
+					in="spread"
+					values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  10 10 10 0 -0.8"
+					result="strength"
+				/>
+				<feComposite in="mean" in2="strength" operator="in" />
+			</filter>
+		</svg>
+	);
+}
+
+/** Upstream's cover wash (`Y`): a 4px copy of the loaded thumbnail, filtered into a hue that fades in over the cover. */
+function CoverWash({src, filterId}: {src: string | undefined; filterId: string})
+{
+	return (
+		<div
+			data-cover-wash={src ?? ""}
+			dir="ltr"
+			className={`pointer-events-none absolute -inset-[8px] z-1 mix-blend-hue transition-opacity duration-base motion-reduce:transition-none ${src ? "opacity-100" : "opacity-0"}`}
+			style={
+			{
+				filter: `url(#${filterId})`,
+			}}
+		>
+			{src && (
+				<img
+					alt=""
+					src={src}
+					referrerPolicy="no-referrer"
+					decoding="async"
+					className="absolute start-0 top-0 size-[4px]"
+				/>
+			)}
+		</div>
+	);
+}
+
+/**
+ * Upstream's card cover (`Oe`): a tinted wash with a floating front sheet and a masked bottom fade. The sheet shows
+ * the artifact's screenshot when it has one, falling back to the blank drawing when it fails to load.
+ */
+function ArtifactCover({artifact, priority}: {artifact: ArtifactSummary; priority: boolean})
 {
 	const kind = coverKind(artifact.kind);
+	const filterId = useId();
+	const [washSrc, setWashSrc] = useState<string>();
+	const thumbnailSrc = artifact.thumbnailUrl;
+	const blank = <CoverBlank artifact={artifact} />;
+	const wash = thumbnailSrc !== null && <CoverWash src={washSrc} filterId={filterId} />;
 	return (
 		<div
 			data-artifact-cover={kind}
-			className={`group/cover relative h-full overflow-hidden isolate ${COVER_HUE[kind]}`}
+			className={`group/cover relative h-full overflow-hidden ${COVER_HUE[kind]} isolate`}
 		>
 			<div className={COVER_SURFACE_WASH} />
+			{thumbnailSrc !== null && <CoverWashFilter id={filterId} />}
+			{wash}
 			<div
 				data-cover-front=""
-				className={`absolute inset-x-0 mx-auto overflow-hidden border border-[color:var(--color-border-line)] bg-white bg-clip-padding text-primary dark:bg-surface-1 isolate shadow-lg top-[30px] z-2 rounded-xl ${COVER_FRONT_SIZE[kind]}`}
+				onLoadCapture={
+					thumbnailSrc === null
+						? undefined
+						: (event) =>
+							{
+								if (event.target instanceof HTMLImageElement) setWashSrc(event.target.src);
+							}
+				}
+				className={`${COVER_SHEET} isolate shadow-lg inset-x-0 mx-auto ${COVER_FRONT_SIZE[kind]} z-2 bg-clip-padding ${COVER_FRONT_CROP[kind]} rounded-xl ${COVER_FRONT_FINISH[kind]}`}
 			>
-				<CoverBlank artifact={artifact} />
+				{thumbnailSrc === null ? (
+					blank
+				) : (
+					<div data-cover-light={kind === "document" ? "inverted" : ""} className={COVER_LIGHT[kind]}>
+						<CoverThumb
+							src={thumbnailSrc}
+							fallback={blank}
+							onError={() =>
+							{
+								setWashSrc(undefined);
+							}}
+							imgClassName={COVER_THUMB_IMG[kind]}
+							loading={priority ? "eager" : "lazy"}
+							fetchPriority={priority ? "high" : undefined}
+						/>
+					</div>
+				)}
 			</div>
 			<div
 				aria-hidden="true"
-				className={`pointer-events-none absolute inset-0 isolate z-3 mx-auto max-w-[268px] overflow-hidden ${COVER_HUE[kind]}`}
+				className={`pointer-events-none absolute inset-0 isolate z-3 mx-auto overflow-hidden group-has-[[data-cover-front]>img]/cover:opacity-50 ${COVER_FADE_WIDTH[kind]} ${COVER_HUE[kind]}`}
 				style={COVER_FADE_MASK}
 			>
 				<div className={COVER_SURFACE_WASH} />
+				{wash}
 			</div>
 		</div>
 	);
@@ -1412,7 +1546,7 @@ function ArtifactList({
 function ArtifactGrid({pinned, artifacts, now}: {pinned: ArtifactSummary[]; artifacts: ArtifactSummary[]; now: Date})
 {
 	const idPrefix = useId();
-	if (pinned.length === 0) return <ArtifactCardList artifacts={artifacts} now={now} pinned={false} />;
+	if (pinned.length === 0) return <ArtifactCardList artifacts={artifacts} now={now} pinned={false} priorityThumbs />;
 	const sections = [
 		{
 			label: "Pinned",
@@ -1443,6 +1577,7 @@ function ArtifactGrid({pinned, artifacts, now}: {pinned: ArtifactSummary[]; arti
 							artifacts={section.items}
 							now={now}
 							pinned={section.pinned}
+							priorityThumbs={false}
 							labelledBy={headingId}
 						/>
 					</section>
@@ -1456,11 +1591,14 @@ function ArtifactCardList({
 	artifacts,
 	now,
 	pinned,
+	priorityThumbs,
 	labelledBy,
 }: {
 	artifacts: ArtifactSummary[];
 	now: Date;
 	pinned: boolean;
+	/** Only the leading section loads thumbnails eagerly; a pinned section ahead of it takes that slot. */
+	priorityThumbs: boolean;
 	labelledBy?: string;
 })
 {
@@ -1470,8 +1608,14 @@ function ArtifactCardList({
 			aria-labelledby={labelledBy}
 			className="grid @container gap-6 grid-cols-[repeat(auto-fill,minmax(min(100%,max(15rem,30%)),1fr))]"
 		>
-			{artifacts.map((artifact) => (
-				<ArtifactCard key={artifact.url} artifact={artifact} now={now} pinned={pinned} />
+			{artifacts.map((artifact, index) => (
+				<ArtifactCard
+					key={artifact.url}
+					artifact={artifact}
+					now={now}
+					pinned={pinned}
+					priorityThumb={priorityThumbs && index < PRIORITY_THUMBS}
+				/>
 			))}
 		</ul>
 	);
@@ -1481,7 +1625,17 @@ function ArtifactCardList({
  * Upstream's grid card: the whole card grows to 103% on hover (and while its menu is open) around an r16
  * pressable holding the tinted cover and the 72px mark row; More and Pin float top-right over the cover.
  */
-function ArtifactCard({artifact, now, pinned}: {artifact: ArtifactSummary; now: Date; pinned: boolean})
+function ArtifactCard({
+	artifact,
+	now,
+	pinned,
+	priorityThumb,
+}: {
+	artifact: ArtifactSummary;
+	now: Date;
+	pinned: boolean;
+	priorityThumb: boolean;
+})
 {
 	const {verb, ms} = cardMetaTime(artifact);
 	return (
@@ -1505,7 +1659,7 @@ function ArtifactCard({artifact, now, pinned}: {artifact: ArtifactSummary; now: 
 								data-card-preview=""
 								className="relative h-[152px] shrink-0 select-none overflow-hidden"
 							>
-								<ArtifactCover artifact={artifact} />
+								<ArtifactCover artifact={artifact} priority={priorityThumb} />
 							</div>
 							<div data-card-body="" className="relative flex min-h-18 flex-1 items-center gap-3 p-4">
 								<div aria-hidden="true">
