@@ -10,6 +10,7 @@ import
 	REOPEN_LOOP_COUNT,
 	REOPEN_STREAK_MS,
 	REOPEN_WINDOW_MS,
+	markClaimHolds,
 	TurnMarkOutletStore,
 } from "../src/lib/turn-mark-outlet";
 
@@ -256,6 +257,171 @@ describe("TurnMarkOutletStore", () =>
 		const store = new TurnMarkOutletStore();
 		cycle(store, outletEl(), REOPEN_LOOP_COUNT - 1);
 		expect(warn.mock.calls).toStrictEqual([]);
+	});
+});
+
+describe("TurnMarkOutletStore mark members, as upstream's Xd hold/yieldFor/say", () =>
+{
+	afterEach(() =>
+	{
+		vi.useRealTimers();
+	});
+
+	it("holds while any row holds, and yields while any yielder is registered", () =>
+	{
+		const store = new TurnMarkOutletStore();
+		const seen: string[] = [];
+		store.subscribeMark(() =>
+		{
+			seen.push(`${String(store.held())}/${String(store.yields())}`);
+		});
+		const releaseA = store.hold("a");
+		const releaseB = store.hold("b");
+		releaseA();
+		const unyield = store.yieldFor("line");
+		releaseB();
+		unyield();
+		expect(seen).toStrictEqual(["true/false", "true/true", "false/true", "false/false"]);
+	});
+
+	it("claims only in flight with a store, never while a yielder is registered, and keeps a held claim once the turn stops being live", () =>
+	{
+		const claim = (inFlight: boolean, yields: boolean, heldBefore: boolean, turnLive: boolean, hasStore = true) =>
+			markClaimHolds(
+				{
+					hasStore,
+					inFlight,
+					yields,
+					heldBefore,
+					turnLive,
+				},
+			);
+		expect([
+			claim(true, false, false, true),
+			claim(true, true, true, true),
+			claim(false, false, true, true),
+			claim(true, false, true, false),
+			claim(true, false, false, false),
+			claim(true, false, false, true, false),
+		]).toStrictEqual([true, false, false, true, false, false]);
+	});
+
+	it("shows the newest sayer's words, and the earlier one again when it leaves", () =>
+	{
+		const store = new TurnMarkOutletStore();
+		const first = store.say(
+			"a",
+			"Reading a.ts",
+			false,
+			{
+				id: "call-a",
+				startedAt: 1000,
+			},
+		);
+		const second = store.say("b", "Running tests", true, undefined);
+		const newest = store.markWords();
+		second();
+		expect(
+			{
+				newest,
+				restored: store.markWords(),
+			},
+		).toStrictEqual(
+			{
+				newest:
+				{
+					words: "Running tests",
+					unspoken: true,
+					call: undefined,
+					callWordsEndedAt: undefined,
+				},
+				restored:
+				{
+					words: "Reading a.ts",
+					unspoken: false,
+					call:
+					{
+						id: "call-a",
+						startedAt: 1000,
+					},
+					callWordsEndedAt: undefined,
+				},
+			},
+		);
+		first();
+	});
+
+	it("moves a sayer that speaks again to the newest place", () =>
+	{
+		const store = new TurnMarkOutletStore();
+		store.say("a", "Reading a.ts", false, undefined);
+		store.say("b", "Reading b.ts", false, undefined);
+		store.say("a", "Reading a.ts again", false, undefined);
+		expect(store.markWords().words).toBe("Reading a.ts again");
+	});
+
+	it("stamps callWordsEndedAt when the last sayer leaves only if a call was showing, and forgetSession clears it", () =>
+	{
+		vi.useFakeTimers();
+		vi.setSystemTime(50_000);
+		const store = new TurnMarkOutletStore();
+		store.say("a", "Thinking it over", false, undefined)();
+		const withoutCall = store.markWords().callWordsEndedAt;
+		store.say(
+			"b",
+			"Reading b.ts",
+			false,
+			{
+				id: "call-b",
+				startedAt: null,
+			},
+		)();
+		const withCall = store.markWords().callWordsEndedAt;
+		store.forgetSession();
+		expect([withoutCall, withCall, store.markWords().callWordsEndedAt]).toStrictEqual([
+			undefined,
+			50_000,
+			undefined,
+		]);
+	});
+
+	it("notes permission waits as upstream's noteWaiting: opens at min(start, now), closes once, keeps at most 32", () =>
+	{
+		vi.useFakeTimers();
+		vi.setSystemTime(10_000);
+		const store = new TurnMarkOutletStore();
+		store.noteWaiting(true, 8000);
+		store.noteWaiting(true, 9000);
+		vi.setSystemTime(12_000);
+		store.noteWaiting(false);
+		store.noteWaiting(false);
+		store.noteWaiting(true, 20_000);
+		const twoWaits = store.waits();
+		for (let index = 0; index < 40; index++)
+		{
+			store.noteWaiting(false);
+			store.noteWaiting(true);
+		}
+		expect(
+			{
+				twoWaits,
+				count: store.waits().length,
+			},
+		).toStrictEqual(
+			{
+				twoWaits: [
+					{
+						from: 8000,
+						to: 12_000,
+					},
+					{
+						from: 12_000,
+						to: null,
+					},
+				],
+				count: 32,
+			},
+		);
 	});
 });
 

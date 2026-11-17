@@ -4,6 +4,8 @@
  * drawn in an outlet below the card.
  */
 
+import type {PermissionWait} from "./working-marker";
+
 /** Upstream `_f`: how long a close waits (at most) before listeners hear of it. */
 export const OUTLET_LATE_NOTICE_MS = 250;
 /** Upstream `Yd`: a reopen this soon after a close counts toward the loop streak. */
@@ -105,6 +107,51 @@ export interface OpenOutlet
 	el: HTMLElement;
 }
 
+/** Upstream `tf`: a row holds the mark while in flight, unless the line yields; a held claim outlasts the live turn. */
+export function markClaimHolds({
+	hasStore,
+	inFlight,
+	yields,
+	heldBefore,
+	turnLive,
+}: Readonly<
+{
+	hasStore: boolean;
+	inFlight: boolean;
+	yields: boolean;
+	heldBefore: boolean;
+	turnLive: boolean;
+}>): boolean
+{
+	return hasStore && inFlight && !yields && (heldBefore || turnLive);
+}
+
+/** The call whose words a row hands to the line: its clock starts at `startedAt` (ms). */
+export interface SaidCall
+{
+	id: string;
+	startedAt: number | null;
+}
+
+/** Upstream's `words`/`wordsUnspoken`/`wordsCall`/`callWordsEndedAt`: what the line shows while it holds the mark. */
+export interface MarkWords
+{
+	words: string | undefined;
+	unspoken: boolean;
+	call: SaidCall | undefined;
+	callWordsEndedAt: number | undefined;
+}
+
+interface Said
+{
+	words: string;
+	unspoken: boolean;
+	call: SaidCall | undefined;
+}
+
+/** Upstream's `noteWaiting` keeps the last 31 waits plus the new one. */
+const MAX_WAITS = 32;
+
 /** Upstream `Qd`'s outlet members: one per session. */
 export class TurnMarkOutletStore
 {
@@ -118,10 +165,142 @@ export class TurnMarkOutletStore
 	private cancelLateOutletNotice: (() => void) | null = null;
 	private outletClaims: string[] = [];
 	private underPlan = false;
+	private readonly holders = new Set<string>();
+	private readonly yielders = new Set<string>();
+	private readonly said = new Map<string, Said>();
+	private readonly markListeners = new Set<() => void>();
+	private shownWords: MarkWords =
+	{
+		words: undefined,
+		unspoken: false,
+		call: undefined,
+		callWordsEndedAt: undefined,
+	};
+	private waitList: readonly PermissionWait[] = [];
 
 	readonly outlet = (): OpenOutlet | null => this.open;
 	readonly outletOwner = (): string | undefined => this.outletClaims.at(-1);
 	readonly outletUnderPlan = (): boolean => this.underPlan;
+	/** Upstream `held`: whether any row holds the turn mark. */
+	readonly held = (): boolean => this.holders.size > 0;
+	/** Upstream `yields`: whether the working line has taken the mark, so no row may claim it. */
+	readonly yields = (): boolean => this.yielders.size > 0;
+	readonly markWords = (): MarkWords => this.shownWords;
+	readonly waits = (): readonly PermissionWait[] => this.waitList;
+
+	readonly subscribeMark = (listener: () => void): (() => void) =>
+	{
+		this.markListeners.add(listener);
+		return () =>
+		{
+			this.markListeners.delete(listener);
+		};
+	};
+
+	private tellMarkListeners(): void
+	{
+		for (const listener of this.markListeners) listener();
+	}
+
+	private enter(set: Set<string>, id: string): () => void
+	{
+		const was = set.size > 0;
+		set.add(id);
+		if (!was) this.tellMarkListeners();
+		return () =>
+		{
+			if (set.delete(id) && set.size === 0) this.tellMarkListeners();
+		};
+	}
+
+	/** Upstream `hold`: register a row that holds the mark. */
+	hold(id: string): () => void
+	{
+		return this.enter(this.holders, id);
+	}
+
+	/** Upstream `yieldFor`: the working line takes the mark; rows lose it and say their words instead. */
+	yieldFor(id: string): () => void
+	{
+		return this.enter(this.yielders, id);
+	}
+
+	/** Upstream `showNewestSaid`. */
+	private showNewestSaid(): void
+	{
+		const newest = [...this.said.values()].at(-1);
+		const callWordsEndedAt =
+			newest === undefined && this.shownWords.call !== undefined ? Date.now() : this.shownWords.callWordsEndedAt;
+		this.shownWords =
+		{
+			words: newest?.words,
+			unspoken: newest?.unspoken ?? false,
+			call: newest?.call,
+			callWordsEndedAt,
+		};
+		this.tellMarkListeners();
+	}
+
+	/** Upstream `say`: a row that cannot hold the mark hands its running words to the line; the newest sayer shows. */
+	say(id: string, words: string, unspoken: boolean, call: SaidCall | undefined): () => void
+	{
+		this.said.delete(id);
+		this.said.set(
+			id,
+			{
+				words,
+				unspoken,
+				call,
+			},
+		);
+		this.showNewestSaid();
+		return () =>
+		{
+			this.said.delete(id);
+			this.showNewestSaid();
+		};
+	}
+
+	/** Upstream `noteWaiting`: open a permission wait at `min(start, now)`, or close the open one now. */
+	noteWaiting(waiting: boolean, start?: number): void
+	{
+		const last = this.waitList.at(-1);
+		const open = last?.to === null;
+		if (waiting && !open)
+		{
+			const now = Date.now();
+			this.waitList = [
+				...this.waitList.slice(-(MAX_WAITS - 1)),
+				{
+					from: Math.min(start ?? now, now),
+					to: null,
+				},
+			];
+		}
+		else if (!waiting && open)
+		{
+			this.waitList = [
+				...this.waitList.slice(0, -1),
+				{
+					from: last.from,
+					to: Date.now(),
+				},
+			];
+			this.tellMarkListeners();
+		}
+	}
+
+	/** Upstream `forgetSession`: drop the waits and the post-call clock hold. */
+	forgetSession(): void
+	{
+		this.waitList = [];
+		this.shownWords =
+		{
+			...this.shownWords,
+			callWordsEndedAt: undefined,
+		};
+		this.tellMarkListeners();
+	}
 
 	readonly subscribeOutlet = (listener: () => void): (() => void) =>
 	{

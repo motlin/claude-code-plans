@@ -106,6 +106,7 @@ import {usePickupSettling} from "../lib/pickup-settling";
 import {assistantTurnDetails, userTurnDetails} from "../lib/turn-metadata";
 import {TurnChangesCard} from "./turn-changes-card";
 import {TurnMarkCarrier} from "./turn-mark-outlet";
+import {useMarkClaim, useSayWords} from "./turn-mark-context";
 import {StaleCompactBand, type StaleCompactBandProps} from "./stale-compact-band";
 import {lastAssistantReplyEntry} from "../lib/stale-compact";
 import {collectTurnChanges, lastTurnChangesAnchor, type TurnChanges} from "../lib/turn-changes";
@@ -7493,6 +7494,14 @@ function isPendingToolCall(call: ClientToolCall): boolean
 }
 
 /** An in-flight row's live elapsed time, in the rest ink after its label. */
+/** A call's start as epoch ms for the working line's call clock, or null when unknown. */
+function callStartMs(startedAt: string | undefined): number | null
+{
+	if (startedAt === undefined) return null;
+	const ms = Date.parse(startedAt);
+	return Number.isNaN(ms) ? null : ms;
+}
+
 function RunningElapsed({startedAt}: {startedAt: string | undefined})
 {
 	const seconds = useElapsedSeconds(startedAt);
@@ -7998,10 +8007,22 @@ function ToolCallRow({
 	// Likewise whether a Bash call ran inside the sandbox.
 	const sandboxed = verbose && call.name === "Bash" ? call.sandboxed : undefined;
 
-	// Upstream leads a standalone in-flight row with its activity WorkingMark and follows the label with the elapsed time.
+	// Upstream follows a standalone in-flight row's label with the elapsed time.
 	const runningRow = pending && isTurnStatus;
-	// Upstream marks a pending top-level Agent step as well, keeping its navigating-row look.
-	const markedRow = pending && !nested;
+	// Upstream (`bt`) leads an in-flight top-level row, a pending Agent step too, with its activity WorkingMark while
+	// it holds the turn mark; once the working line takes the mark, the row hands its running words to the line.
+	const markedRow = useMarkClaim(pending && !nested);
+	// Upstream's `runningWords`: the row's own label, as it reads it.
+	useSayWords(
+		pending && !nested && !markedRow
+			? [liveLabel, liveDisplayParam].filter((part) => part !== "").join(" ")
+			: undefined,
+		false,
+		{
+			id: call.id,
+			startedAt: callStartMs(call.startedAt),
+		},
+	);
 	const liveTaskId = call.name === "Bash" ? backgroundTasks?.running.get(call.id) : undefined;
 	const liveOutput =
 		backgroundTasks !== null && liveTaskId !== undefined
@@ -8409,7 +8430,7 @@ function ToolCallRow({
 						toggleExpanded();
 					}
 				}}
-				className={`relative group/tool flex items-center ${disclosureLayout} gap-g5 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3${isTurnStatus ? ` ${TURN_STATUS_ROW_COMFORTABLE} comfortable:gap-g6` : ""}${runningRow ? ` ${TURN_STATUS_ROW_MARKED_MOTION}` : ""}`}
+				className={`relative group/tool flex items-center ${disclosureLayout} gap-g5 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3${isTurnStatus ? ` ${TURN_STATUS_ROW_COMFORTABLE} comfortable:gap-g6` : ""}${runningRow && markedRow ? ` ${TURN_STATUS_ROW_MARKED_MOTION}` : ""}`}
 				style={isTurnStatus ? TURN_STATUS_ROW_STYLE : undefined}
 			>
 				{rowLabel}
@@ -8437,7 +8458,7 @@ function ToolCallRow({
 	return withHoistedImages(
 		isTurnStatus ? (
 			// Upstream `St`: a marked row is carried into the turn-mark outlet below a docked card.
-			<TurnMarkCarrier holds={runningRow} inFlight={pending}>
+			<TurnMarkCarrier holds={runningRow && markedRow} inFlight={pending}>
 				<TurnStatusFrame leading={leading}>{disclosure}</TurnStatusFrame>
 			</TurnMarkCarrier>
 		) : markedRow ? (
@@ -8641,6 +8662,20 @@ function ToolCallSummary({
 				? held.runningText
 				: `${held.runningText} ${heldSubject}`
 			: countedLabelText(summary);
+	// Upstream's group TurnStatus holds the mark while busy; once the working line takes it, the group says the
+	// in-flight step's words, unspoken, so the line announces them.
+	const marked = useMarkClaim(busy);
+	useSayWords(
+		held.state === "busy" && !marked ? announcement : undefined,
+		true,
+		held.state === "busy"
+			?
+				{
+					id: held.pendingCall.id,
+					startedAt: callStartMs(held.pendingCall.startedAt),
+				}
+			: undefined,
+	);
 	const busyRowCut = useTypeRowCut(held.state === "busy" ? held.runningText : "");
 
 	// Each step's place in the group's screenshot strip, which collapsed groups show at the row's end.
@@ -8693,14 +8728,14 @@ function ToolCallSummary({
 			data-cds-row-toggle=""
 			className={
 				fileMeta === undefined
-					? `${rowClass}${busy && !hasGroupMedia ? ` ${TURN_STATUS_ROW_MARKED_MOTION}` : ""}`
+					? `${rowClass}${marked && !hasGroupMedia ? ` ${TURN_STATUS_ROW_MARKED_MOTION}` : ""}`
 					: "flex shrink-0 items-center gap-g1 cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3"
 			}
 			style={fileMeta === undefined ? rowStyle : undefined}
 		>
 			{fileMeta === undefined && (
 				<span className={`inline-flex items-center gap-g3 min-w-0 ${ink}`}>
-					{held.state === "busy" ? (
+					{held.state === "busy" && marked ? (
 						// Upstream leads a busy group header like a busy row: the call's mark, its label, elapsed, sr "running".
 						<>
 							<WorkingMark
@@ -8888,7 +8923,7 @@ function ToolCallSummary({
 	);
 	return (
 		// Upstream's group TurnStatus carrier: a busy group header goes below a docked card too.
-		<TurnMarkCarrier holds={busy}>
+		<TurnMarkCarrier holds={marked}>
 			<TurnStatusFrame leading={leading}>{status}</TurnStatusFrame>
 		</TurnMarkCarrier>
 	);

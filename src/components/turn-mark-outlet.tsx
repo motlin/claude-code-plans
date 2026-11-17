@@ -1,11 +1,9 @@
 import
 {
-	createContext,
 	useContext,
 	useEffect,
 	useId,
 	useLayoutEffect,
-	useMemo,
 	useRef,
 	useState,
 	useSyncExternalStore,
@@ -14,22 +12,26 @@ import
 } from "react";
 import {createPortal} from "react-dom";
 
-import {moveInto, TurnMarkOutletStore, type OpenOutlet} from "../lib/turn-mark-outlet";
+import {moveInto, type OpenOutlet, type TurnMarkOutletStore} from "../lib/turn-mark-outlet";
+import {noSubscribe, TurnMarkOutletContext, useTurnMarkStore} from "./turn-mark-context";
 
-const TurnMarkOutletContext = createContext<TurnMarkOutletStore | null>(null);
-
-const noSubscribe = () => () =>
-{
-};
 const noOutlet = () => null;
 const notUnderPlan = () => false;
 const noOwner = () => undefined;
 
-/** Upstream `tf`: one turn-mark store per session, with any pending late-close notice cancelled on unmount. */
-export function TurnMarkOutletProvider({sessionId, children}: {sessionId: string; children: ReactNode})
+/** Upstream `$d`: one turn-mark store per session, with any pending late-close notice cancelled on unmount. */
+export function TurnMarkOutletProvider({
+	sessionId,
+	store: given,
+	children,
+}: {
+	sessionId: string;
+	store?: TurnMarkOutletStore;
+	children: ReactNode;
+})
 {
-	// oxlint-disable-next-line react-hooks/exhaustive-deps -- a new session gets a fresh store
-	const store: TurnMarkOutletStore = useMemo(() => new TurnMarkOutletStore(), [sessionId]);
+	const own = useTurnMarkStore(sessionId);
+	const store = given ?? own;
 	useEffect(
 		() => () =>
 		{

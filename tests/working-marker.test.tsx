@@ -2159,11 +2159,20 @@ describe("WorkingMarker pre-stream phases", () =>
 			return view;
 		}
 
+		/** From the 400ms the row shows Waiting for Claude to the phase word's release at 150 + 650ms. */
+		const PHASE_WORD_RELEASE_MS = 400;
+
 		function at649And650(view: ReturnType<typeof render>): [string | null, string | null]
 		{
+			// The phase word's own 650ms hold (Dg) lets it go at 800ms, 250ms before the row's hold ends; step there
+			// first so the row hears of it on time, as act defers renders to its end.
 			act(() =>
 			{
-				vi.advanceTimersByTime(LABEL_HOLD_DEFAULT_MS - 1);
+				vi.advanceTimersByTime(PHASE_WORD_RELEASE_MS);
+			});
+			act(() =>
+			{
+				vi.advanceTimersByTime(LABEL_HOLD_DEFAULT_MS - PHASE_WORD_RELEASE_MS - 1);
 			});
 			const before = visibleLineText(view.container);
 			act(() =>
@@ -2176,8 +2185,8 @@ describe("WorkingMarker pre-stream phases", () =>
 		it("holds Waiting for Claude 650ms before the stats line", () =>
 		{
 			const view = waitingShown();
-			view.rerender(<WorkingMarker state={REPLIED} />);
-			expect(at649And650(view)).toStrictEqual(["Waiting for Claude", "5s"]);
+			view.rerender(<WorkingMarker state={REPLIED} tokens={400} />);
+			expect(at649And650(view)).toStrictEqual(["Waiting for Claude", "5s·400 tokens"]);
 		});
 
 		it("holds a fresh label 650ms before Stopping", () =>
@@ -2206,6 +2215,114 @@ describe("WorkingMarker pre-stream phases", () =>
 				/>,
 			);
 			expect(visibleLineText(view.container)).toBeNull();
+		});
+	});
+
+	describe("the phase word's own hold (upstream q6, then Dg at 650ms per turn epoch)", () =>
+	{
+		const REPLIED_WITH_TOKENS =
+		{
+			...UNREPLIED,
+			replied: true,
+		} as const;
+
+		function fakeClock()
+		{
+			vi.useFakeTimers(
+				{
+					toFake: ["setTimeout", "clearTimeout", "performance"],
+				},
+			);
+			stubReducedMotion(false);
+		}
+
+		function advance(ms: number)
+		{
+			act(() =>
+			{
+				vi.advanceTimersByTime(ms);
+			});
+		}
+
+		it("keeps a phase word that clears soon after it shows for 650ms, so the row still shows it", () =>
+		{
+			fakeClock();
+			const view = render(
+				<WorkingMarker
+					state={
+					{
+						status: "idle",
+					}}
+					sending
+				/>,
+			);
+			view.rerender(<WorkingMarker state={UNREPLIED} />);
+			advance(PHASE_SETTLE_MS);
+			// Waiting for Claude is the phase word from here; the reply lands 100ms later.
+			advance(100);
+			view.rerender(<WorkingMarker state={REPLIED_WITH_TOKENS} tokens={400} />);
+			// The row shows the word 250ms after it became the phase word, at 400ms.
+			advance(150);
+			const shownAt400 = visibleLineText(view.container);
+			// The word lets go 650ms after it became the phase word (800ms); the row then settles 250ms.
+			advance(400);
+			advance(TURN_STATUS_SETTLE_MS - 1);
+			const before = visibleLineText(view.container);
+			advance(1);
+			expect([shownAt400, before, visibleLineText(view.container)]).toStrictEqual([
+				"Waiting for Claude",
+				"Waiting for Claude",
+				"5s·400 tokens",
+			]);
+		});
+
+		it("keeps the last phase word while the turn works with no token stat and no thinking yet", () =>
+		{
+			fakeClock();
+			const view = render(<WorkingMarker state={UNREPLIED} />);
+			view.rerender(<WorkingMarker state={REPLIED_WITH_TOKENS} />);
+			advance(5000);
+			const noTokens = visibleLineText(view.container);
+			view.rerender(<WorkingMarker state={REPLIED_WITH_TOKENS} tokens={400} />);
+			advance(5000);
+			expect([noTokens, visibleLineText(view.container)]).toStrictEqual(["Waiting for Claude", "5s·400 tokens"]);
+		});
+
+		it("shows a new turn's phase word at once, dropping the last turn's held word", () =>
+		{
+			fakeClock();
+			const view = render(
+				<WorkingMarker
+					state={
+					{
+						status: "idle",
+					}}
+					sending
+				/>,
+			);
+			view.rerender(<WorkingMarker state={UNREPLIED} />);
+			advance(PHASE_SETTLE_MS);
+			advance(50);
+			view.rerender(
+				<WorkingMarker
+					state={
+					{
+						status: "idle",
+					}}
+				/>,
+			);
+			const ended = visibleLineText(view.container);
+			advance(50);
+			view.rerender(
+				<WorkingMarker
+					state={
+					{
+						status: "idle",
+					}}
+					sending
+				/>,
+			);
+			expect([ended, visibleLineText(view.container)]).toStrictEqual([null, "Sending"]);
 		});
 	});
 
@@ -2295,6 +2412,7 @@ describe("WorkingMarker pre-stream phases", () =>
 					...UNREPLIED,
 					replied: true,
 				}}
+				tokens={400}
 			/>,
 		);
 		act(() =>
@@ -2306,7 +2424,7 @@ describe("WorkingMarker pre-stream phases", () =>
 		{
 			vi.advanceTimersByTime(1);
 		});
-		expect([settling, visibleLineText(view.container)]).toStrictEqual(["Waiting for Claude", "5s"]);
+		expect([settling, visibleLineText(view.container)]).toStrictEqual(["Waiting for Claude", "5s·400 tokens"]);
 	});
 });
 

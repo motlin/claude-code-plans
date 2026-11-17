@@ -5,7 +5,20 @@ import {SessionNotFound} from "./session-unavailable";
 import {sessionScrollKey} from "../lib/session-route-location";
 import {useLocation, useNavigate} from "@tanstack/react-router";
 import {useQuery, useQueryClient} from "@tanstack/react-query";
-import {Fragment, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ComponentProps} from "react";
+import
+{
+	Fragment,
+	lazy,
+	Suspense,
+	useCallback,
+	useEffect,
+	useId,
+	useMemo,
+	useRef,
+	useState,
+	useSyncExternalStore,
+	type ComponentProps,
+} from "react";
 import {Minimize2} from "lucide-react";
 import {SessionTileFrame} from "./session-tile-frame";
 import {latestBreakdown, preferNewerBreakdown, railContextPercent} from "../lib/context-breakdown";
@@ -102,7 +115,14 @@ import {sessionOutputStyle} from "../lib/session-output-style";
 import {useMemoryDialogLoad} from "../hooks/use-memory-dialog-load";
 import {type QueuedPrompt, steeredPrompts} from "../lib/composer-queue";
 import {recallLastHeldSteer} from "../lib/steer-recall";
-import {tailMarkerQuiet, turnTokenEstimate, workingLineWaitsOnUser} from "../lib/working-marker";
+import
+{
+	tailMarkerQuiet,
+	toolLabelSince,
+	turnTokenEstimate,
+	workingLineWaitsOnUser,
+	type WorkingLineToolLabel,
+} from "../lib/working-marker";
 import {WaitingForInputNotice} from "./approval-card";
 import {UrlElicitationDock} from "./url-elicitation-dock";
 import {RefusalFallbackDock} from "./refusal-fallback-dock";
@@ -293,6 +313,7 @@ import
 import {compactActionState} from "../lib/compact-action";
 import {TerminalWritesTipProvider} from "./terminal-writes-tip";
 import {TurnMarkOutlet, TurnMarkOutletProvider} from "./turn-mark-outlet";
+import {useTurnMarkStore} from "./turn-mark-context";
 import {markedRowBelowTailSlot} from "../lib/turn-mark-outlet";
 import {useSessionMentionProvider} from "../hooks/use-session-mention-provider";
 import {sessionMentionsQueryOptions} from "../lib/api/session-mentions";
@@ -2414,7 +2435,45 @@ function SessionView({
 		liveHerdrPrompt.state.phase === "held" ||
 		liveHerdrPrompt.state.phase === "sent" ||
 		(promptBehavior.usesHerdr && steeredPrompts(queuedPrompts).length > 0);
-	const workingLineQuiet = tailMarkerQuiet(workingMarkerState, inFlightRow);
+	// Upstream `Xd`: the session's turn-mark store. Rows hold the mark through it, and hand the line their running
+	// words when the line takes it. The in-flight call also quiets the line directly, so a server render agrees.
+	const turnMarkStore = useTurnMarkStore(sessionId);
+	const markHeld = useSyncExternalStore(turnMarkStore.subscribeMark, turnMarkStore.held, () => false);
+	const markWords = useSyncExternalStore(
+		turnMarkStore.subscribeMark,
+		turnMarkStore.markWords,
+		turnMarkStore.markWords,
+	);
+	const permissionWaits = useSyncExternalStore(turnMarkStore.subscribeMark, turnMarkStore.waits, turnMarkStore.waits);
+	// Upstream `Qd`: the store hears when the session starts and stops waiting on a permission.
+	useEffect(() =>
+	{
+		turnMarkStore.noteWaiting(awaitingPermission);
+	}, [turnMarkStore, awaitingPermission]);
+	useEffect(
+		() => () =>
+		{
+			turnMarkStore.forgetSession();
+		},
+		[turnMarkStore],
+	);
+	const workingLineQuiet = tailMarkerQuiet(workingMarkerState, inFlightRow || markHeld);
+	const workingToolLabel = useMemo((): WorkingLineToolLabel | null =>
+	{
+		if (markWords.words === undefined || workingMarkerState.status !== "working") return null;
+		return {
+			words: markWords.words,
+			unspoken: markWords.unspoken,
+			since: toolLabelSince(
+				{
+					callStartedAt: markWords.call?.startedAt ?? null,
+					turnStartedAt: workingMarkerState.turnStartedAt,
+					waits: permissionWaits,
+				},
+			),
+		};
+	}, [markWords, workingMarkerState, permissionWaits]);
+	const toolLabelEndedAt = markWords.callWordsEndedAt ?? null;
 	const runningTaskCount = backgroundTasks.running.length;
 	// Upstream's "sending" phase lasts until the prompt reaches the transcript, or a sent answer's result lands.
 	const promptSending =
@@ -2430,9 +2489,20 @@ function SessionView({
 				bare={bare}
 				sending={promptSending}
 				tokens={turnTokens}
+				toolLabel={workingToolLabel}
+				toolLabelEndedAt={toolLabelEndedAt}
 			/>
 		),
-		[workingMarkerState, workingLineQuiet, workingLineWaits, runningTaskCount, promptSending, turnTokens],
+		[
+			workingMarkerState,
+			workingLineQuiet,
+			workingLineWaits,
+			runningTaskCount,
+			promptSending,
+			turnTokens,
+			workingToolLabel,
+			toolLabelEndedAt,
+		],
 	);
 	// Upstream `pf`: while the docked permission card holds the tail of a running turn, the marked row is carried below it.
 	const cardHoldsTail = pendingPermission !== null && workingMarkerState.status !== "idle";
@@ -2443,6 +2513,13 @@ function SessionView({
 			heldRedialReported: false,
 		},
 	);
+	// Upstream `aDe`'s `yieldFor`: the line below the tail slot takes the mark when no row is carried there.
+	const lineTakesMark = workingLineFollowsTranscript && cardHoldsTail && markedRow === false;
+	const lineYieldId = useId();
+	useEffect(
+		() => (lineTakesMark ? turnMarkStore.yieldFor(lineYieldId) : undefined),
+		[turnMarkStore, lineYieldId, lineTakesMark],
+	);
 	const transcriptTail = useMemo(
 		() => (workingLineFollowsTranscript ? null : workingLine(true)),
 		[workingLineFollowsTranscript, workingLine],
@@ -2452,7 +2529,7 @@ function SessionView({
 		<TerminalWritesTipProvider enableWrites={enableTerminalWrites}>
 			<ApprovalDockContext.Provider value={approvalDock}>
 				<SessionMentionsProvider mentions={sentSessionMentions?.mentions}>
-					<TurnMarkOutletProvider sessionId={sessionId}>
+					<TurnMarkOutletProvider sessionId={sessionId} store={turnMarkStore}>
 						<div
 							className="h-full min-h-0"
 							data-perf-session={sessionId}

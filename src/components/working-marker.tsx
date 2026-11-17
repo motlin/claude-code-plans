@@ -1,4 +1,4 @@
-import {Fragment, useEffect, useId, useState} from "react";
+import {Fragment, useEffect, useId, useMemo, useState} from "react";
 import {useEventStreamConnecting} from "../hooks/use-claude-events";
 import {useRestInk} from "../lib/fizzy-lake";
 import {useReducedMotion} from "../lib/reduced-motion";
@@ -7,6 +7,7 @@ import {CHAT_COLUMN_CLASS} from "../lib/transcript-width";
 import
 {
 	clockHidden,
+	ELAPSED_MIN_SECONDS,
 	maskWorkingLabel,
 	CONNECTING_PHASE_LABEL,
 	PHASE_SETTLE_MS,
@@ -30,6 +31,9 @@ import {workingLineActivity} from "../lib/working-mark-activity";
 import {WorkingMark} from "./working-mark";
 
 const NEEDS_INPUT_LABEL = "Needs your input";
+
+/** Upstream `q6`'s `Dg(word, 650, …, epoch)`: a shown phase word holds this long before it changes. */
+const PHASE_WORD_HOLD_MS = 650;
 
 /** Upstream's warning Badge (`fX variant="warning"`) in the blocked TurnStatus. */
 const WARNING_BADGE_CLASS =
@@ -80,25 +84,61 @@ interface HeldLine
 	announcement: string;
 }
 
-/** Upstream's `g8`: a phase word appears or clears at once, but swapping for another waits out the settle. */
-function useSettledPhase(target: string | null): string | null
+/**
+ * Upstream's `q6`: the phase word the line shows. While `holdPrevious`, a cleared word keeps the shown one; a word
+ * appears or clears at once (and so does any change as a turn starts working), but swapping for another waits out the
+ * settle. The result then passes `Dg`: a shown word holds 650ms before any change, unless a new turn starts.
+ */
+function usePhaseWord(target: string | null, holdPrevious: boolean, working: boolean): string | null
 {
+	const [run, setRun] = useState(
+		{
+			working,
+			epoch: 0,
+		},
+	);
+	const started = working && !run.working;
+	const epoch = started ? run.epoch + 1 : run.epoch;
+	if (working !== run.working)
+		setRun(
+			{
+				working,
+				epoch,
+			},
+		);
 	const [shown, setShown] = useState(target);
-	const immediate = target === null || shown === null;
-	if (immediate && shown !== target) setShown(target);
+	const next = target === null && holdPrevious ? shown : target;
+	const immediate = next !== shown && (started || next === null || shown === null);
+	if (immediate) setShown(next);
 	useEffect(() =>
 	{
-		if (target === shown || target === null || shown === null) return undefined;
+		if (next === shown || next === null || shown === null) return undefined;
 		const timer = setTimeout(() =>
 		{
-			setShown(target);
+			setShown(next);
 		}, PHASE_SETTLE_MS);
 		return () =>
 		{
 			clearTimeout(timer);
 		};
-	}, [target, shown]);
-	return immediate ? target : shown;
+	}, [next, shown]);
+	const settled = immediate ? next : shown;
+	const value = useMemo(
+		() => (
+		{
+			word: settled,
+			epoch,
+		}),
+		[settled, epoch],
+	);
+	const held = useHeldLabel(
+		value,
+		`${String(epoch)}|${settled ?? ""}`,
+		{
+			minMs: (current) => (current.epoch === epoch ? PHASE_WORD_HOLD_MS : 0),
+		},
+	);
+	return held.word;
 }
 
 function waitingPhase(state: WorkingMarkerState, sending: boolean): string | null
@@ -202,9 +242,17 @@ export function WorkingMarker({
 {
 	const reduceMotion = useReducedMotion();
 	const restInk = useRestInk();
-	const phase = useSettledPhase(useLinePhase(state, sending, waitingOnUser));
+	const linePhase = useLinePhase(state, sending, waitingOnUser);
 	// Upstream draws no mark while the turn waits on the user.
-	const turnWorking = !waitingOnUser && (phase !== null || (state.status !== "idle" && state.status !== "waiting"));
+	const turnWorking =
+		!waitingOnUser && (linePhase !== null || (state.status !== "idle" && state.status !== "waiting"));
+	// Upstream keeps the last phase word until the token stat or Thinking has something to say.
+	const holdPhase =
+		state.status === "working" &&
+		!waitingOnUser &&
+		!state.thinking &&
+		!(state.elapsedSeconds >= ELAPSED_MIN_SECONDS && tokens > 0);
+	const phase = usePhaseWord(linePhase, holdPhase, turnWorking);
 	const source = workingLineLabelSource(
 		{
 			state,
