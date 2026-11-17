@@ -1118,7 +1118,7 @@ describe("ToolCallSummary stats and ink", () =>
 describe("group header file meta slot", () =>
 {
 	const META_CLASS =
-		"min-w-0 overflow-x-clip text-ellipsis whitespace-nowrap py-[0.125em] -my-[0.125em] text-secondary group-hover/tool:text-primary group-has-[:focus-visible]/tool:text-primary";
+		"group-has-[[data-cds-phrases=cut]]/phrases:sr-only min-w-0 overflow-x-clip text-ellipsis whitespace-nowrap py-[0.125em] -my-[0.125em] text-secondary group-hover/tool:text-primary group-has-[:focus-visible]/tool:text-primary";
 	const commandsThenRead = (readError = false): FakeCall[] => [
 		{
 			id: "t1",
@@ -1169,7 +1169,7 @@ describe("group header file meta slot", () =>
 				metaTitle: meta?.getAttribute("title"),
 				metaText: meta?.textContent,
 				metaInToggle: toggle?.contains(meta ?? null),
-				textClass: text?.className.split(" ").slice(0, 4).join(" "),
+				textClass: text?.className.split(" ").slice(0, 5).join(" "),
 				labelledBy: toggle
 					?.getAttribute("aria-labelledby")
 					?.split(" ")
@@ -1188,7 +1188,7 @@ describe("group header file meta slot", () =>
 				metaTitle: "/r/input-debug.png",
 				metaText: "input-debug.png",
 				metaInToggle: false,
-				textClass: "flex min-w-0 gap-xs items-center",
+				textClass: "flex min-w-0 gap-xs group/phrases items-center",
 				labelledBy: ["-label", "-meta"],
 				rowTitle: "/r/input-debug.png",
 				rowHoldsToggle: true,

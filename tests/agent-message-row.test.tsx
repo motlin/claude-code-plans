@@ -309,7 +309,7 @@ describe("Message from subagent rows", () =>
 			},
 		).toStrictEqual(
 			{
-				button: `group/step flex min-w-0 ${TURN_STATUS_ROW_GEOMETRY} py-0.5 items-center gap-g5 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3`,
+				button: `group/step flex min-w-0 ${TURN_STATUS_ROW_GEOMETRY} py-[calc((var(--cds-h-control)_-_1lh)_/_2)] items-center gap-g5 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3`,
 				parts: [
 					{
 						tag: "SPAN",

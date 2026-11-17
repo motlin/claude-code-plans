@@ -95,7 +95,14 @@ import {TranscriptMessageMenu} from "./transcript-context-menu";
 import {TranscriptSelectionBar} from "./transcript-selection-bar";
 import {TranscriptActionsContext, type TranscriptMessageRef} from "./transcript-actions-context";
 import {AssistantMessageActions, QuoteCopyAction, UserMessageActions} from "./message-actions";
-import {TURN_STATUS_ROW_GEOMETRY, TURN_STATUS_ROW_STYLE} from "./turn-status-row-geometry";
+import
+{
+	TURN_STATUS_ROW_GEOMETRY,
+	TURN_STATUS_ROW_MARKED_MOTION,
+	TURN_STATUS_ROW_PAD_Y,
+	TURN_STATUS_ROW_STYLE,
+} from "./turn-status-row-geometry";
+import {TurnStatusMarkSlot} from "./turn-status-mark-slot";
 import {MessageQuoteTiles} from "./message-excerpt-tiles";
 import {defined} from "../lib/defined";
 import {narrationProse} from "../lib/thinking-narration";
@@ -7587,15 +7594,11 @@ function TurnStatusFrame({leading, children}: {leading: boolean; children: React
 	);
 }
 
-/** Upstream `gR`: a marked (busy) row eases a change of its start margin. */
-const TURN_STATUS_ROW_MARKED_MOTION =
-	"transition-[margin-inline-start] duration-200 ease-out motion-reduce:transition-none";
+/** Upstream's TurnStatus row on the `qe` geometry, its height from --cds-h-control (24 / 28 / 32). */
+const TURN_STATUS_ROW_LAYOUT = `min-w-0 ${TURN_STATUS_ROW_GEOMETRY} ${TURN_STATUS_ROW_PAD_Y}`;
 
-/** Upstream's TurnStatus row: h24 with 2px block padding at compact, on the `qe` geometry. */
-const TURN_STATUS_ROW_LAYOUT = `min-w-0 ${TURN_STATUS_ROW_GEOMETRY} py-0.5`;
-
-/** The same row at comfortable density: h32, 6px block padding, r8 (pad-xs widens the inline padding). */
-const TURN_STATUS_ROW_COMFORTABLE = "comfortable:py-1.5 comfortable:rounded-r6";
+/** The same row at comfortable density: r8 (pad-xs widens the inline padding, h-control the height). */
+const TURN_STATUS_ROW_COMFORTABLE = "comfortable:rounded-r6";
 
 /** Upstream's status chevron grows from 12px to 16px at comfortable density. */
 const TURN_STATUS_CHEVRON_COMFORTABLE = "comfortable:[&_svg]:size-4";
@@ -8012,6 +8015,14 @@ function ToolCallRow({
 	// Upstream (`bt`) leads an in-flight top-level row, a pending Agent step too, with its activity WorkingMark while
 	// it holds the turn mark; once the working line takes the mark, the row hands its running words to the line.
 	const markedRow = useMarkClaim(pending && !nested);
+	// Upstream `zG`: the mark slot outlives the claim by its 400ms leave, then unmounts.
+	const [wasMarked, setWasMarked] = useState(markedRow);
+	const [markLeaving, setMarkLeaving] = useState(false);
+	if (markedRow !== wasMarked)
+	{
+		setWasMarked(markedRow);
+		setMarkLeaving(!markedRow);
+	}
 	// Upstream's `runningWords`: the row's own label, as it reads it.
 	useSayWords(
 		pending && !nested && !markedRow
@@ -8101,7 +8112,17 @@ function ToolCallRow({
 	) : null;
 	const rowLabel = (
 		<>
-			{markedRow && <WorkingMark activity={toolMarkActivity(call.name, call.input)} className="me-1.5" />}
+			{(markedRow || markLeaving) && (
+				<TurnStatusMarkSlot
+					motion={markedRow ? "busy" : "leaving"}
+					onLeft={() =>
+					{
+						setMarkLeaving(false);
+					}}
+				>
+					<WorkingMark activity={toolMarkActivity(call.name, call.input)} />
+				</TurnStatusMarkSlot>
+			)}
 			{joinedLabel ? (
 				// Upstream's grouped row: label and parameter in one <bdi>, joined by a plain space.
 				<MorphSlot id={`${statusId}-label`} swapKey={heldSwapKey} className="min-w-0 max-w-full">
@@ -8737,12 +8758,9 @@ function ToolCallSummary({
 				<span className={`inline-flex items-center gap-g3 min-w-0 ${ink}`}>
 					{held.state === "busy" && marked ? (
 						// Upstream leads a busy group header like a busy row: the call's mark, its label, elapsed, sr "running".
-						<>
-							<WorkingMark
-								activity={toolMarkActivity(held.pendingCall.name, held.pendingCall.input)}
-								className="me-1.5"
-							/>
-						</>
+						<TurnStatusMarkSlot motion="busy">
+							<WorkingMark activity={toolMarkActivity(held.pendingCall.name, held.pendingCall.input)} />
+						</TurnStatusMarkSlot>
 					) : null}
 					{/* One slot for both, so the busy label cross-fades into the counted line (a node label, keyed done|). */}
 					<MorphSlot
@@ -8802,7 +8820,7 @@ function ToolCallSummary({
 				className={rowClass}
 				style={rowStyle}
 			>
-				<span id={`${statusId}-text`} className={`flex min-w-0 gap-xs items-center ${ink}`}>
+				<span id={`${statusId}-text`} className={`flex min-w-0 gap-xs group/phrases items-center ${ink}`}>
 					<MorphSlot
 						id={`${statusId}-label`}
 						swapKey={turnStatusSwapKey("done", null)}
@@ -8813,7 +8831,7 @@ function ToolCallSummary({
 					</MorphSlot>
 					<span
 						id={`${statusId}-meta`}
-						className="min-w-0 overflow-x-clip text-ellipsis whitespace-nowrap py-[0.125em] -my-[0.125em] text-secondary group-hover/tool:text-primary group-has-[:focus-visible]/tool:text-primary"
+						className="group-has-[[data-cds-phrases=cut]]/phrases:sr-only min-w-0 overflow-x-clip text-ellipsis whitespace-nowrap py-[0.125em] -my-[0.125em] text-secondary group-hover/tool:text-primary group-has-[:focus-visible]/tool:text-primary"
 						title={fileMeta.file.path}
 					>
 						<FileRefTarget

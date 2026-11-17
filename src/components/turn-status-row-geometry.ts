@@ -13,3 +13,13 @@ export const TURN_STATUS_ROW_STYLE =
 {
 	"--cds-outset-x": "var(--cds-pad-xs)",
 } as React.CSSProperties;
+
+/**
+ * Upstream shared-frame `gr`: a row pads its line box out to the control height, so it stands 24px at
+ * compact, 32px at comfortable and 28px at comfortable under fizzy panels on a fine pointer.
+ */
+export const TURN_STATUS_ROW_PAD_Y = "py-[calc((var(--cds-h-control)_-_1lh)_/_2)]";
+
+/** Upstream `IO`: a marked (busy) row eases a change of its start margin. */
+export const TURN_STATUS_ROW_MARKED_MOTION =
+	"transition-[margin-inline-start] duration-200 ease-out motion-reduce:transition-none";

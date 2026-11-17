@@ -4078,7 +4078,7 @@ function groupedBashRecords(second: "ok" | "error" | "pending"): unknown[]
 	];
 }
 
-const STATUS_ROW_LAYOUT = `min-w-0 ${TURN_STATUS_ROW_GEOMETRY} py-0.5`;
+const STATUS_ROW_LAYOUT = `min-w-0 ${TURN_STATUS_ROW_GEOMETRY} py-[calc((var(--cds-h-control)_-_1lh)_/_2)]`;
 const MARKED_ROW_MOTION = "transition-[margin-inline-start] duration-200 ease-out motion-reduce:transition-none";
 
 describe("SessionChat grouped header height", () =>
@@ -4093,9 +4093,9 @@ describe("SessionChat grouped header height", () =>
 			},
 		).toStrictEqual(
 			{
-				completed: `relative group/tool flex items-center ${STATUS_ROW_LAYOUT} gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3 comfortable:py-1.5 comfortable:rounded-r6`,
-				failed: `relative group/tool flex items-center ${STATUS_ROW_LAYOUT} gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3 comfortable:py-1.5 comfortable:rounded-r6`,
-				running: `relative group/tool flex items-center ${STATUS_ROW_LAYOUT} gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3 comfortable:py-1.5 comfortable:rounded-r6 ${MARKED_ROW_MOTION}`,
+				completed: `relative group/tool flex items-center ${STATUS_ROW_LAYOUT} gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3 comfortable:rounded-r6`,
+				failed: `relative group/tool flex items-center ${STATUS_ROW_LAYOUT} gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3 comfortable:rounded-r6`,
+				running: `relative group/tool flex items-center ${STATUS_ROW_LAYOUT} gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3 comfortable:rounded-r6 ${MARKED_ROW_MOTION}`,
 			},
 		);
 	});
@@ -4120,7 +4120,7 @@ describe("SessionChat standalone status row layout", () =>
 			className: frame.querySelector(".group\\/tool")!.className,
 		};
 	};
-	const rowClass = `relative group/tool flex items-center ${STATUS_ROW_LAYOUT} gap-g5 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3 comfortable:py-1.5 comfortable:rounded-r6 comfortable:gap-g6`;
+	const rowClass = `relative group/tool flex items-center ${STATUS_ROW_LAYOUT} gap-g5 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3 comfortable:rounded-r6 comfortable:gap-g6`;
 
 	it("draws failed and running standalone rows in the completed row's 24px padded layout, easing the running one's start margin, as upstream does", () =>
 	{
@@ -4183,7 +4183,7 @@ describe("SessionChat TurnStatus rows at comfortable density (coarse pointer)", 
 			chevron: comfortable(control?.querySelector("svg")?.parentElement ?? null),
 		};
 	};
-	const rowTokens = ["comfortable:py-1.5", "comfortable:rounded-r6"];
+	const rowTokens = ["comfortable:rounded-r6"];
 
 	it("grows grouped and standalone tool rows to upstream's h32 6/6 r8 row with a 16px chevron and a 6px outset", () =>
 	{
@@ -4267,8 +4267,8 @@ describe("SessionChat disclosure focus treatment", () =>
 			},
 		).toStrictEqual(
 			{
-				row: `relative group/tool flex items-center ${STATUS_ROW_LAYOUT} gap-g5 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3 comfortable:py-1.5 comfortable:rounded-r6 comfortable:gap-g6`,
-				summary: `relative group/tool flex items-center ${STATUS_ROW_LAYOUT} gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3 comfortable:py-1.5 comfortable:rounded-r6`,
+				row: `relative group/tool flex items-center ${STATUS_ROW_LAYOUT} gap-g5 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3 comfortable:rounded-r6 comfortable:gap-g6`,
+				summary: `relative group/tool flex items-center ${STATUS_ROW_LAYOUT} gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3 comfortable:rounded-r6`,
 			},
 		);
 	});

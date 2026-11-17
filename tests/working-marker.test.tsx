@@ -62,6 +62,14 @@ afterEach(() =>
 	vi.useRealTimers();
 });
 
+/** Upstream's busy/blocked TurnStatus row (sD, items-center, gr, qe, the marked margin ease, the inset focus ring). */
+const WORKING_ROW_CLASS =
+	"flex min-w-0 gap-xs text-start font-sans text-body font-normal items-center py-[calc((var(--cds-h-control)_-_1lh)_/_2)] w-stretch px-xs ms-[calc(var(--cds-assistant-message-text-inset,0px)_-_var(--cds-outset-x,0px)_-_var(--cds-turn-status-hang,0px))] me-[calc(var(--cds-assistant-message-text-stop,0px)_-_var(--cds-outset-x,0px))] transition-[margin-inline-start] duration-200 ease-out motion-reduce:transition-none rounded outline-none focus-visible:[box-shadow:inset_0_0_0_1px_var(--cds-fill-accent)] focus-visible:outline-hidden";
+
+/** Upstream `zG`'s 20px mark slot: mark plus gap is always 20 + 12px. */
+const WORKING_MARK_SLOT_CLASS =
+	"relative flex h-[1lh] shrink-0 items-center justify-center w-[20px] me-[calc(12px_-_var(--cds-gap-xs))]";
+
 describe("workingMarkerState", () =>
 {
 	it("is idle with no events", () =>
@@ -1289,6 +1297,8 @@ describe("WorkingMarker", () =>
 				state: status?.getAttribute("data-state"),
 				statusClass: status?.className,
 				rowClass: status?.firstElementChild?.className,
+				rowTabIndex: status?.firstElementChild?.getAttribute("tabindex"),
+				rowOutset: (status?.firstElementChild as HTMLElement | null)?.style.getPropertyValue("--cds-outset-x"),
 				markClass: mark?.className,
 				markHidden: mark?.getAttribute("aria-hidden"),
 				animated: mark?.querySelector('[data-cds="WorkingMark"]')?.getAttribute("data-animated"),
@@ -1308,9 +1318,10 @@ describe("WorkingMarker", () =>
 				hidden: null,
 				state: "busy",
 				statusClass: "group/status flex w-full min-w-0 flex-col",
-				rowClass:
-					"flex min-w-0 items-center gap-1.5 px-1 py-0.5 text-body comfortable:px-1.5 comfortable:py-1.5",
-				markClass: "relative me-[6px] flex h-[1lh] w-[20px] shrink-0 items-center justify-center",
+				rowClass: WORKING_ROW_CLASS,
+				rowTabIndex: "-1",
+				rowOutset: "var(--cds-pad-xs)",
+				markClass: WORKING_MARK_SLOT_CLASS,
 				markHidden: "true",
 				animated: "true",
 				activity: "default",
@@ -1763,6 +1774,10 @@ describe("useWorkingMarkerState", () =>
 				state: row?.getAttribute("data-state"),
 				title: row?.getAttribute("title"),
 				mark: row?.querySelector('[data-cds="WorkingMark"]')?.getAttribute("data-activity"),
+				rowClass: row?.firstElementChild?.className,
+				rowTabIndex: row?.firstElementChild?.getAttribute("tabindex"),
+				rowOutset: (row?.firstElementChild as HTMLElement | null)?.style.getPropertyValue("--cds-outset-x"),
+				markClass: row?.querySelector("[data-cds-row-mark]")?.className,
 				badgeClass: badge?.className,
 				badgeHtml: badge?.innerHTML,
 				visible: visibleLineText(container),
@@ -1776,6 +1791,10 @@ describe("useWorkingMarkerState", () =>
 				state: "blocked",
 				title: "Needs your input",
 				mark: "blocked",
+				rowClass: WORKING_ROW_CLASS,
+				rowTabIndex: "-1",
+				rowOutset: "var(--cds-pad-xs)",
+				markClass: WORKING_MARK_SLOT_CLASS,
 				badgeClass:
 					"inline-flex h-5 min-w-0 max-w-full items-center gap-1 whitespace-nowrap rounded-full px-2 align-middle font-sans text-caption font-medium bg-[var(--warning-tint)] text-upstream-warning",
 				badgeHtml:

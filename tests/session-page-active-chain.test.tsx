@@ -441,7 +441,7 @@ describe("session page active chain", () =>
 		).toStrictEqual(
 			{
 				count: 1,
-				html: '<div data-turn-status="" data-testid="rewind-marker" data-find-omitted="" class="flex flex-col w-full -my-p3 comfortable:-my-1.5"><div data-turn-status-marker="" data-cds-row="" class="flex min-w-0 w-stretch px-xs ms-[calc(var(--cds-assistant-message-text-inset,0px)_-_var(--cds-outset-x,0px)_-_var(--cds-turn-status-hang,0px))] me-[calc(var(--cds-assistant-message-text-stop,0px)_-_var(--cds-outset-x,0px))] py-0.5" style="--cds-outset-x: var(--cds-pad-xs);"><span class="text-body min-w-0 truncate text-ink-muted">Rewound here</span></div></div>',
+				html: '<div data-turn-status="" data-testid="rewind-marker" data-find-omitted="" class="flex flex-col w-full -my-p3 comfortable:-my-1.5"><div data-turn-status-marker="" data-cds-row="" class="flex min-w-0 w-stretch px-xs ms-[calc(var(--cds-assistant-message-text-inset,0px)_-_var(--cds-outset-x,0px)_-_var(--cds-turn-status-hang,0px))] me-[calc(var(--cds-assistant-message-text-stop,0px)_-_var(--cds-outset-x,0px))] py-[calc((var(--cds-h-control)_-_1lh)_/_2)]" style="--cds-outset-x: var(--cds-pad-xs);"><span class="text-body min-w-0 truncate text-ink-muted">Rewound here</span></div></div>',
 				before: true,
 			},
 		);

@@ -519,7 +519,9 @@ describe("plain status marker gaps", () =>
 			const row = renderRecords(specimen.records).querySelector("[data-task-event-row]")!;
 			expect(
 				{
-					markerPadding: row.querySelector("[data-turn-status-marker]")?.classList.contains("py-0.5"),
+					markerPadding: row
+						.querySelector("[data-turn-status-marker]")
+						?.classList.contains("py-[calc((var(--cds-h-control)_-_1lh)_/_2)]"),
 					classes: row.className
 						.split(" ")
 						.filter((name) => name.startsWith("pb-") || name.includes(":pb-") || name.includes(":mt-")),

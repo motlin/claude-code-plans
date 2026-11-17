@@ -9,7 +9,7 @@ import {ProseMarkdown} from "./file-refs";
 import {StepActions} from "./message-actions";
 import {ShimmerText} from "./shimmer-text";
 import {ChevronIcon} from "./tool-renderers/shared";
-import {TURN_STATUS_ROW_GEOMETRY, TURN_STATUS_ROW_STYLE} from "./turn-status-row-geometry";
+import {TURN_STATUS_ROW_GEOMETRY, TURN_STATUS_ROW_PAD_Y, TURN_STATUS_ROW_STYLE} from "./turn-status-row-geometry";
 
 /*
  * Upstream's thinking step on the Code engine path: shared-80 `Tw` props on the shared-9 TurnStatusStep `wr`.
@@ -17,7 +17,7 @@ import {TURN_STATUS_ROW_GEOMETRY, TURN_STATUS_ROW_STYLE} from "./turn-status-row
  * class is upstream's tailwind-merged `kT.Panel` (`Ma` + `wr`'s overrides), so the height animation is gone.
  */
 
-const ROW_CLASS = `group/step flex min-w-0 gap-xs text-start font-sans text-body font-normal py-[calc((var(--cds-h-control)_-_1lh)_/_2)] ${TURN_STATUS_ROW_GEOMETRY}`;
+const ROW_CLASS = `group/step flex min-w-0 gap-xs text-start font-sans text-body font-normal ${TURN_STATUS_ROW_PAD_Y} ${TURN_STATUS_ROW_GEOMETRY}`;
 
 const LABEL_CLIP = "min-w-0 overflow-x-clip text-ellipsis whitespace-nowrap py-[0.125em] -my-[0.125em]";
 

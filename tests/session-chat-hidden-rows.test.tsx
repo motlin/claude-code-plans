@@ -420,7 +420,7 @@ describe("Stop hook feedback", () =>
 					collapsed:
 					{
 						ariaExpanded: "false",
-						buttonClassName: `group/step flex min-w-0 ${TURN_STATUS_ROW_GEOMETRY} py-0.5 items-center gap-g2 text-left outline-none hide-focus-ring focus-visible:ring-focus rounded-r3`,
+						buttonClassName: `group/step flex min-w-0 ${TURN_STATUS_ROW_GEOMETRY} py-[calc((var(--cds-h-control)_-_1lh)_/_2)] items-center gap-g2 text-left outline-none hide-focus-ring focus-visible:ring-focus rounded-r3`,
 						labelClassName: "text-body min-w-0 truncate text-secondary group-hover/step:text-secondary",
 						markerClassName: "flex flex-col w-full min-w-0 py-px",
 						rightAligned: false,

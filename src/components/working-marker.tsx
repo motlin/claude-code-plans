@@ -31,8 +31,19 @@ import {RunningTasksControl} from "./running-tasks-control";
 import {ShimmerText} from "./shimmer-text";
 import {workingLineActivity} from "../lib/working-mark-activity";
 import {WorkingMark} from "./working-mark";
+import {TurnStatusMarkSlot} from "./turn-status-mark-slot";
+import
+{
+	TURN_STATUS_ROW_GEOMETRY,
+	TURN_STATUS_ROW_MARKED_MOTION,
+	TURN_STATUS_ROW_PAD_Y,
+	TURN_STATUS_ROW_STYLE,
+} from "./turn-status-row-geometry";
 
 const NEEDS_INPUT_LABEL = "Needs your input";
+
+/** Upstream `gR` for the marked busy/blocked row: sD, items-center, gr, qe, the margin ease and the inset focus ring. */
+const WORKING_ROW_CLASS = `flex min-w-0 gap-xs text-start font-sans text-body font-normal items-center ${TURN_STATUS_ROW_PAD_Y} ${TURN_STATUS_ROW_GEOMETRY} ${TURN_STATUS_ROW_MARKED_MOTION} rounded outline-none focus-visible:[box-shadow:inset_0_0_0_1px_var(--cds-fill-accent)] focus-visible:outline-hidden`;
 
 /** Upstream `q6`'s `Dg(word, 650, …, epoch)`: a shown phase word holds this long before it changes. */
 const PHASE_WORD_HOLD_MS = 650;
@@ -55,14 +66,10 @@ function BlockedStatus({
 			title={NEEDS_INPUT_LABEL}
 			className="group/status flex w-full min-w-0 flex-col"
 		>
-			<div className="flex min-w-0 items-center gap-1.5 px-1 py-0.5 text-body comfortable:px-1.5 comfortable:py-1.5">
-				<span
-					data-cds-row-mark
-					aria-hidden
-					className="relative me-[6px] flex h-[1lh] w-[20px] shrink-0 items-center justify-center"
-				>
+			<div tabIndex={-1} className={WORKING_ROW_CLASS} style={TURN_STATUS_ROW_STYLE}>
+				<TurnStatusMarkSlot motion="busy">
 					<WorkingMark activity="blocked" animated={!reduceMotion} />
-				</span>
+				</TurnStatusMarkSlot>
 				<span className="inline-flex h-[1lh] min-w-0 items-center">
 					<span data-cds="Badge" className={WARNING_BADGE_CLASS}>
 						<span className="min-w-0 overflow-x-clip text-ellipsis whitespace-nowrap pb-[0.05em]">
@@ -346,20 +353,18 @@ export function WorkingMarker({
 									title: held.rowTitle,
 								})}
 						data-cds-row=""
-						className="flex min-w-0 items-center gap-1.5 px-1 py-0.5 text-body comfortable:px-1.5 comfortable:py-1.5"
+						tabIndex={-1}
+						className={WORKING_ROW_CLASS}
+						style={TURN_STATUS_ROW_STYLE}
 					>
-						<span
-							data-cds-row-mark
-							aria-hidden
-							className="relative me-[6px] flex h-[1lh] w-[20px] shrink-0 items-center justify-center"
-						>
+						<TurnStatusMarkSlot motion="busy">
 							<WorkingMark
 								activity={workingLineActivity(
 									state.status === "working" && state.thinking && tool === null,
 								)}
 								animated={!reduceMotion}
 							/>
-						</span>
+						</TurnStatusMarkSlot>
 						<MorphSlot
 							id={labelId}
 							swapKey={turnStatusSwapKey("busy", held.morphWord ?? undefined)}

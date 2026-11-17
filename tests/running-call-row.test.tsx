@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import {cleanup, fireEvent, render} from "@testing-library/react";
+import {act, cleanup, fireEvent, render} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {SessionChat} from "../src/components/session-chat";
 import
@@ -139,6 +139,8 @@ describe("an in-flight call's row", () =>
 				spinner: row?.querySelector(".running-spinner") ?? null,
 				mark: row?.querySelector('[data-cds="WorkingMark"]')?.getAttribute("data-activity"),
 				markClass: row?.querySelector('[data-cds="WorkingMark"]')?.getAttribute("class"),
+				slotClass: row?.querySelector("[data-cds-row-mark]")?.getAttribute("class"),
+				slotHolds: row?.querySelector("[data-cds-row-mark] [data-cds=WorkingMark]") !== null,
 				elapsed: /^\d+s$/.test(row?.querySelector("[data-running-elapsed]")?.textContent ?? ""),
 				chevron: row?.querySelector("svg[width='12']") !== null,
 			},
@@ -147,7 +149,10 @@ describe("an in-flight call's row", () =>
 				rows: 1,
 				spinner: null,
 				mark: "code",
-				markClass: "relative block shrink-0 select-none me-1.5",
+				markClass: "relative block shrink-0 select-none",
+				slotClass:
+					"relative flex h-[1lh] shrink-0 items-center justify-center w-[20px] me-[calc(12px_-_var(--cds-gap-xs))]",
+				slotHolds: true,
 				elapsed: true,
 				chevron: true,
 			},
@@ -341,7 +346,7 @@ describe("an in-flight call's row", () =>
 		).toStrictEqual(
 			{
 				children: [
-					"WorkingMark",
+					"relative flex h-[1lh] shrink-0 items-center justify-center w-[20px] me-[calc(12px_-_var(--cds-gap-xs))]",
 					"group/morph inline-grid items-center justify-items-start data-[gliding]:overflow-x-clip min-w-0 max-w-full",
 					"shrink-0 text-body text-secondary tabular-nums",
 					"sr-only",
@@ -966,6 +971,67 @@ describe("a status row's morph slot", () =>
 				text: "Read",
 			},
 		]);
+	});
+
+	it("keeps a settled row's mark slot while upstream's 400ms leave plays, then drops it", async () =>
+	{
+		let finish = () =>
+		{
+		};
+		const finished = new Promise<void>((resolve) =>
+		{
+			finish = resolve;
+		});
+		const keyframes: unknown[] = [];
+		HTMLElement.prototype.animate = function animate(
+			frames: Keyframe[] | PropertyIndexedKeyframes | null,
+		): Animation
+		{
+			if (this.hasAttribute("data-cds-row-mark")) keyframes.push(frames);
+			return {
+				finished,
+				cancel: () =>
+				{
+				},
+				playState: "running",
+				startTime: null,
+				effect:
+				{
+					getComputedTiming: () => (
+					{
+						progress: 0,
+					}),
+				},
+			} as unknown as Animation;
+		};
+		const view = render(chat([prompt, readA]));
+		const busy = view.container.querySelectorAll("[data-cds-row-mark]").length;
+		view.rerender(chat([prompt, readA, readResult]));
+		await act(async () =>
+		{
+			await Promise.resolve();
+		});
+		const leaving = view.container.querySelectorAll("[data-cds-row-mark]").length;
+		await act(async () =>
+		{
+			finish();
+			await finished;
+		});
+		expect(
+			{
+				busy,
+				leaving,
+				leaves: keyframes.length,
+				left: view.container.querySelectorAll("[data-cds-row-mark]").length,
+			},
+		).toStrictEqual(
+			{
+				busy: 1,
+				leaving: 1,
+				leaves: 1,
+				left: 0,
+			},
+		);
 	});
 
 	it("keys a failed row failed|<label> and keeps its outcome outside the slot", () =>
