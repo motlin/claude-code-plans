@@ -197,13 +197,29 @@
    column gap, so the `pre` drops its own margin and fills the wrapper. */
 .markdown :global(.markdown-codeblock) > pre
 {
+	position: relative;
 	margin: 0;
 	width: auto;
 	font-size: var(--code-size, 12px);
 	line-height: var(--code-leading, 17px);
 	background: var(--color-surface-1);
+	border: 0;
 	border-radius: 8px;
 	padding: 8px 45.2px 8px 17.2px;
+}
+
+/* Upstream c6a992d55 `.epitaxy-fence:after`: no border, but an inset 1px --cds-border ring composited over an
+   opaque 1px of the surrounding transcript surface, so the edge reads like every card's whatever the code fill. */
+.markdown :global(.markdown-codeblock) > pre::after
+{
+	content: "";
+	position: absolute;
+	inset: 0;
+	border-radius: inherit;
+	box-shadow:
+		inset 0 0 0 1px var(--color-border),
+		inset 0 0 0 1px var(--epitaxy-transcript-surface, var(--color-surface-1));
+	pointer-events: none;
 }
 
 :global(.dark) .markdown :global(.markdown-codeblock) > pre

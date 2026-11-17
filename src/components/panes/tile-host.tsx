@@ -18,6 +18,7 @@ import {createPortal} from "react-dom";
 import {Maximize2, Minimize2, X} from "lucide-react";
 
 import {useShortcut, useShortcutKeys} from "../../hooks/use-shortcut";
+import {codeSurfaceStyle} from "./code-surface";
 import {PaneChromeHeader} from "./deferred-pane-status";
 import {PANE_CLOSE_CONTROL_CLASS, PaneHeaderRow} from "./pane-header-row";
 import {PaneCrashBoundary} from "./pane-crash-boundary";
@@ -997,6 +998,7 @@ function PaneSurface({kind, definition, host}: {kind: PaneKind; definition: Pane
 				// Only the desktop expanded overlay, floating 9px inside the window, keeps its card.
 				isExpanded && !host.phone ? "rounded-r7 shadow-panel-sm" : ""
 			}`}
+			style={codeSurfaceStyle(kind)}
 		>
 			{definition.header === "custom" ? (
 				<PaneCrashBoundary

@@ -1855,10 +1855,11 @@ html[data-interface-font="dyslexic"]
 		position: absolute;
 		inset: 0;
 		border-radius: inherit;
-		/* Upstream draws a transcript-surface inset under the ring, so a tinted card keeps a page-coloured edge. */
+		/* Upstream c6a992d55: --cds-border composited over an opaque 1px of the surrounding transcript surface, so the
+		   ring reads the same as every card edge whatever the card's own fill. */
 		box-shadow:
-			inset 0 0 0 1px var(--card-outline),
-			inset 0 0 0 1px var(--upstream-page);
+			inset 0 0 0 1px var(--color-border),
+			inset 0 0 0 1px var(--epitaxy-transcript-surface, var(--color-surface-1));
 		pointer-events: none;
 	}
 	.code-card

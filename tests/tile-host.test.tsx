@@ -296,6 +296,49 @@ describe("TileHost", () =>
 		);
 	});
 
+	it("sets the transcript surface only on upstream's code-surface tiles", () =>
+	{
+		const unregisterFiles = registerPane(
+			"files",
+			{
+				title: "Files",
+				render: () => <p>Files body</p>,
+			},
+		);
+		render(
+			<TileHost sessionId="session-surface" onExpandWithoutPane={vi.fn<() => void>()}>
+				<ChatContent />
+				<FilesOpener />
+			</TileHost>,
+		);
+		openTestPane();
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Open files",
+				},
+			),
+		);
+		const surface = (body: string) =>
+			screen
+				.getByText(body)
+				.closest<HTMLElement>("[data-pane-root]")!
+				.style.getPropertyValue("--epitaxy-transcript-surface");
+		expect(
+			{
+				plan: surface("Test pane body"),
+				files: surface("Files body"),
+			},
+		).toStrictEqual(
+			{
+				plan: "",
+				files: "var(--code-theme-bg)",
+			},
+		);
+		unregisterFiles();
+	});
+
 	it("enters upstream's flat line mode once a pane opens: no radius or shadow, primary-ink header buttons", () =>
 	{
 		renderHost("session-a");

@@ -58,12 +58,13 @@ describe("fenced code block copy button markup", () =>
 		expect(renderMarkdownToHtml("a `snippet` in prose")).toBe("<p>a <code>snippet</code> in prose</p>\n");
 	});
 
-	it("draws fences as upstream's white 12/17 card at least 318px wide, following Settings ▸ Code font size", () =>
+	it("draws fences as upstream's white 12/17 card at least 318px wide, ringed like epitaxy-fence, following Settings ▸ Code font size", () =>
 	{
 		expect(
 			{
 				wrapper: ruleDeclarations(markdownCss, ".markdown :global(.markdown-codeblock)"),
 				pre: ruleDeclarations(markdownCss, ".markdown :global(.markdown-codeblock) > pre"),
+				ring: ruleDeclarations(markdownCss, ".markdown :global(.markdown-codeblock) > pre::after"),
 				darkPre: ruleDeclarations(markdownCss, ":global(.dark) .markdown :global(.markdown-codeblock) > pre"),
 				code: ruleDeclarations(markdownCss, ".markdown :global(.markdown-codeblock) > pre code"),
 			},
@@ -78,13 +79,25 @@ describe("fenced code block copy button markup", () =>
 				},
 				pre:
 				{
+					position: "relative",
 					margin: "0",
 					width: "auto",
 					"font-size": "var(--code-size, 12px)",
 					"line-height": "var(--code-leading, 17px)",
 					background: "var(--color-surface-1)",
+					border: "0",
 					"border-radius": "8px",
 					padding: "8px 45.2px 8px 17.2px",
+				},
+				ring:
+				{
+					content: '""',
+					position: "absolute",
+					inset: "0",
+					"border-radius": "inherit",
+					"box-shadow":
+						"inset 0 0 0 1px var(--color-border), inset 0 0 0 1px var(--epitaxy-transcript-surface, var(--color-surface-1))",
+					"pointer-events": "none",
 				},
 				darkPre:
 				{

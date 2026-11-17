@@ -964,7 +964,8 @@ describe("fizzy-lake color rings (upstream --cds-border = --cds-ring-color)", ()
 		const rule = styles.slice(start, styles.indexOf("\n\t}", start));
 		expect(tokens(rule, ["box-shadow"])).toStrictEqual(
 			{
-				"box-shadow": "inset 0 0 0 1px var(--card-outline), inset 0 0 0 1px var(--upstream-page)",
+				"box-shadow":
+					"inset 0 0 0 1px var(--color-border), inset 0 0 0 1px var(--epitaxy-transcript-surface, var(--color-surface-1))",
 			},
 		);
 	});

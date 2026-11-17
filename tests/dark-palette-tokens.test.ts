@@ -204,7 +204,9 @@ describe("dark palette", () =>
 				layerPosition: declares(layer, "position: relative;"),
 				ring: rule
 					.replaceAll(/\s+/g, " ")
-					.includes("box-shadow: inset 0 0 0 1px var(--card-outline), inset 0 0 0 1px var(--upstream-page);"),
+					.includes(
+						"box-shadow: inset 0 0 0 1px var(--color-border), inset 0 0 0 1px var(--epitaxy-transcript-surface, var(--color-surface-1));",
+					),
 				inset: declares(rule, "inset: 0;"),
 				radius: declares(rule, "border-radius: inherit;"),
 				passThrough: declares(rule, "pointer-events: none;"),
