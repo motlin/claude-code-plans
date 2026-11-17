@@ -65,6 +65,8 @@ interface FakeCall
 	pending?: true;
 	/** The result's `toolDenialKind`, such as "user-rejected". */
 	denialKind?: string;
+	/** The result record's `toolUseResult`. */
+	toolUseResult?: Record<string, unknown>;
 }
 
 /** One assistant record per call, each followed by its tool_result. */
@@ -99,6 +101,12 @@ function toolRunRecords(calls: FakeCall[]): unknown[]
 							:
 								{
 									toolDenialKind: call.denialKind,
+								}),
+						...(call.toolUseResult === undefined
+							? {}
+							:
+								{
+									toolUseResult: call.toolUseResult,
 								}),
 						message:
 						{
@@ -165,9 +173,53 @@ function statSpans(html: string):
 	};
 }
 
+describe("SendMessage in a group header", () =>
+{
+	it("names a send to a subagent this session launched by name 'messaged agent', as its row does", () =>
+	{
+		expect(
+			summaryLabel(
+				renderRun([
+					{
+						id: "t1",
+						name: "Agent",
+						input:
+						{
+							description: "Survey repos",
+							prompt: "Survey the repos",
+							name: "researcher",
+						},
+						toolUseResult:
+						{
+							agentId: "researcher",
+						},
+					},
+					{
+						id: "t2",
+						name: "Bash",
+						input:
+						{
+							command: "ls",
+						},
+					},
+					{
+						id: "t3",
+						name: "SendMessage",
+						input:
+						{
+							to: "researcher",
+							message: "Next repo",
+						},
+					},
+				]),
+			),
+		).toBe("Ran an agent, ran a command, messaged agent");
+	});
+});
+
 describe("ExitPlanMode in a summary", () =>
 {
-	it("folds into the generic tool segment, since upstream never groups ExitPlanMode", () =>
+	it("reads its group words, though upstream never groups ExitPlanMode", () =>
 	{
 		expect(
 			summarizeToolCalls([
@@ -179,7 +231,7 @@ describe("ExitPlanMode in a summary", () =>
 					},
 				},
 			]),
-		).toBe("used a tool");
+		).toBe("proposed plan");
 	});
 });
 

@@ -1,5 +1,5 @@
 import {infinitive} from "../src/lib/past-tense";
-import {runningToolLabel, toolLabel, toolResultMetaFrom} from "../src/lib/tool-labels";
+import {groupWordCase, groupWords, runningToolLabel, toolLabel, toolResultMetaFrom} from "../src/lib/tool-labels";
 import type {ToolLabelCall} from "../src/lib/tool-labels";
 
 const call = (
@@ -2886,6 +2886,97 @@ describe("completed-but-failed task calls", () =>
 				{
 					verb: "Listed tasks",
 				},
+			},
+		);
+	});
+});
+
+describe("groupWords", () =>
+{
+	it("names an uncategorized tool in a group header by upstream's lowercased group words", () =>
+	{
+		expect(
+			{
+				question: groupWords(call("AskUserQuestion")),
+				toolSearch: groupWords(call("ToolSearch")),
+				skill: groupWords(
+					call(
+						"Skill",
+						{
+							skill: "x",
+						},
+					),
+				),
+				taskStop: groupWords(call("TaskStop")),
+				mcp: groupWords(call("mcp__claude-in-chrome__computer")),
+				pluginMcp: groupWords(call("mcp__plugin_yepnope_yepnope__authenticate")),
+				ls: groupWords(call("LS")),
+				sendUserMessage: groupWords(call("SendUserMessage")),
+				sendUserFile: groupWords(call("SendUserFile")),
+				slashCommand: groupWords(call("SlashCommand")),
+				exitPlanMode: groupWords(call("ExitPlanMode")),
+				innerCaps: groupWordCase("GitHub thing"),
+				plain: groupWordCase("Loaded tools"),
+			},
+		).toStrictEqual(
+			{
+				question:
+				{
+					done: "asked a question",
+					unfinished: "asked a question",
+				},
+				toolSearch:
+				{
+					done: "loaded tools",
+					unfinished: "loading tools",
+				},
+				skill:
+				{
+					done: "ran skill",
+					unfinished: "running skill",
+				},
+				taskStop:
+				{
+					done: "stopped task",
+					unfinished: "stopping task",
+				},
+				mcp:
+				{
+					done: "used claude-in-chrome",
+					unfinished: "using claude-in-chrome",
+				},
+				pluginMcp:
+				{
+					done: "used yepnope",
+					unfinished: "using yepnope",
+				},
+				ls:
+				{
+					done: "listed files",
+					unfinished: "listing files",
+				},
+				sendUserMessage:
+				{
+					done: "sent a message",
+					unfinished: "sending a message",
+				},
+				sendUserFile:
+				{
+					done: "sent a message",
+					unfinished: "sending a message",
+				},
+				slashCommand:
+				{
+					done: "ran a command",
+					unfinished: "running a command",
+				},
+				exitPlanMode:
+				{
+					done: "proposed plan",
+					unfinished: "proposed plan",
+				},
+				innerCaps: "GitHub thing",
+				plain: "loaded tools",
 			},
 		);
 	});

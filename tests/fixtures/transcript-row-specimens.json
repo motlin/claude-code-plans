@@ -2361,6 +2361,7 @@
 	{
 		"session": "54e53f89",
 		"line": 904,
+		"skip": "pre-2026-11-04 wording",
 		"upstream": ["status: Ran 2 commands, used a tool"],
 		"records": [
 			{
@@ -16238,6 +16239,7 @@
 	{
 		"session": "45b93197",
 		"line": 559,
+		"skip": "pre-2026-11-04 wording",
 		"upstream": [
 			"status: Wait 5 minutes before re-checking mail Stopped",
 			"prose",

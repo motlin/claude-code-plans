@@ -574,7 +574,7 @@ describe("summarizeToolCalls", () =>
 		expect(summarizeToolCalls(calls)).toBe("ran 3 agents");
 	});
 
-	it("counts a single unknown tool as a tool", () =>
+	it("names a single unknown tool by its group words", () =>
 	{
 		expect(
 			summarizeToolCalls([
@@ -583,10 +583,10 @@ describe("summarizeToolCalls", () =>
 					input: {},
 				},
 			]),
-		).toBe("used a tool");
+		).toBe("used CustomTool");
 	});
 
-	it("counts each call of a repeated unknown tool", () =>
+	it("counts the calls of a repeated unknown tool in its words", () =>
 	{
 		const calls = [
 			{
@@ -602,10 +602,10 @@ describe("summarizeToolCalls", () =>
 				input: {},
 			},
 		];
-		expect(summarizeToolCalls(calls)).toBe("used 3 tools");
+		expect(summarizeToolCalls(calls)).toBe("used CustomRepeat 3 times");
 	});
 
-	it("folds distinct unknown tools into one segment", () =>
+	it("names each distinct unknown tool in its own part", () =>
 	{
 		const calls = [
 			{
@@ -617,10 +617,10 @@ describe("summarizeToolCalls", () =>
 				input: {},
 			},
 		];
-		expect(summarizeToolCalls(calls)).toBe("used 2 tools");
+		expect(summarizeToolCalls(calls)).toBe("used CustomTool, used AnotherTool");
 	});
 
-	it("counts Skill calls as tools", () =>
+	it("names Skill calls ran skill", () =>
 	{
 		expect(
 			summarizeToolCalls([
@@ -629,7 +629,7 @@ describe("summarizeToolCalls", () =>
 					input: {},
 				},
 			]),
-		).toBe("used a tool");
+		).toBe("ran skill");
 		const calls = [
 			{
 				name: "Skill",
@@ -644,10 +644,10 @@ describe("summarizeToolCalls", () =>
 				input: {},
 			},
 		];
-		expect(summarizeToolCalls(calls)).toBe("used 3 tools");
+		expect(summarizeToolCalls(calls)).toBe("ran skill 3 times");
 	});
 
-	it("counts MCP tools as tools", () =>
+	it("names MCP tools by their server", () =>
 	{
 		const calls = [
 			{
@@ -663,10 +663,10 @@ describe("summarizeToolCalls", () =>
 				input: {},
 			},
 		];
-		expect(summarizeToolCalls(calls)).toBe("used 3 tools");
+		expect(summarizeToolCalls(calls)).toBe("used github 2 times, used chrome-devtools");
 	});
 
-	it("counts MCP tools alongside non-MCP unknowns", () =>
+	it("names MCP tools alongside non-MCP unknowns", () =>
 	{
 		const calls = [
 			{
@@ -682,7 +682,7 @@ describe("summarizeToolCalls", () =>
 				input: {},
 			},
 		];
-		expect(summarizeToolCalls(calls)).toBe("used 3 tools");
+		expect(summarizeToolCalls(calls)).toBe("used github 2 times, used CustomTool");
 	});
 
 	it("Edit calls include +N -N diff stats summed across calls", () =>
@@ -723,7 +723,7 @@ describe("summarizeToolCalls", () =>
 					},
 				},
 			]),
-		).toBe("used a tool");
+		).toBe("loaded tools");
 	});
 
 	it("multiple ToolSearch calls", () =>
@@ -751,7 +751,7 @@ describe("summarizeToolCalls", () =>
 				},
 			},
 		];
-		expect(summarizeToolCalls(calls)).toBe("used 3 tools");
+		expect(summarizeToolCalls(calls)).toBe("loaded tools 3 times");
 	});
 
 	it("rich mixed summary matching Claude Code format", () =>
@@ -1307,7 +1307,7 @@ describe("summarizeToolCallsStructured", () =>
 		]);
 	});
 
-	it('folds unknown and MCP tools into upstream\'s "Used N tools" segment', () =>
+	it("names unknown and MCP tools by upstream's group words", () =>
 	{
 		expect(
 			{
@@ -1342,8 +1342,8 @@ describe("summarizeToolCallsStructured", () =>
 			{
 				repeated: [
 					{
-						verb: "Used",
-						rest: "2 tools",
+						verb: "Used CustomTool 2 times",
+						rest: "",
 					},
 				],
 				mcp: [
@@ -1357,15 +1357,15 @@ describe("summarizeToolCallsStructured", () =>
 						},
 					},
 					{
-						verb: "used",
-						rest: "a tool",
+						verb: "used sentry",
+						rest: "",
 					},
 				],
 			},
 		);
 	});
 
-	it("counts a ToolSearch call as a tool", () =>
+	it("names a ToolSearch call loaded tools", () =>
 	{
 		expect(
 			summarizeToolCallsStructured([
@@ -1379,13 +1379,13 @@ describe("summarizeToolCallsStructured", () =>
 			]),
 		).toEqual([
 			{
-				verb: "Used",
-				rest: "a tool",
+				verb: "Loaded tools",
+				rest: "",
 			},
 		]);
 	});
 
-	it("counts each ToolSearch call", () =>
+	it("counts each ToolSearch call in its words", () =>
 	{
 		const calls = [
 			{
@@ -1405,13 +1405,13 @@ describe("summarizeToolCallsStructured", () =>
 		];
 		expect(summarizeToolCallsStructured(calls)).toEqual([
 			{
-				verb: "Used",
-				rest: "2 tools",
+				verb: "Loaded tools 2 times",
+				rest: "",
 			},
 		]);
 	});
 
-	it("gives TodoWrite its own segment and counts the rest, ExitPlanMode included, as tools", () =>
+	it("gives TodoWrite its own segment and names the rest, ExitPlanMode included, by their group words", () =>
 	{
 		expect(
 			{
@@ -1474,20 +1474,20 @@ describe("summarizeToolCallsStructured", () =>
 				],
 				enterPlanMode: [
 					{
-						verb: "Used",
-						rest: "a tool",
+						verb: "Started planning",
+						rest: "",
 					},
 				],
 				exitPlanMode: [
 					{
-						verb: "Used",
-						rest: "2 tools",
+						verb: "Proposed plan 2 times",
+						rest: "",
 					},
 				],
 				cronCreate: [
 					{
-						verb: "Used",
-						rest: "a tool",
+						verb: "Started loop",
+						rest: "",
 					},
 				],
 			},

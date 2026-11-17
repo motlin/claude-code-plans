@@ -541,6 +541,23 @@ function handshakeVerb(message: Record<string, unknown>, to: string): string | n
 	}
 }
 
+/** Upstream's session-address prefixes after trimming (c1128a44c `Qo`) and its local session ids (c28efd0ef `ge`). */
+const PEER_ADDRESS = /^(uds:|bridge:|\/)/;
+const LOCAL_SESSION_ID = /^local_[0-9a-f-]{8,}$/;
+
+/**
+ * The session address a SendMessage call sends to (upstream c24951e9f `ye`),
+ * trimmed, or undefined when it addresses an agent or teammate by name.
+ */
+export function peerSendKey(call: {name: string; input: Record<string, unknown>}): string | undefined
+{
+	if (call.name !== "SendMessage") return undefined;
+	const to = call.input["to"];
+	if (typeof to !== "string") return undefined;
+	const trimmed = to.trim();
+	return to.startsWith("did:") || PEER_ADDRESS.test(trimmed) || LOCAL_SESSION_ID.test(to) ? trimmed : undefined;
+}
+
 function sendMessageLabel(call: ToolLabelCall): ToolLabel
 {
 	const {input} = call;
@@ -551,7 +568,9 @@ function sendMessageLabel(call: ToolLabelCall): ToolLabel
 		};
 	const message = input["message"];
 	const meta = oneLineMeta(messageText(message));
-	if (isRecord(message))
+	const description = call.recipientDescription ?? null;
+	// Upstream (`au`) reads the handshake verbs only for a recipient it has no description for.
+	if (isRecord(message) && description === null)
 	{
 		const verb = handshakeVerb(message, to);
 		if (verb !== null)
@@ -564,7 +583,6 @@ function sendMessageLabel(call: ToolLabelCall): ToolLabel
 	}
 	const summaryMeta = oneLineMeta(input["summary"]) ?? meta;
 	const kind = input["recipient_kind"];
-	const description = call.recipientDescription ?? null;
 	if (description !== null || AGENT_ID.test(to) || kind === "agent")
 	{
 		return withMeta(
@@ -1212,5 +1230,87 @@ function genericToolLabel(name: string): ToolLabel
 	const label = name.startsWith("mcp__") ? mcpToolLabel(name) : name;
 	return {
 		verb: `Used ${label}`,
+	};
+}
+
+/**
+ * What a group header calls a tool with no summary category (upstream
+ * c52b02f3f `Mc`): the words once it settled, and the words when every call
+ * of it failed, stopped, or was blocked.
+ */
+export interface GroupWords
+{
+	done: string;
+	unfinished: string;
+}
+
+/** Upstream `groupWords` overrides, done then running, for tools whose verb alone reads wrong in a list. */
+const GROUP_WORD_OVERRIDES: Readonly<Record<string, GroupWords>> =
+{
+	AskUserQuestion:
+	{
+		done: "Asked a question",
+		unfinished: "Asked a question",
+	},
+	LS:
+	{
+		done: "Listed files",
+		unfinished: "Listing files",
+	},
+	SendUserMessage:
+	{
+		done: "Sent a message",
+		unfinished: "Sending a message",
+	},
+	SendUserFile:
+	{
+		done: "Sent a message",
+		unfinished: "Sending a message",
+	},
+	SlashCommand:
+	{
+		done: "Ran a command",
+		unfinished: "Running a command",
+	},
+};
+
+/** Tools that ask the person (upstream `askedPerson`), whose unfinished words stay the done verb (`jc`). */
+const ASKED_PERSON_TOOLS: ReadonlySet<string> = new Set(["AskUserQuestion", "ExitPlanMode"]);
+
+/** A first token with an inner capital ("GitHub"), which upstream's `Nc` leaves as written. */
+const INNER_CAPITAL = /^\S+\p{Lu}/u;
+
+/** Upstream `Nc` for English: lowercase the first character unless the first token has an inner capital. */
+export function groupWordCase(word: string): string
+{
+	return INNER_CAPITAL.test(word) ? word : word.charAt(0).toLowerCase() + word.slice(1);
+}
+
+function rawGroupWords(call: ToolLabelCall): GroupWords
+{
+	const override = GROUP_WORD_OVERRIDES[call.name];
+	if (override !== undefined) return override;
+	if (call.name.startsWith("mcp__"))
+	{
+		const server = mcpToolLabel(call.name).split(": ")[0] ?? "";
+		return {
+			done: `Used ${server}`,
+			unfinished: `Using ${server}`,
+		};
+	}
+	const done = toolLabel(call).verb;
+	return {
+		done,
+		unfinished: ASKED_PERSON_TOOLS.has(call.name) ? done : runningToolLabel(call).verb,
+	};
+}
+
+/** The group words for a call, cased the way they read inside a header list. */
+export function groupWords(call: ToolLabelCall): GroupWords
+{
+	const words = rawGroupWords(call);
+	return {
+		done: groupWordCase(words.done),
+		unfinished: groupWordCase(words.unfinished),
 	};
 }

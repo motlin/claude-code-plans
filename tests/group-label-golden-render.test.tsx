@@ -186,6 +186,8 @@ interface RowSpecimen
 	turnEnd?: true;
 	/** The session's subagents, as the live page loads them beside the transcript. */
 	subagents?: Subagent[];
+	/** Why the local render cannot match the capture yet. */
+	skip?: string;
 }
 
 /** A row label part's text, with a diff stat's counts spaced as they read: "+59 −0". */
@@ -255,8 +257,14 @@ describe("transcript row golden specimens rendered from JSONL", () =>
 					},
 				],
 	);
-	it.each(captured)("$session:$line", (specimen) =>
+	it.each(captured.filter((specimen) => specimen.skip === undefined))("$session:$line", (specimen) =>
 	{
+		expect(transcriptRows(specimen)).toStrictEqual(specimen.upstream.map(withTrailingFailedCount));
+	});
+
+	it.for(captured.filter((specimen) => specimen.skip !== undefined))("$session:$line ($skip)", (specimen, {skip}) =>
+	{
+		skip(specimen.skip);
 		expect(transcriptRows(specimen)).toStrictEqual(specimen.upstream.map(withTrailingFailedCount));
 	});
 });

@@ -8388,6 +8388,7 @@ function ToolCallSummary({
 	const bodyId = useId();
 	const statusId = useId();
 	const backgroundOutcomes = useContext(BackgroundOutcomeContext);
+	const resolveAgentName = useContext(AgentNameContext);
 	const {taskNotices, leadingPeers, trailingPeers, hooks, claudeNotices} = useMemo(
 		() => splitNotices(notices),
 		[notices],
@@ -8395,7 +8396,16 @@ function ToolCallSummary({
 	const summary = useMemo(
 		() =>
 			summarizeToolCallStats(
-				calls,
+				// As on its row, a send to a subagent this session launched by name reads "messaged agent".
+				calls.map((call) =>
+					call.name === "SendMessage" && typeof call.input["to"] === "string"
+						?
+							{
+								...call,
+								recipientDescription: resolveAgentName(call.input["to"]),
+							}
+						: call,
+				),
 				[...taskNotices.map((notice) => notice.notification), ...stopCompletions(calls, backgroundOutcomes)],
 				failedLaunchIds(backgroundOutcomes),
 				{
@@ -8404,7 +8414,7 @@ function ToolCallSummary({
 					reprompted: hooks.length > 0,
 				},
 			),
-		[calls, taskNotices, leadingPeers, trailingPeers, hooks, backgroundOutcomes],
+		[calls, resolveAgentName, taskNotices, leadingPeers, trailingPeers, hooks, backgroundOutcomes],
 	);
 	// While a call is in flight, upstream names the group by that call's
 	// progressive label instead of the tally.

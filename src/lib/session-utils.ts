@@ -1,5 +1,5 @@
 import {isKeyOf, isRecord} from "./narrow";
-import {isBenignToolError} from "./tool-labels";
+import {groupWordCase, groupWords, isBenignToolError, peerSendKey} from "./tool-labels";
 
 /**
  * Minimal shape needed by summarizeToolCalls, categorize, and diffStatsForCall.
@@ -20,6 +20,8 @@ export interface ToolCallLike
 	denied?: boolean | undefined;
 	/** The auto-mode classifier refused the call or gave no verdict, so it settled "Blocked". */
 	blocked?: boolean | undefined;
+	/** A SendMessage recipient's subagent description, when this session launched it. */
+	recipientDescription?: string | null | undefined;
 	/**
 	 * Whether a Write created its file or updated one that existed, and the
 	 * lines the result's patch says a file edit added and removed.
@@ -390,8 +392,11 @@ export function extractSessionTitle(
 
 /**
  * The tools upstream gives their own group-header segment. Every other tool --
- * Skill, ToolSearch, MCP tools, the Task* family, SendMessage, Artifact -- folds
- * into one trailing "used N tools" segment.
+ * Skill, ToolSearch, MCP tools, the Task* family, Artifact, a SendMessage to a
+ * named recipient -- is named by its own group words ("loaded tools", "ran skill
+ * 2 times", "messaged @lead") after the categories; only a call with a benign
+ * error still folds into "used N tools". A SendMessage to a session address is
+ * the `peer` category, chosen by `peerSendKey`.
  */
 const CATEGORY_BY_TOOL =
 {
@@ -411,7 +416,7 @@ const CATEGORY_BY_TOOL =
 	TodoWrite: "todo",
 } as const;
 
-type ToolCategory = (typeof CATEGORY_BY_TOOL)[keyof typeof CATEGORY_BY_TOOL];
+type ToolCategory = (typeof CATEGORY_BY_TOOL)[keyof typeof CATEGORY_BY_TOOL] | "peer";
 
 interface SegmentLabel
 {
@@ -492,6 +497,12 @@ const CATEGORY_LABELS: Record<ToolCategory, SegmentLabel> =
 		verb: "Updated",
 		one: "todos",
 		many: "todos",
+	},
+	peer:
+	{
+		verb: "Messaged",
+		one: "another session",
+		many: "{n} other sessions",
 	},
 };
 
@@ -646,6 +657,7 @@ const MCP_READ_TOOL = /^mcp__.+__read$/;
 function categorize(call: ToolCallLike): ToolCategory | null
 {
 	if (MCP_READ_TOOL.test(call.name)) return "read";
+	if (peerSendKey(call) !== undefined) return "peer";
 	return isKeyOf(CATEGORY_BY_TOOL, call.name) ? CATEGORY_BY_TOOL[call.name] : null;
 }
 
@@ -663,6 +675,11 @@ export function formatToolName(toolName: string): string
 		return serverName;
 	}
 	return toolName;
+}
+
+function capitalizeFirst(text: string): string
+{
+	return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
 function lowercaseFirst(text: string): string
@@ -1249,6 +1266,44 @@ function attributeLaunchFailures(
 	};
 }
 
+/**
+ * The calls of one uncategorized tool, keyed by their done group words
+ * (c24951e9f `g`): `blocked` and `stopped` count calls, not keys.
+ */
+interface WordsEntry extends SegmentOutcomes
+{
+	count: number;
+	unfinished: string;
+}
+
+/**
+ * A words entry's part (c24951e9f `De` tail): the unfinished words when every
+ * call failed, stopped, or was blocked, "{words} N times" for repeats, and a
+ * stop note that counts blocks among the stops (`L`).
+ */
+function wordsSegment(done: string, entry: WordsEntry): CountedSegment
+{
+	const {count, failed, stopped, blocked, unfinished} = entry;
+	const words = failed + stopped + blocked === count ? unfinished : done;
+	return {
+		verb: count > 1 ? `${words} ${count} times` : words,
+		rest: "",
+		count,
+		failed,
+		...(stopped > 0
+			?
+				{
+					stopped: stopped + blocked,
+					blocked: 0,
+				}
+			:
+				{
+					stopped: 0,
+					blocked,
+				}),
+	};
+}
+
 function buildSummarySegments(
 	calls: ToolCallLike[],
 	groupCompletions: readonly BackgroundCompletionLike[] = [],
@@ -1261,6 +1316,7 @@ function buildSummarySegments(
 	// "Updated todos, read 3 files" and "Read index.ts, updated todos", so
 	// segments follow the order each tool was first called.
 	const outcomes = new Map<ToolCategory, Map<string, CallOutcome | undefined>>();
+	const words = new Map<string, WordsEntry>();
 	let otherTools = 0;
 	// Upstream's generic bucket notes failures and blocks only (`z`), never stops.
 	const otherOutcomes =
@@ -1275,6 +1331,23 @@ function buildSummarySegments(
 	{
 		const cat = categories[index] ?? null;
 		const outcome = callOutcome(call, failedLaunches);
+		// A benign error stays in the generic bucket (upstream `benign`), like a pending call would.
+		if (cat === null && !isBenignToolError(call))
+		{
+			const {done, unfinished} = groupWords(call);
+			const entry = words.get(done) ??
+			{
+				count: 0,
+				...NO_OUTCOMES,
+				unfinished,
+			};
+			entry.count++;
+			if (outcome === "failed") entry.failed++;
+			if (outcome === "stopped") entry.stopped++;
+			if (outcome === "blocked") entry.blocked++;
+			words.set(done, entry);
+			return;
+		}
 		if (cat === null)
 		{
 			otherTools++;
@@ -1288,7 +1361,9 @@ function buildSummarySegments(
 			byKey = new Map();
 			outcomes.set(cat, byKey);
 		}
-		const key = callKey(call, index);
+		// Upstream counts each session address once, however many sends it took.
+		const address = peerSendKey(call);
+		const key = address === undefined ? callKey(call, index) : `peer:${address}`;
 		byKey.set(key, mergeOutcome(byKey.get(key), outcome));
 		// A failed edit changed nothing, so upstream leaves it out of the totals.
 		if (isMutation(cat) && call.isError !== true)
@@ -1315,6 +1390,7 @@ function buildSummarySegments(
 		segments.push(labelledSegment(CATEGORY_LABELS[cat], byKey.size, keyOutcomes(byKey)));
 	}
 
+	for (const [done, entry] of words) segments.push(wordsSegment(done, entry));
 	if (otherTools > 0) segments.push(labelledSegment(OTHER_TOOLS_LABEL, otherTools, otherOutcomes));
 
 	// Upstream names agent messages where they arrived: "Received a message, ran
@@ -1375,7 +1451,7 @@ function buildSummarySegments(
 		segments: shaped.segments.map((segment, i) => (
 		{
 			...segment,
-			verb: i === 0 ? segment.verb : lowercaseFirst(segment.verb),
+			verb: i === 0 ? capitalizeFirst(segment.verb) : groupWordCase(segment.verb),
 		})),
 		trailing: shaped.trailing,
 		added,

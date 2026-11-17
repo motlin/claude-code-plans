@@ -499,7 +499,7 @@ describe("summarizeToolCallStats with background completions", () =>
 		]);
 	});
 
-	it('suffixes stopped tasks: "Used a tool, finished a background task (1 stopped)"', () =>
+	it('suffixes stopped tasks: "Used Mystery, finished a background task (1 stopped)"', () =>
 	{
 		expect(
 			summarizeToolCallStats(
@@ -518,8 +518,8 @@ describe("summarizeToolCallStats with background completions", () =>
 			).segments,
 		).toStrictEqual([
 			{
-				verb: "Used",
-				rest: "a tool",
+				verb: "Used Mystery",
+				rest: "",
 			},
 			{
 				verb: "finished",
@@ -570,7 +570,7 @@ describe("summarizeToolCallStats with background completions", () =>
 		);
 	});
 
-	it('leads with a failed task completion: "Finished a background task, used a tool, 1 failed"', () =>
+	it('leads with a failed task completion: "Finished a background task, used Mystery, 1 failed"', () =>
 	{
 		expect(
 			summarizeToolCallStats(
@@ -593,8 +593,8 @@ describe("summarizeToolCallStats with background completions", () =>
 				rest: "a background task",
 			},
 			{
-				verb: "used",
-				rest: "a tool",
+				verb: "used Mystery",
+				rest: "",
 			},
 		]);
 	});

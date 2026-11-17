@@ -351,8 +351,8 @@ describe("standalone calls end a tool run", () =>
 		];
 		expect(bothModes(records)).toStrictEqual(
 			{
-				normal: [human, tool(["Read a.ts, used a tool"])],
-				verbose: [human, tool(["Read a.ts, used a tool", "Read a.ts", "Used artifact tool read_db"])],
+				normal: [human, tool(["Read a.ts, used artifact tool"])],
+				verbose: [human, tool(["Read a.ts, used artifact tool", "Read a.ts", "Used artifact tool read_db"])],
 			},
 		);
 	});
@@ -393,8 +393,8 @@ describe("standalone calls end a tool run", () =>
 				},
 				sent:
 				{
-					normal: [human, tool(["Ran a command, used a tool"])],
-					verbose: [human, tool(["Ran a command, used a tool", "Fabricated one", "Sent notification"])],
+					normal: [human, tool(["Ran a command, sent notification"])],
+					verbose: [human, tool(["Ran a command, sent notification", "Fabricated one", "Sent notification"])],
 				},
 			},
 		);

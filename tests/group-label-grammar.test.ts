@@ -70,15 +70,15 @@ describe("group label: tool categories", () =>
 	it.each([
 		{
 			calls: [tool("Skill"), bash(), bash(), bash()],
-			expected: "Ran 3 commands, used a tool",
+			expected: "Ran 3 commands, ran skill",
 		},
 		{
 			calls: [tool("Skill"), tool("ToolSearch")],
-			expected: "Used 2 tools",
+			expected: "Ran skill, loaded tools",
 		},
 		{
 			calls: [tool("mcp__a__x"), tool("mcp__a__x"), tool("mcp__plugin_b_b__y")],
-			expected: "Used 3 tools",
+			expected: "Used a 2 times, used b",
 		},
 		{
 			calls: [
@@ -113,7 +113,7 @@ describe("group label: tool categories", () =>
 					},
 				),
 			],
-			expected: "Read 2 files, used a tool",
+			expected: "Read 2 files, used claude_ai_Claude_Docs",
 		},
 		{
 			calls: [
@@ -123,7 +123,47 @@ describe("group label: tool categories", () =>
 				tool("Artifact"),
 				tool("CronCreate"),
 			],
-			expected: "Used 5 tools",
+			expected: "Added task, started planning, messaged another session, and 2 more actions",
+		},
+		{
+			calls: [
+				...Array.from(
+					{
+						length: 7,
+					},
+					() => tool("TaskStop"),
+				),
+				bash(),
+			],
+			expected: "Ran a command, stopped task 7 times",
+		},
+		{
+			calls: [
+				tool("ToolSearch"),
+				{
+					...tool("ToolSearch"),
+					stopped: true,
+				},
+			],
+			expected: "Loaded tools 2 times (1 stopped)",
+		},
+		{
+			calls: [
+				{
+					...tool("ToolSearch"),
+					isError: true,
+				},
+				bash(),
+			],
+			expected: "Ran a command, loading tools, 1 failed",
+		},
+		{
+			calls: [tool("Skill"), bash(), tool("Grep"), tool("ToolSearch"), tool("TaskStop")],
+			expected: "Ran a command, searched code, ran skill, and 2 more actions",
+		},
+		{
+			calls: [tool("ToolSearch"), tool("TaskCreate"), bash(), tool("Skill")],
+			expected: "Ran a command, loaded tools, added task, ran skill",
 		},
 		{
 			calls: [tool("WebSearch"), tool("WebSearch"), tool("WebFetch")],
@@ -139,7 +179,7 @@ describe("group label: tool categories", () =>
 		},
 		{
 			calls: [tool("ExitPlanMode"), tool("Agent"), tool("Task")],
-			expected: "Ran 2 agents, used a tool",
+			expected: "Ran 2 agents, proposed plan",
 		},
 		{
 			calls: [tool("PowerShell"), bash()],
@@ -162,7 +202,7 @@ describe("group label: tool categories", () =>
 			],
 			expected: "Edited 2 notebooks",
 		},
-	])("labels $expected, with every uncategorized tool in one trailing segment", ({calls, expected}) =>
+	])("labels $expected, naming each uncategorized tool by its group words", ({calls, expected}) =>
 	{
 		expect(label(calls)).toBe(expected);
 	});
@@ -338,7 +378,7 @@ describe("group label: failure count", () =>
 				bash(),
 				mcp(),
 			],
-			expected: "Ran a command, used 2 tools, 1 failed",
+			expected: "Ran a command, used x 2 times, 1 failed",
 		},
 		{
 			calls: [
@@ -414,7 +454,7 @@ describe("group label: rejected and interrupted calls", () =>
 					stopped: true,
 				},
 			],
-			expected: "Used a tool",
+			expected: "Using x (1 stopped)",
 		},
 		{
 			calls: [
@@ -1329,5 +1369,272 @@ describe("group label: benign errors", () =>
 			result: "No-op: there is no active EnterWorktree session to exit.",
 		};
 		expect(label([bash(), exit])).toBe("Ran a command, used a tool");
+	});
+});
+
+describe("group label: peer sends", () =>
+{
+	const send = (input: Record<string, unknown>, extra: Partial<ToolCallLike> = {}): ToolCallLike => (
+	{
+		name: "SendMessage",
+		input,
+		...extra,
+	});
+
+	it("counts sends to session addresses in one category part, each address once", () =>
+	{
+		expect(
+			{
+				withCommand: label([
+					send(
+						{
+							to: "uds:/tmp/cc-socks/1.sock",
+						},
+					),
+					bash(),
+				]),
+				sameAddress: label([
+					send(
+						{
+							to: "uds:/a",
+						},
+					),
+					send(
+						{
+							to: " uds:/a ",
+						},
+					),
+				]),
+				threeAddresses: label([
+					send(
+						{
+							to: "bridge:x",
+						},
+					),
+					send(
+						{
+							to: "/tmp/s.sock",
+						},
+					),
+					send(
+						{
+							to: "local_0123abcd",
+						},
+					),
+				]),
+				failed: label([
+					send(
+						{
+							to: "did:plc:1",
+						},
+					),
+					send(
+						{
+							to: "uds:/b",
+						},
+						{
+							isError: true,
+						},
+					),
+				]),
+				notHex: label([
+					send(
+						{
+							to: "local_xyz",
+						},
+					),
+				]),
+			},
+		).toStrictEqual(
+			{
+				withCommand: "Messaged another session, ran a command",
+				sameAddress: "Messaged another session",
+				threeAddresses: "Messaged 3 other sessions",
+				failed: "Messaged 2 other sessions (1 failed)",
+				notHex: "Messaged @local_xyz",
+			},
+		);
+	});
+
+	it("names each other recipient by its own group words", () =>
+	{
+		expect(
+			{
+				specimen: label([
+					bash(
+						{
+							isError: true,
+						},
+					),
+					send(
+						{
+							to: "status-photos2",
+							recipient_kind: "name",
+						},
+					),
+					send(
+						{
+							to: "tiktok-tasks",
+							recipient_kind: "name",
+						},
+					),
+				]),
+				repeated: label([
+					send(
+						{
+							to: "fix-ecr",
+						},
+					),
+					send(
+						{
+							to: "fix-ecr",
+						},
+					),
+				]),
+				seven: label(
+					["a", "b", "c", "d", "e", "f", "g"].map((to) =>
+						send(
+							{
+								to,
+							},
+						),
+					),
+				),
+				agents: label([
+					send(
+						{
+							to: "abc123xyz",
+						},
+					),
+					send(
+						{
+							to: "a0123456789abcdef",
+						},
+					),
+					send(
+						{
+							to: "lead",
+							recipient_kind: "agent",
+						},
+					),
+				]),
+				described: label([
+					send(
+						{
+							to: "researcher",
+						},
+						{
+							recipientDescription: "Survey repos",
+						},
+					),
+				]),
+				describedHandshake: label([
+					send(
+						{
+							to: "researcher",
+							message:
+							{
+								type: "shutdown_request",
+							},
+						},
+						{
+							recipientDescription: "Survey repos",
+						},
+					),
+				]),
+				shutdown: label([
+					send(
+						{
+							to: "w1",
+							message:
+							{
+								type: "shutdown_request",
+							},
+						},
+					),
+				]),
+				approved: label([
+					send(
+						{
+							to: "w1",
+							message:
+							{
+								type: "plan_approval_response",
+								approve: true,
+							},
+						},
+					),
+				]),
+				anotherSession: label([
+					send(
+						{
+							to: "",
+						},
+					),
+					send(
+						{
+							to: "x",
+							recipient_kind: "session",
+						},
+					),
+				]),
+				categoryThenWords: label([
+					send(
+						{
+							to: "uds:/a",
+						},
+					),
+					send(
+						{
+							to: "",
+						},
+					),
+				]),
+				broadcast: label([
+					send(
+						{
+							to: "*",
+						},
+					),
+				]),
+				failed: label([
+					send(
+						{
+							to: "w1",
+						},
+						{
+							isError: true,
+						},
+					),
+					bash(),
+				]),
+				stopped: label([
+					send(
+						{
+							to: "w1",
+						},
+						{
+							stopped: true,
+						},
+					),
+				]),
+			},
+		).toStrictEqual(
+			{
+				specimen: "Ran a command, messaged @status-photos2, messaged @tiktok-tasks, 1 failed",
+				repeated: "Messaged @fix-ecr 2 times",
+				seven: "Messaged @a, messaged @b, messaged @c, and 4 more actions",
+				agents: "Messaged agent 3 times",
+				described: "Messaged agent",
+				describedHandshake: "Messaged agent",
+				shutdown: "Asked @w1 to shut down",
+				approved: "Approved plan from @w1",
+				anotherSession: "Messaged another session 2 times",
+				categoryThenWords: "Messaged another session, messaged another session",
+				broadcast: "Messaged @*",
+				failed: "Ran a command, messaging @w1, 1 failed",
+				stopped: "Messaging @w1 (1 stopped)",
+			},
+		);
 	});
 });
