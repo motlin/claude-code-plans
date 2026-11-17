@@ -45,6 +45,8 @@ export const sessions = sqliteTable(
 		firstPrompt: text("first_prompt"),
 		/** The first line of the newest prompt the user typed, for a described sidebar row. */
 		lastUserMessage: text("last_user_message"),
+		/** The CLI's newest away summary written after the last typed prompt (upstream's postTurnSummary stand-in), normalised; null once a newer prompt arrives. */
+		recap: text("recap"),
 		summary: text("summary"),
 		customTitle: text("custom_title"),
 		aiTitle: text("ai_title"),

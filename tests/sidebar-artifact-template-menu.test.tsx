@@ -128,9 +128,16 @@ async function renderSidebar(
 			component: () => null,
 		},
 	);
+	const artifactsRoute = createRoute(
+		{
+			getParentRoute: () => rootRoute,
+			path: "artifacts",
+			component: () => null,
+		},
+	);
 	const router = createRouter(
 		{
-			routeTree: rootRoute.addChildren([routinesRoute, pageRoute]),
+			routeTree: rootRoute.addChildren([routinesRoute, artifactsRoute, pageRoute]),
 			history: createMemoryHistory(
 				{
 					initialEntries: [initialPath],
@@ -218,6 +225,49 @@ describe("sidebar Artifacts template launcher", () =>
 				rowLinks: ["Artifacts"],
 				linkIsRow: false,
 				glyph: "lucide-plus",
+			},
+		);
+	});
+
+	it("puts upstream's row background on the Artifacts wrapper, as Xx does for a row with actions", async () =>
+	{
+		const wrapperOn = async (path: string) =>
+		{
+			await renderSidebar(undefined, path);
+			const wrapper = plusButton().closest<HTMLElement>("[data-row]");
+			const result =
+			{
+				classes: [...(wrapper?.classList ?? [])].filter((name) => /bg-|rounded-/.test(name)).toSorted(),
+				selected: wrapper?.dataset["selected"] ?? null,
+			};
+			cleanup();
+			return result;
+		};
+		const classes = [
+			"[&>.df-nav-row]:bg-transparent",
+			"data-[menu-open=true]:bg-[var(--sb-hover)]",
+			"data-[selected=focused]:bg-[var(--sb-selected)]",
+			"has-[:focus-visible]:bg-[var(--sb-hover)]",
+			"hover:bg-[var(--sb-hover)]",
+			"rounded-[var(--sb-radius)]",
+		].toSorted();
+		expect(
+			{
+				artifacts: await wrapperOn("/artifacts"),
+				home: await wrapperOn("/"),
+			},
+		).toStrictEqual(
+			{
+				artifacts:
+				{
+					classes,
+					selected: "focused",
+				},
+				home:
+				{
+					classes,
+					selected: null,
+				},
 			},
 		);
 	});

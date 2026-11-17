@@ -3853,7 +3853,7 @@ describe("SessionGroups described rows (Show ▸ Metadata)", () =>
 			...session("d1", "Idle on main", "done", 5),
 			gitBranch: "main",
 			projectName: "claude-code-plans",
-			summary: "Fixed it",
+			recap: "Fixed the login bug.",
 			lastUserMessage: "Fix it",
 		},
 		{
@@ -4054,7 +4054,10 @@ describe("SessionGroups described rows (Show ▸ Metadata)", () =>
 					"Pinned on main": oneLine,
 					"Blocked asking": line("Run the testsproject-b1", "Run the tests, project-b1"),
 					"Permission ask": line("Needs permissionproject-b2", "Needs permission, project-b2"),
-					"Idle on main": line("Fixed itclaude-code-plans", "Fixed it, claude-code-plans"),
+					"Idle on main": line(
+						"Fixed the login bug.claude-code-plans",
+						"Fixed the login bug., claude-code-plans",
+					),
 					"No branch": line("project-n1", "project-n1"),
 				},
 				byProject:
@@ -4062,7 +4065,7 @@ describe("SessionGroups described rows (Show ▸ Metadata)", () =>
 					"Pinned on main": oneLine,
 					"Blocked asking": line("WaitingRun the tests", "Waiting, Run the tests"),
 					"Permission ask": line("WaitingNeeds permission", "Waiting, Needs permission"),
-					"Idle on main": line("Fixed it", "Fixed it"),
+					"Idle on main": line("Fixed the login bug.", "Fixed the login bug."),
 					"No branch": line("Idle", "Idle"),
 				},
 			},

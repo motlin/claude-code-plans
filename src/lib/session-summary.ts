@@ -163,6 +163,12 @@ export function toSessionSummaryPayload(
 				{
 					lastUserMessage: entry.lastUserMessage,
 				}),
+		...(entry.recap === undefined
+			? {}
+			:
+				{
+					recap: entry.recap,
+				}),
 		mtime: entry.mtime.toISOString(),
 		created: entry.created.toISOString(),
 		project: entry.project,
@@ -346,6 +352,7 @@ export function buildSessionSummaryPayloadFromDb(
 			...sessionDisplayTitle(row.title, row.id, row.cwd),
 			firstPrompt: row.firstPrompt ?? undefined,
 			lastUserMessage: row.lastUserMessage ?? undefined,
+			recap: row.recap ?? undefined,
 			summary: row.summary ?? undefined,
 			customTitle: row.customTitle ?? undefined,
 			aiTitle: row.aiTitle ?? undefined,

@@ -259,6 +259,116 @@ describe("buildSessionSummaryPayloadFromDb", () =>
 		expect(buildSessionSummaryPayloadFromDb(db.index, "session-test-100")?.lastUserMessage).toBe("y".repeat(200));
 	});
 
+	it("carries the newest away summary after the last typed prompt as the recap, normalised and capped", async () =>
+	{
+		const user = (content: string) => (
+		{
+			type: "user",
+			sessionId: "session-test-100",
+			message:
+			{
+				role: "user",
+				content,
+			},
+		});
+		const awaySummary = (content: string, extra: Record<string, unknown> = {}) => (
+		{
+			type: "system",
+			subtype: "away_summary",
+			content,
+			sessionId: "session-test-100",
+			uuid: "away-1",
+			timestamp: "2026-11-04T10:00:00.000Z",
+			...extra,
+		});
+		const assistant =
+		{
+			type: "assistant",
+			sessionId: "session-test-100",
+			message:
+			{
+				role: "assistant",
+				content: [
+					{
+						type: "text",
+						text: "Done.",
+					},
+				],
+			},
+		};
+		const recapOf = async (records: unknown[]) =>
+		{
+			await indexSession(records.map((record) => JSON.stringify(record)).join("\n") + "\n");
+			await indexJsonlFile(db.index, join(testDir, PROJECT_ID, "session-test-100.jsonl"), PROJECT_ID);
+			const payload = buildSessionSummaryPayloadFromDb(db.index, "session-test-100");
+			return {
+				recap: payload?.recap,
+				lastUserMessage: payload?.lastUserMessage,
+			};
+		};
+
+		expect(
+			{
+				fresh: await recapOf([
+					user("Fix it"),
+					assistant,
+					awaySummary("Fixed the login bug.\nNext: push. (disable recaps in /config)"),
+				]),
+				stale: await recapOf([
+					user("Fix it"),
+					assistant,
+					awaySummary("Fixed the login bug."),
+					user("Now push it"),
+				]),
+				sidechain: await recapOf([
+					user("Fix it"),
+					awaySummary(
+						"Subagent recap.",
+						{
+							isSidechain: true,
+						},
+					),
+				]),
+				long: await recapOf([user("Fix it"), awaySummary("a".repeat(600))]),
+				surrogate: await recapOf([user("Fix it"), awaySummary("a".repeat(499) + "\u{1F600}" + "b".repeat(50))]),
+				blank: await recapOf([user("Fix it"), awaySummary(" \n\t ")]),
+			},
+		).toStrictEqual(
+			{
+				fresh:
+				{
+					recap: "Fixed the login bug. Next: push.",
+					lastUserMessage: "Fix it",
+				},
+				stale:
+				{
+					recap: undefined,
+					lastUserMessage: "Now push it",
+				},
+				sidechain:
+				{
+					recap: undefined,
+					lastUserMessage: "Fix it",
+				},
+				long:
+				{
+					recap: "a".repeat(500) + "…",
+					lastUserMessage: "Fix it",
+				},
+				surrogate:
+				{
+					recap: "a".repeat(499) + "…",
+					lastUserMessage: "Fix it",
+				},
+				blank:
+				{
+					recap: undefined,
+					lastUserMessage: "Fix it",
+				},
+			},
+		);
+	});
+
 	it("uses the active-session state when no durable approval exists", async () =>
 	{
 		await indexSession();

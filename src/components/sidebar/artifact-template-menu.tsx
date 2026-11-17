@@ -15,18 +15,23 @@ const LABEL = "New from a template";
  */
 export function ArtifactsNavRow({
 	children,
+	selected,
 }: Readonly<
 {
 	children: ReactNode;
+	selected: boolean;
 }>)
 {
 	const navigate = useNavigate();
 	const [open, setOpen] = useState(false);
 	return (
+		// Upstream `Xx`'s actions branch: the wrapper is `group zU` and owns the row tint, so pointer or keyboard focus on
+		// the "+" keeps the row tinted; the link keeps only its ring and stops painting its own (stacking) bg.
 		<div
 			data-row=""
 			data-menu-open={open ? "true" : undefined}
-			className="group/artifacts-row relative flex items-center data-[menu-open=true]:[&>a]:bg-[var(--sb-hover)]"
+			data-selected={selected ? "focused" : undefined}
+			className="group/artifacts-row relative flex items-center rounded-[var(--sb-radius)] hover:bg-[var(--sb-hover)] has-[:focus-visible]:bg-[var(--sb-hover)] data-[menu-open=true]:bg-[var(--sb-hover)] data-[selected=focused]:bg-[var(--sb-selected)] [&>.df-nav-row]:bg-transparent"
 		>
 			{children}
 			<div

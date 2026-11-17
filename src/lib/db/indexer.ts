@@ -741,6 +741,26 @@ function firstLine(text: string): string
 	return text.trim().split(/\r?\n/, 1)[0]?.trim() ?? "";
 }
 
+/** Upstream `dT`'s cap on a described row's message, in UTF-16 units. */
+const RECAP_MAX = 500;
+
+/**
+ * An away summary as a described row's message: drops the CLI's "(disable recaps in /config)" nudge, collapses
+ * whitespace (upstream `cL`), and caps at 500 units plus "…" without splitting a surrogate pair (upstream `dT`).
+ */
+function normalizeRecap(text: string): string | null
+{
+	const collapsed = text
+		.replace(/\s*\(disable recaps in \/config\)\s*$/, "")
+		.replace(/[\u2028\u2029]/g, "\n")
+		.replace(/\s+/g, " ")
+		.trim();
+	if (collapsed === "") return null;
+	if (collapsed.length <= RECAP_MAX) return collapsed;
+	const cut = (collapsed.charCodeAt(RECAP_MAX - 1) & 0xfc00) === 0xd800 ? RECAP_MAX - 1 : RECAP_MAX;
+	return collapsed.slice(0, cut) + "…";
+}
+
 /** Everything indexJsonlFile derives from a session transcript, folded one line at a time. */
 class SessionIndexState
 {
@@ -774,6 +794,8 @@ class SessionIndexState
 	readonly firstPrompt = new FirstUserMessageCollector();
 	/** The first line of the newest prompt the user typed, capped at LAST_USER_MESSAGE_MAX characters. */
 	lastUserMessage: string | null = null;
+	/** The CLI's newest away summary written after the last typed prompt (upstream's postTurnSummary stand-in), normalised; null once a newer prompt arrives. */
+	recap: string | null = null;
 	readonly subagentLinks = new SubagentLinkCollector();
 	readonly indexedMessages: IndexedMessage[] = [];
 	/** Messages on the active chain: an append can abandon an earlier branch, so this resolves at persist time. */
@@ -1000,7 +1022,20 @@ class SessionIndexState
 			if (type === "user")
 			{
 				const prompt = typedRecordPromptText(obj);
-				if (prompt !== null) this.lastUserMessage = firstLine(prompt).slice(0, LAST_USER_MESSAGE_MAX);
+				if (prompt !== null)
+				{
+					this.lastUserMessage = firstLine(prompt).slice(0, LAST_USER_MESSAGE_MAX);
+					this.recap = null;
+				}
+			}
+			else if (
+				type === "system" &&
+				obj["subtype"] === "away_summary" &&
+				obj["isSidechain"] !== true &&
+				typeof obj["content"] === "string"
+			)
+			{
+				this.recap = normalizeRecap(obj["content"]);
 			}
 			if (type === "user" || type === "assistant")
 			{
@@ -1227,6 +1262,7 @@ async function persistSessionIndexState(
 		updates["projectId"] = project;
 		updates["firstPrompt"] = firstPrompt?.text ?? null;
 		updates["lastUserMessage"] = state.lastUserMessage;
+		updates["recap"] = state.recap;
 		updates["customTitle"] = customTitle ?? null;
 		updates["aiTitle"] = aiTitle ?? null;
 		updates["prNumber"] = latestPrLink?.prNumber ?? null;
@@ -1273,6 +1309,7 @@ async function persistSessionIndexState(
 					title,
 					firstPrompt: firstPrompt?.text ?? null,
 					lastUserMessage: state.lastUserMessage,
+					recap: state.recap,
 					summary: null,
 					customTitle: customTitle ?? null,
 					aiTitle: aiTitle ?? null,

@@ -47,6 +47,7 @@ CREATE TABLE IF NOT EXISTS sessions (
   title TEXT NOT NULL,
   first_prompt TEXT,
   last_user_message TEXT,
+  recap TEXT,
   summary TEXT,
   custom_title TEXT,
   ai_title TEXT,

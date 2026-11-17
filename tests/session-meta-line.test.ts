@@ -190,32 +190,46 @@ describe("sessionMetaMessage", () =>
 {
 	const session =
 	{
+		recap: "R",
 		summary: "S",
 		lastUserMessage: "L",
 	};
 
-	it("uses the summary for settled rows and the last user message otherwise", () =>
+	it("uses the recap for idle and unread rows and the last user message otherwise", () =>
 	{
 		expect(
 			(["idle", "unread", "error", "working", "blocked"] as const).map((status) =>
 				sessionMetaMessage(session, status),
 			),
-		).toEqual(["S", "S", "S", "L", "L"]);
+		).toEqual(["R", "R", "L", "L", "L"]);
 	});
 
-	it("falls back to the last user message without a summary", () =>
+	it("falls back to the summary without a recap", () =>
+	{
+		expect(
+			sessionMetaMessage(
+				{
+					summary: "S",
+					lastUserMessage: "L",
+				},
+				"idle",
+			),
+		).toBe("S");
+	});
+
+	it("falls back to the last user message without a recap or summary", () =>
 	{
 		expect(
 			sessionMetaMessage(
 				{
 					lastUserMessage: "L",
 				},
-				"idle",
+				"unread",
 			),
 		).toBe("L");
 	});
 
-	it("has no message without either", () =>
+	it("has no message without any", () =>
 	{
 		expect(sessionMetaMessage({}, "idle")).toBeUndefined();
 	});

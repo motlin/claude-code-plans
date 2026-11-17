@@ -45,6 +45,8 @@ const SessionListItemSchema = z.object(
 		summary: z.string().optional(),
 		/** The first line of the newest prompt the user typed, the described row's fallback message. */
 		lastUserMessage: z.string().optional(),
+		/** The newest away summary after the last typed prompt, a settled described row's message. */
+		recap: z.string().optional(),
 		mtime: z.string(),
 		created: z.string(),
 		project: z.string(),

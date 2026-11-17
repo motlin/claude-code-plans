@@ -94,18 +94,20 @@ export function metaStatus(session: {
 }
 
 /**
- * Upstream `jv`: what the session did, for the line's text. Local has no per-turn task summary, so a working or
- * blocked row shows the last user message, and a settled row its summary first.
+ * Upstream `jv`: a settled row's recap (the CLI's away summary standing in for postTurnSummary), else the last user
+ * message. An errored row uses upstream's failure summary only for status_category 'failed', which local can't know,
+ * so it shows the last user message; working rows have no task summary locally.
  */
 export function sessionMetaMessage(
 	session:
 	{
+		recap?: string | undefined;
 		summary?: string | undefined;
 		lastUserMessage?: string | undefined;
 	},
 	status: MetaStatus,
 ): string | undefined
 {
-	const settled = status === "idle" || status === "unread" || status === "error";
-	return (settled ? session.summary : undefined) ?? session.lastUserMessage;
+	const settled = status === "idle" || status === "unread";
+	return (settled ? (session.recap ?? session.summary) : undefined) ?? session.lastUserMessage;
 }

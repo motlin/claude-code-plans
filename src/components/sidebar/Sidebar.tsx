@@ -174,7 +174,13 @@ export function Sidebar({
 									)}
 								</Link>
 							);
-							return hasRowActions ? <ArtifactsNavRow key={item.to}>{link}</ArtifactsNavRow> : link;
+							return hasRowActions ? (
+								<ArtifactsNavRow key={item.to} selected={item.section === activeSection}>
+									{link}
+								</ArtifactsNavRow>
+							) : (
+								link
+							);
 						})}
 						<MoreNavMenu
 							overflow={overflowItems}

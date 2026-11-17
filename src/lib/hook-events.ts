@@ -65,6 +65,8 @@ export interface SessionSummaryPayload
 	aiTitle?: string;
 	/** The first line of the newest prompt the user typed; absent when there is none. */
 	lastUserMessage?: string;
+	/** The newest away summary after the last typed prompt; absent when there is none. */
+	recap?: string;
 	mtime: string;
 	created: string;
 	project: string;

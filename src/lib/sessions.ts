@@ -42,6 +42,8 @@ export interface SessionEntry
 	firstPrompt?: string | undefined;
 	/** The first line of the newest prompt the user typed, from the index. */
 	lastUserMessage?: string | undefined;
+	/** The newest away summary after the last typed prompt, from the index. */
+	recap?: string | undefined;
 	summary?: string | undefined;
 	customTitle?: string | undefined;
 	/** The CLI's latest generated ai-title, which a custom title outranks. */
