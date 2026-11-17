@@ -643,7 +643,6 @@ export function PermissionCard({
 							<AlwaysAllowSaves saves={persistentAllowSaves} />
 						)}
 						{fileChange === "too_large" && <p className={TOO_LARGE_CLASS}>{FILE_CHANGE_TOO_LARGE}</p>}
-						{!detailFirst && detailBlock}
 						{tokenWarning && <TokenWarning />}
 						{rowsTrail &&
 							hasRows &&
@@ -668,6 +667,8 @@ export function PermissionCard({
 							) : (
 								<RowsPanel rows={rows} foldable clamp />
 							))}
+						{/* Upstream's `Le`: a detail that doesn't lead closes the body, after the token warning and trail rows. */}
+						{!detailFirst && detailBlock}
 						{!canAnswer && <ReadOnlyAnswerHint className="text-footnote text-secondary" />}
 						{error && <p className="text-footnote text-extended-pink">{error}</p>}
 					</div>

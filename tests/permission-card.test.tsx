@@ -370,7 +370,7 @@ describe("findPendingPermission", () =>
 		},
 	);
 
-	it("carries a Workflow's description and upstream's token warning", () =>
+	it("carries upstream's token warning on a Workflow, whose input.description is only a row", () =>
 	{
 		expect(
 			findPendingPermission(
@@ -400,7 +400,6 @@ describe("findPendingPermission", () =>
 					meta: "noop-a",
 				},
 				detail: null,
-				description: "Replies ok",
 				tokenWarning: true,
 				rows: [
 					{
@@ -1528,7 +1527,6 @@ describe("permission title copy", () =>
 					meta: "upstream-sync-noop",
 				},
 				detail: null,
-				description: "Does nothing",
 				tokenWarning: true,
 				rows: [
 					{
@@ -1588,6 +1586,64 @@ describe("permission title copy", () =>
 				},
 				detail: null,
 				tokenWarning: true,
+				folds: [
+					{
+						label: "Script",
+						text: "export default {}",
+						lined: true,
+					},
+				],
+			},
+		},
+		{
+			tool: "Workflow",
+			input:
+			{
+				scriptPath: "/s/runs/sync-wf.js",
+			},
+			expected:
+			{
+				title:
+				{
+					action: "run the workflow",
+					meta: "sync-wf",
+				},
+				detail: null,
+				tokenWarning: true,
+				rows: [
+					{
+						label: "Script path",
+						value: "/s/runs/sync-wf.js",
+					},
+				],
+				rowsUnvoiced: true,
+				rowsTrail: true,
+				rowsGate: true,
+			},
+		},
+		{
+			tool: "Workflow",
+			input:
+			{
+				script: "export const meta = {\n  name: 'noop',\n  description: \"Says\\nok\",\n}\nrun(\u202e)\n",
+			},
+			expected:
+			{
+				title:
+				{
+					action: "run the workflow",
+					meta: "noop",
+				},
+				detail: null,
+				description: "Says ok",
+				tokenWarning: true,
+				folds: [
+					{
+						label: "Script",
+						text: "export const meta = {\n  name: 'noop',\n  description: \"Says\\nok\",\n}\nrun([U+202E])\n",
+						lined: true,
+					},
+				],
 			},
 		},
 		{
@@ -3350,7 +3406,7 @@ describe("PermissionCard", () =>
 		);
 	});
 
-	it("draws a Workflow's description and upstream's token warning, whose background tasks pane link opens Background tasks", () =>
+	it("draws a Workflow's description, upstream's token warning, whose background tasks pane link opens Background tasks, and its folded Script last", () =>
 	{
 		const open = vi.fn<() => void>();
 		const {container} = render(
@@ -3370,6 +3426,13 @@ describe("PermissionCard", () =>
 					detail={null}
 					description="Replies ok"
 					tokenWarning
+					folds={[
+						{
+							label: "Script",
+							text: "export const meta = {name:'n'}\nrun()\n",
+							lined: true,
+						},
+					]}
 					canAnswer
 					onDecision={async () =>
 					{
@@ -3378,15 +3441,44 @@ describe("PermissionCard", () =>
 			</BackgroundTasksOpenerProvider>,
 		);
 		const details = [...(container.querySelector("[data-approval-card-body] > div")?.children ?? [])];
-		expect(details.map((element) => [element.getAttribute("class"), element.textContent])).toStrictEqual([
-			[
-				"text-body text-secondary select-text break-words max-h-[calc(3*var(--text-body--line-height))] overflow-y-auto [unicode-bidi:plaintext]",
-				"Replies ok",
-			],
-			[
-				"rounded-lg bg-alpha-1 px-lg py-2.5 text-body text-secondary select-text break-words",
-				"Dynamic workflows run many subagents in parallel and can use a lot of your usage limit. Stop them any time from the background tasks pane.",
-			],
+		const script = screen.getByRole(
+			"button",
+			{
+				name: "Script",
+			},
+		);
+		expect(
+			{
+				details: details.map((element) => [element.getAttribute("class"), element.textContent]),
+				expanded: script.getAttribute("aria-expanded"),
+				lines: container.querySelectorAll("[data-line]").length,
+			},
+		).toStrictEqual(
+			{
+				details: [
+					[
+						"text-body text-secondary select-text break-words max-h-[calc(3*var(--text-body--line-height))] overflow-y-auto [unicode-bidi:plaintext]",
+						"Replies ok",
+					],
+					[
+						"rounded-lg bg-alpha-1 px-lg py-2.5 text-body text-secondary select-text break-words",
+						"Dynamic workflows run many subagents in parallel and can use a lot of your usage limit. Stop them any time from the background tasks pane.",
+					],
+					["flow-root", "Script"],
+				],
+				expanded: "false",
+				lines: 0,
+			},
+		);
+		fireEvent.click(script);
+		expect(
+			[...container.querySelectorAll("[data-line]")].map((line) => [
+				line.getAttribute("data-line"),
+				line.textContent,
+			]),
+		).toStrictEqual([
+			["1", "export const meta = {name:'n'}\n"],
+			["2", "run()\n"],
 		]);
 		fireEvent.click(
 			screen.getByRole(

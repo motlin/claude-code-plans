@@ -66,6 +66,216 @@ export function workflowCallName(input: Readonly<Record<string, unknown>>): stri
 	);
 }
 
+/** A workflow's `export const meta` fields, as upstream's `ao` reads them. */
+export interface WorkflowMeta
+{
+	name?: string;
+	description?: string;
+	phases?: WorkflowMetaPhase[];
+}
+
+export interface WorkflowMetaPhase
+{
+	title: string;
+	detail?: string;
+}
+
+/** Upstream cd00a96b4 `t`: the last index of a comment or quoted string starting at `index`, or -1. */
+function skipCommentOrString(text: string, index: number): number
+{
+	const char = text[index];
+	if (char === "/" && text[index + 1] === "/")
+	{
+		let end = index + 2;
+		while (end < text.length && text[end] !== "\n") end++;
+		return end;
+	}
+	if (char === "/" && text[index + 1] === "*")
+	{
+		for (let end = index + 2; end + 1 < text.length; end++)
+		{
+			if (text[end] === "*" && text[end + 1] === "/") return end + 1;
+		}
+		return text.length;
+	}
+	if (char === '"' || char === "'" || char === "`")
+	{
+		let end = index + 1;
+		for (; end < text.length && text[end] !== char; end++)
+		{
+			if (text[end] === "\\") end++;
+		}
+		return end;
+	}
+	return -1;
+}
+
+/** Upstream `n`: the text between the bracket at `start` and its balanced closer. */
+function balancedBody(text: string, start: number, open: string, close: string): string | undefined
+{
+	if (text[start] !== open) return undefined;
+	let depth = 0;
+	for (let index = start; index < text.length; index++)
+	{
+		const skipped = skipCommentOrString(text, index);
+		if (skipped !== -1)
+		{
+			index = skipped;
+			continue;
+		}
+		if (text[index] === open) depth++;
+		else if (text[index] === close && --depth === 0) return text.slice(start + 1, index);
+	}
+	return undefined;
+}
+
+/** Upstream `r`: where `key:` sits at the body's top level, or -1. */
+function topLevelKey(body: string, key: string): number
+{
+	let depth = 0;
+	for (let index = 0; index < body.length; index++)
+	{
+		const skipped = skipCommentOrString(body, index);
+		if (skipped !== -1)
+		{
+			index = skipped;
+			continue;
+		}
+		const char = body[index];
+		if (char === "{" || char === "[")
+		{
+			depth++;
+			continue;
+		}
+		if (char === "}" || char === "]")
+		{
+			depth--;
+			continue;
+		}
+		if (
+			depth === 0 &&
+			body.startsWith(key, index) &&
+			!/\w/.test(body[index - 1] ?? "") &&
+			/^\s*:/.test(body.slice(index + key.length))
+		)
+		{
+			return index;
+		}
+	}
+	return -1;
+}
+
+const LITERAL_PATTERN = /^\s*:\s*(['"`])((?:\\[\s\S]|(?!\1)[^\\])*?)\1/;
+
+/**
+ * Upstream `i`: a top-level key's quoted literal, with `\n`/`\t`/`\r` read as a space, `\u`/`\x` kept
+ * escaped and any other escape unwrapped.
+ */
+function literalValue(body: string, key: string): string | undefined
+{
+	const index = topLevelKey(body, key);
+	if (index === -1) return undefined;
+	return LITERAL_PATTERN.exec(body.slice(index + key.length))?.[2]?.replace(/\\([\s\S])/g, (_escape, char: string) =>
+		char === "n" || char === "t" || char === "r" ? " " : char === "u" || char === "x" ? `\\${char}` : char,
+	);
+}
+
+/** Upstream `a`: the `phases` array's `{title, detail?}` entries. */
+function metaPhases(body: string): WorkflowMetaPhase[] | undefined
+{
+	const index = topLevelKey(body, "phases");
+	if (index === -1) return undefined;
+	const after = "phases".length + index;
+	const opener = /^\s*:\s*\[/.exec(body.slice(after));
+	if (!opener) return undefined;
+	const list = balancedBody(body, after + opener[0].length - 1, "[", "]");
+	if (list === undefined) return undefined;
+	const phases: WorkflowMetaPhase[] = [];
+	for (let entry = 0; entry < list.length; entry++)
+	{
+		if (list[entry] !== "{") continue;
+		const object = balancedBody(list, entry, "{", "}");
+		if (object === undefined) break;
+		const title = literalValue(object, "title");
+		if (title)
+		{
+			const detail = literalValue(object, "detail");
+			phases.push(
+				detail
+					?
+						{
+							title,
+							detail,
+						}
+					:
+						{
+							title,
+						},
+			);
+		}
+		entry += object.length + 1;
+	}
+	return phases.length > 0 ? phases : undefined;
+}
+
+/** Upstream `s`: the index of the `{` of a line-leading `export const meta = {` outside comments and strings, or -1. */
+function metaStart(script: string): number
+{
+	let lineStart = true;
+	for (let index = 0; index < script.length; index++)
+	{
+		const skipped = skipCommentOrString(script, index);
+		if (skipped !== -1)
+		{
+			lineStart = script[skipped] === "\n";
+			index = skipped;
+			continue;
+		}
+		if (lineStart)
+		{
+			const match = /^\s*export\s+const\s+meta\s*=\s*\{/.exec(script.slice(index));
+			if (match) return index + match[0].length - 1;
+		}
+		lineStart = script[index] === "\n";
+	}
+	return -1;
+}
+
+/**
+ * Upstream cd00a96b4 `o` (`ao`): the workflow's name (a non-empty `input.name`, else the script's
+ * `export const meta` name, else `workflowCallName`) and the meta's description and phases.
+ */
+export function parseWorkflowMeta(input: Readonly<Record<string, unknown>>): WorkflowMeta
+{
+	const script = typeof input["script"] === "string" ? input["script"] : undefined;
+	const named = typeof input["name"] === "string" && input["name"] ? input["name"] : undefined;
+	const fallback = workflowCallName(input);
+	const body = script ? balancedBody(script, metaStart(script), "{", "}") : undefined;
+	const name = named ?? (body === undefined ? undefined : literalValue(body, "name")) ?? fallback;
+	const description = body === undefined ? undefined : literalValue(body, "description");
+	const phases = body === undefined ? undefined : metaPhases(body);
+	return {
+		...(name === undefined
+			? null
+			:
+				{
+					name,
+				}),
+		...(description === undefined
+			? null
+			:
+				{
+					description,
+				}),
+		...(phases === undefined
+			? null
+			:
+				{
+					phases,
+				}),
+	};
+}
+
 /** Whether any assistant line calls the Workflow tool, so the page only fetches workflow runs when it can draw one. */
 export function linesHaveWorkflowCall(
 	lines: ReadonlyArray<

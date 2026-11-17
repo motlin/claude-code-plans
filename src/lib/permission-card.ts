@@ -6,6 +6,7 @@ import {PERMISSION_PROMPT_NOTIFICATION} from "./permission-prompt";
 import {clampRows, inputRows, rowsFitBudget, type PermissionRow} from "./permission-rows";
 import type {PermissionDialogDecision, PersistentAllowKind, PersistentAllowSave} from "./permission-suggestions";
 import {visibleMultiline} from "./visible-text";
+import {parseWorkflowMeta} from "./workflow-name";
 import {markerEventsFromRecords} from "./working-marker";
 
 export type PermissionDecision = PermissionDialogDecision;
@@ -640,23 +641,38 @@ function commandInputValid(input: Record<string, unknown>): boolean
 	return Object.entries(input).every(([key, value]) => COMMAND_INPUT_KEYS.get(key)?.(value) === true);
 }
 
-/** Upstream's Workflow copy: its args other than the script (and the name it is titled by) as gated trail rows. */
+/**
+ * Upstream's Workflow copy (`Av`): the name and description from the script's meta (`ao`), the inline script in a
+ * folded lined "Script" detail, and its args other than the script (and the name it is titled by) as gated trail rows.
+ */
 function workflowCopy(input: Record<string, unknown>): PermissionCopy
 {
-	const name = stringInput(input, "name");
-	const description = stringInput(input, "description");
+	const {name, description} = parseWorkflowMeta(input);
+	const script = input["script"];
 	const args = Object.fromEntries(
 		Object.entries(input).filter(([key, value]) => key !== "script" && (key !== "name" || value !== name)),
 	);
 	return {
-		action: name === null ? "run a workflow" : "run the workflow",
-		meta: name,
-		...(description === null
+		action: name === undefined ? "run a workflow" : "run the workflow",
+		meta: name ?? null,
+		...(description === undefined
 			? {}
 			:
 				{
 					description,
 				}),
+		...(typeof script === "string"
+			?
+				{
+					folds: [
+						{
+							label: "Script",
+							text: visibleMultiline(script),
+							lined: true,
+						},
+					],
+				}
+			: {}),
 		tokenWarning: true,
 		...gatedTrail(inputRows(args)),
 	};
