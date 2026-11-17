@@ -29,6 +29,14 @@ vi.mock("../src/lib/hmr-persist", () => (
 	},
 }));
 
+vi.mock("../src/hooks/use-claude-events", () => (
+{
+	useClaudeEvents: () => (
+	{
+		failedTools: new Map(),
+	}),
+}));
+
 const SESSION_ID = "parent-session";
 
 const PROMPT = "Audit every pane registration and report which kinds have no renderer.";
@@ -144,7 +152,7 @@ function Harness()
 	return null;
 }
 
-function renderPane(): void
+function renderPane(transcripts: ReadonlyMap<string, TranscriptData> = new Map()): void
 {
 	const queryClient = new QueryClient(
 		{
@@ -157,7 +165,8 @@ function renderPane(): void
 			},
 		},
 	);
-	for (const agent of SUBAGENTS) queryClient.setQueryData(sessionQueryKeys.transcript(agent.id), EMPTY_TRANSCRIPT);
+	for (const agent of SUBAGENTS)
+		queryClient.setQueryData(sessionQueryKeys.transcript(agent.id), transcripts.get(agent.id) ?? EMPTY_TRANSCRIPT);
 	render(
 		<QueryClientProvider client={queryClient}>
 			<SettingsProvider>
@@ -376,5 +385,92 @@ describe("Subagent pane", () =>
 		renderPane();
 
 		expect(within(header()).getByRole("heading").textContent).toBe("Audit pane registrations");
+	});
+	// Upstream's agent pane renders the same TurnStatus transcript as the main chat, so a
+	// failed row reads "Reading … Failed", never the classic danger "Failed to read".
+	it("draws a failed Read in the agent's activity with the transcript's running shape", () =>
+	{
+		const records = [
+			{
+				type: "user",
+				uuid: "agent-prompt",
+				message:
+				{
+					role: "user",
+					content: PROMPT,
+				},
+			},
+			{
+				type: "assistant",
+				uuid: "agent-read",
+				message:
+				{
+					id: "msg-agent-read",
+					role: "assistant",
+					content: [
+						{
+							type: "tool_use",
+							id: "toolu_read",
+							name: "Read",
+							input:
+							{
+								file_path: "/nonexistent/upstream-sync.txt",
+							},
+						},
+					],
+				},
+			},
+			{
+				type: "user",
+				uuid: "agent-read-result",
+				message:
+				{
+					role: "user",
+					content: [
+						{
+							type: "tool_result",
+							tool_use_id: "toolu_read",
+							content: "<tool_use_error>Fabricated failure</tool_use_error>",
+							is_error: true,
+						},
+					],
+				},
+			},
+		];
+		saveSubagentPaneAgent(SESSION_ID, "agent-a1");
+		renderPane(
+			new Map([
+				[
+					"agent-a1",
+					{
+						...EMPTY_TRANSCRIPT,
+						records,
+					},
+				],
+			]),
+		);
+		const row = pane().querySelector("[data-tool-row]");
+		const label = row?.querySelector('[id$="-label"]');
+		const outcome = row?.querySelector('[id$="-outcome"]');
+
+		expect(
+			{
+				label: label?.textContent,
+				labelDanger: [label, ...(label?.querySelectorAll("*") ?? [])].some((element) =>
+					(element?.getAttribute("class") ?? "").split(" ").includes("text-danger"),
+				),
+				meta: row?.querySelector('[id$="-meta"]')?.textContent,
+				outcome: outcome?.textContent,
+				outcomeClass: outcome?.className,
+			},
+		).toStrictEqual(
+			{
+				label: "Reading",
+				labelDanger: false,
+				meta: "upstream-sync.txt",
+				outcome: "Failed",
+				outcomeClass: "shrink-0 text-body text-danger",
+			},
+		);
 	});
 });

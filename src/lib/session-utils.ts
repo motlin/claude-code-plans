@@ -1032,6 +1032,8 @@ function keyOutcomes(byKey: Map<string, CallOutcome | undefined>): SegmentOutcom
 interface CountedSegment extends SummarySegment, SegmentOutcomes
 {
 	count: number;
+	/** Upstream's `leads`: a part the header never folds into "and N more actions". */
+	leads?: true;
 }
 
 /**
@@ -1172,12 +1174,14 @@ function withNote(segment: CountedSegment, note: string | null): SummarySegment
 	};
 }
 
-/** Segments upstream shows before folding the rest into "and N more actions". */
-const SHOWN_SEGMENTS = 3;
+/** Segments upstream (c24951e9f `se`) shows at least, before folding the rest into "and N more actions". */
+const MIN_SHOWN_SEGMENTS = 3;
 
 /**
  * Upstream's trailing mode (c24951e9f `oe`, which transcript groups always
- * use). Five or more segments keep the first three, the last ending in ",",
+ * use), after c24951e9f `ce`: the fold keeps `max(3, lastLeadIndex + 1)`
+ * segments, so a leading segment is never folded, and only folds when it
+ * drops at least two. Five or more segments keep the first three, the last ending in ",",
  * and trail "and N more actions" plus the whole group's failures and blocks:
  * "Ran a command, searched code, found files, and 2 more actions, 1 failed".
  * Two to four with a failure or block trail the outcomes part: "Ran 2
@@ -1195,11 +1199,13 @@ function shapeSegments(segments: CountedSegment[]):
 		segments.reduce((sum, segment) => sum + segment.failed, 0),
 		segments.reduce((sum, segment) => sum + segment.blocked, 0),
 	);
-	if (segments.length >= SHOWN_SEGMENTS + 2)
+	const leadEnd = segments.reduce((end, segment, i) => (segment.leads === true ? i + 1 : end), 0);
+	const shownCount = Math.max(MIN_SHOWN_SEGMENTS, leadEnd);
+	if (segments.length >= shownCount + 2)
 	{
-		const count = segments.slice(SHOWN_SEGMENTS).reduce((sum, segment) => sum + segment.count, 0);
+		const count = segments.slice(shownCount).reduce((sum, segment) => sum + segment.count, 0);
 		const shown = segments
-			.slice(0, SHOWN_SEGMENTS)
+			.slice(0, shownCount)
 			.map(({file: _file, ...segment}) => withNote(segment, plainNote(segment)));
 		const last = shown.at(-1);
 		if (last !== undefined)
@@ -1395,7 +1401,15 @@ function buildSummarySegments(
 
 	// Upstream names agent messages where they arrived: "Received a message, ran
 	// a command" when they led the run, "Ran 2 commands, received a message" after.
-	if (received.leading > 0) segments.unshift(labelledSegment(RECEIVED_LABEL, received.leading));
+	if (received.leading > 0)
+	{
+		segments.unshift(
+			{
+				...labelledSegment(RECEIVED_LABEL, received.leading),
+				leads: true,
+			},
+		);
+	}
 	if (received.trailing > 0) segments.push(labelledSegment(RECEIVED_LABEL, received.trailing));
 	// Upstream leads with the re-prompt that started the run: "Hook re-prompted Claude, ran a command".
 	if (received.reprompted === true)
@@ -1405,6 +1419,7 @@ function buildSummarySegments(
 				rest: "re-prompted Claude",
 				count: 1,
 				...NO_OUTCOMES,
+				leads: true,
 			},
 		);
 
@@ -1428,6 +1443,7 @@ function buildSummarySegments(
 					count,
 					...NO_OUTCOMES,
 					failed: failedCompletions,
+					leads: true,
 				},
 			);
 		}
@@ -1460,6 +1476,8 @@ function buildSummarySegments(
 		blocked: segments.reduce((sum, segment) => sum + segment.blocked, 0),
 	};
 }
+
+export {shapeSegments as shapeSegmentsForTest};
 
 /**
  * `failedLaunches` holds the tool_use ids of background launches whose task

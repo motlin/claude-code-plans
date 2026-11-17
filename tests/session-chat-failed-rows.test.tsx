@@ -381,6 +381,81 @@ describe("failed transcript rows read the running shape", () =>
 	});
 });
 
+/** The failed call's label ink, drawn alone or nested in a group after a successful Bash. */
+function failedLabelClasses(target: Call, grouped: boolean): string[]
+{
+	const records = [prompt, ...(grouped ? call(leadingBash) : []), ...call(target)];
+	const {lines, toolResultMap} = processTranscript(records);
+	const {container} = render(
+		<SessionChat
+			sessionId="test-session"
+			lines={lines}
+			toolResultMap={toolResultMap}
+			transcriptMode="normal"
+			showTools
+			showThinking={false}
+			shouldScrollToEnd={false}
+		/>,
+	);
+	if (grouped)
+	{
+		const toggle = container.querySelector<HTMLElement>("button[aria-expanded]");
+		if (toggle === null) throw new Error("no group toggle");
+		fireEvent.click(toggle);
+	}
+	const rows = container.querySelectorAll("[data-tool-row]");
+	const labels = rows[rows.length - 1]?.querySelectorAll('[id$="-label"]') ?? [];
+	const classes = [...labels]
+		.flatMap((label) => [label, ...label.querySelectorAll("*")])
+		.map((element) => element.getAttribute("class") ?? "");
+	cleanup();
+	return classes;
+}
+
+// Upstream's classic row (`KO` else-branch: danger "Failed to read", no outcome) draws
+// only on the legacy renderer arm or after a renderer crash; the local app has neither.
+describe("failed rows never take upstream's classic danger-verb shape", () =>
+{
+	// A Workflow row never joins a group, so it is checked alone.
+	const cases: [string, Call, boolean[]][] = [
+		[
+			"Read",
+			failed(
+				"Read",
+				{
+					file_path: "/nonexistent/upstream-sync.txt",
+				},
+			),
+			[false, true],
+		],
+		[
+			"Workflow",
+			failed(
+				"Workflow",
+				{
+					scriptPath: "/x/wf.js",
+				},
+			),
+			[false],
+		],
+	];
+	it.each(cases)("keeps a failed %s's label out of the danger ink", (_name, target, groupings) =>
+	{
+		const classes = groupings.flatMap((grouped) => failedLabelClasses(target, grouped));
+		expect(
+			{
+				labelled: classes.length > 0,
+				danger: classes.filter((className) => className.split(" ").includes("text-danger")),
+			},
+		).toStrictEqual(
+			{
+				labelled: true,
+				danger: [],
+			},
+		);
+	});
+});
+
 describe("benign tool errors", () =>
 {
 	it("settles a no-op ExitWorktree done as No worktree to leave", () =>

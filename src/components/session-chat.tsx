@@ -8103,6 +8103,9 @@ function ToolCallRow({
 	// rejected or interrupted the call, or a secondary "Denied" when they rejected
 	// it with a reply. Upstream's `mD` notes a rejected or interrupted ExitPlanMode "Not approved" instead.
 	// A background launch takes the status its later notification reports.
+	// Upstream's non-TurnStatus row (`KO` else-branch: a danger "Failed to read" and no
+	// status) only draws when the legacy renderer arm is on or after a renderer crash;
+	// the local app has no such fallback, so every row takes this TurnStatus shape.
 	const backgroundOutcomes = useContext(BackgroundOutcomeContext);
 	const backgroundOutcome = backgroundOutcomes.byLaunch.get(call.id);
 	// Upstream `yX`: a run is stopped or blocked when any call was, else it settles as its last call.

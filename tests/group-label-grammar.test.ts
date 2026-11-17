@@ -1,6 +1,7 @@
 import
 {
 	countedLabelText,
+	shapeSegmentsForTest,
 	splitTrailingFile,
 	summarizeToolCallStats,
 	type BackgroundCompletionLike,
@@ -1349,6 +1350,114 @@ describe("group label: received messages", () =>
 				failed: "Finished a background task, received a message, ran a command, 1 failed",
 				settled: "Ran a command, received a message, finished a background command",
 			},
+		);
+	});
+});
+
+describe("group label: the fold keeps every leading part", () =>
+{
+	const part = (verb: string, count: number, leads = false): Parameters<typeof shapeSegmentsForTest>[0][number] => (
+	{
+		verb,
+		rest: "x",
+		count,
+		failed: 0,
+		stopped: 0,
+		blocked: 0,
+		...(leads
+			?
+				{
+					leads: true,
+				}
+			: {}),
+	});
+	const leads = ["a", "b", "c", "d"].map((verb) => part(verb, 1, true));
+	const tool = (name: string): ToolCallLike => (
+	{
+		name,
+		input: {},
+	});
+
+	it("keeps 4 leads and 1 plain part unfolded, as folding one part saves nothing", () =>
+	{
+		expect(shapeSegmentsForTest([...leads, part("e", 1)])).toStrictEqual(
+			{
+				segments: ["a", "b", "c", "d", "e"].map((verb) => (
+				{
+					verb,
+					rest: "x",
+				})),
+				trailing: null,
+			},
+		);
+	});
+
+	it("folds only past the last lead, totalling the folded counts", () =>
+	{
+		expect(shapeSegmentsForTest([...leads, part("e", 2), part("f", 3)])).toStrictEqual(
+			{
+				segments: [
+					...["a", "b", "c"].map((verb) => (
+					{
+						verb,
+						rest: "x",
+					})),
+					{
+						verb: "d",
+						rest: "x,",
+					},
+				],
+				trailing: " and 5 more actions",
+			},
+		);
+	});
+
+	it("keeps 3 parts when nothing leads", () =>
+	{
+		expect(shapeSegmentsForTest(["a", "b", "c", "d", "e"].map((verb) => part(verb, 1)))).toStrictEqual(
+			{
+				segments: [
+					{
+						verb: "a",
+						rest: "x",
+					},
+					{
+						verb: "b",
+						rest: "x",
+					},
+					{
+						verb: "c",
+						rest: "x,",
+					},
+				],
+				trailing: " and 2 more actions",
+			},
+		);
+	});
+
+	it("leads with a failed completion, the hook re-prompt and leading messages, then folds", () =>
+	{
+		expect(
+			countedLabelText(
+				summarizeToolCallStats(
+					[bash(), tool("Grep"), tool("Glob")],
+					[
+						{
+							status: "failed",
+							command: true,
+							toolUseId: null,
+						},
+					],
+					new Set(),
+					{
+						leading: 1,
+						trailing: 0,
+						reprompted: true,
+					},
+				),
+			),
+		).toBe(
+			"Finished a background command, hook re-prompted Claude, received a message, and 3 more actions, 1 failed",
 		);
 	});
 });
