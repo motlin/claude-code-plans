@@ -1532,6 +1532,13 @@ function doAllIdleRecords(): unknown[]
 			isMeta: true,
 			promptSource: "system",
 			turnOrigin: "peer",
+			origin:
+			{
+				kind: "peer",
+				from: "a3bc840d29ae2ae76",
+				senderTaskId: "a3bc840d29ae2ae76",
+				handback: true,
+			},
 			message:
 			{
 				role: "user",
@@ -1663,6 +1670,13 @@ function doAllFailedIdleRecords(): unknown[]
 			isMeta: true,
 			promptSource: "system",
 			turnOrigin: "peer",
+			origin:
+			{
+				kind: "peer",
+				from: "a7da25778818cc058",
+				senderTaskId: "a7da25778818cc058",
+				handback: true,
+			},
 			message:
 			{
 				role: "user",

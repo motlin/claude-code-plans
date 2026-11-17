@@ -53,9 +53,9 @@ import {OmittedThinkingStep, ThinkingStep} from "./thinking-step";
 import {FileRefTarget, ProseMarkdown} from "./file-refs";
 import {MarkdownArticle} from "./markdown-article";
 import {TruncatedContent} from "./truncated-content";
-import {AgentMessageRow} from "./agent-message-row";
+import {PeerFallbackCard, PeerMessageRow} from "./agent-message-row";
 import {AgentNameContext, type AgentNameResolver} from "./agent-name-context";
-import {parseAgentMessage, type AgentMessage} from "../lib/agent-message";
+import {parsePeerMessage, type PeerMessage} from "../lib/agent-message";
 import {backgroundNoticeSummary, backgroundTaskClause} from "../lib/background-notice-summary";
 import
 {
@@ -1798,7 +1798,7 @@ interface PeerNotice
 {
 	kind: "peer";
 	lineIndex: number;
-	message: AgentMessage;
+	message: PeerMessage;
 	/** It arrived before the group's first tool call. */
 	leads: boolean;
 }
@@ -1835,10 +1835,10 @@ const NO_NOTICES: readonly FoldedNotice[] = [];
  * The agent message a meta user line delivers. One the turn absorbed as a
  * queued_command attachment never reaches upstream, so it is Verbose-only.
  */
-function agentMessageOf(line: SessionLine): AgentMessage | null
+function agentMessageOf(line: SessionLine): PeerMessage | null
 {
-	if (line.type !== "user" || classifyUserContent(line) !== "agent-message") return null;
-	return parseAgentMessage(getUserContentText(line));
+	if (line.type !== "user" || classifyUserContent(line) !== "peer-message") return null;
+	return parsePeerMessage(getUserContentText(line), line.peerOrigin);
 }
 
 function lineTimestamp(line: SessionLine): string | undefined
@@ -1884,7 +1884,7 @@ function foldablePeerMessage(
 	lines: readonly SessionLine[],
 	index: number,
 	subagentLookup: SubagentLookup,
-): AgentMessage | null
+): PeerMessage | null
 {
 	const message = agentMessageOf(defined(lines[index], "foldablePeerMessage index is in range"));
 	if (message === null || heldBySlowCommand(lines, index, message.from, subagentLookup)) return null;
@@ -2390,7 +2390,7 @@ function FoldedNoticeRow({notice}: {notice: FoldedNotice})
 		case "task":
 			return <BackgroundNoticeRow notice={notice} />;
 		case "peer":
-			return <AgentMessageRow message={notice.message} />;
+			return <PeerMessageRow message={notice.message} />;
 		case "hook":
 			return <StopHookMarker line={notice.line} />;
 		case "claude-notice":
@@ -5620,6 +5620,9 @@ function renderSessionMessage({
 	}
 }
 
+/** A `<teammate-message>` element, as upstream `ks` finds one in an unparsed peer line. */
+const TEAMMATE_ELEMENT = /<teammate-message(?=[\s/>])[^>]*>[\s\S]*?<\/teammate-message>/;
+
 type UserContentKind =
 	| "command"
 	| "bash"
@@ -5629,7 +5632,8 @@ type UserContentKind =
 	| "compact-summary"
 	| "stop-hook"
 	| "slash-command-body"
-	| "agent-message";
+	| "peer-message"
+	| "peer-card";
 
 function getUserContentText(line: MessageSessionLine): string
 {
@@ -5676,8 +5680,11 @@ function classifyUserContent(line: MessageSessionLine): UserContentKind
 		return "request-interrupted";
 	}
 
-	// The CLI injects agent hand-backs as meta user lines, so a user quoting the envelope stays text.
-	if (line.isMeta === true && parseAgentMessage(text) !== null) return "agent-message";
+	// The CLI injects peer messages as meta user lines, so a user quoting the envelope stays text.
+	if (line.isMeta === true && parsePeerMessage(text, line.peerOrigin) !== null) return "peer-message";
+
+	// Older CLIs wrote teammate messages as plain, origin-less user lines; upstream's `ks` cards them.
+	if (line.isMeta !== true && line.peerOrigin === undefined && TEAMMATE_ELEMENT.test(text)) return "peer-card";
 
 	// Document attachments are always user-initiated, even when isMeta is set —
 	// otherwise an isMeta line is either stop-hook feedback or a slash-command body.
@@ -5799,14 +5806,31 @@ function UserEntry({
 		return null;
 	}
 
-	if (kind === "agent-message")
+	// Upstream's peer-only user entry (c01e7498d, `code.user.peer`): rows in a gap-1 column, no bubble.
+	if (kind === "peer-message")
 	{
-		const message = parseAgentMessage(getUserContentText(line));
+		const message = parsePeerMessage(getUserContentText(line), line.peerOrigin);
 		return message === null ? null : (
 			<UserTurn
 				text={message.body}
 				turnKey={line.turnKey ?? line.uuid}
-				trailing={<AgentMessageRow message={message} />}
+				trailing={
+					<div className="flex flex-col gap-1 w-full">
+						<PeerMessageRow message={message} />
+					</div>
+				}
+			/>
+		);
+	}
+
+	if (kind === "peer-card")
+	{
+		const text = cleanPromptText(getUserContentText(line)).trim();
+		return (
+			<UserTurn
+				text={text}
+				turnKey={line.turnKey ?? line.uuid}
+				trailing={<PeerFallbackCard kind="teammate" content={text} />}
 			/>
 		);
 	}
@@ -9040,7 +9064,7 @@ function ToolCallSummary({
 									<StopHookMarker key={`notice-${notice.lineIndex}`} line={notice.line} />
 								))}
 								{leadingPeers.map((notice) => (
-									<AgentMessageRow key={`notice-${notice.lineIndex}`} message={notice.message} />
+									<PeerMessageRow key={`notice-${notice.lineIndex}`} message={notice.message} />
 								))}
 								{coalesceSameTarget(calls).map((item) =>
 									"kind" in item ? (
@@ -9083,7 +9107,7 @@ function ToolCallSummary({
 									),
 								)}
 								{trailingPeers.map((notice) => (
-									<AgentMessageRow key={`notice-${notice.lineIndex}`} message={notice.message} />
+									<PeerMessageRow key={`notice-${notice.lineIndex}`} message={notice.message} />
 								))}
 								{claudeNotices.map((notice) => (
 									<ClaudeCodeNoticeSteps key={`notice-${notice.lineIndex}`} notice={notice} />

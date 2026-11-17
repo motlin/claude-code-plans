@@ -896,6 +896,12 @@ function peerMessage(uuid: string, from: string)
 		type: "user",
 		uuid,
 		isMeta: true,
+		origin:
+		{
+			kind: "peer",
+			from,
+			senderTaskId: from,
+		},
 		timestamp: "2026-09-30T08:00:30.000Z",
 		message:
 		{
@@ -930,7 +936,7 @@ function observePeers(records: unknown[], mode: TranscriptMode)
 			container.querySelectorAll("[data-turn-status] > button > span:first-child"),
 			(label) => label.textContent,
 		),
-		messageRows: container.querySelectorAll("[data-agent-message-from]").length,
+		messageRows: container.querySelectorAll("[data-peer-message-from]").length,
 	};
 }
 
@@ -957,6 +963,11 @@ describe("Agent messages folded into tool groups", () =>
 					type: "queued_command",
 					prompt: agentMessageText("a1"),
 					commandMode: "prompt",
+					origin:
+					{
+						kind: "peer",
+						from: "a1",
+					},
 				},
 			),
 			...bashCall("second"),

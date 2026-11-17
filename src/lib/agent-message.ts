@@ -1,38 +1,216 @@
-/** A message one agent in this session sent another, such as a subagent's hand-back report. */
-export interface AgentMessage
+import {isRecord} from "./narrow";
+
+/**
+ * The facts upstream's `Ks` (c1128a44c) reads from a peer record's `origin`: the CLI stamps a
+ * delivered peer message `{kind: "peer", from, name?, senderTaskId?, handback?, …}`.
+ */
+export interface PeerOrigin
 {
-	/** The sender's bare agent id. */
+	name?: string | undefined;
+	senderTaskId?: string | undefined;
+	handback?: boolean | undefined;
+}
+
+/**
+ * A message another Claude session, teammate or subagent sent this session, as upstream's peer
+ * item origin (c1128a44c `Ds` merged with `Ks`).
+ */
+export interface PeerMessage
+{
+	kind: "peer" | "teammate";
+	/** The sender: a socket address, an agent id, or a teammate id. */
 	from: string;
-	/** The message body as markdown, without the hand-back frame or the harness indent. */
+	/** The sender's display name: the record's stamped name, else the envelope's. */
+	name?: string;
+	/** The record stamped a non-empty name (upstream `stamped`). */
+	stamped: boolean;
+	/** The record's `senderTaskId` is an agent id (upstream `subagent`). */
+	subagent: boolean;
+	/** A `[Subagent hand-back]` report. */
+	handback: boolean;
+	/** Text the subagent wrote above the hand-back frame, shown as a warning line. */
+	handbackNote?: string;
+	deliveredWhile?: "idle" | "working";
+	/** The message text, without the envelope, preamble, footer or hand-back frame. */
 	body: string;
 }
 
-const AGENT_MESSAGE_RE = /<agent-message from="([^"]*)">\n?([\s\S]*?)\n?<\/agent-message>/;
-const HANDBACK_FRAME_RE = /^\[Subagent hand-back\][^\n]*\n?/;
+/** The record origin of a delivered peer message, or undefined for any other origin. */
+export function peerOriginOf(origin: unknown): PeerOrigin | undefined
+{
+	if (!isRecord(origin) || origin["kind"] !== "peer") return undefined;
+	const {name, senderTaskId, handback} = origin;
+	return {
+		...(typeof name === "string" &&
+		{
+			name,
+		}),
+		...(typeof senderTaskId === "string" &&
+		{
+			senderTaskId,
+		}),
+		...(handback === true &&
+		{
+			handback,
+		}),
+	};
+}
+
+/** Upstream `po`: the CLI's lead-in lines and when each says the message arrived. */
+const PREAMBLES: readonly (readonly [string, "idle" | "working"])[] = [
+	["Another Claude session sent a message while you were working:\n", "working"],
+	["Another Claude session sent a message:\n", "idle"],
+	["A peer session sent a message while you were working:\n", "working"],
+];
+
+/** The opening words of each CLI safety footer (upstream `yo`/`xo`). */
+const FOOTER_STARTS = [
+	"This came from another Claude session",
+	'That "other Claude session" is an agent',
+	"IMPORTANT: This is NOT from your user",
+	"This is from another Claude session",
+];
+
+const FOOTER_SPLIT = /^([\s\S]*<\/(?:agent-message|cross-session-message|teammate-message)>)\n\n([\s\S]*)$/;
+/** Upstream `fo`: exactly one element, nothing around it. */
+const ELEMENT = /^\s*<(agent-message|cross-session-message|teammate-message)(?=[\s/>])([^>]*)>([\s\S]*?)<\/\1>\s*$/;
+const ATTRIBUTE = /([\w-]+)="([^"]*)"/g;
+/** Upstream `So`/`Co`: a subagent's task id. */
+const AGENT_ID = /^a(?:[\w-]{1,63}-)?[0-9a-f]{16}$/;
+const HANDBACK_FRAME = /^\[Subagent hand-back\][^\n]*$/m;
 const HARNESS_INDENT = "  ";
 
-/**
- * Parse an `<agent-message from="…">` envelope, wherever it sits in a prompt.
- * Hand-backs drop their `[Subagent hand-back]` frame line and the two-space
- * indent the harness puts on every report line.
- */
-export function parseAgentMessage(text: string): AgentMessage | null
+function attributes(raw: string): Map<string, string>
 {
-	const [, from, raw] = AGENT_MESSAGE_RE.exec(text) ?? [];
-	if (from === undefined || raw === undefined) return null;
-	if (!HANDBACK_FRAME_RE.test(raw))
-		return {
-			from,
-			body: raw.trim(),
-		};
-	const body = raw
-		.replace(HANDBACK_FRAME_RE, "")
+	return new Map([...raw.matchAll(ATTRIBUTE)].map(([, key = "", value = ""]) => [key, value]));
+}
+
+/** Upstream `De`: drop the harness's two-space indent from every line. */
+function dedent(text: string): string
+{
+	return text
 		.split("\n")
 		.map((line) => (line.startsWith(HARNESS_INDENT) ? line.slice(HARNESS_INDENT.length) : line).trimEnd())
 		.join("\n")
 		.trim();
+}
+
+/** Upstream `To`: split a hand-back into the note above its frame and the dedented report below. */
+function splitHandback(inner: string):
+{
+	note?: string;
+	report: string;
+} | null
+{
+	const frame = HANDBACK_FRAME.exec(inner);
+	if (frame === null) return null;
+	const note = dedent(inner.slice(0, frame.index));
 	return {
-		from,
-		body,
+		...(note !== "" &&
+		{
+			note,
+		}),
+		report: dedent(inner.slice(frame.index + frame[0].length)),
+	};
+}
+
+/** Upstream `Io`: a peer record's text without its lead-in line and safety footer. */
+function stripPeerFrame(text: string):
+{
+	text: string;
+	deliveredWhile?: "idle" | "working";
+}
+{
+	const preamble = PREAMBLES.find(([lead]) => text.startsWith(lead));
+	const rest = preamble === undefined ? text : text.slice(preamble[0].length);
+	const footer = FOOTER_SPLIT.exec(rest);
+	const stripped =
+		footer?.[1] !== undefined && FOOTER_STARTS.some((start) => footer[2]?.startsWith(start) === true)
+			? footer[1]
+			: rest;
+	return {
+		text: stripped,
+		...(preamble !== undefined &&
+		{
+			deliveredWhile: preamble[1],
+		}),
+	};
+}
+
+/**
+ * Parse a delivered peer message (upstream c1128a44c `Io` → `Es`/`Ds` → `Ks`/`To`). Only a peer
+ * record's lead-in line and footer are stripped; what remains must be exactly one
+ * `<cross-session-message>`, `<teammate-message>` or `<agent-message>` element.
+ */
+export function parsePeerMessage(text: string, origin: PeerOrigin | undefined): PeerMessage | null
+{
+	const framed =
+		origin === undefined
+			?
+				{
+					text,
+				}
+			: stripPeerFrame(text);
+	const [, tag, rawAttributes = "", inner = ""] = ELEMENT.exec(framed.text) ?? [];
+	if (tag === undefined || inner.includes(`<${tag}`)) return null;
+	const attrs = attributes(rawAttributes);
+	const subagent = origin?.senderTaskId !== undefined && AGENT_ID.test(origin.senderTaskId);
+	const stampedName = origin?.name !== undefined && origin.name !== "" ? origin.name : undefined;
+	const shared =
+	{
+		stamped: stampedName !== undefined,
+		subagent,
+		...(framed.deliveredWhile !== undefined &&
+		{
+			deliveredWhile: framed.deliveredWhile,
+		}),
+	};
+	const named = (name: string | undefined) =>
+		name === undefined || name === ""
+			? {}
+			:
+				{
+					name,
+				};
+	const trimmed = inner.trim();
+	if (tag === "teammate-message")
+		return {
+			kind: "teammate",
+			from: attrs.get("teammate_id") ?? "unknown",
+			...named(stampedName),
+			handback: false,
+			...shared,
+			body: trimmed,
+		};
+	if (tag === "cross-session-message")
+	{
+		const body =
+			attrs.get("encoded") === "1"
+				? trimmed.replaceAll("&lt;", "<").replaceAll("&gt;", ">").replaceAll("&amp;", "&")
+				: trimmed;
+		return {
+			kind: "peer",
+			from: attrs.get("from") ?? "unknown",
+			...named(stampedName ?? [attrs.get("from-name"), attrs.get("name")].find((name) => name !== "")),
+			handback: false,
+			...shared,
+			body,
+		};
+	}
+	const handback =
+		subagent && origin.handback === true && inner.startsWith("\n") && inner.endsWith("\n")
+			? splitHandback(inner.slice(1, -1))
+			: null;
+	return {
+		kind: "peer",
+		from: attrs.get("from") ?? "unknown",
+		...named(stampedName ?? attrs.get("name")),
+		...shared,
+		handback: handback !== null,
+		...(handback?.note !== undefined &&
+		{
+			handbackNote: handback.note,
+		}),
+		body: handback?.report ?? (subagent ? dedent(inner) : trimmed),
 	};
 }

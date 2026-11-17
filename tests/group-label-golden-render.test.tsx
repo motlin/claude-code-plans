@@ -212,7 +212,7 @@ function rowContentTexts(row: Element): string[]
 {
 	const kind = row.getAttribute("data-perf-row");
 	if (kind === "assistant_text") return ["prose"];
-	const sender = row.querySelector("[data-agent-message-from] bdi");
+	const sender = row.querySelector("[data-peer-message-from] bdi");
 	if (sender !== null) return [`message from ${sender.textContent}`];
 	const bubble = row.querySelector(".user-message-bubble");
 	if (bubble !== null) return [`user: ${bubble.textContent}`];
@@ -279,7 +279,7 @@ describe("an agent message folded into a tool group", () =>
 		const steps = container.querySelectorAll("[data-turn-status] [data-turn-status-panel] > div > *");
 		expect(
 			Array.from(steps, (step) =>
-				step.matches("[data-agent-message-from]")
+				step.matches("[data-peer-message-from]")
 					? `message from ${step.querySelector("bdi")?.textContent}`
 					: `tool: ${step.querySelector("[role=button]")?.firstElementChild?.textContent}`,
 			),

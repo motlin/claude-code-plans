@@ -1,4 +1,4 @@
-import {parseAgentMessage} from "./agent-message";
+import {parsePeerMessage} from "./agent-message";
 import {isArtifactCardCall, parseArtifactOutput} from "./artifact-output";
 import type {ToolResultInfo} from "./sessions";
 import {diffStatsForCall, type ToolCallLike} from "./session-utils";
@@ -177,7 +177,10 @@ function isFoldedNoticeLine(line: SessionLine): boolean
 	if (foldedTaskNotificationOf(line) !== null) return true;
 	if (line.type !== "user") return false;
 	const text = userText(line);
-	return line.isMeta === true && (text.startsWith("Stop hook feedback:") || parseAgentMessage(text) !== null);
+	return (
+		line.isMeta === true &&
+		(text.startsWith("Stop hook feedback:") || parsePeerMessage(text, line.peerOrigin) !== null)
+	);
 }
 
 /** An assistant line that draws a row: prose, or a tool call when tools are shown. */

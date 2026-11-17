@@ -19,7 +19,7 @@ import {isRecord} from "./narrow";
 import {UsageLimitSchema} from "./usage-limit-notice";
 import {normalizeArtifactUrl, parseArtifactOutput} from "./artifact-output";
 import {ArtifactToolResultSchema} from "./artifact-schemas";
-import {parseAgentMessage} from "./agent-message";
+import {parsePeerMessage, peerOriginOf} from "./agent-message";
 import
 {
 	CompactMetadataSchema,
@@ -115,6 +115,16 @@ const MessageLineSchema = z.object(
 		invalidToolInputIds: z.array(z.string()).optional(),
 		promptSource: PromptSourceSchema.optional(),
 		turnOrigin: TurnOriginSchema.optional(),
+		/** A delivered peer message's record origin (`origin.kind === "peer"`), trimmed to what its row reads. */
+		peerOrigin: z
+			.object(
+				{
+					name: z.string().optional(),
+					senderTaskId: z.string().optional(),
+					handback: z.boolean().optional(),
+				},
+			)
+			.optional(),
 		scheduledTaskId: z.string().optional(),
 		wakeupSource: WakeupSourceSchema.optional(),
 		queuePriority: z.literal("later").optional(),
@@ -1218,8 +1228,8 @@ function humanQueuedPrompt(
 		typeof content === "string"
 			? content
 			: content.flatMap((block) => (block.type === "text" ? [block.text] : [])).join("\n");
-	// The harness frames agent messages with a lead-in line, so the envelope can sit past the start.
-	if (!isHumanQueuedContent(text) || parseAgentMessage(text) !== null) return null;
+	// Older CLIs queued peer messages with no origin but kept the lead-in line, so strip it as a peer's.
+	if (!isHumanQueuedContent(text) || parsePeerMessage(text, {}) !== null) return null;
 	return {
 		content,
 		...(attachment.timestamp === undefined
@@ -1973,6 +1983,12 @@ function* processRecordBatchSteps(
 			if (record.queuePriority !== undefined)
 			{
 				processedLine.queuePriority = record.queuePriority;
+			}
+			// Most user records carry a human origin; only a peer's is read.
+			if (typeof record.origin === "object" && record.origin["kind"] === "peer")
+			{
+				const peerOrigin = peerOriginOf(record.origin);
+				if (peerOrigin !== undefined) processedLine.peerOrigin = peerOrigin;
 			}
 			if (record.turnOrigin !== undefined && record.turnOrigin !== "human")
 			{

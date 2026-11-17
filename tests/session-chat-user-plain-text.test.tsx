@@ -521,19 +521,30 @@ describe("SessionChat user bubbles as plain text", () =>
 		);
 	});
 
-	it("hides a teammate-message element in a peer message bubble, as upstream does", () =>
+	it("draws an origin-less teammate message as upstream's Message from a teammate card", () =>
 	{
-		const el = bubble(
-			renderRecords([
-				prompt(
-					'Another Claude session sent a message:\n<teammate-message teammate_id="fix-ordered-map-indexed" color="cyan">\n{"type":"idle_notification"}\n</teammate-message>\n\nThis came from another Claude session.',
-				),
-			]),
-		);
-
-		expect(Array.from(el.querySelectorAll("p"), (p) => p.textContent)).toStrictEqual([
-			"Another Claude session sent a message:\nThis came from another Claude session.",
+		const container = renderRecords([
+			prompt(
+				'Another Claude session sent a message:\n<teammate-message teammate_id="fix-ordered-map-indexed" color="cyan">\n{"type":"idle_notification"}\n</teammate-message>\n\nThis came from another Claude session.',
+			),
 		]);
+		const card = container.querySelector("[data-peer-card] > div");
+
+		expect(
+			{
+				bubbles: container.querySelectorAll(".user-message-bubble").length,
+				card: card?.className,
+				header: card?.firstElementChild?.textContent,
+				body: Array.from(card?.querySelectorAll("p") ?? [], (p) => p.textContent),
+			},
+		).toStrictEqual(
+			{
+				bubbles: 0,
+				card: "flex w-full flex-col gap-1 rounded-r6 border border-alpha-2 bg-alpha-1 p-p5 comfortable:p-p6",
+				header: "Message from a teammate",
+				body: ["Another Claude session sent a message:\nThis came from another Claude session."],
+			},
+		);
 	});
 
 	it("shows a pasted block's text inline in the bubble, without the pasted_content tag lines", () =>
@@ -771,7 +782,7 @@ describe("SessionChat carded user turns reserve the actions gap (upstream div[da
 		expect(
 			{
 				...cardedTree(container),
-				card: container.querySelector("[data-user-trailing] > [data-agent-message-from]") !== null,
+				card: container.querySelector("[data-user-trailing] > div > [data-peer-message-from]") !== null,
 				...copyToolbars(container),
 			},
 		).toStrictEqual(
