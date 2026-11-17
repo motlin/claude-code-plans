@@ -132,13 +132,31 @@ describe("tmuxKeyName", () =>
 				"up",
 				"ctrl+c",
 				"ctrl+u",
+				"ctrl+x",
+				"ctrl+k",
 				"1",
 				"9",
 				"f13",
 				"ctrl+shift+x",
 				"",
 			].map(tmuxKeyName),
-		).toStrictEqual(["Escape", "Enter", "Tab", "BTab", "Down", "Up", "C-c", "C-u", "1", "9", null, null, null]);
+		).toStrictEqual([
+			"Escape",
+			"Enter",
+			"Tab",
+			"BTab",
+			"Down",
+			"Up",
+			"C-c",
+			"C-u",
+			"C-x",
+			"C-k",
+			"1",
+			"9",
+			null,
+			null,
+			null,
+		]);
 	});
 });
 

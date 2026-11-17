@@ -147,6 +147,8 @@ import {useRewindRequest} from "../hooks/use-rewind-request";
 import {useRefusalEditRetry} from "../hooks/use-refusal-edit-retry";
 import {useRefusalFallbackDialog} from "../hooks/use-refusal-fallback-dialog";
 import {canStopResponse, useStopResponse} from "../hooks/use-stop-response";
+import {useNestedStop} from "../hooks/use-nested-stop";
+import {latestAgentsKilledId, nestedStopCount} from "../lib/nested-stop";
 import {SEND_NOW_FAILED_MESSAGE, useComposerQueue} from "../hooks/use-composer-queue";
 import
 {
@@ -1125,6 +1127,16 @@ function SessionView({
 			hasLivePane: promptBehavior.hasLivePane,
 			writesEnabled: herdr.writesEnabled,
 			working: workingMarkerState.status !== "idle",
+		},
+	);
+	const agentsKilledMarker = useMemo(() => latestAgentsKilledId(transcript.records), [transcript.records]);
+	const nestedStop = useNestedStop(
+		{
+			sessionId,
+			count: nestedStopCount(backgroundTasks.running),
+			enabled: promptBehavior.hasLivePane && herdr.writesEnabled,
+			killedMarker: agentsKilledMarker,
+			toast,
 		},
 	);
 	const bypassPermissionsAllowed = composerServerState?.settingsBypassPermissionsAllowed ?? false;
@@ -2538,6 +2550,7 @@ function SessionView({
 																		chatStream.state.isStreaming
 																	}
 																	onStop={stopAvailable ? stopResponse : undefined}
+																	nestedStop={nestedStop}
 																	disabled={
 																		promptBehavior.disabled ||
 																		(!promptBehavior.usesHerdr &&

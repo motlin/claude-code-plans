@@ -42,6 +42,7 @@ export type TmuxWriteKind =
 	| "plan"
 	| "elicitation"
 	| "refusal-fallback"
+	| "kill-agents"
 	| "live-option"
 	| "rewind"
 	| "remote-control";
@@ -66,6 +67,8 @@ const READY_STATES =
 	elicitation: ["working", "waiting"],
 	// The dialog shows while waiting; after Edit the turn is aborted, so Ctrl+U clears an idle input.
 	"refusal-fallback": ["waiting", "idle"],
+	// Background agents outlive the turn; the chord goes into the idle prompt.
+	"kill-agents": ["idle"],
 	"live-option": ["idle"],
 	rewind: ["idle"],
 	"remote-control": ["idle"],
@@ -85,6 +88,8 @@ const NAMED_KEYS: Readonly<Record<string, string>> =
 	space: "Space",
 	"ctrl+c": "C-c",
 	"ctrl+u": "C-u",
+	"ctrl+x": "C-x",
+	"ctrl+k": "C-k",
 };
 
 /** The tmux `send-keys` name for a herdr-style key ccp sends, or null when it has none. */

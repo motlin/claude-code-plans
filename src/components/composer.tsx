@@ -127,6 +127,7 @@ import {fileMentionOptionId} from "./file-mention-option-id";
 import {preloadComposerSurfaces, useComposerSurfaces} from "./composer-surfaces-entry";
 import {slashCommandOptionId} from "./slash-command-option-id";
 import {Icon} from "./ui/icon";
+import {Spinner} from "./ui/spinner";
 import {Tooltip} from "./ui/tooltip";
 import {startComposerKeystrokeJourney, startComposerSubmitJourneys} from "../lib/perf/field-journeys";
 import {SESSION_COMPOSER_PLACEHOLDER} from "../lib/composer-pending-gate";
@@ -260,6 +261,18 @@ interface ComposerUsageCommand
 	openSettings: () => void;
 }
 
+/**
+ * Upstream's `nestedStop` send-cell prop (`Jbe`): an idle, empty composer offers to stop work that outlives
+ * the turn. Locally that is the CLI's background agents and workflows.
+ */
+export interface NestedStopFace
+{
+	label: string;
+	stopping: boolean;
+	stoppingLabel: string;
+	onStop: () => void;
+}
+
 interface ComposerProps
 {
 	variant: ComposerVariant;
@@ -271,6 +284,8 @@ interface ComposerProps
 	isStreaming?: boolean;
 	/** While a live session is working, the send slot becomes Stop response. */
 	onStop?: (() => void) | undefined;
+	/** While idle and empty, the send slot offers to stop the session's background agents. */
+	nestedStop?: NestedStopFace | undefined;
 	disabled?: boolean;
 	/**
 	 * Where dropped files land: upstream's page-wide hook and scrim (the home composer), or the chat tile's drop zone
@@ -456,7 +471,8 @@ const SEND_FACE_ENTER_CLASS = "motion-safe:animate-[cds-fade-in_0.12s_ease-out_0
 const SEND_FACE_EXIT_CLASS =
 	"pointer-events-none invisible opacity-0 [transition:visibility_0s_linear_80ms] motion-safe:[transition:opacity_80ms_ease-out,visibility_0s_linear_80ms]";
 
-type SendFace = "stop" | "send";
+/** `nested` is upstream's nested-session Stop, keyed apart from the own Stop so a swap between them crossfades. */
+type SendFace = "stop" | "nested" | "send";
 
 /** Upstream's `od`: a plain Send tap this soon after a Stop click is the same finger landing twice. */
 const STOP_TAP_GUARD_MS = 500;
@@ -529,9 +545,18 @@ const EnvironmentBar = memo(function EnvironmentBar({
 	);
 });
 
-function SendCrossfade({showStop, stop, send}: {showStop: boolean; stop: ReactNode; send: ReactNode})
+function SendCrossfade({
+	face,
+	stop,
+	nested,
+	send,
+}: {
+	face: SendFace;
+	stop: ReactNode;
+	nested?: ReactNode;
+	send: ReactNode;
+})
 {
-	const face: SendFace = showStop ? "stop" : "send";
 	const [current, setCurrent] = useState<SendFace>(face);
 	const [leaving, setLeaving] = useState<SendFace | null>(null);
 	const [flipped, setFlipped] = useState(false);
@@ -575,6 +600,7 @@ function SendCrossfade({showStop, stop, send}: {showStop: boolean; stop: ReactNo
 	return (
 		<div className="grid items-center justify-items-end">
 			{renderFace("stop", stop)}
+			{renderFace("nested", nested)}
 			{renderFace("send", send)}
 		</div>
 	);
@@ -589,6 +615,7 @@ function SendCrossfade({showStop, stop, send}: {showStop: boolean; stop: ReactNo
 const SendSlot = memo(function SendSlot({
 	isStreaming,
 	onStop,
+	nestedStop,
 	onCancel,
 	onSubmit,
 	hasContent,
@@ -603,6 +630,7 @@ const SendSlot = memo(function SendSlot({
 }: {
 	isStreaming: boolean;
 	onStop: (() => void) | undefined;
+	nestedStop: NestedStopFace | undefined;
 	onCancel: (() => void) | undefined;
 	/** Receives the Send click, so the send journey is timed from it. */
 	onSubmit: (event: React.MouseEvent) => void;
@@ -628,6 +656,32 @@ const SendSlot = memo(function SendSlot({
 	const forkKeys = useShortcutKeys("fork_with_prompt").keys;
 	const cmdEnterKeys = useIsMac() ? "cmd+enter" : "ctrl+enter";
 	const working = isStreaming || onStop !== undefined;
+	/* Upstream's `I = !busy && !hasContent && !submitQueued ? nestedStop : undefined`: the own turn always wins. */
+	const nested = !working && !hasContent ? nestedStop : undefined;
+	const nestedShown = nested !== undefined;
+	const cellRef = useRef<HTMLDivElement>(null);
+	/*
+	 * Upstream's `R`: a click this soon after the nested face appears, or after it hands over to the own Stop,
+	 * is the same press landing on a face it wasn't meant for (a double-click on Stop as the turn ends).
+	 */
+	const faceGuardAtRef = useRef(Number.NEGATIVE_INFINITY);
+	const wasNestedRef = useRef<boolean | null>(null);
+	useEffect(() =>
+	{
+		const was = wasNestedRef.current;
+		wasNestedRef.current = nestedShown;
+		if (was === nestedShown || (was === null && !nestedShown)) return;
+		faceGuardAtRef.current = Date.now();
+		if (nestedShown) return;
+		/* Upstream's `fe`: when the nested face goes while it (or nothing) holds focus, the prompt takes it. */
+		const active = document.activeElement;
+		if (active !== null && active !== document.body && !(cellRef.current?.contains(active) ?? false)) return;
+		editorRef.current?.focus(
+			{
+				preventScroll: true,
+			},
+		);
+	}, [nestedShown, editorRef]);
 	const forkRow =
 		forkLabel === undefined
 			? undefined
@@ -677,6 +731,7 @@ const SendSlot = memo(function SendSlot({
 	);
 	const stop = () =>
 	{
+		if (Date.now() - faceGuardAtRef.current < STOP_TAP_GUARD_MS) return;
 		stopClickAtRef.current = Date.now();
 		onStop?.();
 	};
@@ -769,9 +824,43 @@ const SendSlot = memo(function SendSlot({
 				if (canSend) onTouchSubmit("send");
 			}}
 		/>
-	) : working ? (
+	) : working || nestedStop !== undefined ? (
 		<SendCrossfade
-			showStop={isStreaming || !hasContent}
+			face={nested === undefined ? (working && (isStreaming || !hasContent) ? "stop" : "send") : "nested"}
+			nested={
+				nestedStop !== undefined && (
+					<Tooltip content={nestedStop.label}>
+						<button
+							type="button"
+							aria-label={nestedStop.stopping ? nestedStop.stoppingLabel : nestedStop.label}
+							data-testid="code-prompt-stop-nested"
+							onClick={() =>
+							{
+								if (nestedStop.stopping || Date.now() - faceGuardAtRef.current < STOP_TAP_GUARD_MS)
+									return;
+								nestedStop.onStop();
+							}}
+							className={`relative ${ICON_BUTTON_CLASS}`}
+							{...(nestedStop.stopping
+								?
+									{
+										"aria-busy": "true",
+										"aria-disabled": "true",
+									}
+								: {})}
+						>
+							<span className={nestedStop.stopping ? "opacity-0" : undefined}>
+								<Icon name="StopFilled" />
+							</span>
+							{nestedStop.stopping && (
+								<span aria-hidden="true" className="absolute inset-0 grid place-items-center">
+									<Spinner size="sm" tone="current" />
+								</span>
+							)}
+						</button>
+					</Tooltip>
+				)
+			}
 			stop={
 				<Tooltip
 					content="Stop"
@@ -811,7 +900,10 @@ const SendSlot = memo(function SendSlot({
 	if (coarse)
 	{
 		return (
-			<div className="absolute right-0 bottom-0 grid min-h-7 items-center justify-items-end pl-1.5 comfortable:pl-2">
+			<div
+				ref={cellRef}
+				className="absolute right-0 bottom-0 grid min-h-7 items-center justify-items-end pl-1.5 comfortable:pl-2"
+			>
 				<div data-send-spacer aria-hidden="true" inert className="invisible col-start-1 row-start-1 flex">
 					<SplitDropdownButton
 						variant="ghost"
@@ -833,7 +925,7 @@ const SendSlot = memo(function SendSlot({
 		);
 	}
 	return (
-		<div className="absolute right-0 bottom-0 flex min-h-7 items-center pl-1.5 comfortable:pl-2">
+		<div ref={cellRef} className="absolute right-0 bottom-0 flex min-h-7 items-center pl-1.5 comfortable:pl-2">
 			{face ?? (
 				<div data-send-spacer aria-hidden="true" inert className="invisible flex">
 					<span className="size-7" />
@@ -862,6 +954,7 @@ export function Composer({
 	onCancel,
 	isStreaming = false,
 	onStop,
+	nestedStop,
 	disabled = false,
 	dropScope = "page",
 	deliveryHint,
@@ -2857,6 +2950,7 @@ export function Composer({
 					<SendSlot
 						isStreaming={isStreaming}
 						onStop={onStop}
+						nestedStop={nestedStop}
 						onCancel={onCancel}
 						onSubmit={submit}
 						hasContent={hasContent}
