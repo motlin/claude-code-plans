@@ -139,12 +139,13 @@ describe("diff comment persistence", () =>
 		store.saveDiffComment(SESSION, first, "first");
 
 		const reloaded = await freshStore();
+		// Line 2: opening line 1 again would activate the restored comment (upstream openDraft).
 		const second = reloaded.openDiffCommentDraft(
 			SESSION,
 			{
 				path: "a.ts",
 				side: "additions",
-				line: 1,
+				line: 2,
 			},
 		);
 		expect(second).not.toBe(first);

@@ -539,6 +539,55 @@ describe("DiffFile", () =>
 		});
 	});
 
+	// Upstream c44d00c7f: `enableLineSelection: !readOnly`, so the library marks the <pre> for line-number drags.
+	it("makes line numbers draggable only when commenting, and draws a controlled selected range", async () =>
+	{
+		const state = (container: HTMLElement) =>
+		{
+			const root = shadowRootOf(container);
+			return {
+				interactive: root.querySelector("pre[data-diff]")?.hasAttribute("data-interactive-line-numbers"),
+				selected: [...root.querySelectorAll("[data-column-number][data-selected-line]")].map(
+					(cell) =>
+						`${cell.getAttribute("data-line-type")}:${cell.getAttribute("data-column-number")}:${cell.getAttribute("data-selected-line")}`,
+				),
+			};
+		};
+		const view = render(<DiffFile patch={PATCH} />);
+		await waitFor(() =>
+		{
+			expect(state(view.container)).toStrictEqual(
+				{
+					interactive: false,
+					selected: [],
+				},
+			);
+		});
+
+		view.rerender(
+			<DiffFile
+				patch={PATCH}
+				onRequestChanges={() => undefined}
+				selectedLines={
+				{
+					start: 2,
+					end: 3,
+					side: "additions",
+				}}
+			/>,
+		);
+		await waitFor(() =>
+		{
+			expect(state(view.container)).toStrictEqual(
+				{
+					interactive: true,
+					// pierre parses new line 2 as an insert and pairs old line 2 with new line 3.
+					selected: ["change-addition:2:first", "change-deletion:2:", "change-addition:3:last"],
+				},
+			);
+		});
+	});
+
 	// Upstream c44d00c7f xn: Bn(e, fileDiff) (c91a5e4a6 g) after the other post-render passes.
 	it("heads each gutter separator with its hunk's context and adopts the hunk-heading sheet", async () =>
 	{

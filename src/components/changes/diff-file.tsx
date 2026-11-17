@@ -1,5 +1,5 @@
 import {getSingularPatch} from "@pierre/diffs";
-import type {FileDiffLoadedFiles, FileDiffMetadata, GetHoveredLineResult} from "@pierre/diffs";
+import type {FileDiffLoadedFiles, FileDiffMetadata, GetHoveredLineResult, SelectedLineRange} from "@pierre/diffs";
 import {FileDiff, GutterUtilitySlotStyles} from "@pierre/diffs/react";
 import type {FileDiffOptions} from "@pierre/diffs/react";
 import {ArrowUpRight, ChevronDown, ChevronRight, Plus} from "lucide-react";
@@ -10,6 +10,7 @@ import
 	createContext,
 	isValidElement,
 	use,
+	useEffect,
 	useId,
 	useMemo,
 	useRef,
@@ -42,6 +43,14 @@ import {ContextMenu, ContextMenuTrigger, Menu, MenuContent, MenuTrigger} from ".
 import {createMenuHandle, type MenuHandle} from "../ui/menu-handle";
 import {Tooltip} from "../ui/tooltip";
 import {type DiffStyle, useSettings} from "../settings-context";
+import
+{
+	type GutterAddGuard,
+	anchorSpan,
+	isMultiLine,
+	selectionTarget,
+	shouldSwallowGutterAdd,
+} from "../../lib/diff-range-anchor";
 import {useResolvedTheme} from "../theme-context";
 
 export type {DiffStyle};
@@ -74,8 +83,13 @@ export interface DiffFileProps
 	/** The file's viewed mark: adds the header's Viewed check. */
 	mark?: DiffFileMark | undefined;
 	annotations?: readonly DiffFileAnnotation[];
-	/** Enables the hovered line's gutter "+" that opens a comment card on that line. */
+	/**
+	 * Enables the hovered line's gutter "+" that opens a comment card on that line, and line-number drags that open
+	 * one on the dragged lines (upstream `enableLineSelection`/`enableGutterUtility: !readOnly`).
+	 */
 	onRequestChanges?: (target: DiffLineRange) => void;
+	/** The active comment's range to highlight while no drag is under way (upstream `Et`); single lines aren't drawn. */
+	selectedLines?: SelectedLineRange | null | undefined;
 	/**
 	 * Reads both sides of the file (upstream `td`), `fresh` on a retry. With it the hunk separators expand, loading
 	 * the file once on the first expansion; without it (session edits: no checkout) they stay plain.
@@ -91,11 +105,12 @@ export interface DiffFileProps
 	facts?: DiffFileFacts | undefined;
 }
 
-/** One diff line: its number on the old (`deletions`) or new (`additions`) side. */
+/** Diff lines `line`..`endLine ?? line` on the old (`deletions`) or new (`additions`) side. */
 export interface DiffLineRange
 {
 	side: "additions" | "deletions";
 	line: number;
+	endLine?: number | undefined;
 }
 
 /**
@@ -579,6 +594,7 @@ export function DiffFile({
 	expandUnchanged = false,
 	onRendered,
 	facts,
+	selectedLines = null,
 }: DiffFileProps)
 {
 	const fileDiff = useMemo(() => getSingularPatch(patch), [patch]);
@@ -588,6 +604,8 @@ export function DiffFile({
 			onLoaderGaveUp,
 			onRendered,
 			fileDiff,
+			onRequestChanges,
+			diffStyle,
 		},
 	);
 	loader.current =
@@ -596,7 +614,33 @@ export function DiffFile({
 		onLoaderGaveUp,
 		onRendered,
 		fileDiff,
+		onRequestChanges,
+		diffStyle,
 	};
+	// Upstream `nf`/`Kt` drag state: the library's live range while a line-number drag is under way.
+	const [drag, setDrag] = useState<SelectedLineRange | null>(null);
+	const dragging = drag !== null;
+	const gutterGuard = useRef<GutterAddGuard>(
+		{
+			current: null,
+		},
+	).current;
+	// Upstream `Hn`: a safety net clearing the drag on any document pointerup/pointercancel.
+	useEffect(() =>
+	{
+		if (!dragging) return undefined;
+		const clear = () =>
+		{
+			setDrag(null);
+		};
+		document.addEventListener("pointercancel", clear);
+		document.addEventListener("pointerup", clear);
+		return () =>
+		{
+			document.removeEventListener("pointercancel", clear);
+			document.removeEventListener("pointerup", clear);
+		};
+	}, [dragging]);
 	const canLoad = loadFileSides !== undefined;
 	// Upstream `Cn`/`Tn`: one load per fileDiff, so a remount (new metrics) doesn't read the file again.
 	const loadDiffFiles = useMemo(() =>
@@ -657,9 +701,10 @@ export function DiffFile({
 		[annotations],
 	);
 
+	const commenting = onRequestChanges !== undefined;
 	const options = useMemo<FileDiffOptions<ReactNode, undefined>>(() =>
 	{
-		const drawRails = railsPostRender(onRequestChanges !== undefined);
+		const drawRails = railsPostRender(commenting);
 		return {
 			theme: codeThemes,
 			themeType: resolvedTheme,
@@ -670,7 +715,28 @@ export function DiffFile({
 			lineDiffType: wordDiff ? "word-alt" : "none",
 			stickyHeader: true,
 			collapsed,
-			enableGutterUtility: onRequestChanges !== undefined,
+			enableGutterUtility: commenting,
+			enableLineSelection: commenting,
+			// Upstream `pd` selectionStart / onLineSelectionChange / selectionEnd.
+			onLineSelectionStart: (range) =>
+			{
+				gutterGuard.current = null;
+				setDrag(range);
+			},
+			onLineSelectionChange: setDrag,
+			onLineSelectionEnd: (range) =>
+			{
+				setDrag(null);
+				if (range === null || !isMultiLine(range)) return;
+				gutterGuard.current =
+				{
+					side: range.endSide ?? range.side ?? "additions",
+					line: range.end,
+				};
+				const current = loader.current;
+				const target = selectionTarget(current.fileDiff, range, current.diffStyle === "split");
+				if (target !== null) current.onRequestChanges?.(target);
+			},
 			// c44d00c7f Kt/qt: upstream always inlines gaps of up to 3 lines once the whole file is known.
 			collapsedContextThreshold: 3,
 			// The cds FileDiff gate (`Va`): expandUnchanged only for a diff that is whole or can be loaded.
@@ -695,7 +761,7 @@ export function DiffFile({
 			unsafeCSS: diffsInjectedCss(
 				{
 					disableFileHeader: false,
-					gutterUtility: onRequestChanges !== undefined,
+					gutterUtility: commenting,
 					panels,
 				},
 			),
@@ -708,7 +774,8 @@ export function DiffFile({
 		wordWrap,
 		wordDiff,
 		collapsed,
-		onRequestChanges,
+		commenting,
+		gutterGuard,
 		panels,
 		expandUnchanged,
 		loadDiffFiles,
@@ -750,6 +817,7 @@ export function DiffFile({
 				key={metrics.lineHeight}
 				fileDiff={fileDiff}
 				options={options}
+				selectedLines={drag === null ? selectedLines : isMultiLine(drag) ? drag : null}
 				metrics={metrics}
 				disableWorkerPool
 				{...(lineAnnotations === undefined
@@ -766,7 +834,24 @@ export function DiffFile({
 							renderGutterUtility: (getHoveredLine) => (
 								<AddCommentGutterButton
 									getHoveredLine={getHoveredLine}
-									onAddComment={onRequestChanges}
+									onAddComment={(target) =>
+									{
+										// Upstream `pd` hoverAdd: clear the drag, swallow the click a drag just ended on, anchor.
+										setDrag(null);
+										if (shouldSwallowGutterAdd(gutterGuard, target)) return;
+										const {side, line} = anchorSpan(
+											fileDiff,
+											target.line,
+											target.line,
+											target.side,
+										);
+										onRequestChanges(
+											{
+												side,
+												line,
+											},
+										);
+									}}
 								/>
 							),
 						})}

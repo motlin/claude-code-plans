@@ -14,7 +14,15 @@ import {Menu, MenuContent, MenuItem, MenuTrigger} from "../src/components/ui/men
 import {type PaneHostApi, PaneHostContext} from "../src/components/panes/pane-host-context";
 import type {SessionDiffResponse} from "../src/lib/api/session-diff";
 import {registerComposer, takeContextChips} from "../src/lib/context-attach";
-import {clearDiffComments, getDiffComments, openDiffCommentDraft, saveDiffComment} from "../src/lib/diff-comments";
+import
+{
+	clearDiffComments,
+	discardDiffCommentDraft,
+	getDiffCommentEditing,
+	getDiffComments,
+	openDiffCommentDraft,
+	saveDiffComment,
+} from "../src/lib/diff-comments";
 import {clearDiffScrollTarget, diffScrollTarget} from "../src/lib/diff-scroll-target";
 import type {PaneKind} from "../src/lib/pane-layout";
 import {installLocalStorage} from "./fake-storage";
@@ -2366,6 +2374,146 @@ describe("Changes pane gutter add-comment button", () =>
 				},
 			),
 		);
+	});
+});
+
+describe("Changes pane line-number range comments (upstream c44d00c7f pd openDraft, Et)", () =>
+{
+	const PATH = "src/greet.ts";
+
+	it("reuses the draft ending on the same side and line instead of adding one", () =>
+	{
+		const first = openDiffCommentDraft(
+			SESSION,
+			{
+				path: PATH,
+				side: "additions",
+				line: 2,
+				endLine: 4,
+			},
+		);
+		const second = openDiffCommentDraft(
+			SESSION,
+			{
+				path: PATH,
+				side: "additions",
+				line: 3,
+				endLine: 4,
+			},
+		);
+		const single = openDiffCommentDraft(
+			SESSION,
+			{
+				path: PATH,
+				side: "additions",
+				line: 4,
+			},
+		);
+
+		expect(
+			{
+				ids: [second, single],
+				drafts: getDiffComments(SESSION).drafts,
+				activeId: getDiffCommentEditing(SESSION).activeId,
+			},
+		).toStrictEqual(
+			{
+				ids: [first, first],
+				drafts: [
+					{
+						id: first,
+						path: PATH,
+						side: "additions",
+						line: 3,
+						endLine: 4,
+					},
+				],
+				activeId: first,
+			},
+		);
+	});
+
+	it("activates a saved comment ending on the same side and line instead of opening a draft", () =>
+	{
+		const draft = openDiffCommentDraft(
+			SESSION,
+			{
+				path: PATH,
+				side: "additions",
+				line: 4,
+			},
+		);
+		saveDiffComment(SESSION, draft, "Shout less");
+
+		const opened = openDiffCommentDraft(
+			SESSION,
+			{
+				path: PATH,
+				side: "additions",
+				line: 2,
+				endLine: 4,
+			},
+		);
+
+		expect(
+			{
+				opened,
+				drafts: getDiffComments(SESSION).drafts,
+				activeId: getDiffCommentEditing(SESSION).activeId,
+			},
+		).toStrictEqual(
+			{
+				opened: draft,
+				drafts: [],
+				activeId: draft,
+			},
+		);
+	});
+
+	it("highlights the active range comment's rows, and none once it closes", async () =>
+	{
+		const {container} = renderPane();
+		const selected = () =>
+			[
+				...(container
+					.querySelector("diffs-container")
+					?.shadowRoot?.querySelectorAll("[data-column-number][data-selected-line]") ?? []),
+			].map((cell) => `${cell.getAttribute("data-line-type")}:${cell.getAttribute("data-column-number")}`);
+		await waitFor(() =>
+		{
+			if (
+				!container
+					.querySelector("diffs-container")
+					?.shadowRoot?.querySelector('[data-line-type="change-addition"]')
+			)
+				throw new Error("diff not rendered yet");
+		});
+		let id = "";
+		act(() =>
+		{
+			id = openDiffCommentDraft(
+				SESSION,
+				{
+					path: PATH,
+					side: "additions",
+					line: 3,
+					endLine: 4,
+				},
+			);
+		});
+		await waitFor(() =>
+		{
+			expect(selected()).toStrictEqual(["change-addition:3", "context:4"]);
+		});
+
+		act(() =>
+		{
+			discardDiffCommentDraft(SESSION, id);
+		});
+		await waitFor(() =>
+		{
+			expect(selected()).toStrictEqual([]);
+		});
 	});
 });
 

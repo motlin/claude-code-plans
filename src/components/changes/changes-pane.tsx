@@ -1,4 +1,5 @@
 import {getSingularPatch} from "@pierre/diffs";
+import type {SelectedLineRange} from "@pierre/diffs";
 import {Virtualizer} from "@pierre/diffs/react";
 import {useQueries, useQuery, useQueryClient} from "@tanstack/react-query";
 import {ArrowRight, ChevronDown, List, Loader2, TriangleAlert} from "lucide-react";
@@ -111,7 +112,9 @@ import
 {
 	clearDiffCommentHighlight,
 	type DiffCommentTarget,
+	activeDiffCommentRange,
 	openDiffCommentDraft,
+	useDiffCommentEditing,
 	useDiffComments,
 } from "../../lib/diff-comments";
 import {detectLanguage} from "../../lib/diff-utils";
@@ -663,6 +666,7 @@ function LazyDiffFile({
 	mark,
 	annotations,
 	onRequestChanges,
+	selectedLines,
 	whole,
 }: {
 	file: SessionDiffFile;
@@ -675,6 +679,7 @@ function LazyDiffFile({
 	mark: DiffFileMark | undefined;
 	annotations: readonly DiffFileAnnotation[] | undefined;
 	onRequestChanges: ((target: DiffLineRange) => void) | undefined;
+	selectedLines: SelectedLineRange | null;
 	whole: WholeFileProps;
 })
 {
@@ -755,6 +760,7 @@ function LazyDiffFile({
 							onRequestChanges,
 						}
 					: {})}
+				selectedLines={selectedLines}
 			/>
 		);
 	}
@@ -795,6 +801,7 @@ function ChangesFile({
 	fetchContext,
 	annotations,
 	onRequestChanges,
+	selectedLines,
 	whole,
 }: {
 	file: SessionDiffFile;
@@ -806,6 +813,7 @@ function ChangesFile({
 	fetchContext: DiffFetchContext | undefined;
 	annotations: readonly DiffFileAnnotation[] | undefined;
 	onRequestChanges: ((target: DiffLineRange) => void) | undefined;
+	selectedLines: SelectedLineRange | null;
 	whole: WholeFileProps;
 })
 {
@@ -848,6 +856,7 @@ function ChangesFile({
 							onRequestChanges,
 						}
 					: {})}
+				selectedLines={selectedLines}
 			/>
 		);
 	}
@@ -865,6 +874,7 @@ function ChangesFile({
 				mark={mark}
 				annotations={annotations}
 				onRequestChanges={onRequestChanges}
+				selectedLines={selectedLines}
 				whole={whole}
 			/>
 		);
@@ -1042,10 +1052,11 @@ function fileInView(scroller: EventTarget): string | null
 /** The gutter-commented line's text and language from the file's patch, sent as the comment's snippet. */
 function commentSnippet(
 	file: SessionDiffFile,
-	{side, line}: DiffLineRange,
+	{side, line, endLine}: DiffLineRange,
 ): Pick<DiffCommentTarget, "snippet" | "lang">
 {
-	const snippet = file.patch === null || file.binary ? undefined : diffSideSnippet(file.patch, side, line, line);
+	const snippet =
+		file.patch === null || file.binary ? undefined : diffSideSnippet(file.patch, side, line, endLine ?? line);
 	if (snippet === undefined) return {};
 	const lang = detectLanguage(file.path);
 	return lang === null
@@ -1279,6 +1290,7 @@ export function ChangesPaneView({
 }: ChangesPaneViewProps)
 {
 	const comments = useDiffComments(sessionId);
+	const {activeId: activeCommentId} = useDiffCommentEditing(sessionId);
 	const openFindings = useMemo(() => findings.filter((finding) => !finding.resolved), [findings]);
 	const iconSet = useActiveFileTypeIconSet();
 	const files = diff?.files ?? NO_FILES;
@@ -1951,6 +1963,7 @@ export function ChangesPaneView({
 											fetchContext={fetchContext}
 											whole={whole}
 											annotations={annotations.length === 0 ? undefined : annotations}
+											selectedLines={activeDiffCommentRange(comments, activeCommentId, file.path)}
 											onRequestChanges={
 												sessionId === undefined
 													? undefined

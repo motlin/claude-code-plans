@@ -269,11 +269,10 @@ function forgetEdit(sessionId: string, id: string): void
 	});
 }
 
-function sameTarget(a: DiffCommentTarget, b: DiffCommentTarget): boolean
+/** Upstream `vi(side, endLine)`: a comment's key, the side and last line its card sits under. */
+function endsAt(comment: DiffCommentTarget, path: string, side: DiffSide, end: number): boolean
 {
-	return (
-		a.path === b.path && a.side === b.side && a.line === b.line && (a.endLine ?? a.line) === (b.endLine ?? b.line)
-	);
+	return comment.path === path && comment.side === side && (comment.endLine ?? comment.line) === end;
 }
 
 export function getDiffComments(sessionId: string): DiffComments
@@ -301,22 +300,39 @@ export function setDiffCommentDraftBody(sessionId: string, id: string, text: str
 	}));
 }
 
-/** Opens a comment card on the target lines, reusing one already open there, and makes it the active card. */
+function setActive(sessionId: string, id: string): void
+{
+	updateEditing(sessionId, (state) => (
+	{
+		...state,
+		activeId: id,
+	}));
+}
+
+/**
+ * Opens a comment card on the target lines and makes it the active card, as upstream `pd` `openDraft`, whose drafts
+ * are keyed by side and last line: a single line focuses the draft already ending there; otherwise a saved comment
+ * ending there is opened for editing; otherwise a draft ending there takes the new lines, or a new draft opens.
+ */
 export function openDiffCommentDraft(sessionId: string, target: DiffCommentTarget): string
 {
-	const existing = getDiffComments(sessionId).drafts.find((draft) => sameTarget(draft, target));
-	if (existing !== undefined)
+	const end = target.endLine ?? target.line;
+	const {drafts, queued} = getDiffComments(sessionId);
+	const existing = drafts.find((draft) => endsAt(draft, target.path, target.side, end));
+	if (existing !== undefined && end === target.line)
 	{
-		updateEditing(sessionId, (state) => (
-		{
-			...state,
-			activeId: existing.id,
-		}));
+		setActive(sessionId, existing.id);
 		return existing.id;
+	}
+	const saved = queued.find((comment) => endsAt(comment, target.path, target.side, end));
+	if (saved !== undefined)
+	{
+		activateDiffComment(sessionId, saved.id);
+		return saved.id;
 	}
 	const draft: DiffCommentDraft =
 	{
-		id: `${ID_PREFIX}${nextId++}`,
+		id: existing?.id ?? `${ID_PREFIX}${nextId++}`,
 		path: target.path,
 		side: target.side,
 		line: target.line,
@@ -342,13 +358,12 @@ export function openDiffCommentDraft(sessionId: string, target: DiffCommentTarge
 	update(sessionId, (comments) => (
 	{
 		...comments,
-		drafts: [...comments.drafts, draft],
+		drafts:
+			existing === undefined
+				? [...comments.drafts, draft]
+				: comments.drafts.map((candidate) => (candidate.id === existing.id ? draft : candidate)),
 	}));
-	updateEditing(sessionId, (state) => (
-	{
-		...state,
-		activeId: draft.id,
-	}));
+	setActive(sessionId, draft.id);
 	return draft.id;
 }
 
@@ -534,6 +549,33 @@ export function clearDiffComments(sessionId: string): void
 	if (editing.has(sessionId)) updateEditing(sessionId, () => NO_EDITING);
 }
 
+/**
+ * Upstream `Et`: the active card's lines in `path` to highlight in its diff, or null for a single line or when the
+ * active card is elsewhere.
+ */
+export function activeDiffCommentRange(
+	comments: DiffComments,
+	activeId: string | null,
+	path: string,
+):
+{
+	start: number;
+	end: number;
+	side: DiffSide;
+} | null
+{
+	if (activeId === null) return null;
+	const active =
+		comments.drafts.find((draft) => draft.id === activeId) ??
+		comments.queued.find((comment) => comment.id === activeId);
+	if (active?.path !== path || active.endLine === undefined || active.endLine === active.line) return null;
+	return {
+		start: active.line,
+		end: active.endLine,
+		side: active.side,
+	};
+}
+
 function subscribe(listener: () => void): () => void
 {
 	listeners.add(listener);
@@ -549,11 +591,11 @@ export function useDiffComments(sessionId: string | undefined): DiffComments
 	);
 }
 
-export function useDiffCommentEditing(sessionId: string): DiffCommentEditing
+export function useDiffCommentEditing(sessionId: string | undefined): DiffCommentEditing
 {
 	return useSyncExternalStore(
 		subscribe,
-		() => getDiffCommentEditing(sessionId),
+		() => (sessionId === undefined ? NO_EDITING : getDiffCommentEditing(sessionId)),
 		() => NO_EDITING,
 	);
 }
