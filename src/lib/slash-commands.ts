@@ -2,6 +2,7 @@
  * Composer "/" autocomplete: the curated CLI built-ins plus the pure merge,
  * ranking and highlight logic shared by the popup and `GET /api/commands`.
  */
+import {type CommandCandidate, CommandMatcher} from "./command-matcher";
 
 export const SLASH_COMMAND_SOURCES = [
 	"builtin",
@@ -474,27 +475,43 @@ export function mergeSlashCommands(groups: readonly (readonly SlashCommand[])[])
 /* Upstream's slash matcher shows no items for a query longer than this. */
 const MAX_SLASH_QUERY_LENGTH = 50;
 
-/* Upstream's synchronous fallback tiers (`W$`), plus a description tier the local menu matches synchronously. */
-function slashRank(command: SlashCommand, needle: string): number | null
+/** A slash command as upstream's `LM` builds a candidate; every local row counts as a skill, as Claude Code's do. */
+export interface SlashMatcherCandidate extends CommandCandidate
 {
-	/* A plugin entry ranks by its bare label, and its `plugin:name` still matches. */
-	const names = [...new Set([slashCommandLabel(command), command.name])].map((name) => name.toLowerCase());
-	const aliases = (command.aliases ?? []).map((alias) => alias.toLowerCase());
-	if (names.includes(needle)) return 0;
-	if (aliases.includes(needle)) return 1;
-	if (names.some((name) => name.startsWith(needle))) return 2;
-	if (aliases.some((alias) => alias.startsWith(needle))) return 3;
-	if ([...names, ...aliases].some((label) => label.includes(needle))) return 4;
-	if (command.description.toLowerCase().includes(needle)) return 5;
-	return null;
+	command: SlashCommand;
+}
+
+export function slashMatcherCandidate(command: SlashCommand): SlashMatcherCandidate
+{
+	const label = slashCommandLabel(command).toLowerCase();
+	const name = command.pluginName === undefined ? label : `${command.pluginName.toLowerCase()}:${label}`;
+	return {
+		command,
+		name,
+		displayName: label,
+		description: command.description.split(/\s+/).slice(0, 20).join(" "),
+		aliases: (command.aliases ?? []).map((alias) => alias.toLowerCase()),
+		usageKey: name,
+	};
+}
+
+/* One matcher per commands array, as upstream's `mR` caches in a WeakMap. */
+const slashMatchers = new WeakMap<readonly SlashCommand[], CommandMatcher<SlashMatcherCandidate>>();
+
+/* Upstream `r6`: the head is an exact name or alias (`W$` rank 0 or 1), so a space after it ends the command. */
+function isExactSlashHead(commands: readonly SlashCommand[], head: string): boolean
+{
+	return commands.some((command) =>
+	{
+		const {name, displayName, aliases} = slashMatcherCandidate(command);
+		return name === head || displayName === head || aliases.includes(head);
+	});
 }
 
 /**
- * Empty query: every command in list order, as upstream does. Otherwise every command whose name, alias or description
- * contains the query, ranked exact name > exact alias > name prefix > alias prefix >
- * name or alias contains > description contains, keeping list order within a rank.
- * Upstream `tG` with `spaceEndsCommand` (shared-33): a trailing space keeps ranking the head; a second word or an
- * exact name/alias head closes.
+ * Upstream `tG` with its matcher loaded and `spaceEndsCommand` (shared-33): an empty query lists every command in
+ * list order; otherwise upstream's `CommandMatcher` ranks the trimmed, lowercased query. A trailing space keeps
+ * ranking the head; a second word or an exact name/alias head closes.
  */
 export function filterSlashCommands(commands: readonly SlashCommand[], query: string): SlashCommand[]
 {
@@ -503,23 +520,14 @@ export function filterSlashCommands(commands: readonly SlashCommand[], query: st
 	const needle = query.trim().toLowerCase();
 	if (needle === "") return [];
 	const head = /^(\S+)\s+(\S)?/.exec(query.trimStart().toLowerCase());
-	if (head !== null)
+	if (head !== null && (head[2] !== undefined || isExactSlashHead(commands, head[1] ?? ""))) return [];
+	let matcher = slashMatchers.get(commands);
+	if (matcher === undefined)
 	{
-		const word = head[1] ?? "";
-		const exactHead = commands.some((command) =>
-		{
-			const rank = slashRank(command, word);
-			return rank === 0 || rank === 1;
-		});
-		if (head[2] !== undefined || exactHead) return [];
+		matcher = new CommandMatcher(commands.map(slashMatcherCandidate));
+		slashMatchers.set(commands, matcher);
 	}
-	const ranks: SlashCommand[][] = [[], [], [], [], [], []];
-	for (const command of commands)
-	{
-		const rank = slashRank(command, needle);
-		if (rank !== null) ranks[rank]?.push(command);
-	}
-	return ranks.flat();
+	return matcher.search(needle).map((candidate) => candidate.command);
 }
 
 /** The first alias that starts with the query, which upstream appends to the row as `(alias)`. */

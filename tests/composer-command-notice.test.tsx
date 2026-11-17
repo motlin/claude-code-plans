@@ -83,7 +83,7 @@ describe("Composer unknown-command notice", () =>
 	{
 		const {onSend, submit} = setup();
 
-		submit("/statuss");
+		submit("/stauts");
 		const element = notice();
 		const button = element?.querySelector("button");
 
@@ -97,10 +97,10 @@ describe("Composer unknown-command notice", () =>
 			},
 		).toStrictEqual(
 			{
-				sent: ["/statuss"],
+				sent: ["/stauts"],
 				className:
 					"mb-1.5 flex flex-wrap items-center gap-2 ps-1 text-footnote text-upstream-warning select-text",
-				text: "/statuss isn’t a command here.",
+				text: "/stauts isn’t a command here.",
 				button: "Use /status",
 				buttonClassName:
 					"inline-flex h-5 items-center rounded-r5 bg-fill-secondary px-1.5 text-footnote text-primary shadow-field-drop hover:bg-fill-secondary-hover focus-visible:shadow-focus focus-visible:outline-hidden",
@@ -112,7 +112,7 @@ describe("Composer unknown-command notice", () =>
 	{
 		const {textarea, onSend, submit} = setup();
 
-		submit("/statuss");
+		submit("/stauts");
 		fireEvent.click(
 			screen.getByRole(
 				"button",
@@ -145,7 +145,7 @@ describe("Composer unknown-command notice", () =>
 	{
 		const {textarea, submit} = setup();
 
-		submit("/statuss");
+		submit("/stauts");
 		fireEvent.change(
 			textarea,
 			{
@@ -171,7 +171,7 @@ describe("Composer unknown-command notice", () =>
 	{
 		const {submit} = setup();
 
-		submit("/Statuss");
+		submit("/Stauts");
 
 		expect(
 			{
@@ -180,7 +180,7 @@ describe("Composer unknown-command notice", () =>
 			},
 		).toStrictEqual(
 			{
-				text: "/Statuss isn’t a command here.",
+				text: "/Stauts isn’t a command here.",
 				button: "Use /status",
 			},
 		);
@@ -216,7 +216,7 @@ describe("Composer unknown-command notice", () =>
 		const afterCliOnly = notice();
 		cleanup();
 		const unloaded = setup([]);
-		unloaded.submit("/statuss");
+		unloaded.submit("/stauts");
 
 		expect(
 			{
@@ -232,7 +232,7 @@ describe("Composer unknown-command notice", () =>
 				afterPlugin: null,
 				afterCliOnly: null,
 				afterUnloaded: null,
-				sent: ["/statuss"],
+				sent: ["/stauts"],
 			},
 		);
 	});
@@ -241,7 +241,7 @@ describe("Composer unknown-command notice", () =>
 	{
 		const {textarea, submit} = setup();
 
-		submit("/statuss");
+		submit("/stauts");
 		fireEvent.change(
 			textarea,
 			{
@@ -266,7 +266,7 @@ describe("Composer unknown-command notice", () =>
 			},
 		).toStrictEqual(
 			{
-				whileTyping: "/statuss isn’t a command here.",
+				whileTyping: "/stauts isn’t a command here.",
 				afterSubmit: null,
 			},
 		);

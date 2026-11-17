@@ -350,7 +350,7 @@ describe("Composer slash commands", () =>
 			{
 				settingsSuffix:
 					'<span class="min-w-0 truncate text-ink-muted">(<span class="font-semibold text-primary">settings</span>)</span>',
-				sRows: ["standup", "config(settings)", "usage(stats)", "model", "plan"],
+				sRows: ["standup", "usage(stats)", "config(settings)", "model", "plan"],
 				coRows: ["config", "usage(cost)"],
 			},
 		);
