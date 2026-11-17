@@ -151,7 +151,7 @@ import {stripControlsAndMask} from "../lib/secret-mask";
 import {formatElapsed} from "../lib/elapsed-format";
 import {ELAPSED_MIN_SECONDS, type TurnStatusState, turnStatusSwapKey} from "../lib/working-marker";
 import {MorphSlot} from "./ui/morph-slot";
-import {useHeldLabel} from "../hooks/use-held-label";
+import {LABEL_HOLD_DEFAULT_MS, useHeldLabel} from "../hooks/use-held-label";
 import {busyLineKey, stepHoldMinMs, turnStatusHoldOptions} from "../lib/turn-status-hold";
 import {NoticeParts, TaskDescriptionLinks, type TaskEvent, TaskEventRun} from "./task-event-run-row";
 import {usageLimitCard} from "../lib/usage-limit-notice";
@@ -7247,6 +7247,26 @@ function isProminentCall(
 	return PROMINENT_TOOLS.has(call.name) && !isWithdrawnQuestion(call);
 }
 
+/** Upstream `nce`: the live key of a group with no call in flight. */
+const SETTLED_LIVE_KEY = "settled";
+
+/** The group's live call, and whether the group was then a sole same-target run. */
+interface LiveKey
+{
+	key: string;
+	lone: boolean;
+}
+
+/**
+ * Upstream `LC(d, 650)`: the shown live key falls back to the previous running call for 650ms
+ * before following a change; leaving the settled key follows at once.
+ */
+const LIVE_KEY_HOLD =
+{
+	minMs: (shown: LiveKey) => (shown.key === SETTLED_LIVE_KEY ? 0 : LABEL_HOLD_DEFAULT_MS),
+	settleMs: LABEL_HOLD_DEFAULT_MS,
+};
+
 function ToolCallSection({
 	calls,
 	sessionId,
@@ -7264,6 +7284,28 @@ function ToolCallSection({
 	const backgroundCalls = calls.filter((c) => !isProminentCall(c));
 	const [loneBackgroundCall] = backgroundCalls;
 	const queuedCallIds = useContext(QueuedCallIdsContext);
+	const sameTargetRun = backgroundCalls.length > 1 && notices.length === 0 && sameTarget(backgroundCalls);
+	// oxlint-disable-next-line unicorn/prefer-array-find -- findLast is not in the ES2022 lib
+	const liveCall = backgroundCalls.findLast(isPendingToolCall);
+	const liveKey = liveCall?.id ?? SETTLED_LIVE_KEY;
+	const live = useMemo(
+		() => (
+		{
+			key: liveKey,
+			lone: sameTargetRun,
+		}),
+		[liveKey, sameTargetRun],
+	);
+	const held = useHeldLabel(live, liveKey, LIVE_KEY_HOLD);
+	// The finished call the live key still holds on; upstream keeps its words only while it completed (`cP`).
+	const heldCall =
+		held.key === liveKey
+			? undefined
+			: backgroundCalls.find((c) => c.id === held.key && !isPendingToolCall(c) && c.isError !== true);
+	// Upstream `relabelStep`: a sole run whose held member finished keeps that member's present tense.
+	const heldRunCall = sameTargetRun && liveCall === undefined ? heldCall : undefined;
+	// Upstream `subjectOf`: a group that just stopped being a sole run keeps the run's words and file.
+	const handedOffCall = !sameTargetRun && held.lone ? heldCall : undefined;
 	// Upstream holds no notices beside a queued lone row (`u2` false): they draw on their own and the row gives way.
 	const queuedLoneCall =
 		backgroundCalls.length === 1 &&
@@ -7280,8 +7322,6 @@ function ToolCallSection({
 				))}
 			</>
 		);
-	const sameTargetRun = backgroundCalls.length > 1 && notices.length === 0 && sameTarget(backgroundCalls);
-
 	return (
 		<>
 			{/* Upstream's ChatToolCard boundary wraps each whole card, keyed by its tool stage (`Vh`), and
@@ -7297,6 +7337,7 @@ function ToolCallSection({
 					<ToolCallRow
 						call={runLabelCall(backgroundCalls)}
 						run={backgroundCalls}
+						heldLive={heldRunCall}
 						sessionId={sessionId}
 						leading={leading}
 					/>
@@ -7309,6 +7350,7 @@ function ToolCallSection({
 						sessionId={sessionId}
 						notices={notices}
 						leading={leading}
+						handedOff={handedOffCall}
 					/>
 				</ToolCardBoundary>
 			)}
@@ -7751,6 +7793,7 @@ function ReviewCardOrRow({call, sessionId, row}: {call: ClientToolCall; sessionI
 function ToolCallRow({
 	call,
 	run = NO_RUN,
+	heldLive,
 	sessionId,
 	nested = false,
 	leading = false,
@@ -7760,6 +7803,8 @@ function ToolCallRow({
 	call: ClientToolCall;
 	/** A same-target run drawn as this one row, its bodies stacked in the disclosure. */
 	run?: readonly ClientToolCall[];
+	/** A finished run member the group's live key still holds on: the row stays busy in its words (upstream `relabelStep`). */
+	heldLive?: ClientToolCall | undefined;
 	sessionId: string;
 	nested?: boolean;
 	/** The row is the first thing drawn in the transcript row that opens a reply. */
@@ -7790,7 +7835,7 @@ function ToolCallRow({
 	// draws it under the "Published artifact" label.
 	const expandable = hasBody && !NON_EXPANDING_TOOLS.has(call.name) && !isArtifactCard(call);
 	const Renderer = getCallRenderer(call);
-	const pending = isPendingToolCall(call);
+	const pending = isPendingToolCall(call) || heldLive !== undefined;
 	const resolveAgentName = useContext(AgentNameContext);
 	const labelCall =
 		call.name === "SendMessage" && typeof call.input["to"] === "string"
@@ -7809,7 +7854,7 @@ function ToolCallRow({
 	// busy, in the present tense, until the task's completion notification lands.
 	const busyAgent = isAgent && (pending || backgroundTasks?.running.has(call.id) === true);
 	const busy = pending || busyAgent;
-	const running = busy ? runningToolLabel(withPermissionWait(labelCall, permissionWaitId)) : null;
+	const running = busy ? runningToolLabel(withPermissionWait(heldLive ?? labelCall, permissionWaitId)) : null;
 	const isFileParam = FILE_PARAM_TOOLS.has(call.name);
 	const diffStats = useEditDiffStats(members);
 	const isCardStyle = CARD_STYLE_TOOLS.has(call.name) && !nested;
@@ -8482,6 +8527,8 @@ type GroupHeaderLabel =
 			state: "busy";
 			runningText: string;
 			pendingCall: ClientToolCall;
+			/** A handed-off sole run's file, drawn as the row's meta beside its words (upstream `subjectOf`). */
+			subject?: string;
 	  }
 	|
 	  {
@@ -8493,11 +8540,14 @@ function ToolCallSummary({
 	sessionId,
 	notices = NO_NOTICES,
 	leading,
+	handedOff,
 }: {
 	calls: ClientToolCall[];
 	sessionId: string;
 	notices?: readonly FoldedNotice[];
 	leading: boolean;
+	/** The finished call of the sole run this group just grew out of, whose words it holds (upstream `subjectOf`). */
+	handedOff?: ClientToolCall | undefined;
 })
 {
 	const [expanded, toggleExpanded] = useModeExpansion(`group:${calls[0]?.id ?? `notice-${notices[0]?.lineIndex}`}`);
@@ -8557,16 +8607,24 @@ function ToolCallSummary({
 	// row stays secondary, as upstream does.
 	const ink = expanded ? "text-secondary" : `${restInk} group-hover/tool:text-secondary`;
 	const live: GroupHeaderLabel =
-		pendingCall !== undefined && runningText !== null
-			?
-				{
-					state: "busy",
-					runningText,
-					pendingCall,
-				}
+		handedOff === undefined
+			? pendingCall !== undefined && runningText !== null
+				?
+					{
+						state: "busy",
+						runningText,
+						pendingCall,
+					}
+				:
+					{
+						state: "done",
+					}
 			:
 				{
-					state: "done",
+					state: "busy",
+					runningText: stripControlsAndMask(runningToolLabel(handedOff).verb),
+					pendingCall: handedOff,
+					subject: stripControlsAndMask(handedOff.param.split("/").pop() ?? handedOff.param),
 				};
 	// Upstream gR holds the busy label (`Ky`): a new running call waits 2s behind the shown one, or only the
 	// 250ms settle on the same busy line; done swaps at once.
@@ -8576,7 +8634,13 @@ function ToolCallSummary({
 		turnStatusHoldOptions(live.state, false, busyLineKey(calls.filter(isPendingToolCall).map((call) => call.id))),
 	);
 	const busy = held.state === "busy";
-	const announcement = held.state === "busy" ? held.runningText : countedLabelText(summary);
+	const heldSubject = held.state === "busy" ? held.subject : undefined;
+	const announcement =
+		held.state === "busy"
+			? heldSubject === undefined
+				? held.runningText
+				: `${held.runningText} ${heldSubject}`
+			: countedLabelText(summary);
 	const busyRowCut = useTypeRowCut(held.state === "busy" ? held.runningText : "");
 
 	// Each step's place in the group's screenshot strip, which collapsed groups show at the row's end.
@@ -8610,7 +8674,11 @@ function ToolCallSummary({
 	const rowClass = `relative group/tool flex items-center ${hasGroupMedia ? "max-w-full min-w-0" : summaryLayout} gap-g1 text-left cursor-pointer${rowFocus} rounded-r3${hasGroupMedia ? "" : ` ${TURN_STATUS_ROW_COMFORTABLE}`}`;
 	const rowStyle = hasGroupMedia ? undefined : TURN_STATUS_ROW_STYLE;
 	let labelledBy = `${statusId}-label`;
-	if (busy) labelledBy = `${statusId}-label ${statusId}-busy`;
+	if (busy)
+		labelledBy =
+			heldSubject === undefined
+				? `${statusId}-label ${statusId}-busy`
+				: `${statusId}-label ${statusId}-meta ${statusId}-busy`;
 	else if (fileMeta !== undefined) labelledBy = `${statusId}-label ${statusId}-meta`;
 
 	const toggle = (
@@ -8661,6 +8729,11 @@ function ToolCallSummary({
 							<CountedLine segments={summary.segments} trailing={summary.trailing} />
 						)}
 					</MorphSlot>
+					{heldSubject !== undefined && (
+						<span id={`${statusId}-meta`} className="text-body text-primary truncate min-w-0">
+							<bdi>{heldSubject}</bdi>
+						</span>
+					)}
 					{held.state === "busy" ? (
 						<>
 							<RunningElapsed startedAt={held.pendingCall.startedAt} />

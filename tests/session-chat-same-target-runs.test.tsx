@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import {cleanup, fireEvent, render, waitFor} from "@testing-library/react";
+import {act, cleanup, fireEvent, render, waitFor} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {SessionChat} from "../src/components/session-chat";
 import {processTranscript} from "../src/lib/transcript";
@@ -74,6 +74,8 @@ interface Call
 	input: Record<string, unknown>;
 	result?: string;
 	isError?: boolean;
+	/** The call's result has not arrived yet. */
+	pending?: true;
 }
 
 /** One assistant message making every call, then each call's result. */
@@ -97,35 +99,37 @@ function turn(calls: Call[]): unknown[]
 				})),
 			},
 		},
-		...calls.map(({id, result, isError}) => (
-		{
-			type: "user",
-			uuid: `r-${id}`,
-			message:
+		...calls
+			.filter((call) => call.pending !== true)
+			.map(({id, result, isError}) => (
 			{
-				role: "user",
-				content: [
-					{
-						type: "tool_result",
-						tool_use_id: id,
-						content: result ?? "ok",
-						...(isError === true
-							?
-								{
-									is_error: true,
-								}
-							: {}),
-					},
-				],
-			},
-		})),
+				type: "user",
+				uuid: `r-${id}`,
+				message:
+				{
+					role: "user",
+					content: [
+						{
+							type: "tool_result",
+							tool_use_id: id,
+							content: result ?? "ok",
+							...(isError === true
+								?
+									{
+										is_error: true,
+									}
+								: {}),
+						},
+					],
+				},
+			})),
 	];
 }
 
-function draw(calls: Call[]): HTMLElement
+function chat(calls: Call[], permissionWaitToolUseId: string | null = null): React.ReactElement
 {
 	const {lines, toolResultMap} = processTranscript(turn(calls));
-	return render(
+	return (
 		<SessionChat
 			sessionId="test-session"
 			lines={lines}
@@ -134,8 +138,14 @@ function draw(calls: Call[]): HTMLElement
 			showTools
 			showThinking={false}
 			shouldScrollToEnd={false}
-		/>,
-	).container;
+			permissionWaitToolUseId={permissionWaitToolUseId}
+		/>
+	);
+}
+
+function draw(calls: Call[]): HTMLElement
+{
+	return render(chat(calls)).container;
 }
 
 const edit = (id: string, oldString: string, newString: string, extra: Partial<Call> = {}): Call => (
@@ -339,5 +349,180 @@ describe("same-target run row", () =>
 				editSteps: ["e1", "e2"],
 			},
 		);
+	});
+});
+
+/** A row's label pieces: its label slot's showing face, then its meta, range and outcome, in document order. */
+function rowParts(container: HTMLElement): string[]
+{
+	const row = container.querySelector('[data-tool-row] > [role="button"], [data-tool-row] > button');
+	if (row === null) return [];
+	return [
+		...row.querySelectorAll<HTMLElement>(
+			'[data-morph-key]:not([aria-hidden]), [id$="-meta"], [id$="-range"], [id$="-outcome"]',
+		),
+	].map((part) => part.textContent);
+}
+
+describe("busy same-target run row (upstream mergeLiveLoneStep)", () =>
+{
+	const pendingEdit = (id: string) =>
+		edit(
+			id,
+			"c",
+			"d",
+			{
+				pending: true,
+			},
+		);
+
+	it("draws a run with a member in flight as one busy row: live verb, the file as its own meta, mark and sr label", async () =>
+	{
+		const container = render(chat([edit("e1", "a", "b"), pendingEdit("e2")])).container;
+		const row = container.querySelector("[data-tool-row]");
+		const toggle = container.querySelector<HTMLElement>("[data-cds-row-toggle]");
+		if (toggle === null) throw new Error("no row toggle");
+		const closed =
+		{
+			groupToggles: container.querySelectorAll("button[aria-expanded]").length,
+			rows: container.querySelectorAll("[data-tool-row]").length,
+			parts: rowParts(container),
+			metaInShimmer: row?.querySelector("[id$='-meta']")?.closest("[data-shimmering]") !== null,
+			marks: row?.querySelectorAll('[data-cds="WorkingMark"]').length,
+			status: row?.querySelector('[role="status"]')?.textContent,
+		};
+		fireEvent.click(toggle);
+		const panel = container.querySelector("[data-cds-row-panel]");
+		await bodiesLoaded(panel);
+		expect(
+			{
+				...closed,
+				steps: [...(panel?.querySelectorAll("[data-step-key]") ?? [])].map((step) =>
+					step.getAttribute("data-step-key"),
+				),
+			},
+		).toStrictEqual(
+			{
+				groupToggles: 0,
+				rows: 1,
+				parts: ["Editing", "a.ts"],
+				metaInShimmer: false,
+				marks: 1,
+				status: "Editing a.ts",
+				steps: ["e1", "e2"],
+			},
+		);
+	});
+
+	it("keeps the merged row while the member in flight waits on a permission prompt", () =>
+	{
+		const container = render(chat([edit("e1", "a", "b"), pendingEdit("e2")], "e2")).container;
+		expect(
+			{
+				groupToggles: container.querySelectorAll("button[aria-expanded]").length,
+				rows: container.querySelectorAll("[data-tool-row]").length,
+				parts: rowParts(container),
+				state: container.querySelector("[data-morph-key]:not([aria-hidden])")?.getAttribute("data-morph-key"),
+			},
+		).toStrictEqual(
+			{
+				groupToggles: 0,
+				rows: 1,
+				parts: ["Editing", "a.ts"],
+				state: "blocked|Editing",
+			},
+		);
+	});
+
+	describe("holds the run's live words for 650ms (upstream LC + relabelStep, subjectOf)", () =>
+	{
+		beforeEach(() =>
+		{
+			vi.useFakeTimers(
+				{
+					toFake: ["setTimeout", "clearTimeout", "performance"],
+				},
+			);
+		});
+		afterEach(() =>
+		{
+			vi.useRealTimers();
+		});
+
+		function advance(ms: number): void
+		{
+			act(() =>
+			{
+				vi.advanceTimersByTime(ms);
+			});
+		}
+
+		it("keeps a finished member's present tense for 650ms, then settles at once", () =>
+		{
+			const {container, rerender} = render(chat([edit("e1", "a", "b"), pendingEdit("e2")]));
+			rerender(chat([edit("e1", "a", "b"), edit("e2", "c", "d")]));
+			const finished = rowParts(container);
+			advance(649);
+			const held = rowParts(container);
+			advance(1);
+			expect([finished, held, rowParts(container)]).toStrictEqual([
+				["Editing", "a.ts"],
+				["Editing", "a.ts"],
+				["Edited", "a.ts"],
+			]);
+		});
+
+		it("keeps the lone run's words and file on the group row for 650ms after a different target joins, then settles the new label in 250ms", () =>
+		{
+			const {container, rerender} = render(chat([edit("e1", "a", "b"), pendingEdit("e2")]));
+			rerender(
+				chat([
+					edit("e1", "a", "b"),
+					edit("e2", "c", "d"),
+					{
+						...read("r1", "/repo/b.ts"),
+						pending: true,
+					},
+				]),
+			);
+			const header = () =>
+			{
+				const toggle = container.querySelector("button[aria-expanded]");
+				return {
+					parts: rowParts(container),
+					status: toggle?.closest("[data-tool-row]")?.querySelector('[role="status"]')?.textContent,
+				};
+			};
+			const handedOff = header();
+			advance(649);
+			const held = header();
+			advance(1);
+			const swapped = header();
+			advance(249);
+			const settling = header();
+			advance(1);
+			expect([handedOff, held, swapped, settling, header()]).toStrictEqual([
+				{
+					parts: ["Editing", "a.ts"],
+					status: "Editing a.ts",
+				},
+				{
+					parts: ["Editing", "a.ts"],
+					status: "Editing a.ts",
+				},
+				{
+					parts: ["Editing", "a.ts"],
+					status: "Editing a.ts",
+				},
+				{
+					parts: ["Editing", "a.ts"],
+					status: "Editing a.ts",
+				},
+				{
+					parts: ["Reading"],
+					status: "Reading",
+				},
+			]);
+		});
 	});
 });
