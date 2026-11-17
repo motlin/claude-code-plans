@@ -10,6 +10,7 @@ import {SessionChat} from "../src/components/session-chat";
 import {ToastProvider} from "../src/components/toast";
 import {CompactScope} from "./fizzy-lake-off";
 import {type TranscriptActions, TranscriptActionsContext} from "../src/components/transcript-actions-context";
+import {toggleUserChapterAt} from "../src/lib/chapter-store";
 import {writeClipboardText} from "../src/lib/clipboard";
 import type {FileRef} from "../src/lib/file-refs";
 import {type ComposerHandle, getContextChips, registerComposer, takeContextChips} from "../src/lib/context-attach";
@@ -525,6 +526,46 @@ describe("transcript context menus", () =>
 		clickItem(openMenuOn(find(container, ".user-message-bubble p")), "Rewind to here");
 
 		expect(calls).toStrictEqual(["pin assistant-1", "fork assistant-2", "rewind user-1"]);
+	});
+
+	it("reads Unpin chapter on a message or tool row that is already a chapter", () =>
+	{
+		const calls: string[] = [];
+		const actions = recordingActions(calls);
+		const renderWithActions = () =>
+			renderChat((chat) => (
+				<TranscriptActionsContext.Provider value={actions}>{chat}</TranscriptActionsContext.Provider>
+			));
+		toggleUserChapterAt("test-session", "assistant-1", "x", 1);
+		const onlyProse = renderWithActions();
+		const prose = menuRows(openMenuOn(find(onlyProse, "strong", "details")));
+		cleanup();
+		const toolBefore = menuRows(openMenuOn(find(renderWithActions(), "[data-tool-row]")));
+		cleanup();
+		toggleUserChapterAt("test-session", "assistant-2", "y", 2);
+		const toolPinned = openMenuOn(find(renderWithActions(), "[data-tool-row]"));
+		const toolAfter = menuRows(toolPinned);
+		clickItem(toolPinned, "Unpin chapter");
+		cleanup();
+		clickItem(openMenuOn(find(renderWithActions(), "strong", "details")), "Unpin chapter");
+		toggleUserChapterAt("test-session", "assistant-1", "x", 1);
+		toggleUserChapterAt("test-session", "assistant-2", "y", 2);
+
+		expect(
+			{
+				prose,
+				toolBefore,
+				toolAfter,
+				calls,
+			},
+		).toStrictEqual(
+			{
+				prose: ASSISTANT_ROWS.map((row) => (row === "Pin as chapter" ? "Unpin chapter" : row)),
+				toolBefore: ["Pin as chapter", "---", "Fork from here / Starts a new session, keeps this one"],
+				toolAfter: ["Unpin chapter", "---", "Fork from here / Starts a new session, keeps this one"],
+				calls: ["pin assistant-2", "pin assistant-1"],
+			},
+		);
 	});
 
 	it("disables Pin, Fork and Rewind when no transcript actions are provided", () =>

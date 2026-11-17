@@ -5,6 +5,7 @@ import {MIN_EXCERPT_LENGTH} from "../hooks/use-transcript-selection-attach";
 import {fileRefStatusQueryOptions} from "../lib/api/file-refs";
 import {writeClipboardText} from "../lib/clipboard";
 import {CODEBLOCK_CLASS, CODEBLOCK_COPY_ATTR, CODEBLOCK_TEXT_ATTR} from "../lib/client-markdown";
+import {useSessionChapters} from "../lib/chapter-store";
 import {attachContext} from "../lib/context-attach";
 import {markdownToPlainText} from "../lib/markdown-plain-text";
 import {createPressRecorder, touchOnTextOrSelection, wantsNativeContextMenu} from "../lib/native-context-menu";
@@ -429,6 +430,8 @@ function TranscriptMenuItems({
 	const actions = useContext(TranscriptActionsContext);
 	const cwd = useFileRefsCwd();
 	const openInDefaultApp = useOpenInDefaultApp();
+	const {userChapters} = useSessionChapters(sessionId);
+	const pinned = message !== undefined && userChapters.some((chapter) => chapter.afterId === message.uuid);
 	if (target.kind === "file")
 	{
 		return (
@@ -453,7 +456,7 @@ function TranscriptMenuItems({
 	}
 	const pin = (
 		<MenuItem key="pin" {...actionProps(actions.pinChapter, message)}>
-			Pin as chapter
+			{pinned ? "Unpin chapter" : "Pin as chapter"}
 		</MenuItem>
 	);
 	const fork = (

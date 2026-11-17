@@ -305,8 +305,13 @@ function PinAction({message}: {message: TranscriptMessageRef | undefined})
 	const {userChapters} = useSessionChapters(message?.sessionId ?? "");
 	const pinned = message !== undefined && userChapters.some((chapter) => chapter.afterId === message.uuid);
 	return (
-		<ActionButton label="Pin as chapter" pressed={pinned} onClick={bound(pinChapter, message)}>
-			<Pin aria-hidden="true" className={ICON_CLASS} />
+		<ActionButton
+			label={pinned ? "Unpin chapter" : "Pin as chapter"}
+			pressed={pinned}
+			onClick={bound(pinChapter, message)}
+		>
+			{/* Upstream swaps Pin for PinFilled when pressed: the outline filled with currentColor. */}
+			<Pin aria-hidden="true" className={ICON_CLASS} fill={pinned ? "currentColor" : "none"} />
 		</ActionButton>
 	);
 }

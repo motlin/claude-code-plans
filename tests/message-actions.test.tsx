@@ -188,19 +188,42 @@ describe("AssistantMessageActions", () =>
 		);
 	});
 
-	it("paints a pinned Pin as chapter with upstream's pressed accent ink and fill", () =>
+	it("paints a pinned Pin as Unpin chapter with upstream's pressed accent ink, fill and a filled pin", () =>
 	{
 		toggleUserChapterAt(MESSAGE.sessionId, MESSAGE.uuid, "Hello", 0);
 		const {container} = render(
 			<AssistantMessageActions message={MESSAGE} text="Hello" timestamp={TIMESTAMP} details={[]} />,
 		);
-		const pin = button(container, "Pin as chapter");
+		const pin = button(container, "Unpin chapter");
 		const classes = pin.className.split(" ");
-		toggleUserChapterAt(MESSAGE.sessionId, MESSAGE.uuid, "Hello", 0);
+		fireEvent.pointerEnter(pin.parentElement!);
+		act(() =>
+		{
+			vi.advanceTimersByTime(300);
+		});
+		const tooltip = container.querySelector('[role="tooltip"]')?.textContent ?? null;
+		fireEvent.pointerLeave(pin.parentElement!);
+		const pinnedPaint =
+		{
+			pressed: pin.getAttribute("aria-pressed"),
+			iconFill: pin.querySelector("svg")?.getAttribute("fill") ?? null,
+			tooltip,
+			pinAsChapter: container.querySelector('button[aria-label="Pin as chapter"]') !== null,
+		};
+		act(() =>
+		{
+			toggleUserChapterAt(MESSAGE.sessionId, MESSAGE.uuid, "Hello", 0);
+		});
+		const unpinned = button(container, "Pin as chapter");
 
 		expect(
 			{
-				pressed: pin.getAttribute("aria-pressed"),
+				pinned: pinnedPaint,
+				unpinned:
+				{
+					pressed: unpinned.getAttribute("aria-pressed"),
+					iconFill: unpinned.querySelector("svg")?.getAttribute("fill") ?? null,
+				},
 				ink: classes.includes("aria-pressed:text-upstream-accent"),
 				fill: classes.includes("aria-pressed:bg-upstream-accent-pressed"),
 				focusRing: ["focus-visible:shadow-focus", "focus-visible:bg-fill-ghost-hover"].map((c) =>
@@ -209,7 +232,18 @@ describe("AssistantMessageActions", () =>
 			},
 		).toStrictEqual(
 			{
-				pressed: "true",
+				pinned:
+				{
+					pressed: "true",
+					iconFill: "currentColor",
+					tooltip: "Unpin chapter",
+					pinAsChapter: false,
+				},
+				unpinned:
+				{
+					pressed: "false",
+					iconFill: "none",
+				},
 				ink: true,
 				fill: true,
 				focusRing: [true, false],

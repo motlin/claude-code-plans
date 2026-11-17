@@ -200,9 +200,9 @@ describe("TranscriptActionsProvider", () =>
 		const pinned =
 		{
 			stored: readSessionChapters(SESSION_ID).userChapters,
-			pressed: turnButton(container, "reply-1", "Pin as chapter").getAttribute("aria-pressed"),
+			pressed: turnButton(container, "reply-1", "Unpin chapter").getAttribute("aria-pressed"),
 		};
-		fireEvent.click(turnButton(container, "reply-1", "Pin as chapter"));
+		fireEvent.click(turnButton(container, "reply-1", "Unpin chapter"));
 
 		expect(
 			{
