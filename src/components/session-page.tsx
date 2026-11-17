@@ -105,6 +105,7 @@ import {sessionApprovalSlotCard} from "../lib/approval-slot-card";
 import {showsWaitingForInputNotice} from "./waiting-for-input-notice";
 import {NotifyMePrompt} from "./notify-me-prompt";
 import {UsagePaceBanner} from "./usage-pace-banner";
+import {SessionAutoModeSetupBand} from "./auto-mode-setup-band";
 import {ColdResumeNotice} from "./cold-resume-notice";
 import {RefusalFallbackBand} from "./refusal-fallback-card";
 import {startSessionOnModel} from "../lib/start-session-on-model";
@@ -1965,6 +1966,13 @@ function SessionView({
 		},
 		[composerSend, enqueuePrompt, liveHerdrPrompt, sessionId, toast],
 	);
+	const sendSetupCommand = useCallback(
+		(prompt: string) =>
+		{
+			void sendLivePrompt(prompt);
+		},
+		[sendLivePrompt],
+	);
 	// Upstream's bash mode, where the terminal is the runner: `!<command>` typed into the live pane like a prompt.
 	const runShellCommand = useMemo(
 		() =>
@@ -2428,6 +2436,18 @@ function SessionView({
 														/>
 														{/* Upstream sets the usage chip between the docked card and the composer */}
 														{!chromeHidden && sessionDirectory && <UsagePaceBanner />}
+														{/* Upstream's band needs a local session; locally, a live pane this app can type into */}
+														{!chromeHidden &&
+															sessionDirectory &&
+															promptBehavior.hasLivePane &&
+															herdr.writesEnabled && (
+																<SessionAutoModeSetupBand
+																	cwd={sessionDirectory}
+																	paneWritable
+																	effectiveMode={composerChin.mode?.id}
+																	sendLive={sendSetupCommand}
+																/>
+															)}
 														{!chromeHidden && sessionDirectory && (
 															<NotifyMePrompt sessionId={sessionId} />
 														)}

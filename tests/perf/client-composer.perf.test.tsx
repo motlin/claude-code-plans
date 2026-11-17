@@ -285,6 +285,17 @@ const STATIC_FIXTURES: Record<string, unknown> =
 		writesEnabled: false,
 	},
 	// The real handler reads the CLI's ~/.claude.json; the lab answers as a user who has seen both Auto dialogs.
+	// The real handler reads the CLI's ~/.claude.json; the lab answers as a user who already ran /auto-mode-setup.
+	[`/api/auto-mode-setup?cwd=${encodeURIComponent(FIXTURE_CWD)}`]:
+	{
+		offered: true,
+		setupComplete: true,
+		denials: 5,
+		dismissed: false,
+		snoozedUntil: 0,
+		autoModeIsDefault: true,
+		sessionHistoryCount: 3,
+	},
 	"/api/auto-default-offer":
 	{
 		noticeEligible: false,

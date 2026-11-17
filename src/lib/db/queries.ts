@@ -27,6 +27,22 @@ function archiveCondition(status: SessionStatusFilter = "active"): SQL | undefin
 	return status === "archived" ? archived : sql`NOT (${archived})`;
 }
 
+/** Every indexed main session (not sidechains), upstream's session history length for the auto-mode setup band. */
+export function countSessionHistoryFromDb(db: IndexDb): number
+{
+	return (
+		db
+			.select(
+				{
+					count: sql<number>`count(*)`,
+				},
+			)
+			.from(schema.sessions)
+			.where(eq(schema.sessions.isSidechain, 0))
+			.get()?.count ?? 0
+	);
+}
+
 /** Distinct non-null project paths available as zero-config file-search roots. */
 export function listFileSearchProjectPathsFromDb(db: IndexDb): string[]
 {

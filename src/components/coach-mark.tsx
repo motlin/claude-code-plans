@@ -20,6 +20,7 @@ export function CoachMark({
 	action,
 	icon = HAND_ICON,
 	side = "right",
+	className = "max-w-[280px]",
 	onDismiss,
 	onClose,
 }: {
@@ -34,6 +35,8 @@ export function CoachMark({
 	};
 	icon?: ReactNode;
 	side?: "top" | "right" | "bottom" | "left";
+	/** The card's width cap; upstream callers such as the try-auto mark pass their own (`max-w-xs`). */
+	className?: string;
 	onDismiss: () => void;
 	onClose: () => void;
 })
@@ -63,7 +66,7 @@ export function CoachMark({
 						aria-live="polite"
 						initialFocus={false}
 						finalFocus={false}
-						className="max-w-[280px] cursor-default rounded-card bg-accent-100 p-4 text-sm font-normal text-white outline-none transition-[opacity,scale] delay-300 duration-200 ease-out data-[ending-style]:scale-[0.97] data-[ending-style]:opacity-0 data-[ending-style]:delay-0 data-[starting-style]:scale-[0.97] data-[starting-style]:opacity-0 motion-reduce:transition-none"
+						className={`${className} cursor-default rounded-card bg-accent-100 p-4 text-sm font-normal text-white outline-none transition-[opacity,scale] delay-300 duration-200 ease-out data-[ending-style]:scale-[0.97] data-[ending-style]:opacity-0 data-[ending-style]:delay-0 data-[starting-style]:scale-[0.97] data-[starting-style]:opacity-0 motion-reduce:transition-none`}
 					>
 						<Popover.Arrow className="data-[side=bottom]:top-[-12px] data-[side=left]:right-[-20px] data-[side=left]:-rotate-90 data-[side=right]:left-[-20px] data-[side=right]:rotate-90 data-[side=top]:bottom-[-12px] data-[side=top]:rotate-180">
 							<svg

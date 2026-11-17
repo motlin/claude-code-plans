@@ -35,6 +35,7 @@ import {useShortcutKeys} from "../hooks/use-shortcut";
 import {effortLevelLabels} from "../lib/schema-choices";
 import {ConnectorsLoadingItem} from "./composer-connectors-loading";
 import {type ChinMenu, type ChinSurface, ModeMenu, ModelMenu} from "./composer-launch-menus";
+import {type TryAutoCoachOffer, tryAutoCoachEligible} from "../lib/try-auto-coach";
 import
 {
 	ADD_BUTTON_CLASS,
@@ -56,6 +57,13 @@ import {UsagePopoverLimitRow} from "./usage-limit-row";
 import type {UsageRingContext, UsagePopoverContextSection} from "./usage-popover-context";
 import {loadedUsagePopoverContext, preloadUsagePopoverContext} from "./usage-popover-context-loader";
 import {useRenameAfterMenuClose} from "./use-rename-after-menu-close";
+
+const LazyTryAutoCoachMark = lazy(async () =>
+	import("./try-auto-coach-mark").then((module) => (
+	{
+		default: module.TryAutoCoachMark,
+	})),
+);
 
 // Keeps the Customize API schemas and router hooks out of the composer's cold load.
 const loadConnectorsMenu = async () =>
@@ -336,6 +344,8 @@ export interface ChinLaunchControls
 	onPermissionModePick?: ((mode: LaunchPermissionMode) => void) | undefined;
 	/** A live session is cached at its effort, so changing it asks first. */
 	confirmEffortChange?: boolean;
+	/** The home draft's try-auto coach mark offer; the mark shows once the Mode pick is an explicit Manual. */
+	tryAutoCoach?: TryAutoCoachOffer | undefined;
 }
 
 /** A `/effort <level>`, `/model <id>` or `/fast` sent from the composer, applied the way a menu pick is. */
@@ -393,6 +403,7 @@ export const ComposerChin = memo(function ComposerChin({
 })
 {
 	const ringRef = useRef<UsageRingHandle>(null);
+	const [modeSlot, setModeSlot] = useState<HTMLDivElement | null>(null);
 	const {launchOptions, onLaunchOptionsChange, openMenu, onOpenMenuChange} = launch;
 	// Keeps the picked level while the confirm fades out, so its copy doesn't flicker.
 	const [effortConfirm, setEffortConfirm] = useState<
@@ -578,11 +589,21 @@ export const ComposerChin = memo(function ComposerChin({
 					<div data-testid="environment-bar-model" className="flex items-center gap-1">
 						<div className={ENVIRONMENT_SLOT_CLASS}>{modelMenu}</div>
 					</div>
-					<div data-testid="environment-bar-mode" className={`${ENVIRONMENT_SLOT_CLASS} shrink-0`}>
+					<div
+						ref={setModeSlot}
+						data-testid="environment-bar-mode"
+						className={`${ENVIRONMENT_SLOT_CLASS} shrink-0`}
+					>
 						{modeMenu}
 					</div>
 					<div className={ENVIRONMENT_SLOT_CLASS}>{ring}</div>
 				</div>
+			)}
+			{/* Downloaded only once a Manual pick makes the mark eligible; it unmounts when the pick moves on. */}
+			{surface === "bar" && tryAutoCoachEligible(launchOptions.permissionMode, launch.tryAutoCoach) && (
+				<Suspense fallback={null}>
+					<LazyTryAutoCoachMark eligible anchor={modeSlot} />
+				</Suspense>
 			)}
 			<ConfirmDialog
 				open={effortConfirm.open}

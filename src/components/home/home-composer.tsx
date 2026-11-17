@@ -21,6 +21,8 @@ import {buildLaunchFlags, type LaunchOptions, modeMenuItems} from "../../lib/lau
 import {useFolderModeMemory} from "../../hooks/use-folder-mode-memory";
 import {draftPermissionMode, folderChoice, folderModeKey} from "../../lib/folder-permission-mode";
 import {autoDefaultOfferQueryOptions} from "../../lib/api/auto-default-offer";
+import {autoModeSetupQueryOptions} from "../../lib/api/auto-mode-setup";
+import type {TryAutoCoachOffer} from "../../lib/try-auto-coach";
 import
 {
 	onHomeComposerFocusRequest,
@@ -191,6 +193,18 @@ export function HomeComposer({
 	const {data: autoDefaultOffer} = useQuery(autoDefaultOfferQueryOptions);
 	// The Auto dialogs decide once, so they wait for the folder and its project settings.
 	const autoDefaultOfferSettled = defaults !== undefined && project !== undefined && folderDefaults !== undefined;
+	const {data: autoModeSetup} = useQuery(autoModeSetupQueryOptions(project?.projectPath));
+	const tryAutoCoach = useMemo<TryAutoCoachOffer | undefined>(
+		() =>
+			autoModeSetup === undefined
+				? undefined
+				:
+					{
+						autoModeIsDefault: autoModeSetup.autoModeIsDefault,
+						setup: autoModeSetup,
+					},
+		[autoModeSetup],
+	);
 	const slashMenu = useSlashCommands(project?.projectPath ?? undefined);
 	const {data: promptHistory} = useQuery(promptHistoryQueryOptions(undefined));
 
@@ -480,6 +494,7 @@ export function HomeComposer({
 				bypassPermissionsAllowed={bypassPermissionsAllowed}
 				permissionCwd={project?.projectPath}
 				onPermissionModePick={folderModes.remember}
+				tryAutoCoach={tryAutoCoach}
 				usageCommand={usageCommand}
 			/>
 			<AutoDefaultOfferDialogs

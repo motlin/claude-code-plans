@@ -106,6 +106,7 @@ import {type ChinLaunchControls, type ChinPickHandle, ComposerAddMenu, ComposerC
 import type {UsageRingContext} from "./usage-popover-context";
 import {ErrorCardShell} from "./error-card-shell";
 import type {ChinMenu} from "./composer-launch-menus";
+import type {TryAutoCoachOffer} from "../lib/try-auto-coach";
 import
 {
 	COMPOSER_CARD_CLASS,
@@ -293,6 +294,8 @@ interface ComposerProps
 	permissionCwd?: string | undefined;
 	/** A Mode menu pick, remembered for `permissionCwd`'s folder (upstream's per-folder mode memory). */
 	onPermissionModePick?: ((mode: LaunchPermissionMode) => void) | undefined;
+	/** The home draft's try-auto coach mark offer (`ChinLaunchControls.tryAutoCoach`). */
+	tryAutoCoach?: TryAutoCoachOffer | undefined;
 	/** An idle live pane: chin picks steer it instead of becoming launch flags. */
 	live?: LiveLaunchControls | undefined;
 	/** The session whose working directory feeds the "@" file mention popup. */
@@ -806,6 +809,7 @@ export function Composer({
 	bypassPermissionsAllowed = false,
 	permissionCwd,
 	onPermissionModePick,
+	tryAutoCoach,
 	live,
 	mentionSessionId,
 	mentionCwd,
@@ -2097,8 +2101,18 @@ export function Composer({
 			bypassPermissionsAllowed,
 			permissionWorkspace: consentWorkspaceKey(permissionCwd),
 			onPermissionModePick,
+			tryAutoCoach,
 		}),
-		[chinLaunchOptions, live, draftKey, openMenu, bypassPermissionsAllowed, permissionCwd, onPermissionModePick],
+		[
+			chinLaunchOptions,
+			live,
+			draftKey,
+			openMenu,
+			bypassPermissionsAllowed,
+			permissionCwd,
+			onPermissionModePick,
+			tryAutoCoach,
+		],
 	);
 
 	/** Upstream `Cq` is an atom: Backspace after it (or Delete before it) selects it instead of eating a character. */

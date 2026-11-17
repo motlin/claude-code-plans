@@ -51,21 +51,53 @@ function UsageBandShell({
 		);
 	}
 	return (
+		<BandShell
+			icon={<Gauge className={`size-4 ${danger ? "text-danger-000" : "text-ink-muted"}`} aria-hidden="true" />}
+			{...(onDismiss
+				?
+					{
+						onDismiss,
+					}
+				: {})}
+		>
+			<span className={`min-w-0 ${danger ? "text-danger-000" : "text-primary"}`}>{headline}</span>
+			<span className="min-w-0 text-ink-muted">{detail}</span>
+		</BandShell>
+	);
+}
+
+/**
+ * Upstream's composer band shell (`ar` → `Kd`) drawn inline: an icon slot, a wrapping body whose words share one
+ * baseline, an optional actions group that wraps under the words on a narrow dock, and an optional Dismiss slot.
+ */
+export function BandShell({
+	icon,
+	children,
+	actions,
+	onDismiss,
+}: {
+	icon: ReactNode;
+	children: ReactNode;
+	actions?: ReactNode;
+	onDismiss?: () => void;
+})
+{
+	return (
 		<div
 			role="status"
 			aria-live="polite"
 			className="flex gap-[5px] w-full min-h-[40px] p-[8px] rounded-r7 bg-alpha-1 items-start py-[calc((40px-1lh)/2)] text-body usage-band-enter"
 		>
-			<span className="flex h-[1lh] shrink-0 items-center">
-				<Gauge className={`size-4 ${danger ? "text-danger-000" : "text-ink-muted"}`} aria-hidden="true" />
-			</span>
+			<span className="flex h-[1lh] shrink-0 items-center">{icon}</span>
 			<div className="flex min-w-0 flex-1 flex-wrap gap-x-[8px] gap-y-[8px] items-start">
 				<div className="min-w-0 max-w-full flex-auto">
-					<div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-0.75">
-						<span className={`min-w-0 ${danger ? "text-danger-000" : "text-primary"}`}>{headline}</span>
-						<span className="min-w-0 text-ink-muted">{detail}</span>
-					</div>
+					<div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-0.75">{children}</div>
 				</div>
+				{actions !== undefined && (
+					<div className="flex min-w-0 max-w-full shrink-0 flex-wrap items-start gap-x-[8px] gap-y-[8px]">
+						{actions}
+					</div>
+				)}
 			</div>
 			{onDismiss !== undefined && (
 				<span className="ms-1.25 flex h-[1lh] shrink-0 items-center">

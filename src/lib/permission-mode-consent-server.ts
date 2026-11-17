@@ -38,7 +38,7 @@ const NO_STORE =
 };
 const AUTO_CONSENT_KEY = "hasSeenAutoModeEntryWarning";
 
-async function readManaged(dependencies: ConsentStoreDependencies)
+async function readManaged(dependencies: Pick<ConsentStoreDependencies, "readManagedSettings">)
 {
 	try
 	{
@@ -52,7 +52,10 @@ async function readManaged(dependencies: ConsentStoreDependencies)
 	}
 }
 
-async function readAutoModeIsDefault(dependencies: ConsentStoreDependencies): Promise<boolean>
+/** Upstream's `autoIsDefault`, mapped to the CLI's own opt-in: user `defaultMode` "auto", or the entry prompt skipped. */
+export async function readAutoModeIsDefault(
+	dependencies: Pick<ConsentStoreDependencies, "claudeDir" | "readManagedSettings">,
+): Promise<boolean>
 {
 	const loaded = await loadSettings(settingsPathIn(dependencies.claudeDir)).catch(() => null);
 	const user = loaded?.kind === "loaded" ? loaded.settings : null;
