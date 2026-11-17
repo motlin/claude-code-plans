@@ -172,6 +172,86 @@ describe("SessionChat user bubble Excerpt tiles", () =>
 	});
 });
 
+const REPLY_QUOTE_CLASS =
+	"min-w-0 border-s-2 border-strong ps-sm text-body text-muted-as-secondary whitespace-pre-wrap [overflow-wrap:anywhere]";
+
+function bubbleParts(container: HTMLElement)
+{
+	return Array.from(container.querySelectorAll(".user-message-bubble blockquote, .user-message-bubble p")).map(
+		(node) =>
+			node.tagName === "BLOCKQUOTE"
+				?
+					{
+						quote: node.textContent,
+						className: node.className,
+						findOmitted: node.getAttribute("data-find-omitted"),
+						replyBlock: node.getAttribute("data-reply-quote-block"),
+						dir: node.getAttribute("dir"),
+					}
+				:
+					{
+						text: node.textContent,
+					},
+	);
+}
+
+describe("SessionChat user bubble reply quotes", () =>
+{
+	it("draws upstream's reply lead as a quote above the body and hides the marker", () =>
+	{
+		const container = renderRecords([prompt("<!-- reply -->\n> a\n> b\n\nhello")]);
+
+		expect(
+			{
+				parts: bubbleParts(container),
+				bubble: container.querySelector(".user-message-bubble")?.textContent,
+			},
+		).toStrictEqual(
+			{
+				parts: [
+					{
+						quote: "a\nb",
+						className: REPLY_QUOTE_CLASS,
+						findOmitted: "",
+						replyBlock: "",
+						dir: "auto",
+					},
+					{
+						text: "hello",
+					},
+				],
+				bubble: "a\nbhello",
+			},
+		);
+	});
+
+	it("draws a numbered lead's later blocks as quotes between their bodies, with attach blocks as tiles", () =>
+	{
+		const container = renderRecords([
+			prompt([
+				{
+					type: "text",
+					text: "<!-- reply 2 -->\n> q1\n\nc1\n\n<!-- reply -->\n> q2\n\nc2\n\n\n<!-- attach -->\n> crab\n\nprompt &lt;!-- reply -->",
+				},
+			]),
+		]);
+
+		expect(
+			{
+				parts: bubbleParts(container).map((part) => ("quote" in part ? part.quote : part.text)),
+				tiles: Array.from(container.querySelectorAll("[data-cds=MessageAttachmentsQuote] blockquote")).map(
+					(quote) => quote.textContent,
+				),
+			},
+		).toStrictEqual(
+			{
+				parts: ["q1", "c1", "q2", "c2", "prompt &lt;!-- reply -->"],
+				tiles: ["crab"],
+			},
+		);
+	});
+});
+
 function tileSummary(tile: Element)
 {
 	const badge = tile.querySelector("[data-cds=Badge]");

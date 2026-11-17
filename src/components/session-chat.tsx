@@ -29,7 +29,8 @@ import {orphansOpenQuestions} from "../lib/question-answer-route";
 import {isWithdrawnQuestion, OUTCOME_LABEL, questionOutcomeNote, type AskedCall} from "../lib/ask-user-question";
 import {PLAN_NOT_APPROVED} from "../lib/exit-plan-mode";
 import {parseToolRejection} from "../lib/tool-rejection";
-import {parseAttachSnippets, type AttachSnippet} from "../lib/attach-markers";
+import {parseAttachSnippets, parseReplyLead, type AttachSnippet} from "../lib/attach-markers";
+import {MessageReplyQuote} from "./message-reply-quote";
 import {type DiffAnnotation, parseDiffAnnotations} from "../lib/diff-annotation-markers";
 import
 {
@@ -6648,23 +6649,61 @@ interface UserContentBlocks
 	annotations: DiffAnnotation[];
 }
 
+/** One run of a prompt bubble's body: plain prompt text, or a later reply block's inline quote. */
+interface PromptPiece
+{
+	kind: "quote" | "text";
+	text: string;
+}
+
 /**
- * The prompt text minus harness tags, with its `<!-- attach -->` blocks split out as snippets and then its
- * diff comment blocks as annotations (upstream `Q`: `B` first, then the fences).
+ * The prompt text minus harness tags, split like upstream's `Q`: an `<!-- reply -->` lead first (its quote
+ * becomes the bubble's reply quote, later quotes stay inline), then each text run's `<!-- attach -->` blocks as
+ * snippets and its diff comment blocks as annotations (`B` first, then the fences).
  */
 function cleanPromptParts(text: string):
 {
+	replyQuote: string | null;
 	snippets: AttachSnippet[];
 	annotations: DiffAnnotation[];
-	rest: string;
+	pieces: PromptPiece[];
 }
 {
-	const {snippets, rest} = parseAttachSnippets(cleanPromptText(text));
-	const parsed = parseDiffAnnotations(rest);
+	const cleaned = cleanPromptText(text);
+	const lead = parseReplyLead(cleaned);
+	const runs = lead?.parts ?? [
+		{
+			kind: "text" as const,
+			text: cleaned,
+		},
+	];
+	const snippets: AttachSnippet[] = [];
+	const annotations: DiffAnnotation[] = [];
+	const pieces: PromptPiece[] = [];
+	for (const run of runs)
+	{
+		if (run.kind === "quote")
+		{
+			pieces.push(run);
+			continue;
+		}
+		const attached = parseAttachSnippets(run.text);
+		const parsed = parseDiffAnnotations(attached.rest);
+		snippets.push(...attached.snippets);
+		annotations.push(...parsed.annotations);
+		if (parsed.rest)
+			pieces.push(
+				{
+					kind: "text",
+					text: parsed.rest,
+				},
+			);
+	}
 	return {
+		replyQuote: lead?.replyQuote ?? null,
 		snippets,
-		annotations: parsed.annotations,
-		rest: parsed.rest,
+		annotations,
+		pieces,
 	};
 }
 
@@ -6696,54 +6735,49 @@ function renderUserContentBlocks(
 			annotations: [],
 		};
 
-	if (typeof content === "string")
-	{
-		const {snippets: excerpts, annotations, rest: cleaned} = cleanPromptParts(content);
-		if (!cleaned)
-			return {
-				textNodes: [],
-				mediaNodes: [],
-				images: [],
-				excerpts,
-				annotations,
-			};
-		return {
-			excerpts,
-			annotations,
-			textNodes: [
-				<React.Fragment key={0}>
-					<TruncatedContent>
-						<UserPromptText text={cleaned} leading={true} derived={derived} />
-					</TruncatedContent>
-					<DebugLink sessionId={sessionId} uuid={line.uuid} className="absolute top-1 right-1" />
-				</React.Fragment>,
-			],
-			mediaNodes: [],
-			images: inlinePathImages(cleaned, allowedImageRoots),
-		};
-	}
-
+	const blocks =
+		typeof content === "string"
+			? [
+					{
+						type: "text" as const,
+						text: content,
+					},
+				]
+			: content;
 	const textNodes: React.ReactNode[] = [];
 	const mediaNodes: React.ReactNode[] = [];
 	const images: AttachedImage[] = [];
 	const excerpts: AttachSnippet[] = [];
 	const annotations: DiffAnnotation[] = [];
+	const replyQuotes: string[] = [];
 	const inlineImageText: string[] = [];
-	for (const [i, block] of content.entries())
+	for (const [i, block] of blocks.entries())
 	{
 		if (block.type === "text" && typeof block.text === "string")
 		{
-			if (block.text.includes("<local-command-caveat>")) continue;
-			const {snippets, annotations: blockAnnotations, rest: cleaned} = cleanPromptParts(block.text);
+			if (typeof content !== "string" && block.text.includes("<local-command-caveat>")) continue;
+			const {replyQuote, snippets, annotations: blockAnnotations, pieces} = cleanPromptParts(block.text);
 			excerpts.push(...snippets);
 			annotations.push(...blockAnnotations);
-			if (!cleaned) continue;
-			inlineImageText.push(cleaned);
+			if (replyQuote !== null) replyQuotes.push(replyQuote);
+			if (pieces.length === 0) continue;
+			const blockNodes = pieces.map((piece, p) =>
+			{
+				if (piece.kind === "quote") return <MessageReplyQuote key={`text-${i}-${p}`} text={piece.text} />;
+				inlineImageText.push(piece.text);
+				return (
+					<TruncatedContent key={`text-${i}-${p}`}>
+						<UserPromptText
+							text={piece.text}
+							leading={textNodes.length === 0 && p === 0}
+							derived={derived}
+						/>
+					</TruncatedContent>
+				);
+			});
 			textNodes.push(
 				<React.Fragment key={`text-${i}`}>
-					<TruncatedContent>
-						<UserPromptText text={cleaned} leading={textNodes.length === 0} derived={derived} />
-					</TruncatedContent>
+					{blockNodes}
 					<DebugLink sessionId={sessionId} uuid={line.uuid} className="absolute top-1 right-1" />
 				</React.Fragment>,
 			);
@@ -6785,6 +6819,8 @@ function renderUserContentBlocks(
 		// tool_result blocks are intentionally skipped in user rendering
 	}
 	if (inlineImageText.length > 0) images.push(...inlinePathImages(inlineImageText.join("\n"), allowedImageRoots));
+	if (replyQuotes.length > 0)
+		textNodes.unshift(<MessageReplyQuote key="reply-quote" text={replyQuotes.join("\n\n")} />);
 	return {
 		textNodes,
 		mediaNodes,
