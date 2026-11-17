@@ -786,7 +786,7 @@ describe("ChangesPaneView", () =>
 
 			expect(headerState("ws.txt")).toStrictEqual(
 				{
-					text: "ws.txtWhitespace only+1−1",
+					text: "ws.txtWhitespace only+1−11 added, 1 removed",
 					name: "flex min-w-0 text-body text-secondary",
 					disabled: "true",
 					expanded: null,
@@ -811,7 +811,7 @@ describe("ChangesPaneView", () =>
 
 			expect(headerState("big.txt")).toStrictEqual(
 				{
-					text: "big.txtToo large to show+3−2",
+					text: "big.txtToo large to show+3−23 added, 2 removed",
 					name: "flex min-w-0 text-body text-secondary",
 					disabled: "true",
 					expanded: null,
@@ -840,7 +840,7 @@ describe("ChangesPaneView", () =>
 				},
 			).toStrictEqual(
 				{
-					text: "greet.tssrcNo longer executable+2−1",
+					text: "greet.tssrcNo longer executable+2−12 added, 1 removed",
 					disabled: null,
 				},
 			);

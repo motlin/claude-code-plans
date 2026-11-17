@@ -399,6 +399,35 @@ function OpenFileButton({onOpenFile}: {onOpenFile: () => void})
 	);
 }
 
+/** Upstream `Os`: the stats wrapper pushed to the inline end; it never shrinks. */
+const STATS_WRAPPER_CLASS = "ms-auto flex shrink-0 items-center gap-[4px]";
+
+/**
+ * Upstream `ws`: +N / −N for the non-zero sides only, read aloud as one sr-only summary. Nothing at 0/0, so a binary
+ * or mode-only file shows only its note.
+ */
+function DiffStats({additions, deletions}: {additions: number; deletions: number})
+{
+	if (additions === 0 && deletions === 0) return null;
+	return (
+		<span dir="ltr" className="flex shrink-0 items-center gap-0.5 tabular-nums text-body">
+			{additions > 0 && (
+				<span aria-hidden="true" className="text-diff-added">
+					+{additions}
+				</span>
+			)}
+			{deletions > 0 && (
+				<span aria-hidden="true" className="text-diff-removed">
+					−{deletions}
+				</span>
+			)}
+			<span className="sr-only">
+				{additions} added, {deletions} removed
+			</span>
+		</span>
+	);
+}
+
 /** Upstream's 32px Changes file header: chevron, name, dir, "Renamed from", +a −r, hover "Open file". */
 export function DiffFileHeader(props: DiffFileHeaderProps)
 {
@@ -433,13 +462,8 @@ function DiffFileHeaderRow({
 	const menuButton = showMenuButton && menu !== undefined;
 	const cluster = menuButton || mark !== undefined;
 	const stale = mark?.status === "stale";
-	// Upstream `ws` renders nothing at 0/0, so a binary or mode-only file shows only its note.
-	const stats = (additions > 0 || deletions > 0) && (
-		<>
-			<span className="text-diff-added">+{additions}</span>
-			<span className="text-diff-removed">−{deletions}</span>
-		</>
-	);
+	const stats = <DiffStats additions={additions} deletions={deletions} />;
+	const hasStats = additions > 0 || deletions > 0;
 	const Chevron = collapsed || disabled ? ChevronRight : ChevronDown;
 	const content = (
 		<>
@@ -493,20 +517,13 @@ function DiffFileHeaderRow({
 						<span className="grid max-w-max min-w-0 grow basis-[8ch] grid-cols-[minmax(0,max-content)] text-muted-as-secondary">
 							<span className="truncate">{VIEWED_STALE}</span>
 						</span>
-						{stats && (
-							<span className="order-first ms-auto flex shrink-0 items-center gap-[4px] tabular-nums">
-								{stats}
-							</span>
-						)}
+						{hasStats && <span className={`order-first ${STATS_WRAPPER_CLASS}`}>{stats}</span>}
 					</span>
 				) : (
-					stats && (
-						<span className="ml-auto flex shrink-0 items-center gap-0.5 text-body tabular-nums">
-							{stats}
-						</span>
-					)
+					hasStats && <span className={STATS_WRAPPER_CLASS}>{stats}</span>
 				)}
-				{/* Upstream `go`: one w-control spacer per overlaid action, so the stats never slide under them. */}
+				{/* Upstream `go`: one w-control spacer per overlaid action, so the stats never slide under them.
+				    `w-control` at data-size="xs" is 24px in the comfortable shell local runs under (20px at default density). */}
 				{onOpenFile && (
 					<span
 						aria-hidden="true"
@@ -532,8 +549,11 @@ function DiffFileHeaderRow({
 				</span>
 			) : (
 				onOpenFile && (
-					<span className={`absolute inset-y-0 right-0 flex items-center pr-3 ${HOVER_REVEAL_CLASS}`}>
-						<OpenFileButton onOpenFile={onOpenFile} />
+					// Upstream `$s` outside the cluster: its own absolute wrapper at the inline end.
+					<span className="pointer-events-none absolute inset-y-0 end-0 flex items-center pe-3">
+						<span className={`pointer-events-auto flex ${HOVER_REVEAL_CLASS}`}>
+							<OpenFileButton onOpenFile={onOpenFile} />
+						</span>
 					</span>
 				)
 			)}

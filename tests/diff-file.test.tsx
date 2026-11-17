@@ -426,7 +426,7 @@ describe("DiffFile", () =>
 				{
 					path: "src/greet.ts",
 					slot: "header-custom",
-					text: "greet.tssrc+3−1",
+					text: "greet.tssrc+3−13 added, 1 removed",
 				},
 			);
 		});
@@ -1471,6 +1471,7 @@ describe("DiffFileHeader More actions (upstream c44d00c7f rc/ic/tc)", () =>
 		const openOnlySpacers = [
 			...openOnly.querySelectorAll("[data-diff-file-header] > button > span[aria-hidden][data-size]"),
 		];
+		const openOnlyWrapper = openOnly.querySelector("[data-diff-file-header] > span");
 
 		expect(
 			{
@@ -1481,6 +1482,12 @@ describe("DiffFileHeader More actions (upstream c44d00c7f rc/ic/tc)", () =>
 				]),
 				spacers: spacers.map((spacer) => [spacer.getAttribute("data-size"), spacer.className]),
 				openOnlySpacers: openOnlySpacers.map((spacer) => spacer.className),
+				openOnlyWrapper: [
+					openOnlyWrapper?.className,
+					openOnlyWrapper?.firstElementChild?.className,
+					label(openOnlyWrapper?.querySelector("button") ?? null),
+				],
+				narrowHidden: openOnly.querySelector('[class*="@max-[15rem]"]'),
 			},
 		).toStrictEqual(
 			{
@@ -1497,6 +1504,12 @@ describe("DiffFileHeader More actions (upstream c44d00c7f rc/ic/tc)", () =>
 					["xs", "w-6 shrink-0"],
 				],
 				openOnlySpacers: ["w-6 shrink-0"],
+				openOnlyWrapper: [
+					"pointer-events-none absolute inset-y-0 end-0 flex items-center pe-3",
+					expect.stringMatching(/^pointer-events-auto flex( |$)/),
+					"Open file",
+				],
+				narrowHidden: null,
 			},
 		);
 	});
@@ -1882,7 +1895,7 @@ describe("DiffFileHeader Viewed check (upstream c44d00c7f Mo/jo/go)", () =>
 					"truncate",
 					"Changed since you viewed it",
 				],
-				stats: ["order-first ms-auto flex shrink-0 items-center gap-[4px] tabular-nums", "+2−1"],
+				stats: ["order-first ms-auto flex shrink-0 items-center gap-[4px]", "+2−12 added, 1 removed"],
 				title: "src/greet.ts (changed since you viewed it)",
 			},
 		);
@@ -1894,13 +1907,13 @@ describe("DiffFileHeader Viewed check (upstream c44d00c7f Mo/jo/go)", () =>
 		expect(
 			{
 				row: view.container.querySelector("[data-diff-file-header] span.overflow-clip"),
-				stats: view.container.querySelector("[data-diff-file-header] > button > span.ml-auto")?.textContent,
+				stats: view.container.querySelector("[data-diff-file-header] > button > span.ms-auto")?.textContent,
 				title: view.container.querySelector("[data-diff-file-header] [title]"),
 			},
 		).toStrictEqual(
 			{
 				row: null,
-				stats: "+2−1",
+				stats: "+2−12 added, 1 removed",
 				title: null,
 			},
 		);
@@ -2076,7 +2089,7 @@ describe("DiffFileHeader notes and ink (upstream c44d00c7f Bs/Vs/xs/Ss/Js)", () 
 			"New file",
 			"Binary file",
 			"Made executable",
-			"+1−0",
+			"+11 added, 0 removed",
 		]);
 	});
 
@@ -2089,6 +2102,49 @@ describe("DiffFileHeader notes and ink (upstream c44d00c7f Bs/Vs/xs/Ss/Js)", () 
 		);
 
 		expect(button.textContent).toBe("a.pngsrcBinary file");
+	});
+
+	it("renders upstream's `Os` > `ws` stats: ltr, aria-hidden non-zero sides and an sr-only summary", () =>
+	{
+		const stats = (additions: number, deletions: number) =>
+		{
+			const {button} = renderHeader(
+				{
+					additions,
+					deletions,
+				},
+			);
+			const html = button.querySelector(":scope > span.ms-auto")?.outerHTML;
+			cleanup();
+			return html;
+		};
+
+		expect(
+			{
+				both: stats(3, 1),
+				additionsOnly: stats(5, 0),
+				deletionsOnly: stats(0, 2),
+			},
+		).toStrictEqual(
+			{
+				both:
+					'<span class="ms-auto flex shrink-0 items-center gap-[4px]">' +
+					'<span dir="ltr" class="flex shrink-0 items-center gap-0.5 tabular-nums text-body">' +
+					'<span aria-hidden="true" class="text-diff-added">+3</span>' +
+					'<span aria-hidden="true" class="text-diff-removed">−1</span>' +
+					'<span class="sr-only">3 added, 1 removed</span></span></span>',
+				additionsOnly:
+					'<span class="ms-auto flex shrink-0 items-center gap-[4px]">' +
+					'<span dir="ltr" class="flex shrink-0 items-center gap-0.5 tabular-nums text-body">' +
+					'<span aria-hidden="true" class="text-diff-added">+5</span>' +
+					'<span class="sr-only">5 added, 0 removed</span></span></span>',
+				deletionsOnly:
+					'<span class="ms-auto flex shrink-0 items-center gap-[4px]">' +
+					'<span dir="ltr" class="flex shrink-0 items-center gap-0.5 tabular-nums text-body">' +
+					'<span aria-hidden="true" class="text-diff-removed">−2</span>' +
+					'<span class="sr-only">0 added, 2 removed</span></span></span>',
+			},
+		);
 	});
 
 	it("disables a bodyless header: aria-disabled, no aria-expanded, faded right chevron, no toggle", () =>
