@@ -1,17 +1,23 @@
+import {QueryClientContext} from "@tanstack/react-query";
 import {type ReactNode, useContext, useState} from "react";
 
 import {fileViewerPath} from "../lib/api/file";
 import {requestChangesScope} from "../lib/changes-scope-request";
-import {type TurnChanges, turnChangesKind} from "../lib/turn-changes";
+import {ARTIFACT_MARK_KINDS, MARK_INK, resolveArtifactMark} from "../lib/artifact-mark";
+import type {SessionArtifact} from "../lib/api/artifacts";
+import {type TurnArtifactPage, type TurnChanges, turnChangesKind} from "../lib/turn-changes";
 import {turnUndoPrompt} from "../lib/turn-undo-prompt";
 import {DiffStat} from "./diff-stat";
+import {ArtifactGlyph} from "./artifact-mark";
 import {LazyFileTypeIcon} from "./lazy-file-type-icon";
+import {useSessionArtifacts} from "./panes/artifacts-pane-entry";
 import {useOptionalPaneHost} from "./panes/pane-host-context";
 import {ToastContext} from "./toast-context";
 import {TurnUndoConfirm} from "./turn-undo";
 import {TurnUndoSendContext} from "./turn-undo-send-context";
 import {useTurnUndo} from "./use-turn-undo";
 import {CDS_BUTTON_DISABLED} from "./ui/cds-button-disabled";
+import {Icon} from "./ui/icon";
 import {Tooltip} from "./ui/tooltip";
 
 /** Upstream shows three file rows before its "See all" / "Show less" toggle. */
@@ -155,6 +161,89 @@ function UndoButton({
 	);
 }
 
+/**
+ * Upstream's artifact row Open: cds secondary Button `size="xxs"` (`data-step="1"`: 20px tall, 6px padding) with
+ * its `text-footnote text-secondary` override.
+ */
+const OPEN_ARTIFACT_CLASS =
+	"inline-flex h-5 shrink-0 cursor-pointer items-center rounded-r4 px-1.5 text-footnote text-secondary bg-fill-secondary shadow-[inset_0_0_0_1px_var(--color-border),0_1px_2px_rgb(0_0_0/0.05)] transition-shadow hover:bg-fill-secondary-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
+
+const UNTITLED_ARTIFACT = "Untitled artifact";
+
+/**
+ * Upstream `eQ`/`pZ` for the turn's artifactPage: the artifact's mark (or the Artifacts glyph), its label, the
+ * "Artifact" detail, and a secondary "Open". Local has no in-app artifact pane, so both the row and Open open the
+ * claude.ai URL in a new tab, upstream's own no-opener fallback.
+ */
+function ArtifactLeadRow({page, artifact}: {page: TurnArtifactPage; artifact: SessionArtifact | undefined})
+{
+	// Upstream `uQ`: the name store, else the publish's path label, else "Untitled artifact"; the DB's own
+	// untitled fallback is no name.
+	const title = artifact?.title === UNTITLED_ARTIFACT ? undefined : artifact?.title;
+	const label = title ?? page.label ?? UNTITLED_ARTIFACT;
+	const mark = resolveArtifactMark(
+		{
+			typeKind: artifact?.kind,
+		},
+	);
+	const open = () =>
+	{
+		window.open(page.url, "_blank", "noopener,noreferrer");
+	};
+	return (
+		<li className={ITEM_CLASS}>
+			<button type="button" onClick={open} className={`${ROW_CONTROL_CLASS} cursor-pointer`}>
+				<span className="relative flex min-w-0 items-center gap-1.5">
+					{mark === undefined ? (
+						<span className="flex shrink-0 text-muted-as-secondary">
+							<Icon name="Artifacts" size="sm" />
+						</span>
+					) : (
+						<span className={`flex shrink-0 ${MARK_INK[mark.hue]}`}>
+							<span data-artifact-mark={mark.kind} className="flex">
+								<ArtifactGlyph icon={ARTIFACT_MARK_KINDS[mark.kind].icon} size="sm" />
+							</span>
+						</span>
+					)}
+					<span className="min-w-0 truncate text-primary">{label}</span>
+					<span className="shrink-0 whitespace-nowrap text-muted-as-secondary">Artifact</span>
+				</span>
+			</button>
+			<span className={TRAILING_CLASS}>
+				<span className="pointer-events-auto flex items-center gap-1">
+					<Tooltip content={`Open artifact ${label}`} className="shrink-0">
+						<button
+							type="button"
+							aria-label={`Open artifact ${label}`}
+							onClick={open}
+							className={OPEN_ARTIFACT_CLASS}
+						>
+							Open
+						</button>
+					</Tooltip>
+				</span>
+			</span>
+		</li>
+	);
+}
+
+/** The lead row with the session's own record of the artifact, for its title and type. */
+function StoredArtifactLeadRow({sessionId, page}: {sessionId: string; page: TurnArtifactPage})
+{
+	const artifact = useSessionArtifacts(sessionId).find((entry) => entry.url === page.url);
+	return <ArtifactLeadRow page={page} artifact={artifact} />;
+}
+
+function TurnArtifactRow({sessionId, page}: {sessionId: string; page: TurnArtifactPage})
+{
+	// Optional: cards rendered outside the app shell (tests, previews) have no query client.
+	return useContext(QueryClientContext) === undefined ? (
+		<ArtifactLeadRow page={page} artifact={undefined} />
+	) : (
+		<StoredArtifactLeadRow sessionId={sessionId} page={page} />
+	);
+}
+
 function RowLabel({icon, path, folderHint}: {icon: ReactNode; path: string; folderHint: string | undefined})
 {
 	return (
@@ -234,6 +323,9 @@ export function TurnChangesCard({
 				{
 					send(turnUndoPrompt(changes.files.map((file) => file.path)));
 				};
+	const page = changes.artifactPage;
+	// Upstream hides Undo whenever the turn published an artifact.
+	const offersUndo = undoable && page === undefined;
 	const count = changes.files.length;
 	const title = `${TITLE_VERB[turnChangesKind(changes.files)]} ${count === 1 ? "a file" : `${count} files`}`;
 	const toggles = count > VISIBLE_FILE_LIMIT;
@@ -248,7 +340,7 @@ export function TurnChangesCard({
 				};
 
 	const [soleFile] = changes.files;
-	if (count === 1 && soleFile !== undefined)
+	if (count === 1 && soleFile !== undefined && page === undefined)
 	{
 		const label = (
 			<RowLabel
@@ -287,7 +379,7 @@ export function TurnChangesCard({
 							added={soleFile.added}
 							removed={soleFile.removed}
 							undo={
-								undoable ? (
+								offersUndo ? (
 									<UndoButton
 										sendsPrompt={send !== null}
 										busy={undo.state.kind === "busy"}
@@ -317,21 +409,27 @@ export function TurnChangesCard({
 
 	// Upstream's summary card: a static "Edited N files" header with Undo flush to the card edge, a 1px divider,
 	// then the file rows closing on a "See all +A −R" row inside the list.
+	// With an artifact page upstream draws no header or divider; the artifact row leads the list.
 	return (
 		<div data-turn-changes-card className={CARD_CLASS}>
-			<div className="flex h-6 min-w-0 items-center justify-between gap-2 px-1">
-				<span className="min-w-0 truncate text-primary">{title}</span>
-				{undoable && (
-					<UndoButton
-						sendsPrompt={send !== null}
-						busy={undo.state.kind === "busy"}
-						onUndo={startUndo}
-						flushEnd
-					/>
-				)}
-			</div>
-			<div aria-hidden="true" className="-mx-[7px] h-px shrink-0 bg-alpha-2" />
+			{page === undefined && (
+				<>
+					<div className="flex h-6 min-w-0 items-center justify-between gap-2 px-1">
+						<span className="min-w-0 truncate text-primary">{title}</span>
+						{offersUndo && (
+							<UndoButton
+								sendsPrompt={send !== null}
+								busy={undo.state.kind === "busy"}
+								onUndo={startUndo}
+								flushEnd
+							/>
+						)}
+					</div>
+					<div aria-hidden="true" className="-mx-[7px] h-px shrink-0 bg-alpha-2" />
+				</>
+			)}
 			<ul aria-label={title} className="flex w-full min-w-0 flex-col">
+				{page !== undefined && <TurnArtifactRow sessionId={sessionId} page={page} />}
 				{visible.map((file) => (
 					<li key={file.path} className={ITEM_CLASS}>
 						<a

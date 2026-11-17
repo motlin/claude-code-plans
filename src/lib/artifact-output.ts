@@ -186,7 +186,7 @@ export function isArtifactCardCall(input: unknown, isError: boolean): boolean
 }
 
 /** Upstream `mq`: a publish, an edit, or no action at all. */
-function isPublishAction(action: unknown): boolean
+export function isPublishAction(action: unknown): boolean
 {
 	return action === undefined || action === "publish" || action === "edit";
 }

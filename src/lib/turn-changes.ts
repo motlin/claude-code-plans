@@ -1,5 +1,5 @@
 import {parsePeerMessage} from "./agent-message";
-import {isArtifactCardCall, parseArtifactOutput} from "./artifact-output";
+import {isPublishAction, parseArtifactOutput} from "./artifact-output";
 import type {ToolResultInfo} from "./sessions";
 import {diffStatsForCall, type ToolCallLike} from "./session-utils";
 import {defined} from "./defined";
@@ -47,6 +47,15 @@ export interface TurnChanges extends TurnChangesSummary
 	 * summary group, whose pill still shows its stats.
 	 */
 	soleVisibleEditToolRow: boolean;
+	/** Upstream `artifactPage`: the page the turn published, which leads the card. */
+	artifactPage?: TurnArtifactPage | undefined;
+}
+
+/** Upstream `L`'s `{url, label}`: label is the published path's basename without its extension. */
+export interface TurnArtifactPage
+{
+	url: string;
+	label: string | undefined;
 }
 
 /** A turn call, which counts only once its result is in (`hasResult` false skips it). */
@@ -247,23 +256,37 @@ function soleVisibleEditToolRow(items: readonly TurnCall[][], fileCount: number,
 	return fileCount === 1 && runsWithEdits === 1 && lastBare;
 }
 
-/**
- * Upstream `I` (artifactPage): the turn published an artifact, a completed `Artifact` publish
- * whose output names one, not an `open` of an existing page. Upstream keeps the card then.
- */
-function turnPublishedArtifact(items: readonly TurnCall[][]): boolean
+/** Upstream `tW`: a path's last segment without its extension. */
+function basenameWithoutExt(path: string): string
 {
-	return items.some((item) =>
-		item.some(
-			(call) =>
-				call.name === "Artifact" &&
-				call.hasResult !== false &&
-				call.isError !== true &&
-				isArtifactCardCall(call.input, false) &&
-				call.input["action"] !== "open" &&
-				parseArtifactOutput(call.result ?? "") !== undefined,
-		),
-	);
+	const segment =
+		path
+			.replace(/[/\\]+$/, "")
+			.split(/[/\\]/)
+			.at(-1) ?? "";
+	return segment.replace(/\.\w+$/, "") || segment;
+}
+
+/**
+ * Upstream `L` (artifactPage): the turn's last completed `Artifact` publish whose output names a
+ * page it didn't merely open. Upstream keeps the card then and leads it with that page.
+ */
+function turnArtifactPage(items: readonly TurnCall[][]): TurnArtifactPage | undefined
+{
+	let page: TurnArtifactPage | undefined;
+	for (const call of items.flat())
+	{
+		if (call.name !== "Artifact" || call.hasResult === false || call.isError === true) continue;
+		if (!isPublishAction(call.input["action"])) continue;
+		const artifact = parseArtifactOutput(call.result ?? "");
+		if (artifact === undefined || artifact.opened === true) continue;
+		page =
+		{
+			url: artifact.url,
+			label: artifact.path === undefined ? undefined : basenameWithoutExt(artifact.path),
+		};
+	}
+	return page;
 }
 
 /**
@@ -292,16 +315,17 @@ export function collectTurnChanges(
 		if (summary.files.length === 0) return;
 		const sole = soleVisibleEditToolRow(turn.items, summary.files.length, showThinking);
 		// Local adaptation: with tools hidden no bare row carries the edit, so the card stays.
-		if (sole && showTools && !turnPublishedArtifact(turn.items)) return;
-		result.set(
-			anchor,
-			{
-				turnUuid: turn.uuid,
-				anchorLineIndex: anchor,
-				...summary,
-				soleVisibleEditToolRow: sole,
-			},
-		);
+		const artifactPage = turnArtifactPage(turn.items);
+		if (sole && showTools && artifactPage === undefined) return;
+		const changes: TurnChanges =
+		{
+			turnUuid: turn.uuid,
+			anchorLineIndex: anchor,
+			...summary,
+			soleVisibleEditToolRow: sole,
+		};
+		if (artifactPage !== undefined) changes.artifactPage = artifactPage;
+		result.set(anchor, changes);
 	};
 
 	for (const line of lines)

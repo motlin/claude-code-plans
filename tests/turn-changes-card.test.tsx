@@ -1049,12 +1049,148 @@ describe("collectTurnChanges", () =>
 				content: "x",
 			},
 		};
-		const artifact = (input: Record<string, unknown>, result?: string): TurnStep => (
+		const ARTIFACT_URL = "https://claude.ai/code/artifact/0b5c1d2e-3f40-4a5b-8c6d-7e8f9a0b1c2d";
+		const OTHER_URL = "https://claude.ai/code/artifact/1c6d2e3f-4051-4b6c-9d7e-8f9a0b1c2d3e";
+		const artifact = (input: Record<string, unknown>, result?: string, id = "art"): TurnStep => (
 		{
 			tool: "Artifact",
-			id: "art",
+			id,
 			input,
-			result: result ?? "Published https://claude.ai/code/artifact/0b5c1d2e-3f40-4a5b-8c6d-7e8f9a0b1c2d",
+			result: result ?? `Published ${ARTIFACT_URL}`,
+		});
+		const pages = (steps: TurnStep[]) =>
+		{
+			const {lines, toolResultMap} = processTranscript(turnRecords(steps), 0);
+			return [...collectTurnChanges(lines, toolResultMap).values()].map((change) => change.artifactPage);
+		};
+		const writeB: TurnStep =
+		{
+			tool: "Write",
+			id: "w2",
+			input:
+			{
+				file_path: "/repo/b.md",
+				content: "y",
+			},
+		};
+
+		describe("artifactPage (upstream L: the last completed publish that didn't open)", () =>
+		{
+			it("labels the page with the published path's basename without its extension", () =>
+			{
+				expect(
+					pages([
+						writeA,
+						artifact(
+							{
+								file_path: "/repo/a.html",
+							},
+							`Published /repo/research-line.html at ${ARTIFACT_URL}`,
+						),
+					]),
+				).toStrictEqual([
+					{
+						url: ARTIFACT_URL,
+						label: "research-line",
+					},
+				]);
+			});
+
+			it("leaves the label undefined when the output names no path", () =>
+			{
+				expect(
+					pages([
+						writeA,
+						artifact(
+							{
+								file_path: "/repo/a.html",
+							},
+						),
+					]),
+				).toStrictEqual([
+					{
+						url: ARTIFACT_URL,
+						label: undefined,
+					},
+				]);
+			});
+
+			it("takes the last of two publishes", () =>
+			{
+				expect(
+					pages([
+						writeA,
+						artifact(
+							{
+								file_path: "/repo/a.html",
+							},
+							undefined,
+							"art1",
+						),
+						artifact(
+							{
+								file_path: "/repo/b.html",
+							},
+							`Published ${OTHER_URL}`,
+							"art2",
+						),
+					]),
+				).toStrictEqual([
+					{
+						url: OTHER_URL,
+						label: undefined,
+					},
+				]);
+			});
+
+			it("ignores a later open of another page", () =>
+			{
+				expect(
+					pages([
+						writeA,
+						artifact(
+							{
+								file_path: "/repo/a.html",
+							},
+							undefined,
+							"art1",
+						),
+						artifact(
+							{
+								action: "open",
+								url: OTHER_URL,
+							},
+							`Opened the Artifact at ${OTHER_URL}`,
+							"art2",
+						),
+					]),
+				).toStrictEqual([
+					{
+						url: ARTIFACT_URL,
+						label: undefined,
+					},
+				]);
+			});
+
+			it("skips a publish whose output says it opened the page, dropping a sole bare edit's card", () =>
+			{
+				expect(
+					pages([
+						writeA,
+						artifact(
+							{
+								file_path: "/repo/a.html",
+							},
+							`Opened the Artifact at ${ARTIFACT_URL}`,
+						),
+					]),
+				).toStrictEqual([]);
+			});
+
+			it("is undefined for a turn that published nothing", () =>
+			{
+				expect(pages([writeA, writeB])).toStrictEqual([undefined]);
+			});
 		});
 
 		it("keeps a sole bare edit's card", () =>
@@ -1306,6 +1442,64 @@ describe("collectTurnChanges", () =>
 
 describe("SessionChat end-of-turn card", () =>
 {
+	it("leads the last turn's card with its published artifact and offers no Undo", () =>
+	{
+		const {lines, toolResultMap} = processTranscript(
+			turnRecords([
+				{
+					tool: "Write",
+					id: "w",
+					input:
+					{
+						file_path: "/repo/a.md",
+						content: "x",
+					},
+				},
+				{
+					tool: "Artifact",
+					id: "art",
+					input:
+					{
+						file_path: "/repo/a.html",
+					},
+					result: "Published /repo/a.html at https://claude.ai/code/artifact/0b5c1d2e-3f40-4a5b-8c6d-7e8f9a0b1c2d",
+				},
+				{
+					text: "done",
+				},
+			]),
+			0,
+		);
+		const {container} = render(
+			<SettingsProvider>
+				<SessionChat
+					sessionId="test-session"
+					lines={lines}
+					toolResultMap={toolResultMap}
+					shouldScrollToEnd={false}
+				/>
+			</SettingsProvider>,
+		);
+		const cards = [...container.querySelectorAll<HTMLElement>("[data-turn-changes-card]")];
+		expect(
+			cards.map((card) => (
+			{
+				lead: card.querySelector("li")?.textContent,
+				undo: within(card).queryAllByRole(
+					"button",
+					{
+						name: "Undo",
+					},
+				).length,
+			})),
+		).toStrictEqual([
+			{
+				lead: "aArtifactOpen",
+				undo: 0,
+			},
+		]);
+	});
+
 	it("draws no card for a turn whose only tools are two Edits of one file, drawn as one row with the summed stats", () =>
 	{
 		const {lines, toolResultMap} = processTranscript(
@@ -3152,5 +3346,104 @@ describe("TurnChangesCard body-size text and ltr stats (upstream nX with the 'ty
 			},
 		);
 		expect(single.code).toBe(0);
+	});
+});
+
+describe("TurnChangesCard artifact lead row (upstream eQ with artifactPage)", () =>
+{
+	const URL = "https://claude.ai/code/artifact/0b5c1d2e-3f40-4a5b-8c6d-7e8f9a0b1c2d";
+	const withPage = (fileCount: number, label: string | undefined): TurnChanges => (
+	{
+		...changesWith(fileCount),
+		artifactPage:
+		{
+			url: URL,
+			label,
+		},
+	});
+	const cardOf = (container: HTMLElement) => container.querySelector<HTMLElement>("[data-turn-changes-card]")!;
+	const shape = (card: HTMLElement) => (
+	{
+		rows: [...card.querySelectorAll("li")].map((li) => li.textContent),
+		undo: within(card).queryAllByRole(
+			"button",
+			{
+				name: "Undo",
+			},
+		).length,
+		header: within(card).queryAllByText(/^Edited /).length,
+		divider: card.querySelectorAll(".h-px").length,
+	});
+
+	it("leads a one-file turn's list with the artifact row, with no lone-file form, header, divider or Undo", () =>
+	{
+		const {container} = render(<TurnChangesCard sessionId="s" changes={withPage(1, "research-line")} undoable />);
+
+		expect(shape(cardOf(container))).toStrictEqual(
+			{
+				rows: [
+					"research-lineArtifactOpen",
+					"file-1.ts1 addition, 1 deletion+1\u22121",
+					"See all1 addition, 1 deletion+1\u22121",
+				],
+				undo: 0,
+				header: 0,
+				divider: 0,
+			},
+		);
+	});
+
+	it("leads a two-file turn's list with the artifact row and drops the header", () =>
+	{
+		const {container} = render(<TurnChangesCard sessionId="s" changes={withPage(2, "research-line")} undoable />);
+
+		expect(shape(cardOf(container))).toStrictEqual(
+			{
+				rows: [
+					"research-lineArtifactOpen",
+					"file-1.ts1 addition, 1 deletion+1\u22121",
+					"file-2.ts2 additions, 1 deletion+2\u22121",
+					"See all3 additions, 2 deletions+3\u22122",
+				],
+				undo: 0,
+				header: 0,
+				divider: 0,
+			},
+		);
+	});
+
+	it("opens the artifact in a new tab from Open, a cds secondary xxs button", () =>
+	{
+		const open = vi.fn<(url: string, target: string, features: string) => void>();
+		vi.stubGlobal("open", open);
+		render(<TurnChangesCard sessionId="s" changes={withPage(1, "research-line")} undoable={false} />);
+		const button = screen.getByRole(
+			"button",
+			{
+				name: "Open artifact research-line",
+			},
+		);
+		fireEvent.click(button);
+
+		expect(
+			{
+				text: button.textContent,
+				cls: button.className,
+				calls: open.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				text: "Open",
+				cls: "inline-flex h-5 shrink-0 cursor-pointer items-center rounded-r4 px-1.5 text-footnote text-secondary bg-fill-secondary shadow-[inset_0_0_0_1px_var(--color-border),0_1px_2px_rgb(0_0_0/0.05)] transition-shadow hover:bg-fill-secondary-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus",
+				calls: [[URL, "_blank", "noopener,noreferrer"]],
+			},
+		);
+	});
+
+	it("reads Untitled artifact when the publish named no path", () =>
+	{
+		const {container} = render(<TurnChangesCard sessionId="s" changes={withPage(1, undefined)} undoable />);
+
+		expect(cardOf(container).querySelector("li")?.textContent).toBe("Untitled artifactArtifactOpen");
 	});
 });
