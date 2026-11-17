@@ -237,6 +237,39 @@ describe("app chrome design tokens", () =>
 			},
 		);
 	});
+	it("holds the sidebar placeholder rows back 0.5s and fades them in, as upstream's df-placeholder-rows does", () =>
+	{
+		const styles = readFileSync("src/styles/globals.css", "utf8")
+			.replace(/\/\*[\s\S]*?\*\//g, "")
+			.replaceAll(/\s+/g, " ");
+		const rules = [...styles.matchAll(/([^{}]*(?:df-placeholder|data-placeholder-label)[^{}]*)\{([^}]*)\}/g)]
+			.map(([, selector, body]) => [selector?.trim(), body?.trim()])
+			.filter(([selector]) => selector?.startsWith("@keyframes") !== true);
+
+		expect(
+			{
+				keyframes: styles.match(/@keyframes df-placeholder-fade \{ 0% \{[^}]*\} \}/)?.[0],
+				rules,
+			},
+		).toStrictEqual(
+			{
+				keyframes: "@keyframes df-placeholder-fade { 0% { opacity: 0; } }",
+				rules: [
+					[
+						".df-placeholder-rows",
+						"animation: df-placeholder-fade 0.15s ease-out var(--placeholder-reveal-delay, 0.5s) backwards;",
+					],
+					[".df-placeholder-rows", "animation-duration: 0s;"],
+					[
+						"[data-placeholder-continues] .df-placeholder-rows, .df-placeholder-rows[data-placeholder-continues]",
+						"animation: none;",
+					],
+					[".df-session-list [data-placeholder-label]", "margin-bottom: var(--sb-row-stack-gap);"],
+					[".df-session-list .df-placeholder-rows > [data-row]", "margin-bottom: var(--sb-row-stack-gap);"],
+				],
+			},
+		);
+	});
 	it("holds a delayed SkeletonGroup back 0.5s and fades it in, at once under reduced motion", () =>
 	{
 		const styles = readFileSync("src/styles/globals.css", "utf8")

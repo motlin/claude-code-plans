@@ -208,28 +208,29 @@ async function renderGroups(
 		set: (_id: string | null) =>
 		{
 		},
+		setPrefs: (_prefs: SessionListPrefs) =>
+		{
+		},
 	};
 	function Root()
 	{
 		const [activeItemId, setActiveItemId] = useState<string | null>(options.activeItemId ?? null);
+		// Most cases exercise Status grouping, so render it unless a case picks other prefs.
+		const [prefs, setPrefs] = useState<SessionListPrefs>(
+			options.prefs ??
+			{
+				...DEFAULT_SESSION_LIST_PREFS,
+				groupBy: "state",
+			},
+		);
 		activeItem.set = setActiveItemId;
+		activeItem.setPrefs = setPrefs;
 		return (
 			<FizzyLakeContext.Provider value={options.fizzyLake ?? FIZZY_LAKE_PARTS}>
 				<SettingsProvider>
 					<QueryClientProvider client={queryClient}>
 						<ToastProvider>
-							<SessionGroups
-								activeItemId={activeItemId}
-								filterSlot={options.filterSlot}
-								// Most cases exercise Status grouping, so render it unless a case picks other prefs.
-								prefs={
-									options.prefs ??
-									{
-										...DEFAULT_SESSION_LIST_PREFS,
-										groupBy: "state",
-									}
-								}
-							/>
+							<SessionGroups activeItemId={activeItemId} filterSlot={options.filterSlot} prefs={prefs} />
 							<Outlet />
 						</ToastProvider>
 					</QueryClientProvider>
@@ -276,12 +277,21 @@ async function renderGroups(
 			activeItem.set(id);
 		});
 	};
+	/** Changes the list's prefs, as the Group and sort menu would. */
+	const setPrefs = (prefs: SessionListPrefs) =>
+	{
+		act(() =>
+		{
+			activeItem.setPrefs(prefs);
+		});
+	};
 	if (options.loading === true)
 		return {
 			...result,
 			queryClient,
 			router,
 			setActiveItemId,
+			setPrefs,
 		};
 	await waitFor(() =>
 	{
@@ -292,6 +302,7 @@ async function renderGroups(
 		queryClient,
 		router,
 		setActiveItemId,
+		setPrefs,
 	};
 }
 
@@ -4914,6 +4925,355 @@ describe("SessionGroups folder order", () =>
 				first: ["New group…", "Rename (disabled)", "Move down"],
 				last: ["New group…", "Rename (disabled)", "Move up"],
 				lone: ["New group…", "Rename (disabled)"],
+			},
+		);
+	});
+});
+
+/** A `PlaceholderRows` block: its wrapper, label band, and each row's classes and Skeleton bar. */
+function describePlaceholder(block: Element | null)
+{
+	if (block === null) return null;
+	return {
+		testId: block.getAttribute("data-testid"),
+		className: block.getAttribute("class"),
+		label: block.querySelector(":scope > [data-placeholder-label]")?.getAttribute("class") ?? null,
+		rows: [...block.querySelectorAll<HTMLElement>(":scope > [data-row]")].map((row) =>
+		{
+			const span = row.firstElementChild;
+			const bar = span?.firstElementChild;
+			if (!(bar instanceof HTMLElement)) throw new Error("Expected a skeleton bar");
+			return {
+				className: row.className,
+				span: span?.getAttribute("class") ?? null,
+				role: bar.getAttribute("role"),
+				width: bar.style.width,
+				height: bar.style.height,
+			};
+		}),
+	};
+}
+
+const PLACEHOLDER_ROW_CLASS =
+	"flex h-[var(--sb-row-h)] items-center gap-[var(--sb-row-gap)] pe-[var(--sb-row-px)] ps-[var(--sb-row-px)]";
+const PLACEHOLDER_SPAN_CLASS = "flex min-w-0 flex-1 items-center ps-[var(--sb-iconless-pad)]";
+const PLACEHOLDER_LABEL_CLASS = "min-h-[calc(var(--sb-group-band-mt)+var(--sb-group-band-h))]";
+
+function placeholderRows(widths: readonly string[])
+{
+	return widths.map((width) => (
+	{
+		className: PLACEHOLDER_ROW_CLASS,
+		span: PLACEHOLDER_SPAN_CLASS,
+		role: "status",
+		width,
+		height: "var(--sb-row-font)",
+	}));
+}
+
+describe("sidebar Recents placeholder rows", () =>
+{
+	const holdFeed = () =>
+	{
+		vi.stubGlobal(
+			"fetch",
+			vi.fn<typeof fetch>(async () => new Promise<Response>(() => {})),
+		);
+	};
+	const remember = (recentsRowCount: number) =>
+	{
+		localStorage.setItem(
+			"ccb-sidebar",
+			JSON.stringify(
+				{
+					collapsed: false,
+					width: 288,
+					collapsedGroups: [],
+					collapsedFamilies: [],
+					recentsRowCount,
+				},
+			),
+		);
+	};
+
+	it("holds a grouped list's remembered Recents rows in upstream's sidebar-recents-placeholder section", async () =>
+	{
+		holdFeed();
+		remember(4);
+		const {container} = await renderGroups(
+			[],
+			{
+				unseeded: true,
+				loading: true,
+			},
+		);
+		const section = container.querySelector(
+			'[data-testid="sidebar-recents"] > [data-testid="sidebar-recents-placeholder"]',
+		);
+		expect(
+			{
+				section: section?.getAttribute("class") ?? null,
+				block: describePlaceholder(section?.querySelector(":scope > .df-placeholder-rows") ?? null),
+				column: container.querySelector('[data-testid="sidebar-column-placeholder"]'),
+				pulse: container.querySelectorAll(".animate-pulse").length,
+			},
+		).toStrictEqual(
+			{
+				section: "group/section flex flex-col gap-px",
+				block:
+				{
+					testId: "sidebar-rows-skeleton",
+					className: "df-placeholder-rows flex flex-col gap-px",
+					label: PLACEHOLDER_LABEL_CLASS,
+					rows: placeholderRows(["68%", "54%", "44%", "68%"]),
+				},
+				column: null,
+				pulse: 0,
+			},
+		);
+	});
+
+	it("clamps a remembered count to upstream's 21 rows", async () =>
+	{
+		holdFeed();
+		remember(50);
+		const {container} = await renderGroups(
+			[],
+			{
+				unseeded: true,
+				loading: true,
+			},
+		);
+		expect(container.querySelectorAll('[data-testid="sidebar-rows-skeleton"] > [data-row]').length).toBe(21);
+	});
+
+	it("draws upstream's 3-row sidebar-column-placeholder when no Recents count is remembered", async () =>
+	{
+		holdFeed();
+		const {container} = await renderGroups(
+			[],
+			{
+				unseeded: true,
+				loading: true,
+			},
+		);
+		expect(
+			{
+				column: describePlaceholder(
+					container.querySelector(
+						'[data-testid="sidebar-recents"] > [data-testid="sidebar-column-placeholder"]',
+					),
+				),
+				section: container.querySelector('[data-testid="sidebar-recents-placeholder"]'),
+			},
+		).toStrictEqual(
+			{
+				column:
+				{
+					testId: "sidebar-column-placeholder",
+					className: "df-placeholder-rows flex flex-col gap-px group/section",
+					label: PLACEHOLDER_LABEL_CLASS,
+					rows: placeholderRows(["68%", "54%", "44%"]),
+				},
+				section: null,
+			},
+		);
+	});
+
+	it("keeps the flat list's Recents header over its placeholder rows, and only the header while Recents is collapsed", async () =>
+	{
+		holdFeed();
+		remember(2);
+		const flat = async () =>
+		{
+			const {container} = await renderGroups(
+				[],
+				{
+					unseeded: true,
+					loading: true,
+					filterSlot: <button type="button">Group and sort</button>,
+					prefs:
+					{
+						...DEFAULT_SESSION_LIST_PREFS,
+						groupBy: "none",
+					},
+				},
+			);
+			const recents = container.querySelector('[data-testid="sidebar-recents"]');
+			const result =
+			{
+				header: recents?.querySelector("[data-sidebar-group-label]")?.textContent ?? null,
+				block: describePlaceholder(recents?.querySelector(".df-placeholder-rows") ?? null),
+				testIds: [...(recents?.querySelectorAll("[data-testid]") ?? [])].map((node) =>
+					node.getAttribute("data-testid"),
+				),
+			};
+			cleanup();
+			return result;
+		};
+		const expanded = await flat();
+		localStorage.setItem(
+			"ccb-sidebar",
+			JSON.stringify(
+				{
+					collapsed: false,
+					width: 288,
+					collapsedGroups: ["recents"],
+					collapsedFamilies: [],
+					recentsRowCount: 2,
+				},
+			),
+		);
+		const collapsed = await flat();
+		expect(
+			{
+				expanded,
+				collapsed,
+			},
+		).toStrictEqual(
+			{
+				expanded:
+				{
+					header: "RecentsGroup and sort",
+					block:
+					{
+						testId: "sidebar-rows-skeleton",
+						className: "df-placeholder-rows flex flex-col gap-px",
+						label: null,
+						rows: placeholderRows(["68%", "54%"]),
+					},
+					testIds: ["sidebar-rows-skeleton"],
+				},
+				collapsed:
+				{
+					header: "RecentsGroup and sort",
+					block: null,
+					testIds: [],
+				},
+			},
+		);
+	});
+
+	it("remembers how many Recents rows the settled list shows", async () =>
+	{
+		vi.useFakeTimers(
+			{
+				shouldAdvanceTime: true,
+			},
+		);
+		try
+		{
+			await renderGroups(FIXTURE);
+			act(() =>
+			{
+				vi.advanceTimersByTime(2000);
+			});
+			expect(readSidebarState().recentsRowCount).toBe(FIXTURE.length);
+		}
+		finally
+		{
+			vi.useRealTimers();
+		}
+	});
+
+	it("shows upstream's 3-row sidebar-refetch-skeleton instead of the empty body while a new Status refetches a list showing no rows", async () =>
+	{
+		const prefs =
+		{
+			...DEFAULT_SESSION_LIST_PREFS,
+			groupBy: "state" as const,
+		};
+		const {container, setPrefs, queryClient} = await renderGroups(
+			[],
+			{
+				prefs,
+				loading: true,
+			},
+		);
+		queryClient.removeQueries(
+			{
+				queryKey: recentSessionsInfiniteQueryOptions(undefined, "all").queryKey,
+			},
+		);
+		await waitFor(() =>
+		{
+			expect(container.querySelector('[data-group-key="empty"]')).not.toBeNull();
+		});
+		const feed = stubNextPage([session("a1", "Archived one", "done", 5)], null);
+		setPrefs(
+			{
+				...prefs,
+				statusFilter: "all",
+			},
+		);
+		await waitFor(() =>
+		{
+			expect(feed.requests.length).toBe(1);
+		});
+		expect(
+			{
+				skeleton: describePlaceholder(
+					container.querySelector(
+						'[data-testid="sidebar-recents"] > [data-testid="sidebar-refetch-skeleton"]',
+					),
+				),
+				empty: container.querySelector('[data-group-key="empty"]'),
+			},
+		).toStrictEqual(
+			{
+				skeleton:
+				{
+					testId: "sidebar-refetch-skeleton",
+					className: "df-placeholder-rows flex flex-col gap-px",
+					label: null,
+					rows: placeholderRows(["68%", "54%", "44%"]),
+				},
+				empty: null,
+			},
+		);
+		feed.respond();
+		await screen.findByText("Archived one");
+		expect(container.querySelector('[data-testid="sidebar-refetch-skeleton"]')).toBeNull();
+	});
+
+	it("keeps the old rows and draws no refetch skeleton while a new Status refetches a non-empty list", async () =>
+	{
+		const prefs =
+		{
+			...DEFAULT_SESSION_LIST_PREFS,
+			groupBy: "state" as const,
+		};
+		const {container, setPrefs, queryClient} = await renderGroups(
+			FIXTURE,
+			{
+				prefs,
+			},
+		);
+		queryClient.removeQueries(
+			{
+				queryKey: recentSessionsInfiniteQueryOptions(undefined, "all").queryKey,
+			},
+		);
+		const feed = stubNextPage([], null);
+		setPrefs(
+			{
+				...prefs,
+				statusFilter: "all",
+			},
+		);
+		await waitFor(() =>
+		{
+			expect(feed.requests.length).toBe(1);
+		});
+		expect(
+			{
+				skeleton: container.querySelector('[data-testid="sidebar-refetch-skeleton"]'),
+				kept: screen.queryByText("Working one") !== null,
+			},
+		).toStrictEqual(
+			{
+				skeleton: null,
+				kept: true,
 			},
 		);
 	});

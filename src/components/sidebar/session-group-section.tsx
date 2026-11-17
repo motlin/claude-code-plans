@@ -844,14 +844,31 @@ export function EmptyGroupSection({
 {
 	return (
 		<div data-group-key="empty" className="group/section relative isolate flex flex-col pb-[var(--sb-group-pb)]">
-			<div
-				data-sidebar-group-label
-				className="group/labelrow df-label-inset flex mt-[var(--sb-group-band-mt)] h-[var(--sb-group-band-h)] w-full items-center gap-[var(--sb-row-gap)] pt-[var(--sb-group-pt)] pr-[var(--sb-row-ctl-inset)] pb-[var(--sb-group-label-pb)] text-[length:var(--sb-group-font)] leading-4 [--sb-heading-ink:var(--color-ink-muted)] hover:[--sb-heading-ink:var(--color-secondary)] text-[color:var(--sb-heading-ink)]"
-			>
-				<span className="min-w-0 flex-1 truncate">{label}</span>
-				<HeaderControls filterSlot={filterSlot} />
-			</div>
+			<StaticGroupLabel label={label} filterSlot={filterSlot} />
 			<EmptyListBody reason={reason} />
+		</div>
+	);
+}
+
+/** A group label row with no fold toggle, over the empty list or the loading placeholder rows. */
+export function StaticGroupLabel({
+	label,
+	filterSlot,
+	stacked = false,
+}: {
+	label: string;
+	filterSlot: ReactNode;
+	/** Over rows, the label ends one row stack gap above them, as a group header does. */
+	stacked?: boolean;
+})
+{
+	return (
+		<div
+			data-sidebar-group-label
+			className={`group/labelrow df-label-inset ${stacked ? "mb-[var(--sb-row-stack-gap)] " : ""}flex mt-[var(--sb-group-band-mt)] h-[var(--sb-group-band-h)] w-full items-center gap-[var(--sb-row-gap)] pt-[var(--sb-group-pt)] pr-[var(--sb-row-ctl-inset)] pb-[var(--sb-group-label-pb)] text-[length:var(--sb-group-font)] leading-4 [--sb-heading-ink:var(--color-ink-muted)] hover:[--sb-heading-ink:var(--color-secondary)] text-[color:var(--sb-heading-ink)]`}
+		>
+			<span className="min-w-0 flex-1 truncate">{label}</span>
+			<HeaderControls filterSlot={filterSlot} />
 		</div>
 	);
 }

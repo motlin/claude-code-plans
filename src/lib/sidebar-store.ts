@@ -16,6 +16,8 @@ const SidebarStateSchema = z.strictObject(
 		collapsedGroups: z.array(z.string()),
 		/** Collapsed fork families, keyed like upstream's `collapsedFamilies`: `code:<headSessionId>`. */
 		collapsedFamilies: z.array(z.string()).default([]),
+		/** How many Recents rows the list last showed (upstream `sidebarRowCountsByScope[…]["code.recents"]`). */
+		recentsRowCount: z.number().int().optional(),
 	},
 );
 
@@ -249,6 +251,44 @@ export function showAllNestedSessions(): void
 			collapsedFamilies: [],
 		},
 	);
+}
+
+/** Upstream `m4.recents` with a section view: the code list's placeholder holds at most 21 rows. */
+const RECENTS_ROW_CAP = 21;
+/** Upstream `Fg`: a remembered count settles for 2s before it is written. */
+const ROW_COUNT_WRITE_MS = 2000;
+/** Upstream `PA`: a count that shrinks is written after 250ms, so a reload never reserves rows that are gone. */
+const ROW_COUNT_SHRINK_WRITE_MS = 250;
+
+let pendingRowCount: ReturnType<typeof setTimeout> | undefined;
+
+/** Upstream `recordSidebarRowCount(scope, "code.recents", n)`: remember how many Recents rows the list shows. */
+export function recordRecentsRowCount(count: number): void
+{
+	clearTimeout(pendingRowCount);
+	pendingRowCount = undefined;
+	const stored = readSidebarState().recentsRowCount;
+	if (stored === count) return;
+	pendingRowCount = setTimeout(
+		() =>
+		{
+			pendingRowCount = undefined;
+			writeSidebarState(
+				{
+					...readSidebarState(),
+					recentsRowCount: count,
+				},
+			);
+		},
+		stored !== undefined && count < stored ? ROW_COUNT_SHRINK_WRITE_MS : ROW_COUNT_WRITE_MS,
+	);
+}
+
+/** Upstream `Xw`: the remembered Recents row count clamped to 0…21, or undefined when none is stored. */
+export function rememberedRecentsRows(): number | undefined
+{
+	const stored = readSidebarState().recentsRowCount;
+	return stored === undefined ? undefined : Math.min(Math.max(0, stored), RECENTS_ROW_CAP);
 }
 
 function subscribe(listener: () => void): () => void

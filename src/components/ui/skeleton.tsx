@@ -8,32 +8,40 @@ export function Skeleton({
 	className,
 	style,
 	decorative = false,
+	silent = false,
+	as: Tag = "div",
 }: {
 	className: string;
 	style?: CSSProperties;
 	/** Inside a decorative SkeletonGroup (upstream `XL`): a plain bar with no shimmer, role or label. */
 	decorative?: boolean;
+	/** Upstream's standalone `decorative`: the shimmer stays, but the bar is aria-hidden with no role or label. */
+	silent?: boolean;
+	/** Upstream's `as: "span"` renders a `block` span, for skeletons inside inline markup. */
+	as?: "div" | "span";
 })
 {
+	const block = Tag === "span" ? "block " : "";
 	if (decorative)
 		return (
-			<div
+			<Tag
 				data-cds="Skeleton"
 				style={style}
-				className={`max-w-full rounded bg-[var(--skeleton-base)] ${className}`}
+				className={`${block}max-w-full rounded bg-[var(--skeleton-base)] ${className}`}
 			/>
 		);
 	// An overlay passes `absolute`; otherwise the shimmer is positioned against the block itself.
 	const position = /(^|\s)absolute(\s|$)/.test(className) ? "" : "relative ";
 	return (
-		<div
+		<Tag
 			data-cds="Skeleton"
-			role="status"
+			role={silent ? undefined : "status"}
+			aria-hidden={silent ? true : undefined}
 			style={style}
-			className={`${position}max-w-full overflow-hidden bg-[var(--skeleton-base)] after:absolute after:inset-0 after:animate-[shimmer_2s_linear_infinite] after:bg-[linear-gradient(90deg,transparent,var(--skeleton-sheen),transparent)] motion-reduce:after:hidden ${className}`}
+			className={`${block}${position}max-w-full overflow-hidden bg-[var(--skeleton-base)] after:absolute after:inset-0 after:animate-[shimmer_2s_linear_infinite] after:bg-[linear-gradient(90deg,transparent,var(--skeleton-sheen),transparent)] motion-reduce:after:hidden ${className}`}
 		>
-			<span className="sr-only">Loading</span>
-		</div>
+			{silent ? null : <span className="sr-only">Loading</span>}
+		</Tag>
 	);
 }
 

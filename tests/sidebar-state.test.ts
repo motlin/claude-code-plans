@@ -5,6 +5,8 @@ import
 {
 	DEFAULT_SIDEBAR_STATE,
 	readSidebarState,
+	recordRecentsRowCount,
+	rememberedRecentsRows,
 	setFamiliesCollapsed,
 	showAllNestedSessions,
 	SIDEBAR_STORAGE_KEY,
@@ -229,5 +231,64 @@ describe("sidebar-store", () =>
 			toggleSidebarCollapsed();
 		}).not.toThrow();
 		expect(setItem).toHaveBeenCalledTimes(1);
+	});
+
+	it("remembers the Recents row count, clamped to upstream's 21-row cap", () =>
+	{
+		const remembered = (count: number | undefined) =>
+		{
+			writeSidebarState(
+				{
+					...DEFAULT_SIDEBAR_STATE,
+					...(count === undefined
+						? {}
+						:
+							{
+								recentsRowCount: count,
+							}),
+				},
+			);
+			return rememberedRecentsRows();
+		};
+		expect([remembered(undefined), remembered(4), remembered(50), remembered(0)]).toStrictEqual([
+			undefined,
+			4,
+			21,
+			0,
+		]);
+	});
+
+	it("writes a larger Recents count after upstream's 2000ms debounce and a smaller one after 250ms", () =>
+	{
+		vi.useFakeTimers();
+		try
+		{
+			const after = (count: number, ms: number) =>
+			{
+				recordRecentsRowCount(count);
+				const before = readSidebarState().recentsRowCount;
+				vi.advanceTimersByTime(ms - 1);
+				const early = readSidebarState().recentsRowCount;
+				vi.advanceTimersByTime(1);
+				return [before, early, readSidebarState().recentsRowCount];
+			};
+			expect(
+				{
+					grow: after(9, 2000),
+					shrink: after(4, 250),
+					same: after(4, 2000),
+				},
+			).toStrictEqual(
+				{
+					grow: [undefined, undefined, 9],
+					shrink: [9, 9, 4],
+					same: [4, 4, 4],
+				},
+			);
+		}
+		finally
+		{
+			vi.useRealTimers();
+		}
 	});
 });

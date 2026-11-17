@@ -5056,6 +5056,51 @@ html[data-reduce-motion="true"] [data-cds="SkeletonGroup"][data-hold="delayed"]
 	animation-duration: 0.01ms;
 }
 
+/* Upstream .df-placeholder-rows: sidebar placeholder rows stay hidden 0.5s, then fade in, so a fast load never flashes them. */
+@keyframes df-placeholder-fade
+{
+	0%
+	{
+		opacity: 0;
+	}
+}
+
+.df-placeholder-rows
+{
+	animation: df-placeholder-fade 0.15s ease-out var(--placeholder-reveal-delay, 0.5s) backwards;
+}
+
+@media (prefers-reduced-motion: reduce)
+{
+	.df-placeholder-rows
+	{
+		animation-duration: 0s;
+	}
+}
+
+[data-placeholder-continues] .df-placeholder-rows,
+.df-placeholder-rows[data-placeholder-continues]
+{
+	animation: none;
+}
+
+/* Upstream .df-session-list:not([data-list-section]) [data-placeholder-label]: the label band sits one row stack gap above the rows. */
+.df-session-list [data-placeholder-label]
+{
+	margin-bottom: var(--sb-row-stack-gap);
+}
+
+/* Upstream .dframe-sidebar[data-code-list] .df-session-list .flex-col.gap-px: placeholder rows stack by each row's 2px margin, as session rows do. */
+.df-session-list .flex-col.gap-px
+{
+	gap: 0;
+}
+
+.df-session-list .df-placeholder-rows > [data-row]
+{
+	margin-bottom: var(--sb-row-stack-gap);
+}
+
 /* Upstream cds-shimmer: the Skeleton sheen sweeps across once per cycle. */
 @keyframes shimmer
 {

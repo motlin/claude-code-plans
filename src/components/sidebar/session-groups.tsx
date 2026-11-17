@@ -60,12 +60,12 @@ import
 	visibleSelection,
 } from "../../lib/sidebar-selection";
 import {clearFamilyHeads, publishFamilyHeads} from "../../lib/sidebar-family-heads-store";
-import {useSidebarState} from "../../lib/sidebar-store";
+import {recordRecentsRowCount, rememberedRecentsRows, useSidebarState} from "../../lib/sidebar-store";
 import {displayedNested, type FamilyFoldState, FoldOpenKeysContext, useFoldOpenKeys} from "../../lib/family-fold";
 import {assertNever} from "../../lib/assert-never";
 import {useSettings} from "../settings-context";
 import {useToast} from "../toast-context";
-import {DescribedLoadingRows, LoadingBars} from "./primitives/LoadingBars";
+import {PlaceholderRows} from "./primitives/PlaceholderRows";
 import
 {
 	EmptyGroupSection,
@@ -75,6 +75,7 @@ import
 	type OlderBulk,
 	ROW_CLASS,
 	type SectionFetchMore,
+	StaticGroupLabel,
 } from "./session-group-section";
 import {requestRevealRow} from "./reveal-row-store";
 import {useLoadMoreFocus} from "./use-load-more-focus";
@@ -114,13 +115,14 @@ export function SessionGroups({
 {
 	const qc = useQueryClient();
 	const feed = recentSessionsInfiniteQueryOptions(undefined, prefs.statusFilter);
-	const {data, hasNextPage, isFetchingNextPage, fetchNextPage, isError, refetch} = useInfiniteQuery(
-		{
-			...feed,
-			// Keep the current rows (and the filter button) up while a new Status loads.
-			placeholderData: keepPreviousData,
-		},
-	);
+	const {data, hasNextPage, isFetchingNextPage, fetchNextPage, isError, isPlaceholderData, refetch} =
+		useInfiniteQuery(
+			{
+				...feed,
+				// Keep the current rows (and the filter button) up while a new Status loads.
+				placeholderData: keepPreviousData,
+			},
+		);
 	const {collapsedGroups, collapsedFamilies} = useSidebarState();
 	const [selection, dispatchSelection] = useReducer(sidebarSelectionReducer, EMPTY_SELECTION);
 	const hasSelection = selection.ids.length > 0;
@@ -367,6 +369,15 @@ export function SessionGroups({
 		},
 	};
 	const collapsedSet = new Set(collapsedGroups);
+	// Upstream `recordSidebarRowCount(…, "code.recents", n)`: a settled list remembers how many Recents rows it shows.
+	const recentsRowCount =
+		groups === undefined || isPlaceholderData
+			? undefined
+			: groups.reduce((count, group) => count + (collapsedSet.has(group.key) ? 0 : group.rows.length), 0);
+	useEffect(() =>
+	{
+		if (recentsRowCount !== undefined) recordRecentsRowCount(recentsRowCount);
+	}, [recentsRowCount]);
 	const displayOrder =
 		split === undefined || built === undefined
 			? []
@@ -432,11 +443,13 @@ export function SessionGroups({
 				/>
 			);
 		}
-		if (settings.sessionListPrefs.showMetadata) return <DescribedLoadingRows />;
 		return (
-			<div className="px-2">
-				<LoadingBars />
-			</div>
+			<RecentsPlaceholder
+				groupBy={prefs.groupBy}
+				filterSlot={filterSlot}
+				collapsed={collapsedSet.has("recents")}
+				described={settings.sessionListPrefs.showMetadata}
+			/>
 		);
 	}
 
@@ -754,7 +767,11 @@ export function SessionGroups({
 								}}
 							/>
 						)}
-						{groups.length === 0 && (
+						{/* Upstream `Rs`: a new Status refetching under an empty kept list skeletons instead of an empty body. */}
+						{groups.length === 0 && isPlaceholderData && manual.length === 0 && (
+							<PlaceholderRows rows={3} testId="sidebar-refetch-skeleton" />
+						)}
+						{groups.length === 0 && !(isPlaceholderData && manual.length === 0) && (
 							<EmptyGroupSection
 								label={EMPTY_LIST_GROUP_LABELS[prefs.groupBy]}
 								filterSlot={filterSlot}
@@ -765,6 +782,74 @@ export function SessionGroups({
 				</SidebarWhitespaceMenu>
 			</FoldOpenKeysContext.Provider>
 		</SidebarSelectionContext.Provider>
+	);
+}
+
+/** Upstream `Uu`: the rows a cold load holds when no Recents count is remembered. */
+const DEFAULT_PLACEHOLDER_ROWS = 3;
+
+/**
+ * The Recents slot while the feed's first page loads (upstream `AK`'s cold-load placeholders). A grouped
+ * list holds its remembered row count under a label band (`sidebar-recents-placeholder`), or upstream's
+ * 3-row `sidebar-column-placeholder` when no count is remembered. The flat list keeps its Recents header
+ * over the rows, and only the header while Recents is collapsed.
+ */
+function RecentsPlaceholder({
+	groupBy,
+	filterSlot,
+	collapsed,
+	described,
+}: {
+	groupBy: SessionListPrefs["groupBy"];
+	filterSlot: ReactNode;
+	collapsed: boolean;
+	described: boolean;
+})
+{
+	const remembered = rememberedRecentsRows();
+	let slot: ReactNode;
+	if (groupBy === "none")
+	{
+		slot = (
+			<div className="group/section flex flex-col gap-px">
+				<StaticGroupLabel label={EMPTY_LIST_GROUP_LABELS.none} filterSlot={filterSlot} stacked />
+				{!collapsed && (remembered ?? DEFAULT_PLACEHOLDER_ROWS) > 0 && (
+					<PlaceholderRows rows={remembered ?? DEFAULT_PLACEHOLDER_ROWS} described={described} />
+				)}
+			</div>
+		);
+	}
+	else if (remembered === undefined)
+	{
+		slot = (
+			<PlaceholderRows
+				rows={DEFAULT_PLACEHOLDER_ROWS}
+				labelSpace
+				className="group/section"
+				testId="sidebar-column-placeholder"
+				described={described}
+			/>
+		);
+	}
+	else if (remembered > 0)
+	{
+		slot = (
+			<div data-testid="sidebar-recents-placeholder" className="group/section flex flex-col gap-px">
+				<PlaceholderRows rows={remembered} labelSpace described={described} />
+			</div>
+		);
+	}
+	return (
+		<div className="df-session-list contents">
+			<div
+				data-testid="sidebar-recents"
+				data-tab-section=""
+				data-recents-list=""
+				className="flex min-h-[120px] shrink-0 grow flex-col"
+			>
+				{slot}
+			</div>
+		</div>
 	);
 }
 
