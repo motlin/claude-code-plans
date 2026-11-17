@@ -124,7 +124,7 @@ describe("MermaidFenceGate when mermaid cannot load (upstream gate hn / chunkFai
 		fireEvent.click(second.container.querySelector("[data-copy-code]")!);
 		await waitFor(() =>
 		{
-			expect(copied).toStrictEqual(["graph TD; A-->B\n"]);
+			expect(copied).toStrictEqual(["graph TD; A-->B"]);
 		});
 	});
 });

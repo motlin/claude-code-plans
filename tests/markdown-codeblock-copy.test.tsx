@@ -43,6 +43,16 @@ describe("fenced code block copy button markup", () =>
 		);
 	});
 
+	it("carries each fence's text, without its trailing newline, in data-code-text", () =>
+	{
+		const html = renderMarkdownToHtml(`${FENCE}\n\n\`\`\`\nalpha\nbeta\n\`\`\`\n\n\`\`\`\na<b && c="d"\n\`\`\``);
+		const doc = new DOMParser().parseFromString(html, "text/html");
+
+		expect(
+			[...doc.querySelectorAll(".markdown-codeblock")].map((block) => block.getAttribute("data-code-text")),
+		).toStrictEqual(["const x = 1;", "alpha\nbeta", 'a<b && c="d"']);
+	});
+
 	it("leaves inline code and prose unwrapped", () =>
 	{
 		expect(renderMarkdownToHtml("a `snippet` in prose")).toBe("<p>a <code>snippet</code> in prose</p>\n");
@@ -229,7 +239,7 @@ describe("fenced code block copy button behaviour", () =>
 
 		fireEvent.click(container.querySelector("[data-copy-code]")!);
 
-		expect(writeText.mock.calls).toStrictEqual([["const x = 1;\n"]]);
+		expect(writeText.mock.calls).toStrictEqual([["const x = 1;"]]);
 	});
 
 	it("announces Copied in the block's find-omitted status, clearing it with the check glyph", async () =>
@@ -260,7 +270,7 @@ describe("fenced code block copy button behaviour", () =>
 
 		fireEvent.click(container.querySelectorAll("[data-copy-code]")[1]!);
 
-		expect(writeText.mock.calls).toStrictEqual([["second\n"]]);
+		expect(writeText.mock.calls).toStrictEqual([["second"]]);
 	});
 
 	it("ignores clicks on the code itself", () =>
@@ -392,7 +402,7 @@ describe("fenced code block secret masking", () =>
 		fireEvent.click(container.querySelector("[data-copy-code]")!);
 		fireEvent.click(container.querySelector("[data-reveal-secrets]")!);
 		fireEvent.click(container.querySelector("[data-copy-code]")!);
-		expect(writeText.mock.calls).toStrictEqual([[`export GH=${MASKED_GH}\n`], [`export GH=${FAKE_GH}\n`]]);
+		expect(writeText.mock.calls).toStrictEqual([[`export GH=${MASKED_GH}`], [`export GH=${FAKE_GH}`]]);
 	});
 
 	it("gives the revealed toggle the pressed fill", () =>

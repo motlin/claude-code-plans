@@ -4,6 +4,7 @@ import {type ComponentProps, type ReactNode, useContext, useRef, useState} from 
 import {MIN_EXCERPT_LENGTH} from "../hooks/use-transcript-selection-attach";
 import {fileRefStatusQueryOptions} from "../lib/api/file-refs";
 import {writeClipboardText} from "../lib/clipboard";
+import {CODEBLOCK_CLASS, CODEBLOCK_COPY_ATTR, CODEBLOCK_TEXT_ATTR} from "../lib/client-markdown";
 import {attachContext} from "../lib/context-attach";
 import {markdownToPlainText} from "../lib/markdown-plain-text";
 import {createPressRecorder, touchOnTextOrSelection, wantsNativeContextMenu} from "../lib/native-context-menu";
@@ -15,8 +16,9 @@ import {useOpenInDefaultApp} from "./use-open-in-default-app";
 
 /*
  * claude.ai/code's right-click menus on transcript turns: assistant prose,
- * inline code (adds Copy code), links (adds Open in default browser and Copy
- * link), tool rows (Pin and Fork only) and user bubbles (adds Rewind). A file
+ * inline code (adds Copy code), fenced code blocks (adds Copy code block, also
+ * atop a tool row's menu), links (adds Open in default browser and Copy link),
+ * tool rows (Pin and Fork only) and user bubbles (adds Rewind). A file
  * ref opens only the shared file actions menu, as on desktop, or, without an
  * absolute path, the prose menu led by Copy path (upstream's browser `jb`).
  * A text selection in the turn adds Copy and attaches as an Excerpt.
@@ -54,11 +56,40 @@ type TranscriptMenuTarget =
 	  }
 	|
 	  {
+			kind: "codeBlock";
+			text: string;
+			/** The block sits in a tool row's body, so the tool menu follows the row. */
+			inTool: boolean;
+	  }
+	|
+	  {
 			kind: "link";
 			href: string;
 	  };
 
-/** What was right-clicked: a tool row, a link, inline code (not a fenced block), or else `fallback`. */
+/**
+ * Upstream `aS`'s fenced-block arm: the code card yields its `data-code-text` as a block; the block's copy chrome
+ * yields nothing, and no inline-code fallback either. Undefined when `element` is outside a fenced block.
+ */
+function resolveCodeBlock(element: Element, fallback: "prose" | "tool"): TranscriptMenuTarget | undefined
+{
+	const block = element.closest(`.${CODEBLOCK_CLASS}`);
+	if (block === null) return undefined;
+	const inTool = fallback === "tool" || element.closest("[data-tool-row]") !== null;
+	const onChrome = element.closest(`[${CODEBLOCK_COPY_ATTR}], .markdown-code-copy-rail`) !== null;
+	const text = onChrome ? null : block.getAttribute(CODEBLOCK_TEXT_ATTR);
+	if (text === null || text === "")
+		return {
+			kind: inTool ? "tool" : fallback,
+		};
+	return {
+		kind: "codeBlock",
+		text,
+		inTool,
+	};
+}
+
+/** What was right-clicked: a file ref, a fenced block, a tool row, a link, inline code, or else `fallback`. */
 function resolveMenuTarget(element: Element | null, fallback: "prose" | "tool"): TranscriptMenuTarget
 {
 	if (element === null)
@@ -81,6 +112,8 @@ function resolveMenuTarget(element: Element | null, fallback: "prose" | "tool"):
 			line: line === null ? undefined : Number(line),
 		};
 	}
+	const codeBlock = resolveCodeBlock(element, fallback);
+	if (codeBlock !== undefined) return codeBlock;
 	if (element.closest("[data-tool-row]") !== null)
 		return {
 			kind: "tool",
@@ -439,10 +472,23 @@ function TranscriptMenuItems({
 		</MenuItem>
 	);
 
-	if (target.kind === "tool")
+	const copyCodeBlock = target.kind === "codeBlock" && (
+		<MenuItem
+			onSelect={() =>
+			{
+				copy(target.text);
+			}}
+		>
+			Copy code block
+		</MenuItem>
+	);
+	if (target.kind === "tool" || (target.kind === "codeBlock" && target.inTool))
 	{
+		// Upstream `se`: the code row closes its own group before the tool menu's Pin.
 		return (
 			<>
+				{copyCodeBlock}
+				{copyCodeBlock !== false && <MenuSeparator />}
 				{pin}
 				<MenuSeparator />
 				{fork}
@@ -454,45 +500,37 @@ function TranscriptMenuItems({
 	return (
 		<>
 			{selectionText !== null && (
-				<>
-					<MenuItem
-						shortcut="cmd+c"
-						onSelect={() =>
-						{
-							copy(selectionText);
-						}}
-					>
-						Copy
-					</MenuItem>
-					<MenuSeparator />
-				</>
+				<MenuItem
+					shortcut="cmd+c"
+					onSelect={() =>
+					{
+						copy(selectionText);
+					}}
+				>
+					Copy
+				</MenuItem>
 			)}
 			{target.kind === "filePath" && (
-				<>
-					<MenuItem
-						onSelect={() =>
-						{
-							copy(target.text);
-						}}
-					>
-						Copy path
-					</MenuItem>
-					<MenuSeparator />
-				</>
+				<MenuItem
+					onSelect={() =>
+					{
+						copy(target.text);
+					}}
+				>
+					Copy path
+				</MenuItem>
 			)}
 			{target.kind === "code" && (
-				<>
-					<MenuItem
-						onSelect={() =>
-						{
-							copy(target.text);
-						}}
-					>
-						Copy code
-					</MenuItem>
-					<MenuSeparator />
-				</>
+				<MenuItem
+					onSelect={() =>
+					{
+						copy(target.text);
+					}}
+				>
+					Copy code
+				</MenuItem>
 			)}
+			{copyCodeBlock}
 			{target.kind === "link" && (
 				<>
 					<MenuItem onSelect={() => window.open(target.href, "_blank", "noopener,noreferrer")}>
@@ -506,9 +544,10 @@ function TranscriptMenuItems({
 					>
 						Copy link
 					</MenuItem>
-					<MenuSeparator />
 				</>
 			)}
+			{/* Upstream `ie`: the selection, code, path and link rows share one group and one separator. */}
+			{(selectionText !== null || target.kind !== "prose") && <MenuSeparator />}
 			<MenuItem
 				onSelect={() =>
 				{

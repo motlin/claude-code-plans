@@ -240,6 +240,17 @@ const CODEBLOCK_COPY_RAIL_CLASS = "markdown-code-copy-rail";
 const CODEBLOCK_COPY_CLASS = "markdown-code-copy";
 /** Marks the copy button itself, so one delegated listener can find it. */
 export const CODEBLOCK_COPY_ATTR = "data-copy-code";
+/**
+ * The fence's text on its wrapper, without the trailing newline (masked while it holds hidden secrets): what the
+ * copy button and the transcript menu's "Copy code block" copy, as upstream's `data-code-text` card.
+ */
+export const CODEBLOCK_TEXT_ATTR = "data-code-text";
+
+/** A fence's content without the newline markdown-it keeps after its last line. */
+function withoutFinalNewline(text: string): string
+{
+	return text.endsWith("\n") ? text.slice(0, -1) : text;
+}
 
 const COPY_BUTTON = `<button type="button" ${CODEBLOCK_COPY_ATTR} aria-label="Copy code" data-tooltip="Copy code">${COPY_ICON_SVG}</button>`;
 
@@ -866,21 +877,23 @@ function applyPlugins(instance: MarkdownIt): void
 		const token = defined(tokens[idx], "fence token");
 		const raw = token.content;
 		const secrets = findSecrets(raw);
+		const escape = instance.utils.escapeHtml;
 		if (secrets.length === 0)
 		{
-			const block = `<div class="${CODEBLOCK_CLASS} epitaxy-codeblock">${renderFence(tokens, idx, options, env, self).trimEnd()}${COPY_STRIP}</div>`;
+			const source = withoutFinalNewline(raw);
+			const block = `<div class="${CODEBLOCK_CLASS} epitaxy-codeblock" ${CODEBLOCK_TEXT_ATTR}="${escape(source)}">${renderFence(tokens, idx, options, env, self).trimEnd()}${COPY_STRIP}</div>`;
 			const markdownEnv = envOf(env);
 			// Upstream's pre-gate `Z` keeps a fence holding a secret as its (masked) code block.
 			if (markdownEnv?.diagrams !== true || !isMermaidFence(token.info)) return `${block}\n`;
 			const index = markdownEnv.mermaidFences++;
-			const source = raw.endsWith("\n") ? raw.slice(0, -1) : raw;
-			return `<div ${MERMAID_FENCE_ATTR}="${index}" ${MERMAID_SOURCE_ATTR}="${instance.utils.escapeHtml(source)}">${block}</div>\n`;
+			return `<div ${MERMAID_FENCE_ATTR}="${index}" ${MERMAID_SOURCE_ATTR}="${escape(source)}">${block}</div>\n`;
 		}
-		token.content = maskSecrets(raw);
+		const maskedText = maskSecrets(raw);
+		token.content = maskedText;
 		const masked = renderFence(tokens, idx, options, env, self).trimEnd();
 		token.content = raw;
 		const revealed = renderFence(tokens, idx, options, env, self).trimEnd();
-		return `<div class="${CODEBLOCK_CLASS} epitaxy-codeblock">${masked}${secretCopyStrip(secrets.length)}<template ${SECRET_RAW_ATTR}>${revealed}</template></div>\n`;
+		return `<div class="${CODEBLOCK_CLASS} epitaxy-codeblock" ${CODEBLOCK_TEXT_ATTR}="${escape(withoutFinalNewline(maskedText))}">${masked}${secretCopyStrip(secrets.length)}<template ${SECRET_RAW_ATTR}>${revealed}</template></div>\n`;
 	};
 
 	// Upstream renders every table inside an `overflow-x-auto` div so a table wider

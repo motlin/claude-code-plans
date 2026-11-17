@@ -291,6 +291,122 @@ describe("transcript context menus", () =>
 		);
 	});
 
+	const FENCE_RECORDS: unknown[] = [
+		{
+			type: "assistant",
+			uuid: "assistant-1",
+			message:
+			{
+				role: "assistant",
+				content: [
+					{
+						type: "text",
+						text: "Run it:\n\n```sh\nnpm test\n```",
+					},
+				],
+			},
+		},
+	];
+
+	it("adds Copy code block on a fenced block and copies its text without a toast", async () =>
+	{
+		const container = renderChat((chat) => <ToastProvider>{chat}</ToastProvider>, FENCE_RECORDS);
+		const menu = openMenuOn(find(container, ".markdown-codeblock pre code"));
+		const rows = menuRows(menu);
+		clickItem(menu, "Copy code block");
+		await vi.waitFor(() =>
+		{
+			expect(writeClipboardText).toHaveBeenCalled();
+		});
+
+		expect(
+			{
+				rows,
+				clipboard: vi.mocked(writeClipboardText).mock.calls,
+				toasts: document.querySelectorAll("[data-toast-message]").length,
+			},
+		).toStrictEqual(
+			{
+				rows: ["Copy code block", "---", ...ASSISTANT_ROWS],
+				clipboard: [["npm test"]],
+				toasts: 0,
+			},
+		);
+	});
+
+	it("leaves the code row off a fenced block's copy chrome", () =>
+	{
+		const container = renderChat(undefined, FENCE_RECORDS);
+
+		expect(menuRows(openMenuOn(find(container, ".markdown-codeblock [data-copy-code]")))).toStrictEqual(
+			ASSISTANT_ROWS,
+		);
+	});
+
+	it("leads a tool row's menu with Copy code block on a fenced block in its body", async () =>
+	{
+		const records: unknown[] = [
+			{
+				type: "assistant",
+				uuid: "assistant-2",
+				message:
+				{
+					role: "assistant",
+					content: [
+						{
+							type: "tool_use",
+							id: "toolu_1",
+							name: "Skill",
+							input:
+							{
+								skill: "alice-skill",
+							},
+						},
+					],
+				},
+			},
+			{
+				type: "user",
+				uuid: "user-2",
+				message:
+				{
+					role: "user",
+					content: [
+						{
+							type: "tool_result",
+							tool_use_id: "toolu_1",
+							content: "```\nok\n```",
+						},
+					],
+				},
+			},
+		];
+		const container = renderChat(undefined, records);
+		fireEvent.click(find(container, '[data-tool-row] [role="button"]'));
+		await vi.waitFor(() =>
+		{
+			find(container, "[data-tool-row] .markdown-codeblock pre");
+		});
+
+		expect(
+			{
+				fence: menuRows(openMenuOn(find(container, "[data-tool-row] .markdown-codeblock pre"))),
+				row: menuRows(openMenuOn(find(container, "[data-tool-row]"))),
+			},
+		).toStrictEqual(
+			{
+				fence: [
+					"Copy code block",
+					"---",
+					"Pin as chapter",
+					"---",
+					"Fork from here / Starts a new session, keeps this one",
+				],
+				row: ["Pin as chapter", "---", "Fork from here / Starts a new session, keeps this one"],
+			},
+		);
+	});
+
 	it("adds Open in default browser and Copy link on a link", async () =>
 	{
 		const container = renderChat();
@@ -622,6 +738,31 @@ describe("transcript context menu with a text selection", () =>
 				assistant: ["w-[242.4px]"],
 				user: ["w-[249px]"],
 				oneCharacter: ["w-[225px]"],
+			},
+		);
+	});
+
+	it("groups Copy with the code and link rows under one separator", () =>
+	{
+		const container = renderChat();
+		const code = find(container, "code", "npm test");
+		selectText(code, 0, 3);
+		const codeRows = menuRows(openMenuOn(code));
+		cleanup();
+		const again = renderChat();
+		const link = find(again, "a[href]", "the docs");
+		selectText(link, 0, 3);
+		const linkRows = menuRows(openMenuOn(link));
+
+		expect(
+			{
+				code: codeRows.slice(0, 4),
+				link: linkRows.slice(0, 5),
+			},
+		).toStrictEqual(
+			{
+				code: ["Copy", "Copy code", "---", "Copy message"],
+				link: ["Copy", "Open in default browser", "Copy link", "---", "Copy message"],
 			},
 		);
 	});

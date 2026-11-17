@@ -320,7 +320,7 @@ describe("markdown files", () =>
 		).toStrictEqual(
 			{
 				tooltip: "Copy code",
-				copied: [["pnpm install\n"]],
+				copied: [["pnpm install"]],
 			},
 		);
 	});

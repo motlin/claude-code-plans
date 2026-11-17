@@ -47,7 +47,7 @@ beforeEach(() =>
 function withoutCopyChrome(html: string): string
 {
 	return html
-		.replaceAll('<div class="markdown-codeblock epitaxy-codeblock">', "")
+		.replaceAll(/<div class="markdown-codeblock epitaxy-codeblock"[^>]*>/g, "")
 		.replaceAll(/<div class="markdown-code-copy-rail">[\s\S]*?<\/div><\/div><\/div>/g, "");
 }
 

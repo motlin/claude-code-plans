@@ -1,5 +1,12 @@
 import type {MouseEvent} from "react";
-import {CODEBLOCK_CLASS, CODEBLOCK_COPY_ATTR, SECRET_RAW_ATTR, SECRET_REVEAL_ATTR} from "./client-markdown";
+import
+{
+	CODEBLOCK_CLASS,
+	CODEBLOCK_COPY_ATTR,
+	CODEBLOCK_TEXT_ATTR,
+	SECRET_RAW_ATTR,
+	SECRET_REVEAL_ATTR,
+} from "./client-markdown";
 import {secretToggleLabel} from "./secret-mask";
 import {CHECK_ICON_SVG, COPY_ICON_SVG, EYE_ICON_SVG, EYE_SLASH_ICON_SVG} from "./icon-paths";
 import {writeClipboardText} from "./clipboard";
@@ -21,11 +28,12 @@ export function handleCodeCopyClick(event: MouseEvent<HTMLElement>): void
 	const button = target.closest(`[${CODEBLOCK_COPY_ATTR}]`);
 	if (!(button instanceof HTMLElement)) return;
 
-	const pre = button.closest(`.${CODEBLOCK_CLASS}`)?.querySelector("pre");
-	if (!pre) return;
+	// Upstream's button copies the same string as the card's data-code-text, with no trailing newline.
+	const text = button.closest(`.${CODEBLOCK_CLASS}`)?.getAttribute(CODEBLOCK_TEXT_ATTR);
+	if (text === null || text === undefined) return;
 
 	const status = button.parentElement?.querySelector('[role="status"]');
-	void writeClipboardText(pre.textContent).then((copied) =>
+	void writeClipboardText(text).then((copied) =>
 	{
 		if (!copied) return;
 		button.innerHTML = CHECK_ICON_SVG;
@@ -68,6 +76,9 @@ function handleSecretRevealClick(event: MouseEvent<HTMLElement>): boolean
 		const template = block?.querySelector(`:scope > template[${SECRET_RAW_ATTR}]`);
 		if (!pre || !(template instanceof HTMLTemplateElement)) return true;
 		swapWithTemplate([pre], template);
+		// The code text follows the shown block: masked while hidden, raw once revealed (upstream `H`).
+		const shown = block?.querySelector(":scope > pre")?.textContent ?? "";
+		block?.setAttribute(CODEBLOCK_TEXT_ATTR, shown.endsWith("\n") ? shown.slice(0, -1) : shown);
 		const revealed = blockButton.getAttribute("aria-pressed") !== "true";
 		const count = Number(/\d+/.exec(blockButton.getAttribute("aria-label") ?? "")?.[0] ?? "1");
 		const label = secretToggleLabel(count, revealed);
