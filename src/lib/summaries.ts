@@ -206,7 +206,15 @@ export function errorLine(err: unknown): string
  * Run a one-shot haiku prompt isolated from the user's Claude Code config (see BACKGROUND_ARGS), with CLAUDE.md and
  * auto-memory disabled and a neutral working directory. Keeps OAuth/keychain auth, which `--bare` would drop.
  */
-export async function runClaude(prompt: string): Promise<string>
+export async function runClaude(
+	prompt: string,
+	{
+		signal,
+	}:
+	{
+		signal?: AbortSignal;
+	} = {},
+): Promise<string>
 {
 	return new Promise((resolve, reject) =>
 	{
@@ -223,6 +231,12 @@ export async function runClaude(prompt: string): Promise<string>
 				},
 				maxBuffer: 1024 * 1024,
 				timeout: 60_000,
+				...(signal === undefined
+					? {}
+					:
+						{
+							signal,
+						}),
 			},
 			(error, stdout, stderr) =>
 			{

@@ -892,6 +892,160 @@ describe("getSessionMenuItems", () =>
 		]);
 	});
 
+	it("puts upstream's Output style ▸ after Transcript view ▸ in the header settings group", () =>
+	{
+		expect(
+			getSessionMenuItems(
+				session(
+					{
+						transcriptView:
+						{
+							mode: "normal",
+							defaultMode: "normal",
+							hasThinking: false,
+						},
+						outputStyles:
+						{
+							items: [
+								{
+									name: "default",
+									label: "Default",
+									checked: true,
+								},
+								{
+									name: "Learning",
+									label: "Learning",
+									checked: false,
+								},
+							],
+							canCreate: true,
+						},
+					},
+				),
+				new Set<SessionMenuCapability>(["archive"]),
+				{
+					surface: "header",
+				},
+			),
+		).toStrictEqual([
+			{
+				kind: "item",
+				id: "transcript-view",
+				label: "Transcript view",
+				submenu: [
+					{
+						kind: "item",
+						id: "transcript-mode",
+						label: "Normal",
+						transcriptMode: "normal",
+						checked: true,
+					},
+					{
+						kind: "item",
+						id: "transcript-mode",
+						label: "Verbose",
+						transcriptMode: "verbose",
+						checked: false,
+					},
+				],
+			},
+			{
+				kind: "item",
+				id: "output-style",
+				label: "Output style",
+				submenu: [
+					{
+						kind: "item",
+						id: "output-style-option",
+						label: "Default",
+						outputStyle: "default",
+						checked: true,
+					},
+					{
+						kind: "item",
+						id: "output-style-option",
+						label: "Learning",
+						outputStyle: "Learning",
+						checked: false,
+					},
+					SEPARATOR,
+					{
+						kind: "item",
+						id: "new-output-style",
+						label: "New style…",
+					},
+				],
+			},
+			SEPARATOR,
+			{
+				kind: "item",
+				id: "archive",
+				label: "Archive",
+				accelerator: "a",
+			},
+		]);
+	});
+
+	it("offers only New style… without styles, nothing without either, and never off the header", () =>
+	{
+		const entries = (outputStyles: NonNullable<SessionMenuSession["outputStyles"]>, surface: "header" | "row") =>
+			getSessionMenuItems(
+				session(
+					{
+						outputStyles,
+					},
+				),
+				new Set<SessionMenuCapability>(),
+				{
+					surface,
+				},
+			);
+		expect(
+			{
+				createOnly: entries(
+					{
+						items: undefined,
+						canCreate: true,
+					},
+					"header",
+				),
+				neither: entries(
+					{
+						items: [],
+						canCreate: false,
+					},
+					"header",
+				),
+				row: entries(
+					{
+						items: undefined,
+						canCreate: true,
+					},
+					"row",
+				),
+			},
+		).toStrictEqual(
+			{
+				createOnly: [
+					{
+						kind: "item",
+						id: "output-style",
+						label: "Output style",
+						submenu: [
+							{
+								kind: "item",
+								id: "new-output-style",
+								label: "New style…",
+							},
+						],
+					},
+				],
+				neither: [],
+				row: [],
+			},
+		);
+	});
+
 	it("adds Move up and Move down in their own block for a pinned row mid-list", () =>
 	{
 		expect(

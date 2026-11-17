@@ -1,3 +1,5 @@
+import {homedir} from "node:os";
+import {join} from "node:path";
 import {z} from "zod";
 import {rejectCrossSite} from "./same-origin-guard";
 
@@ -117,6 +119,8 @@ export interface RevealInFinderDependencies
 	resolveRoots: () => Promise<readonly string[]>;
 	/** The app config, whose `file_roots` override `resolveRoots`; defaults to the real one. */
 	configPath?: string;
+	/** Folders the app writes itself (created output styles), revealable whatever the file roots say. */
+	appRoots?: readonly string[];
 	revealPath: (path: string) => Promise<void>;
 }
 
@@ -129,6 +133,7 @@ const defaultRevealDependencies: RevealInFinderDependencies =
 		const {getDb} = await import("./db");
 		return resolveFileSearchRoots(getDb().index);
 	},
+	appRoots: [join(homedir(), ".claude", "output-styles")],
 	revealPath: async (path) =>
 	{
 		const {execFile} = await import("node:child_process");
@@ -168,7 +173,12 @@ export async function handleRevealInFinder(
 	try
 	{
 		const roots = await dependencies.resolveRoots();
-		resolvedPath = await resolveAllowedEntry(parsed.data.path, dependencies.configPath, roots);
+		resolvedPath = await resolveAllowedEntry(
+			parsed.data.path,
+			dependencies.configPath,
+			roots,
+			dependencies.appRoots,
+		);
 	}
 	catch (error)
 	{

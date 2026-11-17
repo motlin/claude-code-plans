@@ -1,5 +1,6 @@
 import {useQueryClient} from "@tanstack/react-query";
 import {useNavigate} from "@tanstack/react-router";
+import {sendHerdrPrompt} from "../lib/api/herdr";
 import {openSessionInFinder} from "../lib/api/sessions";
 import {assertNever} from "../lib/assert-never";
 import {useSessionArchive} from "../hooks/use-session-archive";
@@ -43,6 +44,7 @@ export function useSessionMenuRunner({
 	requestNewGroup,
 	toggleNested,
 	transcriptView,
+	requestNewOutputStyle,
 }: SessionMenuRunnerOptions): SessionMenuRun
 {
 	const queryClient = useQueryClient();
@@ -157,9 +159,29 @@ export function useSessionMenuRunner({
 			case "make-default-transcript-mode":
 				transcriptViewRunner.makeCurrentDefault();
 				return;
+			case "output-style-option":
+				// Upstream applies the style through the desktop host with no success toast; locally the CLI's own
+				// `/output-style <name>` typed into its pane switches and saves it.
+				if (value !== undefined)
+				{
+					sendHerdrPrompt(sessionId, `/output-style ${value}`).catch(() =>
+					{
+						toast(
+							{
+								kind: "error",
+								message: "Output style change couldn’t be applied. You can try again.",
+							},
+						);
+					});
+				}
+				return;
+			case "new-output-style":
+				requestNewOutputStyle?.();
+				return;
 			case "open-in":
 			case "move-to-group":
 			case "transcript-view":
+			case "output-style":
 				return;
 			default:
 				assertNever(id);
@@ -189,9 +211,11 @@ export interface SessionMenuRunnerOptions
 	toggleNested?: () => void;
 	/** The session's transcript view, for the header's Transcript view submenu. */
 	transcriptView?: TranscriptViewActions;
+	/** Opens the New output style dialog for Output style ▸ New style…. */
+	requestNewOutputStyle?: () => void;
 }
 
-/** Runs a menu item; radios also pass their value (a Move to group target or a transcript mode). */
+/** Runs a menu item; radios also pass their value (a Move to group target, a transcript mode or an output style). */
 export type SessionMenuRun = (id: SessionMenuItemId, value?: string) => void;
 
 /** Transcript view ▸ radios and Make default, with upstream's toasts and default-view nudge. */

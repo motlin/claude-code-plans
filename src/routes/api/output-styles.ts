@@ -12,6 +12,11 @@ export const Route = createFileRoute("/api/output-styles")(
 						const {handleOutputStylesGet} = await import("../../lib/output-styles");
 						return handleOutputStylesGet(request);
 					},
+					POST: async ({request}: {request: Request}) =>
+					{
+						const {handleOutputStyleCreate} = await import("../../lib/output-style-create");
+						return handleOutputStyleCreate(request);
+					},
 				},
 			),
 		},

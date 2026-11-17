@@ -94,14 +94,20 @@ export async function statAllowedFile(
 /**
  * Resolve one existing allow-listed path, file or directory, symlinks
  * included, for Show in Finder, which upstream allows on folders too.
+ * `appRoots` (folders the app writes itself) are allowed on top of the file roots.
  */
 export async function resolveAllowedEntry(
 	requestedPath: string,
 	configPath?: string,
 	defaultRoots: readonly string[] = [],
+	appRoots: readonly string[] = [],
 ): Promise<string>
 {
-	return resolveAllowedPath(requestedPath, configPath, defaultRoots);
+	const resolvedAppRoots = await Promise.all(appRoots.map(async (root) => realpath(root).catch(() => null)));
+	return resolveUnderRoots(requestedPath, [
+		...(await resolveConfiguredFileRoots(configPath, defaultRoots)),
+		...resolvedAppRoots.filter((root) => root !== null),
+	]);
 }
 
 /**

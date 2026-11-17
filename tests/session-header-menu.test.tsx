@@ -336,6 +336,11 @@ describe("session header menu", () =>
 				forkDisabledReason: null,
 				cwd: PROJECT_PATH,
 				bridgeSessionId: null,
+				outputStyles:
+				{
+					items: undefined,
+					canCreate: true,
+				},
 			},
 			SESSION_MENU_CAPABILITIES,
 			{
@@ -386,7 +391,7 @@ describe("session header menu", () =>
 			["Open in"],
 			["Rename", "Fork"],
 			["Copy link"],
-			["Transcript view"],
+			["Transcript view", "Output style"],
 			["Archive"],
 			[
 				"Project",
@@ -679,6 +684,293 @@ describe("session header menu", () =>
 				input: TITLE,
 			},
 		);
+	});
+});
+
+describe("session header Output style submenu", () =>
+{
+	const prompts: unknown[] = [];
+
+	function stubStyleFetch({
+		promptStatus = 200,
+	}:
+	{
+		promptStatus?: number;
+	} = {})
+	{
+		prompts.length = 0;
+		vi.stubGlobal(
+			"fetch",
+			vi.fn(async (input: RequestInfo | URL, init?: RequestInit) =>
+				Promise.resolve(respond(String(input), init, promptStatus)),
+			),
+		);
+	}
+
+	function respond(url: string, init: RequestInit | undefined, promptStatus: number): Response
+	{
+		if (url.startsWith("/api/output-styles"))
+		{
+			return Response.json(
+				{
+					builtIns: ["Learning"],
+					customs: [],
+				},
+			);
+		}
+		if (url.endsWith("/statusline"))
+		{
+			return Response.json(
+				{
+					output_style:
+					{
+						name: "default",
+					},
+				},
+			);
+		}
+		if (url === "/api/herdr/prompt")
+		{
+			prompts.push(JSON.parse(String(init?.body)));
+			return promptStatus === 200
+				? Response.json(
+						{
+							ok: true,
+						},
+					)
+				: Response.json(
+						{
+							error: "boom",
+						},
+						{
+							status: promptStatus,
+						},
+					);
+		}
+		return Response.json(
+			{
+				ok: true,
+			},
+		);
+	}
+
+	async function openOutputStyle(): Promise<HTMLElement | undefined>
+	{
+		await openHeaderMenu();
+		await flush();
+		fireEvent.click(
+			screen.getByRole(
+				"menuitem",
+				{
+					name: "Output style",
+				},
+			),
+		);
+		await flush();
+		return screen.getAllByRole("menu").at(-1);
+	}
+
+	function submenuShape(submenu: HTMLElement | undefined): string[]
+	{
+		return [
+			...(submenu?.querySelectorAll('[role="menuitem"], [role="menuitemradio"], [role="separator"]') ?? []),
+		].map((element) =>
+		{
+			const role = element.getAttribute("role");
+			if (role === "separator") return "---";
+			const checked = element.getAttribute("aria-checked");
+			return role === "menuitemradio" ? `${element.textContent}:${checked}` : element.textContent;
+		});
+	}
+
+	it("lists the session's styles with its current one checked, then New style…, on a live pane", async () =>
+	{
+		stubStyleFetch();
+		await renderTitlebar(localActions());
+		expect(submenuShape(await openOutputStyle())).toStrictEqual([
+			"Default:true",
+			"Learning:false",
+			"---",
+			"New style…",
+		]);
+	});
+
+	it("types /output-style into the pane for an unchecked style and closes the menu", async () =>
+	{
+		stubStyleFetch();
+		await renderTitlebar(localActions());
+		await openOutputStyle();
+		fireEvent.click(
+			screen.getByRole(
+				"menuitemradio",
+				{
+					name: "Learning",
+				},
+			),
+		);
+		await flush();
+		expect(
+			{
+				prompts,
+				menus: screen.queryAllByRole("menu").length,
+			},
+		).toStrictEqual(
+			{
+				prompts: [
+					{
+						sessionId: SESSION_ID,
+						prompt: "/output-style Learning",
+					},
+				],
+				menus: 0,
+			},
+		);
+	});
+
+	it("does nothing for the checked style", async () =>
+	{
+		stubStyleFetch();
+		await renderTitlebar(localActions());
+		await openOutputStyle();
+		fireEvent.click(
+			screen.getByRole(
+				"menuitemradio",
+				{
+					name: "Default",
+				},
+			),
+		);
+		await flush();
+		expect(prompts).toStrictEqual([]);
+	});
+
+	it("toasts upstream's error when the pane refuses the command", async () =>
+	{
+		stubStyleFetch(
+			{
+				promptStatus: 500,
+			},
+		);
+		await renderTitlebar(localActions());
+		await openOutputStyle();
+		fireEvent.click(
+			screen.getByRole(
+				"menuitemradio",
+				{
+					name: "Learning",
+				},
+			),
+		);
+		await flush();
+		await flush();
+		expect(
+			screen.getByText("Output style change couldn’t be applied. You can try again.").textContent,
+		).toStrictEqual("Output style change couldn’t be applied. You can try again.");
+	});
+
+	it("opens the New output style dialog from New style… and lists the created style afterwards", async () =>
+	{
+		stubStyleFetch();
+		await renderTitlebar(localActions());
+		await openOutputStyle();
+		fireEvent.click(
+			screen.getByRole(
+				"menuitem",
+				{
+					name: "New style…",
+				},
+			),
+		);
+		await flush();
+		await flush();
+		const dialog = await screen.findByRole(
+			"dialog",
+			{
+				name: "New output style",
+			},
+		);
+		const menusWhileOpen = screen.queryAllByRole("menu").length;
+		const fetchMock = vi.mocked(fetch);
+		const styleFetch = fetchMock.getMockImplementation();
+		fetchMock.mockImplementation(async (input, init) =>
+		{
+			const url = String(input);
+			if (url === "/api/output-styles")
+			{
+				return Response.json(
+					{
+						outcome: "created",
+						name: "Terse",
+						path: "/Users/alice/.claude/output-styles/terse.md",
+						refreshed: false,
+						selected: false,
+					},
+				);
+			}
+			if (url.startsWith("/api/output-styles?"))
+			{
+				return Response.json(
+					{
+						builtIns: ["Learning"],
+						customs: ["Terse"],
+					},
+				);
+			}
+			return styleFetch === undefined ? Response.json({}) : styleFetch(input, init);
+		});
+		fireEvent.change(
+			screen.getByLabelText("What should the style be like?"),
+			{
+				target:
+				{
+					value: "Short answers first",
+				},
+			},
+		);
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Create style",
+				},
+			),
+		);
+		await flush();
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Done",
+				},
+			),
+		);
+		await flush();
+		const closed = !dialog.isConnected;
+		expect(
+			{
+				menusWhileOpen,
+				closed,
+				styles: submenuShape(await openOutputStyle()),
+			},
+		).toStrictEqual(
+			{
+				menusWhileOpen: 0,
+				closed: true,
+				styles: ["Default:true", "Learning:false", "Terse:false", "---", "New style…"],
+			},
+		);
+	});
+
+	it("offers only New style… without a live pane", async () =>
+	{
+		stubStyleFetch();
+		await renderTitlebar(
+			localActions(),
+			{
+				live: false,
+			},
+		);
+		expect(submenuShape(await openOutputStyle())).toStrictEqual(["New style…"]);
 	});
 });
 

@@ -1525,6 +1525,9 @@ export const sessionMenuItemLabels =
 	"transcript-view": "Transcript view",
 	"transcript-mode": "Transcript mode",
 	"make-default-transcript-mode": "Make default",
+	"output-style": "Output style",
+	"output-style-option": "Output style",
+	"new-output-style": "New style…",
 	archive: "Archive",
 	unarchive: "Unarchive",
 } satisfies Record<z.infer<typeof SessionMenuItemIdSchema>, string>;

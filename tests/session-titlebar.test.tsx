@@ -565,6 +565,7 @@ describe("SessionTitlebar layout", () =>
 			"RenameR",
 			"ForkF",
 			"Copy linkC",
+			"Output style",
 			"ArchiveA",
 		]);
 	});

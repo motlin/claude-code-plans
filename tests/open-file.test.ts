@@ -3,7 +3,7 @@ import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
-import {handleOpenFile} from "../src/lib/open-in-finder";
+import {handleOpenFile, handleRevealInFinder} from "../src/lib/open-in-finder";
 
 describe("handleOpenFile", () =>
 {
@@ -175,6 +175,83 @@ describe("handleOpenFile", () =>
 					},
 				],
 				opened: [],
+			},
+		);
+	});
+});
+
+describe("handleRevealInFinder", () =>
+{
+	let root: string;
+
+	beforeEach(async () =>
+	{
+		root = await realpath(await mkdtemp(join(tmpdir(), "reveal-")));
+		await mkdir(join(root, "repo"));
+		await mkdir(join(root, "output-styles"));
+		await writeFile(join(root, "output-styles", "terse.md"), "Answer briefly.");
+		await writeFile(join(root, "outside.md"), "dave");
+		await writeFile(
+			join(root, "config.json"),
+			JSON.stringify(
+				{
+					file_roots: [join(root, "repo")],
+				},
+			),
+		);
+	});
+
+	afterEach(async () =>
+	{
+		await rm(
+			root,
+			{
+				recursive: true,
+				force: true,
+			},
+		);
+	});
+
+	it("reveals a created output style even when configured file roots exclude it, and nothing else outside", async () =>
+	{
+		const revealPath = vi.fn<(path: string) => Promise<void>>(async () => {});
+		const reveal = async (path: string) =>
+			(
+				await handleRevealInFinder(
+					new Request(
+						"http://localhost/api/reveal-in-finder",
+						{
+							method: "POST",
+							body: JSON.stringify(
+								{
+									path,
+								},
+							),
+						},
+					),
+					{
+						rejectRequest: () => null,
+						resolveRoots: async () => Promise.resolve([join(root, "repo")]),
+						configPath: join(root, "config.json"),
+						appRoots: [join(root, "output-styles")],
+						revealPath,
+					},
+				)
+			).status;
+		const statuses = [
+			await reveal(join(root, "output-styles", "terse.md")),
+			await reveal(join(root, "outside.md")),
+		];
+
+		expect(
+			{
+				statuses,
+				revealed: revealPath.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				statuses: [200, 403],
+				revealed: [[join(root, "output-styles", "terse.md")]],
 			},
 		);
 	});

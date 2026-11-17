@@ -1,4 +1,4 @@
-import {useQuery} from "@tanstack/react-query";
+import {useQuery, useQueryClient} from "@tanstack/react-query";
 import {Link} from "@tanstack/react-router";
 import
 {
@@ -13,14 +13,18 @@ import
 	Tag,
 	Users,
 } from "lucide-react";
-import {type ReactNode, useCallback} from "react";
+import {lazy, type ReactNode, Suspense, useCallback, useState} from "react";
 
 import {useFizzyLake} from "../lib/fizzy-lake";
 import {foldBudget, PANE_SLOTS} from "../lib/titlebar-fold";
 import {TOOLBAR_ROVING_OPTIONS, useRovingToolbar} from "../lib/use-roving-toolbar";
 
 import {useSessionRename} from "../hooks/use-session-rename";
+import {useStatusline} from "../hooks/use-claude-events";
 import {herdrPanesQueryOptions} from "../lib/api/herdr";
+import {sessionOutputStylesQueryOptions} from "../lib/api/output-styles";
+import {outputStyleItems} from "../lib/output-style-options";
+import {sessionOutputStyle} from "../lib/session-output-style";
 import {sessionHasLiveTerminal} from "../lib/terminal-host-capabilities";
 import {openSessionInFinder, sessionOpenInQueryOptions, type SessionDetailData} from "../lib/api/sessions";
 import {writeClipboardText} from "../lib/clipboard";
@@ -54,6 +58,14 @@ import
 	MenuTrigger,
 } from "./ui/menu";
 import {Tooltip} from "./ui/tooltip";
+
+// The New output style dialog loads on its first open.
+const NewOutputStyleDialog = lazy(async () =>
+	import("./new-output-style-dialog").then((module) => (
+	{
+		default: module.NewOutputStyleDialog,
+	})),
+);
 
 const TITLE_CLASS =
 	"-mx-2 h-6 min-w-0 cursor-text truncate rounded-r5 border-0 bg-transparent px-2 text-left text-[13px]/[19px] font-medium text-primary select-none hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus comfortable:-mx-3 comfortable:h-[var(--cds-h-control)] comfortable:px-3 comfortable:rounded-r6 comfortable:text-[14px]/[20px]";
@@ -312,6 +324,7 @@ function HeaderMenuBody({
 	requestRename,
 	local,
 	transcriptView,
+	requestNewOutputStyle,
 }: {
 	sessionId: string;
 	data: SessionDetailData;
@@ -320,6 +333,7 @@ function HeaderMenuBody({
 	requestRename: () => void;
 	local: SessionHeaderLocalActions | undefined;
 	transcriptView: SessionHeaderTranscriptView | undefined;
+	requestNewOutputStyle: () => void;
 })
 {
 	const {data: herdr} = useQuery(herdrPanesQueryOptions);
@@ -330,6 +344,14 @@ function HeaderMenuBody({
 	const prUrl = data.pr?.url ?? null;
 	const pinned = pins.isPinned(sessionId);
 	const hasLiveTerminal = sessionHasLiveTerminal(herdr?.panes, sessionId);
+	// Upstream's radios need a running CLI to apply to; New style… only needs a non-agent session.
+	const {data: styles} = useQuery(
+		{
+			...sessionOutputStylesQueryOptions(cwd ?? ""),
+			enabled: hasLiveTerminal,
+		},
+	);
+	const statusline = useStatusline(sessionId);
 	const menuSession: SessionMenuSession =
 	{
 		title,
@@ -346,6 +368,11 @@ function HeaderMenuBody({
 		),
 		cwd,
 		bridgeSessionId,
+		outputStyles:
+		{
+			items: hasLiveTerminal ? outputStyleItems(styles, sessionOutputStyle(statusline)) : undefined,
+			canCreate: !sessionId.startsWith("agent-"),
+		},
 	};
 	if (transcriptView !== undefined)
 	{
@@ -363,6 +390,7 @@ function HeaderMenuBody({
 			bridgeSessionId,
 			prUrl,
 			requestRename,
+			requestNewOutputStyle,
 			...(transcriptView === undefined
 				? {}
 				:
@@ -452,6 +480,26 @@ export function SessionTitlebar({
 				: rename.startEditing,
 		},
 	);
+	const [newStyleOpen, setNewStyleOpen] = useState(false);
+	const openNewStyle = useCallback(() =>
+	{
+		setNewStyleOpen(true);
+	}, []);
+	const closeNewStyle = useCallback(() =>
+	{
+		setNewStyleOpen(false);
+	}, []);
+	const queryClient = useQueryClient();
+	const refreshOutputStyles = useCallback(() =>
+	{
+		// The menu is closed while the dialog shows, so refetch the inactive style lists too.
+		void queryClient.invalidateQueries(
+			{
+				queryKey: ["output-styles"],
+				refetchType: "all",
+			},
+		);
+	}, [queryClient]);
 	const menuRename = useRenameAfterMenuClose(rename.startEditing);
 	const contextRename = useRenameAfterMenuClose(rename.startEditing);
 	const
@@ -484,206 +532,221 @@ export function SessionTitlebar({
 	);
 
 	return (
-		/* Upstream's header `t1` renders the row as the cds Toolbar (`Y2`) labelled "Session tools" with the `tu` roving options. */
-		// oxlint-disable-next-line jsx-a11y/interactive-supports-focus -- upstream's root has no tabindex; the roving hook keeps one item at 0 and adds 0 to the root only while focus parks on it
-		<div
-			ref={ref}
-			role="toolbar"
-			aria-label="Session tools"
-			data-cds="Toolbar"
-			onFocus={roving.onFocus}
-			onKeyDown={roving.onKeyDown}
-			{...(panels
-				? {}
-				:
-					{
-						"data-flush": "",
-					})}
-			data-testid="session-titlebar"
-			data-perf-region="header"
-			className={`${panels ? `${TOOLBAR_PADDED_CLASS} ${TOOLBAR_INSIDE_CLASS}` : `${TOOLBAR_FLUSH_CLASS} ${TOOLBAR_LOOK_CLASS}`} ${TOOLBAR_FOCUS_RING_CLASS} min-w-0`}
-		>
+		<>
+			{/* Upstream's header `t1` renders the row as the cds Toolbar (`Y2`) labelled "Session tools" with the `tu` roving options. */}
+			{/* oxlint-disable-next-line jsx-a11y/interactive-supports-focus -- upstream's root has no tabindex; the roving hook keeps one item at 0 and adds 0 to the root only while focus parks on it */}
 			<div
-				data-titlebar-lead=""
-				{...(compact
-					?
+				ref={ref}
+				role="toolbar"
+				aria-label="Session tools"
+				data-cds="Toolbar"
+				onFocus={roving.onFocus}
+				onKeyDown={roving.onKeyDown}
+				{...(panels
+					? {}
+					:
 						{
-							"data-pills-compact": "",
-						}
-					: {})}
-				className={`group/lead flex min-w-0 items-center ${panels ? CONTROL_ROW_CLASS : ""}`}
+							"data-flush": "",
+						})}
+				data-testid="session-titlebar"
+				data-perf-region="header"
+				className={`${panels ? `${TOOLBAR_PADDED_CLASS} ${TOOLBAR_INSIDE_CLASS}` : `${TOOLBAR_FLUSH_CLASS} ${TOOLBAR_LOOK_CLASS}`} ${TOOLBAR_FOCUS_RING_CLASS} min-w-0`}
 			>
-				{/* Upstream's lead spacer at every width, max(0px, 1rem - tiles-padding - tiles-border): 7px, so the title text clears the chat card edge (x=48 at 390). */}
-				<span aria-hidden className="w-[7px] shrink-0" />
-				<div className="flex min-w-0 items-center gap-1.5">
-					{data.parentSessionId !== undefined && (
-						<Link
-							to="/session/$id"
-							params={
+				<div
+					data-titlebar-lead=""
+					{...(compact
+						?
 							{
-								id: data.parentSessionId,
-							}}
-							className={`${PILL_CLASS} cursor-pointer`}
-						>
-							<ArrowLeft aria-hidden className="size-3 shrink-0" />
-							Parent session
-						</Link>
-					)}
-					{titlePending ? (
-						/* Upstream's lead while the title loads: the h2 with a plain preview, no rename, chevron or aria-label. */
-						<h2 className={TITLE_HEADING_CLASS}>
-							<span data-slot="title-preview" data-pane-title="" className={TITLE_PREVIEW_CLASS}>
-								{rename.title}
-							</span>
-						</h2>
-					) : (
-						<div className={TITLE_GROUP_CLASS}>
-							<ContextMenu
-								onOpenChangeComplete={contextRename.onOpenChangeComplete}
-								disabled={rename.editing}
-							>
-								{/* Upstream's title wrapper is an h2 named by the title, and a span while renaming (`k = D ? "span" : "h2"`). */}
-								<ContextMenuTrigger
-									className={TITLE_HEADING_CLASS}
-									render={({children, ...props}) =>
-										rename.editing ? (
-											<span {...props}>{children}</span>
-										) : (
-											<h2 {...props} aria-label={rename.title}>
-												{children}
-											</h2>
-										)
-									}
-								>
-									<SessionTitleButton rename={rename} className={TITLE_CLASS} summary={summary} />
-								</ContextMenuTrigger>
-								<MenuContent finalFocus={contextRename.finalFocus}>
-									<HeaderMenuBody
-										sessionId={sessionId}
-										data={data}
-										title={rename.title}
-										isActive={isActive}
-										requestRename={contextRename.requestRename}
-										local={local}
-										transcriptView={transcriptView}
-									/>
-								</MenuContent>
-							</ContextMenu>
-							<Menu onOpenChangeComplete={menuRename.onOpenChangeComplete}>
-								<Tooltip content={menuTooltipLabel(rename.title)} side="bottom">
-									<MenuTrigger
-										aria-label={`More options for ${rename.title}`}
-										className={chevronClass(panels)}
-									>
-										<ChevronDown aria-hidden className="size-4" />
-									</MenuTrigger>
-								</Tooltip>
-								<MenuContent finalFocus={menuRename.finalFocus} sideOffset={6}>
-									<HeaderMenuBody
-										sessionId={sessionId}
-										data={data}
-										title={rename.title}
-										isActive={isActive}
-										requestRename={menuRename.requestRename}
-										local={local}
-										transcriptView={transcriptView}
-									/>
-								</MenuContent>
-							</Menu>
-						</div>
-					)}
-					{data.archived && <ArchivedBadge />}
-					<span
-						data-origin-pills=""
-						className={`flex items-center gap-[3px] ${compact ? "shrink-0" : "min-w-0"}`}
-					>
-						{data.pr !== undefined && repositoryName && repositoryUrl(data.pr) !== null && (
-							<Menu>
-								<MenuTrigger
-									data-origin-pill="repository"
-									aria-label={`Repository ${data.pr.repository}`}
-									title={data.pr.repository}
-									className={`${PILL_CLASS} cursor-pointer hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus`}
-								>
-									<PillContent icon={FolderGit2} label={repositoryName} compact={compact} />
-								</MenuTrigger>
-								<MenuContent>
-									<ProjectMenuItems sessionId={sessionId} session={data} />
-								</MenuContent>
-							</Menu>
-						)}
-						{modelLabel !== null && (
-							<OriginPill kind="model" icon={Cpu} label={modelLabel} compact={compact} />
-						)}
-						{data.costState !== undefined && (
-							<SessionCostPill cost={data.costState} className={`${PILL_CLASS} cursor-pointer`}>
-								<PillContent
-									icon={CircleDollarSign}
-									label={formatUsd(data.costState.totalCostUSD)}
-									compact={compact}
-								/>
-							</SessionCostPill>
-						)}
-						{data.entrypoint !== undefined && data.entrypoint !== "cli" && (
-							<OriginPill kind="entrypoint" icon={AppWindow} label={data.entrypoint} compact={compact} />
-						)}
-						{data.sessionKind !== undefined && (
-							<OriginPill kind="kind" icon={Tag} label={data.sessionKind} compact={compact} />
-						)}
-						{data.attributionAgent !== undefined && (
-							<OriginPill
-								kind="agent"
-								icon={Bot}
-								label={data.attributionAgent}
-								title="Transcript attribution agent"
-								compact={compact}
-							/>
-						)}
-						{data.teamNames?.map((team) => (
-							<OriginPill key={team} kind="team" icon={Users} label={team} compact={compact} />
-						))}
-						{data.forkedFromSessionId !== undefined && (
+								"data-pills-compact": "",
+							}
+						: {})}
+					className={`group/lead flex min-w-0 items-center ${panels ? CONTROL_ROW_CLASS : ""}`}
+				>
+					{/* Upstream's lead spacer at every width, max(0px, 1rem - tiles-padding - tiles-border): 7px, so the title text clears the chat card edge (x=48 at 390). */}
+					<span aria-hidden className="w-[7px] shrink-0" />
+					<div className="flex min-w-0 items-center gap-1.5">
+						{data.parentSessionId !== undefined && (
 							<Link
 								to="/session/$id"
 								params={
 								{
-									id: data.forkedFromSessionId,
+									id: data.parentSessionId,
 								}}
-								data-origin-pill="forked-from"
-								title={`Forked from ${data.forkedFromSessionId}`}
 								className={`${PILL_CLASS} cursor-pointer`}
 							>
-								<PillContent
-									icon={GitFork}
-									label={`Forked from ${data.forkedFromSessionId.slice(0, 8)}`}
-									compact={compact}
-								/>
+								<ArrowLeft aria-hidden className="size-3 shrink-0" />
+								Parent session
 							</Link>
 						)}
-						{isActive && (
-							<span
-								data-origin-pill="active"
-								title="Active"
-								className="inline-flex h-5 shrink-0 items-center gap-1 rounded-r3 bg-success-900 px-[5px] text-caption text-success-000"
-							>
-								<span aria-hidden className="size-1.5 animate-pulse rounded-full bg-success-000" />
-								<span data-origin-label="" className={compact ? "sr-only" : undefined}>
-									Active
+						{titlePending ? (
+							/* Upstream's lead while the title loads: the h2 with a plain preview, no rename, chevron or aria-label. */
+							<h2 className={TITLE_HEADING_CLASS}>
+								<span data-slot="title-preview" data-pane-title="" className={TITLE_PREVIEW_CLASS}>
+									{rename.title}
 								</span>
-							</span>
+							</h2>
+						) : (
+							<div className={TITLE_GROUP_CLASS}>
+								<ContextMenu
+									onOpenChangeComplete={contextRename.onOpenChangeComplete}
+									disabled={rename.editing}
+								>
+									{/* Upstream's title wrapper is an h2 named by the title, and a span while renaming (`k = D ? "span" : "h2"`). */}
+									<ContextMenuTrigger
+										className={TITLE_HEADING_CLASS}
+										render={({children, ...props}) =>
+											rename.editing ? (
+												<span {...props}>{children}</span>
+											) : (
+												<h2 {...props} aria-label={rename.title}>
+													{children}
+												</h2>
+											)
+										}
+									>
+										<SessionTitleButton rename={rename} className={TITLE_CLASS} summary={summary} />
+									</ContextMenuTrigger>
+									<MenuContent finalFocus={contextRename.finalFocus}>
+										<HeaderMenuBody
+											sessionId={sessionId}
+											data={data}
+											title={rename.title}
+											isActive={isActive}
+											requestRename={contextRename.requestRename}
+											local={local}
+											transcriptView={transcriptView}
+											requestNewOutputStyle={openNewStyle}
+										/>
+									</MenuContent>
+								</ContextMenu>
+								<Menu onOpenChangeComplete={menuRename.onOpenChangeComplete}>
+									<Tooltip content={menuTooltipLabel(rename.title)} side="bottom">
+										<MenuTrigger
+											aria-label={`More options for ${rename.title}`}
+											className={chevronClass(panels)}
+										>
+											<ChevronDown aria-hidden className="size-4" />
+										</MenuTrigger>
+									</Tooltip>
+									<MenuContent finalFocus={menuRename.finalFocus} sideOffset={6}>
+										<HeaderMenuBody
+											sessionId={sessionId}
+											data={data}
+											title={rename.title}
+											isActive={isActive}
+											requestRename={menuRename.requestRename}
+											local={local}
+											transcriptView={transcriptView}
+											requestNewOutputStyle={openNewStyle}
+										/>
+									</MenuContent>
+								</Menu>
+							</div>
 						)}
-					</span>
+						{data.archived && <ArchivedBadge />}
+						<span
+							data-origin-pills=""
+							className={`flex items-center gap-[3px] ${compact ? "shrink-0" : "min-w-0"}`}
+						>
+							{data.pr !== undefined && repositoryName && repositoryUrl(data.pr) !== null && (
+								<Menu>
+									<MenuTrigger
+										data-origin-pill="repository"
+										aria-label={`Repository ${data.pr.repository}`}
+										title={data.pr.repository}
+										className={`${PILL_CLASS} cursor-pointer hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus`}
+									>
+										<PillContent icon={FolderGit2} label={repositoryName} compact={compact} />
+									</MenuTrigger>
+									<MenuContent>
+										<ProjectMenuItems sessionId={sessionId} session={data} />
+									</MenuContent>
+								</Menu>
+							)}
+							{modelLabel !== null && (
+								<OriginPill kind="model" icon={Cpu} label={modelLabel} compact={compact} />
+							)}
+							{data.costState !== undefined && (
+								<SessionCostPill cost={data.costState} className={`${PILL_CLASS} cursor-pointer`}>
+									<PillContent
+										icon={CircleDollarSign}
+										label={formatUsd(data.costState.totalCostUSD)}
+										compact={compact}
+									/>
+								</SessionCostPill>
+							)}
+							{data.entrypoint !== undefined && data.entrypoint !== "cli" && (
+								<OriginPill
+									kind="entrypoint"
+									icon={AppWindow}
+									label={data.entrypoint}
+									compact={compact}
+								/>
+							)}
+							{data.sessionKind !== undefined && (
+								<OriginPill kind="kind" icon={Tag} label={data.sessionKind} compact={compact} />
+							)}
+							{data.attributionAgent !== undefined && (
+								<OriginPill
+									kind="agent"
+									icon={Bot}
+									label={data.attributionAgent}
+									title="Transcript attribution agent"
+									compact={compact}
+								/>
+							)}
+							{data.teamNames?.map((team) => (
+								<OriginPill key={team} kind="team" icon={Users} label={team} compact={compact} />
+							))}
+							{data.forkedFromSessionId !== undefined && (
+								<Link
+									to="/session/$id"
+									params={
+									{
+										id: data.forkedFromSessionId,
+									}}
+									data-origin-pill="forked-from"
+									title={`Forked from ${data.forkedFromSessionId}`}
+									className={`${PILL_CLASS} cursor-pointer`}
+								>
+									<PillContent
+										icon={GitFork}
+										label={`Forked from ${data.forkedFromSessionId.slice(0, 8)}`}
+										compact={compact}
+									/>
+								</Link>
+							)}
+							{isActive && (
+								<span
+									data-origin-pill="active"
+									title="Active"
+									className="inline-flex h-5 shrink-0 items-center gap-1 rounded-r3 bg-success-900 px-[5px] text-caption text-success-000"
+								>
+									<span aria-hidden className="size-1.5 animate-pulse rounded-full bg-success-000" />
+									<span data-origin-label="" className={compact ? "sr-only" : undefined}>
+										Active
+									</span>
+								</span>
+							)}
+						</span>
+					</div>
+				</div>
+				<div
+					data-titlebar-trail=""
+					className={`relative ml-auto flex shrink-0 items-center gap-1 pl-6 text-secondary ${panels ? CONTROL_ROW_CLASS : ""}`}
+				>
+					<TitlebarHiddenCountContext.Provider value={hiddenCount}>
+						{paneToggles}
+						{viewOptions}
+					</TitlebarHiddenCountContext.Provider>
 				</div>
 			</div>
-			<div
-				data-titlebar-trail=""
-				className={`relative ml-auto flex shrink-0 items-center gap-1 pl-6 text-secondary ${panels ? CONTROL_ROW_CLASS : ""}`}
-			>
-				<TitlebarHiddenCountContext.Provider value={hiddenCount}>
-					{paneToggles}
-					{viewOptions}
-				</TitlebarHiddenCountContext.Provider>
-			</div>
-		</div>
+			{/* Outside the toolbar, so the dialog's keys never reach its roving handler through the React tree. */}
+			{newStyleOpen && (
+				<Suspense fallback={null}>
+					<NewOutputStyleDialog onClose={closeNewStyle} onCreated={refreshOutputStyles} />
+				</Suspense>
+			)}
+		</>
 	);
 }

@@ -2,6 +2,7 @@ import {z} from "zod";
 
 import {isKeyOf} from "./narrow";
 import {sessionMenuItemLabels, transcriptModeLabels} from "./schema-choices";
+import type {OutputStyleItem} from "./output-style-options";
 import type {SessionBucket} from "./session-state";
 import {TRANSCRIPT_MODES, type TranscriptMode} from "./transcript-mode";
 
@@ -38,6 +39,9 @@ export const SessionMenuItemIdSchema = z.enum([
 	"transcript-view",
 	"transcript-mode",
 	"make-default-transcript-mode",
+	"output-style",
+	"output-style-option",
+	"new-output-style",
 	"archive",
 	"unarchive",
 ]);
@@ -132,6 +136,8 @@ export interface SessionMenuSession
 	};
 	/** The session's transcript view; enables the header's Transcript view submenu. */
 	transcriptView?: TranscriptViewState;
+	/** The session's output styles (undefined without a running CLI) and whether New style… is offered. */
+	outputStyles?: OutputStyleMenuState;
 	/** The last turn failed and Mark as completed hasn't acked it (upstream `St`); offers it after the read toggle. */
 	failed?: boolean;
 	/** This tab draws the session's approval card live (upstream `hasPendingApproval`); hides Mark as completed. */
@@ -150,6 +156,12 @@ export interface TranscriptViewState
 	hasThinking: boolean;
 }
 
+export interface OutputStyleMenuState
+{
+	items: readonly OutputStyleItem[] | undefined;
+	canCreate: boolean;
+}
+
 export interface SessionMenuItem
 {
 	kind: "item";
@@ -165,6 +177,8 @@ export interface SessionMenuItem
 	groupId?: string;
 	/** The mode a Transcript view radio selects. */
 	transcriptMode?: TranscriptMode;
+	/** The style an Output style radio selects. */
+	outputStyle?: string;
 	submenu?: SessionMenuEntry[];
 }
 
@@ -404,6 +418,45 @@ export function transcriptViewMenuItem({mode, defaultMode, hasThinking}: Transcr
 	};
 }
 
+/**
+ * Upstream's "Output style ▸" (`it`'s settings group): the session's styles as radios, then a separator (only after
+ * radios) and "New style…" when a style can be created. No accelerators; absent when it would be empty.
+ */
+function outputStyleMenuItem({items, canCreate}: OutputStyleMenuState): SessionMenuItem | undefined
+{
+	if ((items?.length ?? 0) === 0 && !canCreate) return undefined;
+	const entries: SessionMenuEntry[] = (items ?? []).map(({name, label, checked}) => (
+	{
+		kind: "item",
+		id: "output-style-option",
+		label,
+		outputStyle: name,
+		checked,
+	}));
+	if (canCreate)
+	{
+		if (entries.length > 0)
+			entries.push(
+				{
+					kind: "separator",
+				},
+			);
+		entries.push(
+			{
+				kind: "item",
+				id: "new-output-style",
+				label: sessionMenuItemLabels["new-output-style"],
+			},
+		);
+	}
+	return {
+		kind: "item",
+		id: "output-style",
+		label: sessionMenuItemLabels["output-style"],
+		submenu: entries,
+	};
+}
+
 function paletteName(title: string): string
 {
 	return title.length > PALETTE_TITLE_LENGTH ? `${title.slice(0, PALETTE_TITLE_LENGTH)}…` : title;
@@ -566,6 +619,11 @@ export function getSessionMenuItems(
 	{
 		settingsBlock.push(transcriptViewMenuItem(session.transcriptView));
 	}
+	const outputStyle =
+		surface === "header" && session.outputStyles !== undefined
+			? outputStyleMenuItem(session.outputStyles)
+			: undefined;
+	if (outputStyle !== undefined) settingsBlock.push(outputStyle);
 
 	// An archived session's header leaves Unarchive to the composer note, as upstream passes the header no onUnarchive.
 	const lifecycle: SessionMenuItem[] = [];

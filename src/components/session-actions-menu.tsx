@@ -271,10 +271,10 @@ function testIdProps(id: SessionMenuItemId)
 			};
 }
 
-/** Radio value: a Move to group entry's group, a transcript mode, or the Ungrouped item's id. */
+/** Radio value: a Move to group entry's group, a transcript mode, an output style, or the Ungrouped item's id. */
 function radioValue(entry: SessionMenuItem): string
 {
-	return entry.groupId ?? entry.transcriptMode ?? entry.id;
+	return entry.groupId ?? entry.transcriptMode ?? entry.outputStyle ?? entry.id;
 }
 
 export function MenuEntries({entries, run}: {entries: SessionMenuEntry[]; run: SessionMenuRun})
@@ -344,7 +344,9 @@ function MenuEntryList({entries, run}: {entries: SessionMenuEntry[]; run: Sessio
 							})}
 					onClick={() =>
 					{
-						run(entry.id, entry.groupId ?? entry.transcriptMode);
+						// Upstream's output-style `select` is a no-op for the checked style.
+						if (entry.outputStyle !== undefined && entry.checked) return;
+						run(entry.id, entry.groupId ?? entry.transcriptMode ?? entry.outputStyle);
 					}}
 				>
 					{entry.label}

@@ -243,6 +243,9 @@ export function PaletteRowActionsCard({
 			case "transcript-view":
 			case "transcript-mode":
 			case "make-default-transcript-mode":
+			case "output-style":
+			case "output-style-option":
+			case "new-output-style":
 				return;
 			default:
 				assertNever(id);
