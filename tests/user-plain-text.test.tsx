@@ -336,3 +336,159 @@ describe("user-text @path mention chips (upstream R in c8a6d9da5)", () =>
 		expect(container.querySelectorAll(".epitaxy-link-chip").length).toBe(0);
 	});
 });
+
+describe("user paragraph per-line RTL spans (upstream cd59f024f We/Je)", () =>
+{
+	const LINE_CLASS = "block [unicode-bidi:plaintext]";
+	const KEY_KIND = ["RSA", "PRIVATE", "KEY"].join(" ");
+	const PEM = `-----BEGIN ${KEY_KIND}-----\nMIIBOgIBAAJBAKj34GkxFhD90vcNLYLInFEX6Ppy1tPf9Cnzj4p4WGeKLs1Pt8Qu\n-----END ${KEY_KIND}-----`;
+
+	function lineSpans(text: string)
+	{
+		const {container} = render(<UserPlainText text={text} />);
+		const paragraph = container.querySelector("p");
+		const result = [...(paragraph?.children ?? [])].map((child) => (
+		{
+			tag: child.tagName,
+			className: child.getAttribute("class"),
+			group: child.getAttribute("data-code-line-group"),
+			text: child.textContent,
+		}));
+		cleanup();
+		return result;
+	}
+
+	it("splits a paragraph with an RTL letter into one block span per line, each keeping its newline", () =>
+	{
+		expect(lineSpans("Hello there\nשלום עולם")).toStrictEqual([
+			{
+				tag: "SPAN",
+				className: LINE_CLASS,
+				group: "",
+				text: "Hello there\n",
+			},
+			{
+				tag: "SPAN",
+				className: LINE_CLASS,
+				group: "",
+				text: "שלום עולם",
+			},
+		]);
+	});
+
+	it("keeps a blank line as a span holding only its newline", () =>
+	{
+		expect(lineSpans("a\n\nשלום").map((span) => span.text)).toStrictEqual(["a\n", "\n", "שלום"]);
+	});
+
+	it("splits up to 200 lines", () =>
+	{
+		expect(lineSpans(`${"ש\n".repeat(199)}ש`).length).toBe(200);
+	});
+
+	it("keeps one plain run for one line, no RTL letter, RTL digits only, over 200 lines, over 256 Ki chars, or a multi-line secret", () =>
+	{
+		expect(
+			["שלום", "a\nb", "١٢٣\nabc", `${"ש\n".repeat(200)}ש`, `ש\n${"x".repeat(262144)}`, `שלום\n${PEM}`].map(
+				(text) => lineSpans(text).filter((span) => span.group !== null).length,
+			),
+		).toStrictEqual([0, 0, 0, 0, 0, 0]);
+	});
+
+	it("parses code spans per line, so one across a break stays literal backticks", () =>
+	{
+		const {container} = render(<UserPlainText text={"`a\nשלום`"} />);
+		expect(
+			{
+				code: container.querySelectorAll("code").length,
+				text: container.textContent,
+			},
+		).toStrictEqual(
+			{
+				code: 0,
+				text: "`a\nשלום`",
+			},
+		);
+	});
+
+	it("puts the prefix chip inside the first line span only", () =>
+	{
+		const {container} = render(<UserPlainText text={"go\nשלום"} prefix={<b>chip</b>} />);
+		expect(
+			[...container.querySelectorAll("[data-code-line-group]")].map((span) => (
+			{
+				chip: span.querySelector("b") !== null,
+				text: span.textContent,
+			})),
+		).toStrictEqual([
+			{
+				chip: true,
+				text: "chip go\n",
+			},
+			{
+				chip: false,
+				text: "שלום",
+			},
+		]);
+	});
+
+	it("splits a text paragraph beside a list", () =>
+	{
+		const {container} = render(<UserPlainText text={"a\nש\n\n* item"} />);
+		expect(container.querySelectorAll("p > [data-code-line-group]").length).toBe(2);
+	});
+});
+
+describe("user list direction from its first item (upstream cd59f024f K)", () =>
+{
+	function list(text: string)
+	{
+		const {container} = render(<UserPlainText text={text} />);
+		const element = container.querySelector("ul, ol");
+		const result =
+		{
+			tag: element?.tagName,
+			dir: element?.getAttribute("dir") ?? null,
+			epitaxy: element?.getAttribute("class")?.startsWith("epitaxy-user-list ") ?? false,
+		};
+		cleanup();
+		return result;
+	}
+
+	it("sets dir from the first strong character, skipping leading URLs, mentions and bidi controls", () =>
+	{
+		expect([
+			list("* שלום\n* עולם"),
+			list("* https://x.y שלום"),
+			list("1. hello"),
+			list("* 123"),
+			list("* ‫שלום"),
+		]).toStrictEqual([
+			{
+				tag: "UL",
+				dir: "rtl",
+				epitaxy: true,
+			},
+			{
+				tag: "UL",
+				dir: "rtl",
+				epitaxy: true,
+			},
+			{
+				tag: "OL",
+				dir: "ltr",
+				epitaxy: true,
+			},
+			{
+				tag: "UL",
+				dir: null,
+				epitaxy: true,
+			},
+			{
+				tag: "UL",
+				dir: "rtl",
+				epitaxy: true,
+			},
+		]);
+	});
+});

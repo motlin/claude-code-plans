@@ -5,9 +5,11 @@ import {type LinkPolicy, resolveLink} from "../lib/external-nav";
 import {findUserFileMentions} from "../lib/file-refs";
 import {BIDI_CONTROLS, MARKDOWN_LINK, markdownLinkTarget, SLACK_TOKEN} from "../lib/markdown-link";
 import {pageIsRtl} from "../lib/page-direction";
-import {maskSecrets, maskUrlSecrets} from "../lib/secret-mask";
+import {findSecrets, maskSecrets, maskUrlSecrets, PEM_BEGIN} from "../lib/secret-mask";
+import {firstStrongDir} from "../lib/text-direction";
 import {splitUrlTail} from "../lib/url-trim";
 import {revealSpoofing} from "../lib/visible-text";
+import {RTL_LETTER} from "./bidi-lines";
 import {CloakedText} from "./cloaked-text";
 import {SESSION_MENTION_PATTERN, SessionMentionPill} from "./session-mention-pill";
 import {ConfirmExternalLink} from "./confirm-external-link";
@@ -17,6 +19,30 @@ import {UserFileMentionChip} from "./user-file-mention-chip";
 /** Upstream's user paragraph: `text-body` rewritten to `text-prose`, then `[unicode-bidi:plaintext]` appended. */
 export const USER_PARAGRAPH_CLASS =
 	"text-prose whitespace-pre-wrap [overflow-wrap:anywhere] text-pretty [unicode-bidi:plaintext]";
+
+/** Upstream's `Be`: a right-to-left letter (`FN` behind a `\p{L}` lookahead, so RTL digits and marks don't count). */
+const RTL_PARAGRAPH = new RegExp(`(?=\\p{L})${RTL_LETTER.source}`, "u");
+/** Upstream's `Ve`: a paragraph of more lines stays one run. */
+const LINE_SPAN_MAX_LINES = 200;
+/** Upstream's length cap in `We`, the secret detector's scan limit. */
+const LINE_SPAN_MAX_CHARS = 262144;
+const LINE_SPAN_CLASS = "block [unicode-bidi:plaintext]";
+/** A private key header with a later line: the masked form of a multi-line secret, whose body the detector no longer sees. */
+const MASKED_MULTILINE_KEY = new RegExp(`${PEM_BEGIN.source}[^\\n]*\\n`);
+
+/**
+ * Upstream's `We` gate (cd59f024f): a paragraph with a right-to-left letter split into lines, each keeping its
+ * newline, unless it is one line, over 200 lines, over 256 Ki chars, or a secret spans a line break (upstream
+ * detects on the raw text; ours arrives masked, so a private key header with a following line also counts).
+ */
+function rtlLineSplit(text: string): string[] | null
+{
+	if (!RTL_PARAGRAPH.test(text)) return null;
+	const lines = text.split(/(?<=\n)/);
+	if (lines.length === 1 || lines.length > LINE_SPAN_MAX_LINES || text.length > LINE_SPAN_MAX_CHARS) return null;
+	if (MASKED_MULTILINE_KEY.test(text) || findSecrets(text).some(({value}) => value.includes("\n"))) return null;
+	return lines;
+}
 
 /** Upstream's single-backtick code span (`W` in c8a6d9da5): no backtick runs, never across a line. */
 const CODE_SPAN = /`([^`\n]+)`/g;
@@ -466,6 +492,18 @@ function UserMessageText({children}: {children: ReactNode})
 	);
 }
 
+/** Upstream's `G`: the bidi embedding, override and isolate controls. */
+const LIST_BIDI_CONTROLS = /[\u202A-\u202E\u2066-\u2069]/g;
+/** Upstream's `He`: a leading run of URLs, `www.` words and `@…` / `/…` tokens. */
+const LIST_LEAD = /^(?:\s*(?:(?:https?:\/\/|www\.)\S*|[@/]\S*))+/i;
+
+/** Upstream's `K`: a list's direction from its first item, past any leading links and mentions. */
+function listDir(text: string): "rtl" | "ltr" | undefined
+{
+	const bare = text.replace(LIST_BIDI_CONTROLS, "");
+	return firstStrongDir(bare.replace(LIST_LEAD, ""), 80) ?? firstStrongDir(bare, 80);
+}
+
 /** Upstream's list items: "* " or a canonical "N. ", indented in 3-space steps (a bare marker only on the last line). */
 const BULLET_ITEM = /^((?: {3})*)\*(?: (.*))?$/;
 const ORDERED_ITEM = /^((?: {3})*)(\d+)\.(?: (.*))?$/;
@@ -614,17 +652,19 @@ function renderList(
 			index = end;
 		}
 		const listKey = `${key}-${level}-${lists.length}`;
+		const dir = listDir(head.text);
 		lists.push(
 			head.ordered ? (
 				<ol
 					key={listKey}
+					dir={dir}
 					start={head.start === 1 ? undefined : head.start}
-					className={`list-decimal ${LIST_CLASS}`}
+					className={`epitaxy-user-list list-decimal ${LIST_CLASS}`}
 				>
 					{items}
 				</ol>
 			) : (
-				<ul key={listKey} className={`list-disc ${LIST_CLASS}`}>
+				<ul key={listKey} dir={dir} className={`epitaxy-user-list list-disc ${LIST_CLASS}`}>
 					{items}
 				</ul>
 			),
@@ -781,9 +821,12 @@ function UserTextBlocks({text, prefix, nonInteractive = false, fileMentions = fa
 	{
 		return (
 			<p className={USER_PARAGRAPH_CLASS}>
-				{prefix}
-				{prefix !== undefined && text !== "" && " "}
-				{renderInline(text, userPaint(nonInteractive), nonInteractive, fileMentions)}
+				<ParagraphBody
+					text={text}
+					prefix={prefix}
+					nonInteractive={nonInteractive}
+					fileMentions={fileMentions}
+				/>
 			</p>
 		);
 	}
@@ -797,9 +840,12 @@ function UserTextBlocks({text, prefix, nonInteractive = false, fileMentions = fa
 				{
 					return (
 						<p key={index} className={USER_PARAGRAPH_CLASS}>
-							{index === 0 && prefix}
-							{index === 0 && prefix !== undefined && " "}
-							{renderInline(block.text, userPaint(nonInteractive), nonInteractive, fileMentions)}
+							<ParagraphBody
+								text={block.text}
+								prefix={index === 0 ? prefix : undefined}
+								nonInteractive={nonInteractive}
+								fileMentions={fileMentions}
+							/>
 						</p>
 					);
 				}
@@ -807,4 +853,29 @@ function UserTextBlocks({text, prefix, nonInteractive = false, fileMentions = fa
 			})}
 		</>
 	);
+}
+
+/**
+ * A paragraph's contents: the prefix chip, then the inline text. Upstream's `Je` splits a paragraph with a
+ * right-to-left letter (`We`) into block line spans, each rendered alone, the prefix only on the first.
+ */
+function ParagraphBody({text, prefix, nonInteractive = false, fileMentions = false}: UserTextProps)
+{
+	const lines = rtlLineSplit(text);
+	if (lines === null)
+		return (
+			<>
+				{prefix}
+				{prefix !== undefined && text !== "" && " "}
+				{renderInline(text, userPaint(nonInteractive), nonInteractive, fileMentions)}
+			</>
+		);
+	return lines.map((line, index) => (
+		// oxlint-disable-next-line react/no-array-index-key -- the lines are fixed for one text
+		<span key={index} className={LINE_SPAN_CLASS} data-code-line-group="">
+			{index === 0 && prefix}
+			{index === 0 && prefix !== undefined && " "}
+			{renderInline(line, userPaint(nonInteractive), nonInteractive, fileMentions)}
+		</span>
+	));
 }
