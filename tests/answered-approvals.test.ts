@@ -158,8 +158,11 @@ describe("acknowledged tool decisions, as upstream's persisted 5-minute store (C
 
 		const reloaded = await freshStore();
 		const afterReload = reloaded.isApprovalAnswered("session-ack-1", "toolu_ack_1");
+		vi.setSystemTime(1_000_000 + 299_999);
+		const beforeTtl = reloaded.isApprovalAnswered("session-ack-1", "toolu_ack_1");
 		vi.setSystemTime(1_000_000 + 300_000);
 		const atTtl = reloaded.isApprovalAnswered("session-ack-1", "toolu_ack_1");
+		const atTtlReload = (await freshStore()).isApprovalAnswered("session-ack-1", "toolu_ack_1");
 		vi.setSystemTime(1_000_000 + 300_001);
 		const pastTtl = reloaded.isApprovalAnswered("session-ack-1", "toolu_ack_1");
 		const pastReload = (await freshStore()).isApprovalAnswered("session-ack-1", "toolu_ack_1");
@@ -168,7 +171,9 @@ describe("acknowledged tool decisions, as upstream's persisted 5-minute store (C
 			{
 				stored,
 				afterReload,
+				beforeTtl,
 				atTtl,
+				atTtlReload,
 				pastTtl,
 				pastReload,
 				pruned: window.localStorage.getItem(STORAGE_KEY),
@@ -188,7 +193,9 @@ describe("acknowledged tool decisions, as upstream's persisted 5-minute store (C
 					},
 				},
 				afterReload: true,
-				atTtl: true,
+				beforeTtl: true,
+				atTtl: false,
+				atTtlReload: false,
 				pastTtl: false,
 				pastReload: false,
 				pruned: "{}",
@@ -295,6 +302,52 @@ describe("acknowledged tool decisions, as upstream's persisted 5-minute store (C
 				corruptRead: false,
 				unmarked: false,
 				inMemory: true,
+			},
+		);
+	});
+
+	it("skips only the malformed session or entry when loading, like upstream's per-entry safeParse (Xb/Do)", async () =>
+	{
+		vi.useFakeTimers(
+			{
+				now: 3_000_000,
+				toFake: ["Date"],
+			},
+		);
+		window.localStorage.setItem(
+			STORAGE_KEY,
+			JSON.stringify(
+				{
+					"s-bad": 5,
+					"s-mixed":
+					{
+						toolu_bad:
+						{
+							toolUseId: 1,
+						},
+						toolu_ok:
+						{
+							toolUseId: "toolu_ok",
+							toolName: "Bash",
+							acknowledgedAt: 3_000_000,
+						},
+					},
+				},
+			),
+		);
+		const store = await freshStore();
+
+		expect(
+			{
+				bad: store.isApprovalAnswered("s-bad", "x"),
+				mixedBad: store.isApprovalAnswered("s-mixed", "toolu_bad"),
+				mixedOk: store.isApprovalAnswered("s-mixed", "toolu_ok"),
+			},
+		).toStrictEqual(
+			{
+				bad: false,
+				mixedBad: false,
+				mixedOk: true,
 			},
 		);
 	});

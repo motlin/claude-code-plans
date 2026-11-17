@@ -48,21 +48,19 @@ const ACKNOWLEDGED_TTL_MS = 300_000;
 /** Upstream's `TQ`: the most acknowledged decisions kept per session. */
 const ACKNOWLEDGED_PER_SESSION = 10;
 
-const AcknowledgedSchema = z.record(
-	z.string(),
-	z.record(
-		z.string(),
-		z.object(
-			{
-				toolUseId: z.string(),
-				toolName: z.string(),
-				acknowledgedAt: z.number(),
-			},
-		),
-	),
+/** Upstream's `Xb`: the stored root and each session's map, lenient about their values. */
+const AcknowledgedRecordSchema = z.record(z.string(), z.unknown());
+
+/** Upstream's `Do`: one acknowledged decision; a malformed one is skipped alone. */
+const AcknowledgedEntrySchema = z.object(
+	{
+		toolUseId: z.string(),
+		toolName: z.string(),
+		acknowledgedAt: z.number(),
+	},
 );
 
-type Acknowledged = z.infer<typeof AcknowledgedSchema>;
+type Acknowledged = Record<string, Record<string, z.infer<typeof AcknowledgedEntrySchema>>>;
 
 function browserLocalStorage(): Storage | null
 {
@@ -77,30 +75,59 @@ function browserLocalStorage(): Storage | null
 	}
 }
 
+/** Upstream's `Iw`/`C0` freshness check: strictly under 5 minutes old. */
+function isFresh(acknowledgedAt: number, now: number): boolean
+{
+	return now - acknowledgedAt < ACKNOWLEDGED_TTL_MS;
+}
+
 /** Drops entries past the TTL and sessions left empty. */
 function pruneAcknowledged(store: Acknowledged, now: number): Acknowledged
 {
 	const pruned: Acknowledged = {};
 	for (const [sessionId, entries] of Object.entries(store))
 	{
-		const live = Object.entries(entries).filter(([, entry]) => now - entry.acknowledgedAt <= ACKNOWLEDGED_TTL_MS);
+		const live = Object.entries(entries).filter(([, entry]) => isFresh(entry.acknowledgedAt, now));
 		if (live.length > 0) pruned[sessionId] = Object.fromEntries(live);
 	}
 	return pruned;
 }
 
-/** Upstream's `C0`: the stored decisions, pruned on load; unreadable or corrupt storage reads as none. */
+/**
+ * Upstream's `C0` parse: a session whose value isn't a map, or an entry that
+ * fails the entry schema, is skipped on its own rather than discarding the
+ * whole store; expired entries and sessions left empty are dropped.
+ */
+function parseAcknowledged(root: Record<string, unknown>, now: number): Acknowledged
+{
+	const store: Acknowledged = {};
+	for (const [sessionId, value] of Object.entries(root))
+	{
+		const session = AcknowledgedRecordSchema.safeParse(value);
+		if (!session.success) continue;
+		const live: Acknowledged[string] = {};
+		for (const [id, candidate] of Object.entries(session.data))
+		{
+			const entry = AcknowledgedEntrySchema.safeParse(candidate);
+			if (entry.success && isFresh(entry.data.acknowledgedAt, now)) live[id] = entry.data;
+		}
+		if (Object.keys(live).length > 0) store[sessionId] = live;
+	}
+	return store;
+}
+
+/** Upstream's `C0`: the stored decisions, pruned on load; unreadable or non-object storage reads as none. */
 function loadAcknowledged(): Acknowledged
 {
 	try
 	{
 		const raw = browserLocalStorage()?.getItem(ACKNOWLEDGED_STORAGE_KEY) ?? null;
 		if (raw === null) return {};
-		const parsed = AcknowledgedSchema.safeParse(JSON.parse(raw));
+		const parsed = AcknowledgedRecordSchema.safeParse(JSON.parse(raw));
 		if (!parsed.success) return {};
-		const pruned = pruneAcknowledged(parsed.data, Date.now());
-		saveAcknowledged(pruned);
-		return pruned;
+		const loaded = parseAcknowledged(parsed.data, Date.now());
+		saveAcknowledged(loaded);
+		return loaded;
 	}
 	catch
 	{
@@ -132,7 +159,7 @@ function acknowledgedStore(): Acknowledged
 function isAcknowledged(sessionId: string, id: string): boolean
 {
 	const entry = acknowledgedStore()[sessionId]?.[id];
-	return entry !== undefined && Date.now() - entry.acknowledgedAt <= ACKNOWLEDGED_TTL_MS;
+	return entry !== undefined && isFresh(entry.acknowledgedAt, Date.now());
 }
 
 /**
