@@ -289,6 +289,7 @@ describe("KeyboardShortcutsDialog", () =>
 		expect(later).not.toHaveBeenCalled();
 	});
 
+	// Exhaustive on purpose: upstream's web dialog has no Ctrl+Shift+1…9 sidebar jump row (only the desktop app lists "Jump to session").
 	it("lists only enabled registry entries, grouped in upstream order", async () =>
 	{
 		const composer = renderWithComposer();

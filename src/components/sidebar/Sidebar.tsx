@@ -51,6 +51,7 @@ import {type Density, useScopeDensity} from "../ui/density-context";
 import {useSettings} from "../settings-context";
 import {isPeekMenuOpen} from "./peek-menu-open";
 import {SidebarHiddenContext} from "./sidebar-hidden";
+import {useSidebarJumpHints} from "./use-jump-hints";
 
 export function Sidebar({
 	collapsed,
@@ -82,6 +83,8 @@ export function Sidebar({
 	const {data: activeSessions} = useQuery(activeSessionsQueryOptions(settings.activeTimeoutSec * 1000));
 	const activeCount = activeSessions?.length ?? 0;
 	const roving = useSidebarBodyRoving();
+	// Upstream `HQ`: a collapsed or peeked sidebar never shows the jump keycaps.
+	useSidebarJumpHints(!collapsed);
 	/* Upstream pins aside.dframe-sidebar[data-density] to its own comfortable default, so a compact ancestor never pulls it along. */
 	/*
 	 * Every sidebar root also carries data-code-list="": upstream sets it only in frame mode "code" under the

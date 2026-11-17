@@ -4,6 +4,7 @@ import {cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, beforeAll, describe, expect, it, vi} from "vite-plus/test";
 import {Composer} from "../src/components/composer";
 import type {QueuedPrompt} from "../src/lib/composer-queue";
+import {isJumpGatedFocus} from "../src/lib/sidebar-jump-hints";
 import type {SlashCommand} from "../src/lib/slash-commands";
 import {preloadComposerSurfaces} from "../src/components/composer-surfaces-entry";
 
@@ -125,6 +126,13 @@ describe("Composer prompt history", () =>
 		);
 		seen.push(textarea.value);
 		expect(seen).toStrictEqual(["water the basil", "plant tomatoes", "plant tomatoes", "water the basil", "draft"]);
+	});
+
+	// Upstream's contenteditable composer never trips the sidebar jump-hint input gate; this textarea must not either.
+	it("leaves the sidebar jump hints working while the prompt has focus", () =>
+	{
+		const textarea = renderComposer();
+		expect(isJumpGatedFocus(textarea)).toBe(false);
 	});
 
 	it("restores the draft on Escape", () =>

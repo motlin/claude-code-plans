@@ -13,6 +13,7 @@ import {approvalsQueryOptions} from "../src/lib/api/approvals";
 import {notificationsQueryOptions} from "../src/lib/api/notifications";
 import {activeSessionsQueryOptions} from "../src/lib/api/sessions";
 import {readSidebarState, useSidebarState, writeSidebarState} from "../src/lib/sidebar-store";
+import {clearJumpHints, jumpHintsByRowKey} from "../src/lib/sidebar-jump-hints";
 import {installLocalStorage} from "./fake-storage";
 import {NAV_SECTIONS} from "../src/lib/nav-sections";
 import {ToastProvider} from "../src/components/toast";
@@ -607,6 +608,93 @@ describe("collapsed sidebar peek", () =>
 			).tagName,
 		).toBe("BUTTON");
 		expect(screen.queryByTestId("sidebar-collapsed")).toBe(null);
+	});
+});
+
+describe("sidebar jump hints", () =>
+{
+	/** A one-row session column; jsdom has no layout, so the row's offsetParent is stubbed. */
+	function appendSessionColumn(): void
+	{
+		const list = document.createElement("div");
+		list.className = "df-session-list";
+		list.setAttribute("data-kind", "code");
+		const row = document.createElement("div");
+		row.setAttribute("data-row-key", "s1");
+		row.setAttribute("data-jump-hint-row", "");
+		Object.defineProperty(
+			row,
+			"offsetParent",
+			{
+				get: () => document.body,
+			},
+		);
+		list.append(row);
+		document.body.append(list);
+	}
+
+	function holdCtrlShift(): void
+	{
+		fireEvent.keyDown(
+			window,
+			{
+				key: "Control",
+				code: "ControlLeft",
+				ctrlKey: true,
+			},
+		);
+		fireEvent.keyDown(
+			window,
+			{
+				key: "Shift",
+				code: "ShiftLeft",
+				ctrlKey: true,
+				shiftKey: true,
+			},
+		);
+		act(() =>
+		{
+			vi.advanceTimersByTime(200);
+		});
+	}
+
+	afterEach(() =>
+	{
+		clearJumpHints();
+		document.body.replaceChildren();
+	});
+
+	it("numbers the rows from the expanded sidebar but never from the collapsed one or its peek", async () =>
+	{
+		await renderExpandedSidebar();
+		appendSessionColumn();
+		fakeTimeouts();
+		holdCtrlShift();
+		const expanded = jumpHintsByRowKey();
+		cleanup();
+		vi.useRealTimers();
+		clearJumpHints();
+
+		await renderCollapsedSidebar();
+		fireEvent.mouseEnter(screen.getByTestId("sidebar-collapsed"));
+		appendSessionColumn();
+		fakeTimeouts();
+		holdCtrlShift();
+
+		expect(
+			{
+				expanded,
+				collapsed: jumpHintsByRowKey(),
+			},
+		).toStrictEqual(
+			{
+				expanded:
+				{
+					s1: "1",
+				},
+				collapsed: null,
+			},
+		);
 	});
 });
 

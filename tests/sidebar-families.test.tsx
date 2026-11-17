@@ -343,6 +343,7 @@ describe("sidebar session families", () =>
 		expect(rowTitles(nested)).toStrictEqual(["Child one", "Grandchild one"]);
 		const childWrappers = [...nested.querySelectorAll(":scope > [data-family-child]")];
 		expect(childWrappers.map((wrapper) => wrapper.classList.contains("pl-5"))).toStrictEqual([true, true]);
+		expect(childWrappers.map((wrapper) => wrapper.getAttribute("data-jump-hint-row"))).toStrictEqual(["", ""]);
 		// Upstream stacks nested rows 2px apart (code-list row margin), a 34px pitch like their head.
 		expect(
 			{

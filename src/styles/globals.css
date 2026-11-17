@@ -6118,6 +6118,26 @@ html[data-reduce-motion="true"] [data-cds="SkeletonGroup"][data-hold="delayed"]
 	top: calc(var(--sb-row-h) / 2 + var(--sb-described-tuck) / 2 - var(--sb-described-trim));
 }
 
+/* Upstream's jump-hint keycap: in the session list it centres on the trailing control slot, in place of the
+   status or environment mark, whose space stays. Local's flush --sb-row-ctl-inset puts it 4px from the end. */
+.df-session-list [data-jump-hint-row] > kbd
+{
+	inset-inline-start: auto;
+	inset-inline-end: calc(var(--sb-row-ctl-inset, (var(--sb-row-h) - var(--sb-row-ctl)) / 2) + (var(--sb-row-ctl) -
+		16px) / 2);
+}
+
+/* A two-line described row centres the keycap on its title line. */
+.df-session-list [data-jump-hint-row]:has(.df-described-row):not(:has(.df-accordion-guide)) > .df-jump-hint
+{
+	top: calc(var(--sb-row-h) / 2 + var(--sb-described-tuck) / 2 - var(--sb-described-trim, 0px));
+}
+
+.df-session-list [data-jump-hint-row]:has(> kbd) :is([data-row-decoration], .df-tail-mark)
+{
+	visibility: hidden;
+}
+
 /* Upstream .dframe-fade-label: an overflowing row title fades out instead of ending in an ellipsis. */
 .dframe-fade-label
 {

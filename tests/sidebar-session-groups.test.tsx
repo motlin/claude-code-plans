@@ -23,6 +23,7 @@ import {FizzyLakeContext, FIZZY_LAKE_PARTS, type FizzyLakePart} from "../src/lib
 import {DEFAULT_SESSION_LIST_PREFS, type SessionListPrefs} from "../src/lib/session-groups";
 import type {SessionBucket} from "../src/lib/session-state";
 import {readSidebarState} from "../src/lib/sidebar-store";
+import {clearJumpHints, setJumpHintsForTest} from "../src/lib/sidebar-jump-hints";
 import {holdAnswered, noteAnsweredSummary, releaseAnswered} from "../src/lib/answered-sessions";
 import {__unreadStoreTesting, syncUnseenFromSummaries} from "../src/lib/unread-store";
 import {__awaitingAckTesting, ack} from "../src/lib/awaiting-ack-store";
@@ -390,6 +391,47 @@ describe("sidebar SessionGroups", () =>
 						minHeight: false,
 					}),
 				),
+			},
+		);
+	});
+
+	it("marks every session row wrapper as a jump-hint row and renders a row's keycap last while it has a digit", async () =>
+	{
+		const {container} = await renderGroups(FIXTURE);
+		const wrappers = [...container.querySelectorAll("[data-group-key^=state-] [data-group-rows] > [data-row-key]")];
+
+		act(() =>
+		{
+			setJumpHintsForTest(
+				{
+					w1: "1",
+				},
+			);
+		});
+		const shown = wrappers.map((wrapper) => wrapper.lastElementChild?.outerHTML ?? "");
+		const keycapRow = wrappers
+			.find((wrapper) => wrapper.lastElementChild?.tagName === "KBD")
+			?.getAttribute("data-row-key");
+		act(() =>
+		{
+			clearJumpHints();
+		});
+
+		expect(
+			{
+				marked: wrappers.map((wrapper) => wrapper.getAttribute("data-jump-hint-row")),
+				keycaps: shown.filter((html) => html.startsWith("<kbd")),
+				keycapRow,
+				cleared: container.querySelectorAll("kbd").length,
+			},
+		).toStrictEqual(
+			{
+				marked: wrappers.map(() => ""),
+				keycaps: [
+					'<kbd aria-hidden="true" class="df-jump-hint pointer-events-none absolute top-[calc(var(--sb-row-h)/2)] -translate-y-1/2 start-[calc(var(--sb-row-px)+var(--sb-rail-shift,0px)+(var(--sb-leading-slot)-16px)/2)] flex h-4 min-w-4 items-center justify-center rounded-r2 border-[0.5px] bg-surface-1 px-[3px] font-sans text-[10px] font-medium leading-none text-secondary">1</kbd>',
+				],
+				keycapRow: "w1",
+				cleared: 0,
 			},
 		);
 	});

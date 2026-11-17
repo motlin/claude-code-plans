@@ -69,6 +69,7 @@ import {useOpenRowAutoExpand, useSectionFocusRescue} from "./group-section-focus
 import {ProjectGroupHeader, type ProjectReorder} from "./project-group-header";
 import {UNTITLED_SESSION_TITLE} from "../../lib/session-stand-in-title";
 import {useSidebarSelection} from "./selection-context";
+import {JumpHint} from "./jump-hint";
 import type {SidebarSessionRow} from "./sidebar-session-row";
 import {useSectionHold} from "./use-section-hold";
 import {ROVING_ITEM_PROPS} from "./use-roving-focus";
@@ -570,6 +571,7 @@ export function GroupSection({
 								<div
 									{...dragRowProps?.(row.sessionId)}
 									data-row-key={row.sessionId}
+									data-jump-hint-row=""
 									aria-describedby={awaitingDescribedBy(row)}
 									className="df-drag-shiftable relative"
 								>
@@ -590,6 +592,7 @@ export function GroupSection({
 													familyHead: true,
 												})}
 									/>
+									<JumpHint rowKey={row.sessionId} />
 								</div>
 								{nested !== undefined && (
 									<SessionFamily
@@ -683,6 +686,7 @@ export function GroupSection({
 						<Fragment key={row.sessionId}>
 							<div
 								data-row-key={row.sessionId}
+								data-jump-hint-row=""
 								aria-describedby={awaitingDescribedBy(row)}
 								className="relative"
 							>
@@ -694,6 +698,7 @@ export function GroupSection({
 									place={place}
 									awaitingHintId={awaitingHintId}
 								/>
+								<JumpHint rowKey={row.sessionId} />
 							</div>
 							{members.length > 0 && (
 								<SessionFamily
@@ -1084,6 +1089,7 @@ function SessionFamily({
 						key={child.sessionId}
 						data-family-child
 						data-row-key={child.sessionId}
+						data-jump-hint-row=""
 						aria-describedby={child.bucket === "blocked" ? awaitingHintId : undefined}
 						{...dragRowProps?.(child.sessionId)}
 						data-drag-nested={underPinnedHead ? "" : undefined}
@@ -1098,6 +1104,7 @@ function SessionFamily({
 							awaitingHintId={awaitingHintId}
 							lineage={parentTitle === undefined ? "Nested session" : `Forked from ${parentTitle}`}
 						/>
+						<JumpHint rowKey={child.sessionId} />
 					</div>
 				);
 			})}
