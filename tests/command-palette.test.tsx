@@ -4113,6 +4113,283 @@ describe("CommandPalette shell", () =>
 		});
 	});
 
+	describe("empty view while pending, as upstream's emptyViewPending skeleton", () =>
+	{
+		const recentKey = recentSessionsQueryOptions(PALETTE_RECENT_LIMIT).queryKey;
+		const SESSIONS = [
+			recentSession("s-a", "Alpha task", "blocked"),
+			recentSession("s-b", "Beta task", "working"),
+			recentSession("s-plain", "Plain one"),
+		];
+
+		/** Renders with the recents query unfetched (the stubbed fetch never answers); `land` delivers it. */
+		async function renderPending()
+		{
+			let client: QueryClient | null = null;
+			const composer = await renderPalette(SESSIONS, "/", (queryClient) =>
+			{
+				client = queryClient;
+				queryClient.removeQueries(
+					{
+						queryKey: recentKey,
+					},
+				);
+			});
+			const land = async () =>
+			{
+				await act(async () =>
+				{
+					client?.setQueryData(
+						recentKey,
+						{
+							sessions: SESSIONS,
+							nextCursor: null,
+						},
+					);
+					await Promise.resolve();
+				});
+			};
+			return {
+				composer,
+				land,
+			};
+		}
+
+		function view(dialog: HTMLElement)
+		{
+			const skeleton = dialog.querySelector("[data-palette-skeleton][role=status]");
+			return {
+				skeleton:
+					skeleton === null
+						? null
+						:
+							{
+								hold: skeleton.getAttribute("data-hold"),
+								reason: skeleton.getAttribute("data-hold-reason"),
+								label: skeleton.querySelector("[data-skeleton-label]")?.textContent,
+								last: skeleton === dialog.querySelector("[cmdk-list-sizer]")?.lastElementChild,
+							},
+				groups: groupLabels(dialog),
+				options: within(dialog).queryAllByRole("option").length,
+			};
+		}
+
+		const DELAYED =
+		{
+			hold: "delayed",
+			reason: null,
+			label: "",
+			last: true,
+		};
+
+		const OPENING_VIEW = [
+			["Needs attention", ["Alpha task Awaiting input"]],
+			["Recents", ["Beta task Running", "Plain one"]],
+			["Actions", ["New session"]],
+		];
+
+		it("shows the delayed grouped skeleton and no rows until the recents land, then the full view", async () =>
+		{
+			const {composer, land} = await renderPending();
+			const dialog = await pressOpen(composer);
+			const pending = view(dialog);
+			await land();
+			await within(dialog).findByRole(
+				"option",
+				{
+					name: /Alpha task/,
+				},
+			);
+
+			expect(
+				{
+					pending,
+					settled: view(dialog),
+				},
+			).toStrictEqual(
+				{
+					pending:
+					{
+						skeleton: DELAYED,
+						groups: [],
+						options: 0,
+					},
+					settled:
+					{
+						skeleton: null,
+						groups: OPENING_VIEW,
+						options: 4,
+					},
+				},
+			);
+		});
+
+		it("holds a whitespace query's empty view behind the skeleton too", async () =>
+		{
+			const {composer} = await renderPending();
+			const dialog = await pressOpen(composer);
+			fireEvent.change(
+				within(dialog).getByRole("combobox"),
+				{
+					target:
+					{
+						value: "   ",
+					},
+				},
+			);
+
+			expect(view(dialog)).toStrictEqual(
+				{
+					skeleton: DELAYED,
+					groups: [],
+					options: 0,
+				},
+			);
+		});
+
+		it("gives up waiting for the sessions after upstream's 450ms stage and shows what has arrived", async () =>
+		{
+			vi.useFakeTimers(
+				{
+					shouldAdvanceTime: true,
+				},
+			);
+			try
+			{
+				const {composer} = await renderPending();
+				const dialog = await pressOpen(composer);
+				act(() =>
+				{
+					vi.advanceTimersByTime(300);
+				});
+				const early = view(dialog).skeleton !== null;
+				act(() =>
+				{
+					vi.advanceTimersByTime(150);
+				});
+
+				expect(
+					{
+						early,
+						relaxed: view(dialog),
+					},
+				).toStrictEqual(
+					{
+						early: true,
+						relaxed:
+						{
+							skeleton: null,
+							groups: [["Actions", ["New session"]]],
+							options: 1,
+						},
+					},
+				);
+			}
+			finally
+			{
+				vi.useRealTimers();
+			}
+		});
+
+		it("takes over from the loading shell with the hand-off hold", async () =>
+		{
+			const {composer, land} = await renderPending();
+			setPaletteLoadingShown(true);
+			const dialog = await pressOpen(composer);
+			const handoff = view(dialog);
+			await land();
+			await within(dialog).findByRole(
+				"option",
+				{
+					name: /Alpha task/,
+				},
+			);
+
+			expect(handoff).toStrictEqual(
+				{
+					skeleton:
+					{
+						hold: "none",
+						reason: "handoff",
+						label: "Loading",
+						last: true,
+					},
+					groups: [],
+					options: 0,
+				},
+			);
+		});
+
+		it("opens the first row for an Enter pressed while the skeleton showed", async () =>
+		{
+			const {composer, land} = await renderPending();
+			const dialog = await pressOpen(composer);
+			fireEvent.keyDown(
+				within(dialog).getByRole("combobox"),
+				{
+					key: "Enter",
+					code: "Enter",
+				},
+			);
+			await land();
+
+			await waitFor(() =>
+			{
+				expect(currentRouter?.state.location.pathname).toBe("/session/s-a");
+			});
+		});
+
+		it("drops the queued Enter after another key, a pointer press, or upstream's 1s window", async () =>
+		{
+			const outcomes: Record<string, string | undefined> = {};
+			for (const cancel of ["key", "pointer", "late"] as const)
+			{
+				const {composer, land} = await renderPending();
+				const dialog = await pressOpen(composer);
+				const input = within(dialog).getByRole("combobox");
+				const start = performance.now();
+				const clock = vi.spyOn(performance, "now").mockReturnValue(start);
+				fireEvent.keyDown(
+					input,
+					{
+						key: "Enter",
+						code: "Enter",
+					},
+				);
+				if (cancel === "key")
+				{
+					fireEvent.keyDown(
+						input,
+						{
+							key: "ArrowDown",
+							code: "ArrowDown",
+						},
+					);
+				}
+				if (cancel === "pointer") fireEvent.pointerDown(input);
+				if (cancel === "late") clock.mockReturnValue(start + 1001);
+				await land();
+				await within(dialog).findByRole(
+					"option",
+					{
+						name: /Alpha task/,
+					},
+				);
+				clock.mockRestore();
+				outcomes[cancel] = currentRouter?.state.location.pathname;
+				cleanup();
+			}
+
+			expect(outcomes).toStrictEqual(
+				{
+					key: "/",
+					pointer: "/",
+					late: "/",
+				},
+			);
+		});
+	});
+
 	it("shows upstream's trailing PR #N secondary on an empty-view session, without the time", async () =>
 	{
 		const dialog = await openPalette([
@@ -4677,16 +4954,18 @@ describe("CommandPalette Recents from the per-tab visit MRU", () =>
 			entry("session", "local-alice", "/session/local-alice", "Earlier Alice"),
 		]);
 		const dialog = await openPalette([]);
-		expect(recentsGroup(dialog)).toStrictEqual([
+		// Upstream holds the empty view behind its pending skeleton until the recents settle (or 3s pass).
+		expect(
 			{
-				value: "recent:plan:alice-plan",
-				label: "Alice plan",
+				skeleton: dialog.querySelector("[data-palette-skeleton][role=status]") !== null,
+				recents: recentsGroup(dialog),
 			},
+		).toStrictEqual(
 			{
-				value: "session:local-alice",
-				label: "Earlier Alice",
+				skeleton: true,
+				recents: [],
 			},
-		]);
+		);
 		saveRecents([entry("plan", "new-plan", "/plan/new-plan", "New visit while open")]);
 		act(() =>
 		{

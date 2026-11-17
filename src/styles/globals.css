@@ -5018,6 +5018,12 @@ html[data-reduce-motion="true"] [data-cds="Skeleton"]::after
 	animation: skeleton-breathe 2s ease-in-out calc(var(--skel-i, 0) * 90ms) infinite;
 }
 
+/* Upstream's --cds-skel-reveal-end: a delayed group's wave starts once its reveal has finished (0.5s + 150ms). */
+[data-palette-skeleton][data-hold="delayed"][data-motion="wave"] [data-skeleton]
+{
+	animation-delay: calc(var(--placeholder-reveal-delay, 0.5s) + 0.15s + var(--skel-i, 0) * 90ms);
+}
+
 @media (prefers-reduced-motion: reduce)
 {
 	[data-palette-skeleton][data-motion="wave"] [data-skeleton],

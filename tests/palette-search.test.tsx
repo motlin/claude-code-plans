@@ -973,6 +973,62 @@ describe("⌘K palette live search", () =>
 		expect(optionLabels(dialog)).toContain("See all results for “zqxvjkw”");
 	});
 
+	it("leads the settling skeleton with upstream's 12px spacer when only action rows match", async () =>
+	{
+		const {dialog} = await openPalette();
+		const shape = () =>
+		{
+			const wrapper = dialog.querySelector("[data-palette-skeleton] > .contents");
+			const rows = wrapper?.querySelectorAll(":scope > .h-9") ?? [];
+			return {
+				lead: wrapper?.firstElementChild?.className,
+				rows: rows.length,
+				firstRowIndex: rows[0]
+					?.querySelector<HTMLElement>("[data-skeleton]")
+					?.style.getPropertyValue("--skel-i"),
+			};
+		};
+
+		type(dialog, "settings");
+		const actionsOnly = await awaitRequest();
+		const spaced =
+		{
+			options: optionLabels(dialog),
+			...shape(),
+		};
+		actionsOnly.resolve([]);
+		type(dialog, "refactor");
+		const withSession = await awaitRequest();
+		const plain = shape().lead;
+		withSession.resolve([]);
+
+		expect(
+			{
+				spaced,
+				plain,
+			},
+		).toStrictEqual(
+			{
+				spaced:
+				{
+					options: [
+						"Settings → Usage",
+						"Settings → Appearance",
+						"Settings → Notifications",
+						"Settings → Connectors",
+						"Settings → Skills",
+						"Settings → Plugins",
+						"Settings → Code",
+					],
+					lead: "h-3 w-full shrink-0",
+					rows: 13,
+					firstRowIndex: "0",
+				},
+				plain: "flex shrink-0 items-center gap-2 px-3 py-2 box-border h-9 w-full",
+			},
+		);
+	});
+
 	it("announces the result count politely once the search settles", async () =>
 	{
 		const {dialog} = await openPalette();

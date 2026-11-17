@@ -168,7 +168,7 @@ import {filterRoutines, formatNextRun, routineTitle, sortRoutines} from "../lib/
 import {paletteEmptyKind, paletteEmptyMessage} from "../lib/palette-empty";
 import {PaletteEmptyState} from "./palette-empty-state";
 import {PaletteFilterSpoken} from "./palette-filter-spoken";
-import {PaletteSkeleton} from "./palette-skeleton";
+import {PaletteEmptyViewSkeleton, PaletteSkeleton} from "./palette-skeleton";
 import {paletteFilterLabels, paletteTypeLabels} from "../lib/schema-choices";
 import
 {
@@ -1207,8 +1207,16 @@ function usePaletteHistory():
 	};
 }
 
-/** Upstream's last staged settle timer (`Af`): freeze even if the MRU identity lookups never finish. */
-const PALETTE_SETTLE_FALLBACK_MS = 3000;
+/**
+ * Upstream's staged settle timers (`af` in the palette chunk), started at mount: each stage stops waiting on one
+ * tier of empty-view lists, and the last one freezes the view even if the MRU identity lookups never finish.
+ */
+const PALETTE_SETTLE_STAGES_MS = [300, 450, 3000] as const;
+
+/** Upstream `Hh`: an Enter pressed while the empty view was pending opens its first row if the rows land this soon. */
+const ENTER_AHEAD_MS = 1000;
+/** Keys that never cancel a queued Enter: upstream's capture listener skips Enter and the bare modifiers. */
+const ENTER_AHEAD_IGNORED_KEYS = new Set(["Shift", "Meta", "Control", "Alt"]);
 
 /** Every listed session's mark at the palette's first settle (upstream's `poolMarks`). */
 function freezeMarks(sessions: readonly SessionListItem[], now: number): ReadonlyMap<string, PaletteMarkEntry>
@@ -1427,20 +1435,30 @@ function PalettePopup({
 	// Upstream freezes the open palette at its first settle: marks for every listed row, then the
 	// empty view's membership, so rows never jump groups while it is open. Rows acted on through
 	// row actions read their live mark again. The popup unmounts on close, so reopening starts fresh.
-	const [settleTimedOut, setSettleTimedOut] = useState(false);
+	const [settleStage, setSettleStage] = useState(0);
 	useEffect(() =>
 	{
-		const timer = setTimeout(() =>
-		{
-			setSettleTimedOut(true);
-		}, PALETTE_SETTLE_FALLBACK_MS);
+		// Stage 1 relaxes only lists local doesn't have, so it skips the render.
+		const timers = PALETTE_SETTLE_STAGES_MS.slice(1).map((ms, index) =>
+			setTimeout(() =>
+			{
+				setSettleStage((stage) => Math.max(stage, index + 2));
+			}, ms),
+		);
 		return () =>
 		{
-			clearTimeout(timer);
+			for (const timer of timers) clearTimeout(timer);
 		};
 	}, []);
+	const settleTimedOut = settleStage >= PALETTE_SETTLE_STAGES_MS.length;
+	// Upstream's `er`: sessions stand in for the code-session lists (relaxed at stage 2) and the MRU lookups for the
+	// chat recents (relaxed at stage 3); stage 1's projects/spaces/tasks listings have no local counterpart.
+	const emptyViewReady = (data !== undefined || settleStage >= 2) && (historySettled || settleTimedOut);
 	const [frozenMarks, setFrozenMarks] = useState<ReadonlyMap<string, PaletteMarkEntry> | null>(null);
 	const [frozenView, setFrozenView] = useState<PaletteViewSnapshot | null>(null);
+	// Upstream `[Ti, Ei] = useState(_U)`: an open that began on the loading shell draws its pending skeleton at once.
+	const [skeletonHandoff, setSkeletonHandoff] = useState(paletteLoadingShown);
+	const enterAheadRef = useRef<number | "off" | "none">("none");
 	const [actedIds, setActedIds] = useState<ReadonlySet<string>>(() => new Set());
 	const settled = data !== undefined && (historySettled || settleTimedOut);
 	if (settled && frozenMarks === null) setFrozenMarks(freezeMarks(data.sessions, Date.now()));
@@ -2673,6 +2691,10 @@ function PalettePopup({
 	{
 		setFrozenView(emptyView.view);
 	}
+	// Upstream's `emptyViewPending`: until the opening's empty view settles, the grouped skeleton stands in for it.
+	const emptyViewPending = showEmptyState && !whitespacePrompt && frozenView === null && !emptyViewReady;
+	// Upstream `Ti && !wi && Ei(false)`: only the first show after the loading shell skips the delayed reveal.
+	if (skeletonHandoff && !emptyViewPending) setSkeletonHandoff(false);
 	const showResults =
 		idle && !compose && hints === null && valueSuggestions === null && !showEmptyState && !longPrompt;
 	// Upstream sizes the scroller to its content, but holds it at the cap while the skeleton or empty block fills it.
@@ -2680,6 +2702,38 @@ function PalettePopup({
 	const listCap = LIST_CAP_PX + (footerCollapsed && !coarsePointer ? COLLAPSED_FOOTER_PX : 0);
 	const listHeight = listCapped ? listCap : contentHeight === null ? null : contentHeight + LIST_PADDING_Y_PX;
 	const label = MODE_LABELS[mode];
+	// Upstream's picker gives an untitled actions group with no results group yet its own spacer-led skeleton.
+	const actionRowsOnly =
+		(listing?.length ?? 0) + instant.length + serverRows.length === 0 &&
+		matchedSessionCommands.length + matchedActions.length + matchedCommands.length > 0;
+
+	// Upstream's enter-ahead (`Di`/`onEnterWithNoRows`/`is()`): an Enter in the pending input is stamped, any other
+	// key or a pointer press cancels it, and when the rows land in time the first one opens.
+	function trackEnterAhead(event: KeyboardEvent<HTMLDivElement>)
+	{
+		if (!emptyViewPending) return;
+		if (event.key === "Enter")
+		{
+			const plain = !event.shiftKey && !event.altKey && !event.metaKey && !event.ctrlKey;
+			if (plain && event.target === inputRef.current && enterAheadRef.current === "none")
+			{
+				enterAheadRef.current = performance.now();
+			}
+			return;
+		}
+		if (!ENTER_AHEAD_IGNORED_KEYS.has(event.key)) enterAheadRef.current = "off";
+	}
+	const pendingWasRef = useRef(emptyViewPending);
+	useLayoutEffect(() =>
+	{
+		if (pendingWasRef.current === emptyViewPending) return;
+		pendingWasRef.current = emptyViewPending;
+		if (emptyViewPending) return;
+		const stamp = enterAheadRef.current;
+		enterAheadRef.current = "none";
+		if (typeof stamp !== "number" || performance.now() - stamp > ENTER_AHEAD_MS || query !== "") return;
+		cardRef.current?.querySelector<HTMLElement>("[cmdk-list] [cmdk-item]")?.click();
+	}, [emptyViewPending, query]);
 
 	return (
 		<DialogPopup
@@ -2691,6 +2745,11 @@ function PalettePopup({
 			restoreFocus={restoreFocus}
 			className={PALETTE_POPUP_CLASS}
 			style={PALETTE_POPUP_STYLE}
+			onKeyDownCapture={trackEnterAhead}
+			onPointerDownCapture={() =>
+			{
+				if (emptyViewPending) enterAheadRef.current = "off";
+			}}
 		>
 			<Dialog.Title className="sr-only">Search</Dialog.Title>
 			<div
@@ -2969,7 +3028,7 @@ function PalettePopup({
 							</Command.Group>
 						)}
 
-						{showEmptyState && (
+						{showEmptyState && !emptyViewPending && (
 							<>
 								{emptyView.groups
 									.filter((group) => !whitespacePrompt || group.id === "actions")
@@ -3245,7 +3304,17 @@ function PalettePopup({
 								)}
 							</>
 						)}
-						{showResults && searching && <PaletteSkeleton />}
+						{showResults && searching && (
+							<PaletteSkeleton
+								{...(actionRowsOnly
+									? (
+										{
+											lead: "spacer",
+										} as const)
+									: {})}
+							/>
+						)}
+						{emptyViewPending && <PaletteEmptyViewSkeleton handoff={skeletonHandoff} />}
 					</Command.List>
 					{/* Upstream's live region stays empty beside the long-prompt New session row: search never ran. */}
 					{(showResults || (idle && longPrompt)) && (

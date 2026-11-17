@@ -289,6 +289,10 @@ describe("app chrome design tokens", () =>
 				keyframes: "@keyframes placeholder-reveal { 0% { opacity: 0; } }",
 				delayedRules: [
 					[
+						'[data-palette-skeleton][data-hold="delayed"][data-motion="wave"] [data-skeleton]',
+						"animation-delay: calc(var(--placeholder-reveal-delay, 0.5s) + 0.15s + var(--skel-i, 0) * 90ms);",
+					],
+					[
 						'[data-cds="SkeletonGroup"][data-hold="delayed"]',
 						"animation: placeholder-reveal 0.15s ease-out var(--placeholder-reveal-delay, 0.5s) backwards;",
 					],
