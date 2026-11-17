@@ -430,10 +430,19 @@ type RowAction =
 	  {
 			hint: string;
 			reveals: ExpanderKey;
+	  }
+	|
+	  {
+			hint: string;
+			onPress: () => void;
 	  };
 
 /** The local analogue of upstream's `host.actionOf(category)`. */
-function actionOf(row: ContextLegendRow, available: ReadonlySet<ExpanderKey>): RowAction | null
+function actionOf(
+	row: ContextLegendRow,
+	available: ReadonlySet<ExpanderKey>,
+	openMemory: (() => void) | null,
+): RowAction | null
 {
 	if (row.kind === "deferred") return null;
 	if (row.name === "Skills")
@@ -448,7 +457,12 @@ function actionOf(row: ContextLegendRow, available: ReadonlySet<ExpanderKey>): R
 			to: "/customize/connectors",
 		};
 	}
-	// Upstream says "Edit memory files" only when the row opens an editor; this one reveals the list.
+	// Upstream's `ie` ignores the expander when the row opens the Memory dialog, so it acts even with no files listed.
+	if (row.name === "Memory files" && openMemory !== null)
+		return {
+			hint: "Edit memory files",
+			onPress: openMemory,
+		};
 	if (row.name === "Memory files" && available.has("memory"))
 		return {
 			hint: "View memory files",
@@ -521,7 +535,8 @@ function LegendRow({
 					className={ACTION_ROW_CLASS}
 					onClick={() =>
 					{
-						onReveal(action.reveals);
+						if ("onPress" in action) action.onPress();
+						else onReveal(action.reveals);
 					}}
 				>
 					{cells}
@@ -557,12 +572,15 @@ export function ContextBreakdownBody({
 	liveTokens,
 	homeRoot,
 	mcpServers,
+	openMemory = null,
 }: {
 	breakdown: ContextBreakdown;
 	liveTokens: number | null;
 	homeRoot: string;
 	/** The connectors the session can manage; their MCP tool rows link to the connector page. */
 	mcpServers: readonly McpServerSummary[];
+	/** Opens the session's Memory dialog from the Memory files row; null reveals the listed files instead. */
+	openMemory?: (() => void) | null;
 })
 {
 	const {legend, meterCategories, meterValues, barTotal, usedTokens, usedPct} = buildContextLegend(
@@ -587,7 +605,7 @@ export function ContextBreakdownBody({
 				key={key}
 				row={row}
 				rawMaxTokens={breakdown.rawMaxTokens}
-				action={actionOf(row, available)}
+				action={actionOf(row, available, openMemory)}
 				onReveal={reveal}
 			/>
 		));

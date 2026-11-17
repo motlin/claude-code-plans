@@ -2940,6 +2940,129 @@ describe("Context card breakdown", () =>
 		);
 	});
 
+	describe("Memory dialog opener", () =>
+	{
+		function memoryRow(): HTMLElement
+		{
+			return within(body()).getByRole(
+				"button",
+				{
+					name: /^Memory files.*memory files$/,
+				},
+			);
+		}
+
+		it("opens the Memory dialog from the Memory files row instead of revealing the list", async () =>
+		{
+			const openMemoryDialog = vi.fn<() => void>();
+			await renderCards(
+				{
+					...INPUTS,
+					openMemoryDialog,
+				},
+			);
+
+			const row = memoryRow();
+			fireEvent.click(row);
+			expect(
+				{
+					hint: row.querySelector(".sr-only")?.textContent,
+					className: row.className,
+					opened: openMemoryDialog.mock.calls.length,
+					expanded: toggle("Memory files").getAttribute("aria-expanded"),
+				},
+			).toStrictEqual(
+				{
+					hint: "Edit memory files",
+					className:
+						"group/press relative text-start flex min-h-6 w-full min-w-0 items-center gap-2 px-1 text-[12px]/[15px] rounded focus-visible:outline-hidden focus-visible:shadow-focus hover:bg-fill-ghost-hover active:bg-alpha-2",
+					opened: 1,
+					expanded: "false",
+				},
+			);
+		});
+
+		it("keeps the Edit memory files action when the breakdown lists no memory files", async () =>
+		{
+			await renderCards(
+				{
+					...INPUTS,
+					breakdown:
+					{
+						...BREAKDOWN,
+						memoryFiles: [],
+					},
+					openMemoryDialog: vi.fn<() => void>(),
+				},
+			);
+
+			expect(memoryRow().querySelector(".sr-only")?.textContent).toBe("Edit memory files");
+		});
+
+		it("renders a plain Memory files row with neither an opener nor listed files", async () =>
+		{
+			await renderCards(
+				{
+					...INPUTS,
+					breakdown:
+					{
+						...BREAKDOWN,
+						memoryFiles: [],
+					},
+				},
+			);
+
+			const row = [...body().querySelectorAll("[data-rail-context-row]")].find(
+				(candidate) => candidate.children[1]?.textContent === "Memory files",
+			);
+			expect(
+				{
+					tag: row?.tagName,
+					text: row?.textContent,
+				},
+			).toStrictEqual(
+				{
+					tag: "DIV",
+					text: "Memory files6.3k0.6%",
+				},
+			);
+		});
+
+		it("shows Edit memory files in a tooltip above the row on hover", async () =>
+		{
+			vi.useFakeTimers(
+				{
+					toFake: ["setTimeout", "clearTimeout"],
+				},
+			);
+			try
+			{
+				await renderCards(
+					{
+						...INPUTS,
+						openMemoryDialog: vi.fn<() => void>(),
+					},
+				);
+
+				fireEvent.pointerEnter(memoryRow().parentElement!);
+				act(() =>
+				{
+					vi.advanceTimersByTime(300);
+				});
+				expect(
+					[...document.querySelectorAll('[role="tooltip"]')].map((tip) => [
+						tip.textContent,
+						tip.getAttribute("data-side"),
+					]),
+				).toStrictEqual([["Edit memory files", "top"]]);
+			}
+			finally
+			{
+				vi.useRealTimers();
+			}
+		});
+	});
+
 	it("ignores a held Enter's auto-repeat on an expander toggle", async () =>
 	{
 		await renderCards(INPUTS);

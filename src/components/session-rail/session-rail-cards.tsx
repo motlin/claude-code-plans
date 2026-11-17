@@ -84,6 +84,8 @@ export interface SessionRailInputs
 	usage: ComposerUsage | null;
 	/** The newest `/context` run's per-category breakdown, null when none or stale. */
 	breakdown: ContextBreakdown | null;
+	/** Opens the Memory dialog; null when this session page can't show it (upstream's panel-store `openMemoryDialog`). */
+	openMemoryDialog?: (() => void) | null;
 	/** The Context card's Compact session row: its availability and the `/compact` send. */
 	compact?:
 		|
@@ -381,6 +383,7 @@ function contextCard(inputs: SessionRailInputs, connectors: readonly McpServerSu
 						liveTokens={liveTokens}
 						homeRoot={inputs.homeRoot}
 						mcpServers={connectors}
+						openMemory={inputs.openMemoryDialog ?? null}
 					/>
 					{compactRow(inputs, breakdown.autoCompactThreshold)}
 					<ContextUpdated updatedAt={breakdown.fetchedAt} working={working} source={breakdown.source} />

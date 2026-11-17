@@ -1811,6 +1811,7 @@ function SessionView({
 		setOutputStyleDialogFor(null);
 	}, []);
 	// Upstream's Memory dialog, per session: opening it refetches the context breakdown that lists the files.
+	// `/memory` and the rail's Memory files row share this opener (upstream's `vv`).
 	const [memoryDialogFor, setMemoryDialogFor] = useState<string | null>(null);
 	const composerMemory = useMemo(
 		() => (
@@ -2549,6 +2550,7 @@ function SessionView({
 										canToggleRemoteControl: promptBehavior.hasLivePane && herdr.writesEnabled,
 										usage: composerChin.usage,
 										breakdown: contextBreakdown,
+										openMemoryDialog: composerMemory.open,
 										compact:
 										{
 											state: railCompact,
