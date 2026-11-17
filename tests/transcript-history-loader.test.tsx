@@ -69,20 +69,25 @@ function renderLoader(cached: TranscriptData)
 	queryClient.setQueryData(sessionQueryKeys.transcript("sess-1"), cached);
 	const view = render(
 		<QueryClientProvider client={queryClient}>
-			<TranscriptHistoryLoader sessionId="sess-1" startIndex={cached.startIndex} />
+			<TranscriptHistoryLoader
+				sessionId="sess-1"
+				startIndex={cached.startIndex}
+				chainVersion={cached.chainVersion}
+			/>
 		</QueryClientProvider>,
 	);
-	const rerenderWithStartIndex = (startIndex: number) =>
+	const rerenderWithWindow = (startIndex: number, chainVersion = cached.chainVersion) =>
 	{
 		view.rerender(
 			<QueryClientProvider client={queryClient}>
-				<TranscriptHistoryLoader sessionId="sess-1" startIndex={startIndex} />
+				<TranscriptHistoryLoader sessionId="sess-1" startIndex={startIndex} chainVersion={chainVersion} />
 			</QueryClientProvider>,
 		);
 	};
 	return {
 		queryClient,
-		rerenderWithStartIndex,
+		rerenderWithStartIndex: rerenderWithWindow,
+		rerenderWithWindow,
 	};
 }
 
@@ -102,12 +107,14 @@ function mockEarlierPage(page: TranscriptData)
 	);
 }
 
-/** Serves a two-record page for whatever `?before=` the client asks for. */
+/** Serves the two records before whatever `?beforeUuid=u-<index>` the client asks for. */
 function mockPagedHistory()
 {
 	return vi.spyOn(globalThis, "fetch").mockImplementation(async (input) =>
 	{
-		const before = Number(new URL(String(input), "http://localhost").searchParams.get("before"));
+		const before = Number(
+			new URL(String(input), "http://localhost").searchParams.get("beforeUuid")?.slice("u-".length),
+		);
 		const startIndex = Math.max(0, before - 2);
 		const page: TranscriptData =
 		{
@@ -384,6 +391,7 @@ describe("TranscriptHistoryLoader", () =>
 		const {rerenderWithStartIndex} = renderLoader(
 			{
 				...TAIL,
+				records: [record(6), record(7)],
 				startIndex: 6,
 			},
 		);
@@ -412,6 +420,7 @@ describe("TranscriptHistoryLoader", () =>
 		const {rerenderWithStartIndex} = renderLoader(
 			{
 				...TAIL,
+				records: [record(6), record(7)],
 				startIndex: 6,
 			},
 		);
@@ -429,6 +438,59 @@ describe("TranscriptHistoryLoader", () =>
 			{
 				fetches: [],
 				status: null,
+			},
+		);
+	});
+
+	it("goes away without an error once the window's cursor is lost, and comes back for a new chain", async () =>
+	{
+		const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async () =>
+			Promise.resolve(
+				new Response(
+					JSON.stringify(
+						{
+							found: false,
+						},
+					),
+					{
+						status: 404,
+						headers:
+						{
+							"Content-Type": "application/json",
+						},
+					},
+				),
+			),
+		);
+		const {rerenderWithWindow} = renderLoader(TAIL);
+
+		intersect(false);
+		intersect(true);
+		await waitFor(() =>
+		{
+			expect(screen.queryByTestId("transcript-history-loader")).toBeNull();
+		});
+		const lost =
+		{
+			fetches: fetchSpy.mock.calls.length,
+			text: document.body.textContent,
+		};
+		rerenderWithWindow(2, "v2");
+
+		expect(
+			{
+				lost,
+				newChain: screen.queryByTestId("transcript-history-loader") !== null,
+			},
+		).toStrictEqual(
+			{
+				// u-2 and u-3 are the only cursor rows held: one request, one retry, then upstream stops quietly.
+				lost:
+				{
+					fetches: 2,
+					text: "",
+				},
+				newChain: true,
 			},
 		);
 	});

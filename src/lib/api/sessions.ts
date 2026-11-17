@@ -1,6 +1,16 @@
 import {z} from "zod";
-import {queryOptions, infiniteQueryOptions, useMutation, useQueryClient, type QueryClient} from "@tanstack/react-query";
-import {apiFetch} from "./client";
+import
+{
+	queryOptions,
+	infiniteQueryOptions,
+	skipToken,
+	useMutation,
+	useQuery,
+	useQueryClient,
+	type QueryClient,
+} from "@tanstack/react-query";
+import {apiFetch, apiFetchOptional} from "./client";
+import {cursorUuid} from "../transcript-cursor";
 import {JsonValueSchema} from "../json-value-schema";
 import {SlowCommandSchema} from "../slow-commands";
 import {SessionViewedStateSchema} from "./viewed-state";
@@ -480,6 +490,8 @@ export const sessionQueryKeys =
 	active: (activeTimeoutMs?: number) => [...ACTIVE_SESSIONS_QUERY_ROOT, activeTimeoutMs] as const,
 	detail: (id: string) => [...SESSION_QUERY_ROOT, id] as const,
 	transcript: (id: string) => [...SESSION_QUERY_ROOT, id, "transcript"] as const,
+	// A sibling of transcript, not a child: invalidating the transcript must not touch it.
+	earlierCursorLost: (id: string) => [...SESSION_QUERY_ROOT, id, "earlier-cursor-lost"] as const,
 	resources: (id: string) => [...SESSION_QUERY_ROOT, id, "resources"] as const,
 	apiRequests: (id: string) => [...SESSION_QUERY_ROOT, id, "api-requests"] as const,
 	// A sibling of apiRequests, not a child: a request's tail never changes, so an appended request mustn't refetch it.
@@ -827,73 +839,200 @@ export const sessionUsageStatsQueryOptions = (id: string) =>
 	);
 
 /**
- * Pages already on the wire, keyed by session and by the window edge they were
+ * What one `fetchEarlierTranscript` call came to, named after upstream's
+ * load-earlier outcome notes (`cef1e6037` `fetchEarlierTranscript`).
+ */
+export type EarlierTranscriptOutcome =
+	| "merged"
+	| "nothing_above"
+	| "cursor_recovered"
+	| "cursor_lost"
+	| "discarded_in_flight";
+
+/** Retries after the first lost cursor before paging gives up (upstream `ra`). */
+const EARLIER_CURSOR_RETRIES = 3;
+
+/**
+ * Pages already on the wire, keyed by session and by the cursor they were
  * asked for. Two independent readers page backwards -- the scroll sentinel at
  * the top of the transcript and a drawer jump walking towards its message --
  * and they read the same window, so without this they would both ask
  * for the same page at the same time. Held per QueryClient so one client's
  * request is never handed to another's cache.
  */
-const earlierTranscriptRequests = new WeakMap<QueryClient, Map<string, Promise<void>>>();
+const earlierTranscriptRequests = new WeakMap<QueryClient, Map<string, Promise<EarlierTranscriptOutcome>>>();
 
-function inFlightEarlierPages(queryClient: QueryClient): Map<string, Promise<void>>
+function inFlightEarlierPages(queryClient: QueryClient): Map<string, Promise<EarlierTranscriptOutcome>>
 {
 	const existing = earlierTranscriptRequests.get(queryClient);
 	if (existing) return existing;
-	const created = new Map<string, Promise<void>>();
+	const created = new Map<string, Promise<EarlierTranscriptOutcome>>();
 	earlierTranscriptRequests.set(queryClient, created);
 	return created;
+}
+
+type TranscriptWindowKey = Pick<TranscriptData, "startIndex" | "chainVersion">;
+
+/** Names the window a lost cursor stopped paging at; any later window (a landed page, a new chain) pages again. */
+function lostCursorMarker(window: TranscriptWindowKey): string
+{
+	return `${window.chainVersion}:${window.startIndex}`;
+}
+
+/**
+ * Whether the server holds records before `window` that paging can still
+ * reach (upstream `hasEarlierTranscript`): false at the start of the file, and
+ * false once this window's cursor was lost for good.
+ */
+export function hasEarlierTranscript(queryClient: QueryClient, sessionId: string, window: TranscriptWindowKey): boolean
+{
+	return (
+		window.startIndex > 0 &&
+		queryClient.getQueryData(sessionQueryKeys.earlierCursorLost(sessionId)) !== lostCursorMarker(window)
+	);
+}
+
+/** `hasEarlierTranscript` for a component, re-rendering when the cursor is lost (upstream's `AH` bump). */
+export function useHasEarlierTranscript(sessionId: string, window: TranscriptWindowKey): boolean
+{
+	const {data: lost} = useQuery<string>(
+		{
+			queryKey: sessionQueryKeys.earlierCursorLost(sessionId),
+			queryFn: skipToken,
+			staleTime: Infinity,
+			gcTime: Infinity,
+		},
+	);
+	return window.startIndex > 0 && lost !== lostCursorMarker(window);
+}
+
+function uuidOf(record: Record<string, unknown>): string | undefined
+{
+	const uuid = record["uuid"];
+	return typeof uuid === "string" ? uuid : undefined;
+}
+
+/**
+ * The page before `cursor`, retrying with the next cursor row the client holds
+ * while the server no longer has the one asked for. `page` is undefined once
+ * the cursor is lost for good; `anchor` is the uuid the page ends before.
+ */
+async function fetchPageBefore(
+	sessionId: string,
+	held: readonly Record<string, unknown>[],
+	cursor: string,
+): Promise<
+{
+	page: TranscriptData | undefined;
+	anchor: string;
+	retries: number;
+}>
+{
+	let anchor = cursor;
+	for (let retries = 0; ; retries += 1)
+	{
+		const page = await apiFetchOptional(
+			`/api/sessions/${encodeURIComponent(sessionId)}/transcript?beforeUuid=${encodeURIComponent(anchor)}`,
+			TranscriptResponse,
+		);
+		const next =
+			page === null && retries < EARLIER_CURSOR_RETRIES
+				? cursorUuid(held, held.findIndex((record) => uuidOf(record) === anchor) + 1)
+				: undefined;
+		if (next === undefined)
+		{
+			return {
+				page: page ?? undefined,
+				anchor,
+				retries,
+			};
+		}
+		anchor = next;
+	}
 }
 
 /**
  * Pull the page of records immediately before the cached window and splice it
  * in, so scrolling back through a long session keeps walking towards its first
- * message. A no-op once the window already starts at record 0. Callers that
- * overlap on the same page share one request; each landed page moves the
- * window, so the next call is a fresh request for the page before it.
+ * message. The page is asked for by the uuid of the window's first cursor row,
+ * which the server resolves against the file as it is now; a uuid the file no
+ * longer has is retried with the next cursor row, up to three times, and then
+ * paging stops for this window (`hasEarlierTranscript` goes false). A no-op
+ * once there is nothing earlier to reach. Callers that overlap on the same page
+ * share one request; each landed page moves the window, so the next call is a
+ * fresh request for the page before it.
  */
-export async function fetchEarlierTranscript(queryClient: QueryClient, sessionId: string): Promise<void>
+export async function fetchEarlierTranscript(
+	queryClient: QueryClient,
+	sessionId: string,
+): Promise<EarlierTranscriptOutcome | undefined>
 {
 	const queryKey = sessionQueryKeys.transcript(sessionId);
 	const cached = queryClient.getQueryData<TranscriptData>(queryKey);
-	if (!cached || cached.startIndex === 0) return Promise.resolve();
+	if (!cached || !hasEarlierTranscript(queryClient, sessionId, cached)) return undefined;
+	const markLost = (): "cursor_lost" =>
+	{
+		queryClient.setQueryData(sessionQueryKeys.earlierCursorLost(sessionId), lostCursorMarker(cached));
+		return "cursor_lost";
+	};
+
+	const cursor = cursorUuid(cached.records) ?? cached.records.map(uuidOf).find((uuid) => uuid !== undefined);
+	if (cursor === undefined) return markLost();
 
 	const inFlight = inFlightEarlierPages(queryClient);
-	const before = cached.startIndex;
-	const key = `${sessionId}:${before}`;
+	const key = `${sessionId}:${cursor}`;
 	const existing = inFlight.get(key);
 	if (existing) return existing;
 
-	const request = apiFetch(
-		`/api/sessions/${encodeURIComponent(sessionId)}/transcript?before=${before}`,
-		TranscriptResponse,
-	)
-		.then((page): "merged" | "chain-changed" | "page-newer" =>
+	const request = fetchPageBefore(sessionId, cached.records, cursor)
+		.then(({page, anchor, retries}): EarlierTranscriptOutcome | "moved" | "page-newer" =>
 		{
+			if (page === undefined) return markLost();
 			const current = queryClient.getQueryData<TranscriptData>(queryKey);
-			if (current && current.chainVersion !== cached.chainVersion) return "chain-changed";
+			const anchorAt = current?.records.findIndex((record) => uuidOf(record) === anchor) ?? -1;
+			if (!current || current.chainVersion !== cached.chainVersion || anchorAt === -1) return "moved";
 			if (page.chainVersion !== cached.chainVersion) return "page-newer";
-			queryClient.setQueryData<TranscriptData>(queryKey, (old) => (old ? mergeTranscriptData(old, page) : page));
-			return "merged";
+			// The page ends just before the anchor's line as the file is now, so the
+			// window is re-keyed from there: rows the cache held ahead of the anchor
+			// are either on the page again or gone from the file.
+			const rebased: TranscriptData =
+			{
+				...current,
+				records: current.records.slice(anchorAt),
+				startIndex: page.startIndex + page.records.length,
+				precedingMessageCount:
+					page.records.length === 0 ? page.precedingMessageCount : current.precedingMessageCount,
+			};
+			queryClient.setQueryData<TranscriptData>(queryKey, mergeTranscriptData(rebased, page));
+			if (page.records.length === 0) return "nothing_above";
+			return retries > 0 ? "cursor_recovered" : "merged";
 		})
 		.finally(() =>
 		{
 			inFlight.delete(key);
 		})
-		.then(async (outcome) =>
+		.then(async (outcome): Promise<EarlierTranscriptOutcome> =>
 		{
-			// A page cut under a different chain than the cache's carries the
-			// wrong hidden rows, so it is dropped (upstream `discarded_in_flight`).
-			// When the cache already moved to the new chain, page back from its
-			// new window; when only the server has, refetch the tail so the cache
-			// catches up and scrolling pages again from there.
-			if (outcome === "chain-changed") await fetchEarlierTranscript(queryClient, sessionId);
+			// A page cut under a different chain or window than the cache's
+			// carries the wrong rows, so it is dropped (upstream
+			// `discarded_in_flight`). When the cache already moved, page back from
+			// its new window; when only the server has, refetch the tail so the
+			// cache catches up and scrolling pages again from there.
+			if (outcome === "moved")
+			{
+				await fetchEarlierTranscript(queryClient, sessionId);
+				return "discarded_in_flight";
+			}
 			if (outcome === "page-newer")
+			{
 				await queryClient.invalidateQueries(
 					{
 						queryKey,
 					},
 				);
+				return "discarded_in_flight";
+			}
+			return outcome;
 		});
 	inFlight.set(key, request);
 	return request;

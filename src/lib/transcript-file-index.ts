@@ -32,6 +32,8 @@ export interface TranscriptFileIndex
 	ends: number[];
 	/** Each line's `chainSkeleton`, or undefined when the line is not a JSON object. */
 	skeletons: (Record<string, unknown> | undefined)[];
+	/** Line index of each uuid in the file; a uuid on several lines maps to its last. */
+	uuidLines: Map<string, number>;
 	/** Whether each line is a countable message (message-count.ts), on the chain or not. */
 	countable: boolean[];
 	/**
@@ -93,7 +95,10 @@ function appendLines(index: TranscriptFileIndex, buffer: Buffer, base: number): 
 			const record = parseTranscriptLine(line);
 			index.starts.push(base + position);
 			index.ends.push(base + end);
-			index.skeletons.push(record === undefined ? undefined : chainSkeleton(record));
+			const skeleton = record === undefined ? undefined : chainSkeleton(record);
+			index.skeletons.push(skeleton);
+			const uuid = skeleton?.["uuid"];
+			if (typeof uuid === "string") index.uuidLines.set(uuid, index.starts.length - 1);
 			index.countable.push(isCountableMessageRecord(record));
 			collectClaudeChapters(index.chapters, record, index.starts.length - 1);
 			index.partialTail = newline === -1;
@@ -152,6 +157,7 @@ function build(
 		starts: [],
 		ends: [],
 		skeletons: [],
+		uuidLines: new Map(),
 		countable: [],
 		countableBefore: [0],
 		abandoned:
@@ -187,9 +193,10 @@ function extend(fd: number, index: TranscriptFileIndex, size: number, mtimeMs: n
 	{
 		index.starts.pop();
 		index.ends.pop();
-		index.skeletons.pop();
+		const uuid = index.skeletons.pop()?.["uuid"];
 		index.countable.pop();
 		const popped = index.starts.length;
+		if (typeof uuid === "string" && index.uuidLines.get(uuid) === popped) index.uuidLines.delete(uuid);
 		index.chapters = index.chapters.filter((chapter) => chapter.recordIndex !== popped);
 		index.partialTail = false;
 	}

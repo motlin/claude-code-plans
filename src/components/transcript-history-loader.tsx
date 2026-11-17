@@ -1,7 +1,7 @@
 import {useQueryClient} from "@tanstack/react-query";
 import {Loader2} from "lucide-react";
 import {useCallback, useEffect, useRef, useState} from "react";
-import {fetchEarlierTranscript} from "../lib/api/sessions";
+import {fetchEarlierTranscript, useHasEarlierTranscript} from "../lib/api/sessions";
 import {CHAT_COLUMN_CLASS} from "../lib/transcript-width";
 import {findScrollContainer, toObserverRoot} from "./scroll-container";
 
@@ -10,6 +10,8 @@ interface TranscriptHistoryLoaderProps
 	sessionId: string;
 	/** Index of the oldest record the client holds; 0 means nothing is missing. */
 	startIndex: number;
+	/** The cached window's chain version; a lost cursor stops paging only for the window it was lost from. */
+	chainVersion: string;
 }
 
 /**
@@ -19,9 +21,16 @@ interface TranscriptHistoryLoaderProps
  * claude.ai/code it loads silently, showing only a spinner while a page is in
  * flight.
  */
-export function TranscriptHistoryLoader({sessionId, startIndex}: TranscriptHistoryLoaderProps)
+export function TranscriptHistoryLoader({sessionId, startIndex, chainVersion}: TranscriptHistoryLoaderProps)
 {
 	const queryClient = useQueryClient();
+	const hasEarlier = useHasEarlierTranscript(
+		sessionId,
+		{
+			startIndex,
+			chainVersion,
+		},
+	);
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState("");
 	const inFlightRef = useRef(false);
@@ -124,9 +133,10 @@ export function TranscriptHistoryLoader({sessionId, startIndex}: TranscriptHisto
 			cancelAnimationFrame(frame);
 			observer.disconnect();
 		};
-	}, [loadEarlier, startIndex]);
+	}, [loadEarlier, startIndex, hasEarlier]);
 
-	if (startIndex === 0) return null;
+	// Nothing earlier: the window starts at the file's first record, or its cursor was lost (upstream stops quietly).
+	if (!hasEarlier) return null;
 
 	return (
 		<div

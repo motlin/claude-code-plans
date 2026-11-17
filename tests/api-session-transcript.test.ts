@@ -314,4 +314,75 @@ describe("GET /api/sessions/$id/transcript", () =>
 		expect(body.records).toStrictEqual(records);
 		expect(body.startIndex).toBe(0);
 	});
+	it("serves the page before a uuid, answers 404 for a uuid the file lacks and 400 for a malformed one", async () =>
+	{
+		const records = Array.from(
+			{
+				length: 4,
+			},
+			(_, i) => (
+			{
+				type: "user",
+				uuid: `u-${i}`,
+				message:
+				{
+					role: "user",
+					content: `m${i}`,
+				},
+			}),
+		);
+		seedSession("by-uuid", records);
+
+		const found = await getTranscript("by-uuid", "?beforeUuid=u-2");
+		const missing = await getTranscript("by-uuid", "?beforeUuid=u-9");
+		const spaced = await getTranscript("by-uuid", "?beforeUuid=u%202");
+		const long = await getTranscript("by-uuid", `?beforeUuid=${"a".repeat(200)}`);
+		const empty = await getTranscript("by-uuid", "?beforeUuid=");
+
+		expect(
+			{
+				found: [
+					found.status,
+					(
+						(await found.json()) as
+						{
+							records: unknown[];
+						}
+					).records,
+				],
+				missing: [missing.status, await missing.json()],
+				spaced: [spaced.status, await spaced.json()],
+				long: [long.status, await long.json()],
+				empty: [empty.status, await empty.json()],
+			},
+		).toStrictEqual(
+			{
+				found: [200, records.slice(0, 2)],
+				missing: [
+					404,
+					{
+						found: false,
+					},
+				],
+				spaced: [
+					400,
+					{
+						error: "invalid_before_uuid",
+					},
+				],
+				long: [
+					400,
+					{
+						error: "invalid_before_uuid",
+					},
+				],
+				empty: [
+					400,
+					{
+						error: "invalid_before_uuid",
+					},
+				],
+			},
+		);
+	});
 });

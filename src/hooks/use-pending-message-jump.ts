@@ -20,8 +20,11 @@ interface PendingJump
  * session survives being copied out of the address bar. Each page that lands
  * grows `uuidToLine`, which re-runs this effect, so the request walks backwards
  * one page at a time until its message is in hand -- and gives up on its own
- * once the window reaches the top of the file.
+ * once nothing earlier is reachable: the window reaches the top of the file, or
+ * its cursor was lost.
  *
+ * @param hasEarlier - Whether paging back can still reach earlier records
+ *   (`useHasEarlierTranscript`).
  * @param uuidToLine - uuid to record index for every record the client holds,
  *   from `processTranscript`. It answers both questions the request asks: is the
  *   message here, and which record is it, since a record index is what names a
@@ -30,7 +33,7 @@ interface PendingJump
  */
 export function usePendingMessageJump(
 	sessionId: string,
-	windowStartIndex: number,
+	hasEarlier: boolean,
 	uuidToLine: ReadonlyMap<string, number>,
 ): (uuid: string) => void
 {
@@ -52,9 +55,10 @@ export function usePendingMessageJump(
 		const recordIndex = uuidToLine.get(pending.uuid);
 		if (recordIndex === undefined)
 		{
-			// `windowStartIndex === 0` is the terminating case: the whole file is
-			// loaded, so the message simply does not belong to this session.
-			if (windowStartIndex === 0 || inFlightRef.current) return undefined;
+			// Nothing earlier is the terminating case: the whole file is loaded, so
+			// the message does not belong to this session, or the cursor was lost
+			// and no page can reach it.
+			if (!hasEarlier || inFlightRef.current) return undefined;
 			inFlightRef.current = true;
 			void fetchEarlierTranscript(queryClient, sessionId).finally(() =>
 			{
@@ -71,7 +75,7 @@ export function usePendingMessageJump(
 		{
 			cancelAnimationFrame(frame);
 		};
-	}, [pending, windowStartIndex, uuidToLine, sessionId, queryClient]);
+	}, [pending, hasEarlier, uuidToLine, sessionId, queryClient]);
 
 	return useCallback((uuid: string) =>
 	{

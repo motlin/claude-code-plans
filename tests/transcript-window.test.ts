@@ -3,6 +3,7 @@ import {QueryClient} from "@tanstack/react-query";
 import
 {
 	fetchEarlierTranscript,
+	hasEarlierTranscript,
 	mergeTranscriptData,
 	sessionQueryKeys,
 	transcriptEndIndex,
@@ -32,6 +33,40 @@ function record(index: number): Record<string, unknown>
 			content: `m${index}`,
 		},
 	};
+}
+
+/** The record index named by a request's `?beforeUuid=u-<index>`. */
+function beforeIndex(input: unknown): number
+{
+	return Number(new URL(String(input)).searchParams.get("beforeUuid")?.slice("u-".length));
+}
+
+function jsonResponse(body: unknown, status = 200): Response
+{
+	return new Response(
+		JSON.stringify(body),
+		{
+			status,
+			headers:
+			{
+				"Content-Type": "application/json",
+			},
+		},
+	);
+}
+
+function requestedPaths(fetchSpy: {
+	mock:
+	{
+		calls: unknown[][];
+	};
+}): string[]
+{
+	return fetchSpy.mock.calls.map((call) =>
+	{
+		const url = new URL(String(call[0]));
+		return url.pathname + url.search;
+	});
 }
 
 function window_(startIndex: number, count: number, overrides?: Partial<TranscriptData>)
@@ -260,7 +295,7 @@ describe("fetchEarlierTranscript", () =>
 				const url = new URL(String(call[0]));
 				return url.pathname + url.search;
 			}),
-		).toStrictEqual(["/api/sessions/sess-1/transcript?before=3"]);
+		).toStrictEqual(["/api/sessions/sess-1/transcript?beforeUuid=u-3"]);
 		expect(queryClient.getQueryData<TranscriptData>(queryKey)).toStrictEqual(
 			{
 				records: [record(0), record(1), record(2), record(3), record(4)],
@@ -334,7 +369,7 @@ describe("fetchEarlierTranscript", () =>
 		queryClient.setQueryData(queryKey, window_(4, 1));
 		vi.spyOn(globalThis, "fetch").mockImplementation(async (input) =>
 		{
-			const before = Number(new URL(String(input)).searchParams.get("before"));
+			const before = beforeIndex(input);
 			return Promise.resolve(
 				new Response(
 					JSON.stringify(window_(before - 2, 2)),
@@ -379,7 +414,7 @@ describe("fetchEarlierTranscript", () =>
 		};
 		const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async (input) =>
 		{
-			const before = Number(new URL(String(input)).searchParams.get("before"));
+			const before = beforeIndex(input);
 			if (before === 3)
 			{
 				return new Promise<Response>((resolve) =>
@@ -444,7 +479,10 @@ describe("fetchEarlierTranscript", () =>
 				const url = new URL(String(call[0]));
 				return url.pathname + url.search;
 			}),
-		).toStrictEqual(["/api/sessions/sess-1/transcript?before=3", "/api/sessions/sess-1/transcript?before=6"]);
+		).toStrictEqual([
+			"/api/sessions/sess-1/transcript?beforeUuid=u-3",
+			"/api/sessions/sess-1/transcript?beforeUuid=u-6",
+		]);
 		expect(queryClient.getQueryData<TranscriptData>(queryKey)).toStrictEqual(
 			{
 				records: [record(4), record(5), record(6), record(7)],
@@ -501,5 +539,241 @@ describe("fetchEarlierTranscript", () =>
 		await fetchEarlierTranscript(queryClient, "sess-1");
 
 		expect(fetchSpy.mock.calls).toStrictEqual([]);
+	});
+});
+
+describe("fetchEarlierTranscript lost cursors", () =>
+{
+	const NOT_FOUND =
+	{
+		found: false,
+	};
+
+	it("pages before the window's first cursor row by uuid", async () =>
+	{
+		const queryClient = new QueryClient();
+		queryClient.setQueryData(sessionQueryKeys.transcript("sess-1"), window_(10, 3));
+		const fetchSpy = vi
+			.spyOn(globalThis, "fetch")
+			.mockImplementation(async () => Promise.resolve(jsonResponse(window_(8, 2))));
+
+		const outcome = await fetchEarlierTranscript(queryClient, "sess-1");
+
+		expect(
+			{
+				outcome,
+				paths: requestedPaths(fetchSpy),
+			},
+		).toStrictEqual(
+			{
+				outcome: "merged",
+				paths: ["/api/sessions/sess-1/transcript?beforeUuid=u-10"],
+			},
+		);
+	});
+
+	it("retries with the next held cursor row after a lost one and keeps the page", async () =>
+	{
+		const queryClient = new QueryClient();
+		const queryKey = sessionQueryKeys.transcript("sess-1");
+		queryClient.setQueryData(queryKey, window_(10, 3));
+		const responses = [jsonResponse(NOT_FOUND, 404), jsonResponse(window_(8, 2))];
+		const fetchSpy = vi
+			.spyOn(globalThis, "fetch")
+			.mockImplementation(async () => Promise.resolve(responses.shift()!));
+
+		const outcome = await fetchEarlierTranscript(queryClient, "sess-1");
+
+		// u-10 is gone from the file: the page lands ahead of u-11, and u-10 goes with it.
+		expect(
+			{
+				outcome,
+				paths: requestedPaths(fetchSpy),
+				window: queryClient.getQueryData<TranscriptData>(queryKey),
+			},
+		).toStrictEqual(
+			{
+				outcome: "cursor_recovered",
+				paths: [
+					"/api/sessions/sess-1/transcript?beforeUuid=u-10",
+					"/api/sessions/sess-1/transcript?beforeUuid=u-11",
+				],
+				window: window_(
+					8,
+					4,
+					{
+						records: [record(8), record(9), record(11), record(12)],
+					},
+				),
+			},
+		);
+	});
+
+	it("gives up after three retries, leaving the window as it was", async () =>
+	{
+		const queryClient = new QueryClient();
+		const queryKey = sessionQueryKeys.transcript("sess-1");
+		queryClient.setQueryData(queryKey, window_(10, 5));
+		const fetchSpy = vi
+			.spyOn(globalThis, "fetch")
+			.mockImplementation(async () => Promise.resolve(jsonResponse(NOT_FOUND, 404)));
+
+		const outcome = await fetchEarlierTranscript(queryClient, "sess-1");
+		const again = await fetchEarlierTranscript(queryClient, "sess-1");
+
+		expect(
+			{
+				outcome,
+				again,
+				paths: requestedPaths(fetchSpy),
+				window: queryClient.getQueryData<TranscriptData>(queryKey),
+				hasEarlier: hasEarlierTranscript(queryClient, "sess-1", window_(10, 5)),
+			},
+		).toStrictEqual(
+			{
+				outcome: "cursor_lost",
+				again: undefined,
+				paths: [
+					"/api/sessions/sess-1/transcript?beforeUuid=u-10",
+					"/api/sessions/sess-1/transcript?beforeUuid=u-11",
+					"/api/sessions/sess-1/transcript?beforeUuid=u-12",
+					"/api/sessions/sess-1/transcript?beforeUuid=u-13",
+				],
+				window: window_(10, 5),
+				hasEarlier: false,
+			},
+		);
+	});
+
+	it("pages again once the chain changes after a lost cursor", async () =>
+	{
+		const queryClient = new QueryClient();
+		queryClient.setQueryData(sessionQueryKeys.transcript("sess-1"), window_(10, 1));
+		vi.spyOn(globalThis, "fetch").mockImplementation(async () => Promise.resolve(jsonResponse(NOT_FOUND, 404)));
+
+		await fetchEarlierTranscript(queryClient, "sess-1");
+
+		expect(
+			hasEarlierTranscript(
+				queryClient,
+				"sess-1",
+				window_(
+					10,
+					1,
+					{
+						chainVersion: "v2",
+					},
+				),
+			),
+		).toBe(true);
+	});
+
+	it("lands a page served for a file that shifted under the window, keyed from where the page ends", async () =>
+	{
+		// A line above the window was removed: the cache still says u-10 is record
+		// 10, but the file now has it at line 9, so the page is lines 0-8.
+		const queryClient = new QueryClient();
+		const queryKey = sessionQueryKeys.transcript("sess-1");
+		queryClient.setQueryData(queryKey, window_(10, 2));
+		const page = window_(
+			0,
+			9,
+			{
+				records: [0, 1, 2, 4, 5, 6, 7, 8, 9].map((index) => record(index)),
+			},
+		);
+		vi.spyOn(globalThis, "fetch").mockImplementation(async () => Promise.resolve(jsonResponse(page)));
+
+		await fetchEarlierTranscript(queryClient, "sess-1");
+
+		expect(queryClient.getQueryData<TranscriptData>(queryKey)).toStrictEqual(
+			window_(
+				0,
+				11,
+				{
+					records: [0, 1, 2, 4, 5, 6, 7, 8, 9, 10, 11].map((index) => record(index)),
+				},
+			),
+		);
+	});
+
+	it("reports nothing above when the page before the cursor is empty and the window reaches the start", async () =>
+	{
+		const queryClient = new QueryClient();
+		const queryKey = sessionQueryKeys.transcript("sess-1");
+		queryClient.setQueryData(queryKey, window_(3, 2));
+		vi.spyOn(globalThis, "fetch").mockImplementation(async () => Promise.resolve(jsonResponse(window_(0, 0))));
+
+		const outcome = await fetchEarlierTranscript(queryClient, "sess-1");
+
+		expect(
+			{
+				outcome,
+				window: queryClient.getQueryData<TranscriptData>(queryKey),
+			},
+		).toStrictEqual(
+			{
+				outcome: "nothing_above",
+				window: window_(
+					0,
+					2,
+					{
+						records: [record(3), record(4)],
+					},
+				),
+			},
+		);
+	});
+
+	it("passes over rows that can't anchor a page", async () =>
+	{
+		const queryClient = new QueryClient();
+		const thinkingOnly =
+		{
+			type: "assistant",
+			uuid: "a-thinking",
+			message:
+			{
+				role: "assistant",
+				content: [
+					{
+						type: "thinking",
+						thinking: "hm",
+					},
+				],
+			},
+		};
+		queryClient.setQueryData(
+			sessionQueryKeys.transcript("sess-1"),
+			window_(
+				10,
+				4,
+				{
+					records: [
+						{
+							type: "file-history-snapshot",
+							messageId: "m",
+						},
+						{
+							...record(11),
+							uuid: "client-1",
+						},
+						thinkingOnly,
+						{
+							...record(13),
+							isCompactSummary: true,
+						},
+						record(14),
+					],
+				},
+			),
+		);
+		const fetchSpy = vi
+			.spyOn(globalThis, "fetch")
+			.mockImplementation(async () => Promise.resolve(jsonResponse(window_(0, 0))));
+
+		await fetchEarlierTranscript(queryClient, "sess-1");
+
+		expect(requestedPaths(fetchSpy)).toStrictEqual(["/api/sessions/sess-1/transcript?beforeUuid=u-14"]);
 	});
 });

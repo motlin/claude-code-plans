@@ -284,6 +284,7 @@ import
 	sessionWorkflowRunsQueryOptions,
 	transcriptEndIndex,
 	transcriptQueryOptions,
+	useHasEarlierTranscript,
 	useRequestSummary,
 } from "../lib/api/sessions";
 import type {SessionDetailData, SessionSubagentsData, TranscriptData} from "../lib/api/sessions";
@@ -719,7 +720,9 @@ function SessionView({
 			enabled: hasWorkflowCall,
 		},
 	).data;
-	const requestMessageJump = usePendingMessageJump(sessionId, transcript.startIndex, processed.uuidToLine);
+	// Records before the window that paging can still reach; false at the file's start or once the cursor is lost.
+	const hasUnloadedHistory = useHasEarlierTranscript(sessionId, transcript);
+	const requestMessageJump = usePendingMessageJump(sessionId, hasUnloadedHistory, processed.uuidToLine);
 	const chapterEdits = useSessionChapters(sessionId);
 	const firstEntryUuid = firstRecordKey(transcript);
 	const outlineChapters = useMemo(
@@ -891,7 +894,6 @@ function SessionView({
 		[processed.lines, hookDockedPlan],
 	);
 	const sessionHasPlan = hasSessionPlan(data.planFilename, planModel);
-	const hasUnloadedHistory = transcript.startIndex > 0;
 	const composerPlan = useMemo(
 		() => (
 		{
@@ -3081,6 +3083,7 @@ function SessionView({
 											<TranscriptHistoryLoader
 												sessionId={sessionId}
 												startIndex={transcript.startIndex}
+												chainVersion={transcript.chainVersion}
 											/>
 											<SessionFileRefs
 												sessionId={sessionId}

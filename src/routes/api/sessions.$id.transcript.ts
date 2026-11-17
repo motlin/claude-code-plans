@@ -15,6 +15,27 @@ function parseBefore(raw: string | null): number | undefined
 	return before;
 }
 
+/**
+ * `?beforeUuid=<uuid>` asks for the page of records ending just before the line
+ * carrying that uuid, and answers 404 `{found: false}` once the file no longer
+ * has it, so the client can tell its window went stale. CLI uuids are 36
+ * characters, so 64 leaves room without letting arbitrary text through.
+ */
+const BEFORE_UUID_PATTERN = /^[0-9A-Za-z_-]{1,64}$/;
+
+function transcriptResponse(transcript: unknown): Response
+{
+	return Response.json(
+		TranscriptResponse.parse(transcript),
+		{
+			headers:
+			{
+				"Cache-Control": "private, max-age=0, must-revalidate",
+			},
+		},
+	);
+}
+
 export const Route = createFileRoute("/api/sessions/$id/transcript")(
 	{
 		server:
@@ -33,24 +54,47 @@ export const Route = createFileRoute("/api/sessions/$id/transcript")(
 					}) =>
 					{
 						const {getDb} = await import("../../lib/db");
-						const {readStructuredTranscript} = await import("../../lib/structured-transcript");
+						const {readStructuredTranscript, readStructuredTranscriptBefore} =
+							await import("../../lib/structured-transcript");
 						const {index} = getDb();
-						const before = parseBefore(new URL(request.url).searchParams.get("before"));
-						const transcript = readStructuredTranscript(
-							index,
-							params.id,
+						const {searchParams} = new URL(request.url);
+						const beforeUuid = searchParams.get("beforeUuid");
+						if (beforeUuid !== null)
+						{
+							if (!BEFORE_UUID_PATTERN.test(beforeUuid))
 							{
-								before,
-							},
-						);
-						return Response.json(
-							TranscriptResponse.parse(transcript),
+								return Response.json(
+									{
+										error: "invalid_before_uuid",
+									},
+									{
+										status: 400,
+									},
+								);
+							}
+							const page = readStructuredTranscriptBefore(index, params.id, beforeUuid);
+							if (page === undefined)
 							{
-								headers:
+								return Response.json(
+									{
+										found: false,
+									},
+									{
+										status: 404,
+									},
+								);
+							}
+							return transcriptResponse(page);
+						}
+						const before = parseBefore(searchParams.get("before"));
+						return transcriptResponse(
+							readStructuredTranscript(
+								index,
+								params.id,
 								{
-									"Cache-Control": "private, max-age=0, must-revalidate",
+									before,
 								},
-							},
+							),
 						);
 					},
 				},

@@ -34,7 +34,7 @@ vi.mock("../src/components/session-chat", () => (
 vi.mock(import("../src/lib/api/sessions"), async (importOriginal) => (
 {
 	...(await importOriginal()),
-	fetchEarlierTranscript: vi.fn<typeof fetchEarlierTranscript>(async () => new Promise<void>(() => {})),
+	fetchEarlierTranscript: vi.fn<typeof fetchEarlierTranscript>(async () => new Promise<undefined>(() => {})),
 }));
 vi.mock(import("../src/lib/jump-to-message"), async (importOriginal) => (
 {

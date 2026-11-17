@@ -146,8 +146,43 @@ export function readStructuredTranscript(
 	options: TranscriptWindowOptions = {},
 ): StructuredTranscript
 {
+	return (
+		readWindow(db, id, options, (index) =>
+			Math.max(0, Math.min(options.before ?? index.starts.length, index.starts.length)),
+		) ?? EMPTY_TRANSCRIPT
+	);
+}
+
+/**
+ * The page of records ending just before the line carrying `beforeUuid`, or
+ * undefined when the file no longer has that uuid (upstream's
+ * `getTranscriptPage(id, beforeUuid)` answering `found: false`). The uuid is
+ * resolved against the file as it is now, so a line the CLI removed above it
+ * can't shift the page the way a stale record index would.
+ */
+export function readStructuredTranscriptBefore(
+	db: IndexDb,
+	id: string,
+	beforeUuid: string,
+	options: Omit<TranscriptWindowOptions, "before"> = {},
+): StructuredTranscript | undefined
+{
+	return readWindow(db, id, options, (index) => index.uuidLines.get(beforeUuid));
+}
+
+/**
+ * The window ending just before the line `resolveEnd` picks, or undefined when
+ * the session is unknown, the file can't be read, or `resolveEnd` finds no line.
+ */
+function readWindow(
+	db: IndexDb,
+	id: string,
+	options: Omit<TranscriptWindowOptions, "before">,
+	resolveEnd: (index: TranscriptFileIndex) => number | undefined,
+): StructuredTranscript | undefined
+{
 	const filePath = transcriptFilePath(db, id);
-	if (!filePath) return EMPTY_TRANSCRIPT;
+	if (!filePath) return undefined;
 
 	const maxBytes = options.maxBytes ?? TRANSCRIPT_WINDOW_MAX_BYTES;
 	const maxRecords = options.maxRecords ?? TRANSCRIPT_WINDOW_MAX_RECORDS;
@@ -160,22 +195,26 @@ export function readStructuredTranscript(
 		// caches it, so only the window's lines are parsed here.
 		file = openTranscriptFile(filePath);
 		const {index} = file;
-		const lineCount = index.starts.length;
-		const end = Math.max(0, Math.min(options.before ?? lineCount, lineCount));
-		const startIndex = findWindowStart(index, end, maxBytes, maxRecords);
+		const end = resolveEnd(index);
+		if (end === undefined) return undefined;
+		const lineStartIndex = findWindowStart(index, end, maxBytes, maxRecords);
 
 		const records: Record<string, unknown>[] = [];
 		const hiddenUuids: string[] = [];
 		const windowUuids = new Set<string>();
-		for (const [offset, record] of readTranscriptLines(file, startIndex, end).entries())
+		for (const [offset, record] of readTranscriptLines(file, lineStartIndex, end).entries())
 		{
 			if (!record) continue;
 			records.push(record);
 			const uuid = uuidOf(record);
 			if (uuid === undefined) continue;
 			windowUuids.add(uuid);
-			if (index.hidden[startIndex + offset] === true) hiddenUuids.push(uuid);
+			if (index.hidden[lineStartIndex + offset] === true) hiddenUuids.push(uuid);
 		}
+		// A line that doesn't parse is left out, so the window's indices are
+		// counted back from `end`: the client keys every page by where it ends,
+		// and the skipped line comes out of the start instead.
+		const startIndex = end - records.length;
 		const cuts: TranscriptCut[] = index.abandoned.cuts
 			.filter((cut) => windowUuids.has(cut.replacementUuid))
 			.map(({parentUuid, replacementUuid, at, count}) => (
@@ -199,7 +238,7 @@ export function readStructuredTranscript(
 	}
 	catch
 	{
-		return EMPTY_TRANSCRIPT;
+		return undefined;
 	}
 	finally
 	{

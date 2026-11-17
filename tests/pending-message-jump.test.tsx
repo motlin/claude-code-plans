@@ -10,7 +10,7 @@ import {jumpToMessage} from "../src/lib/jump-to-message";
 
 vi.mock("../src/lib/api/sessions", () => (
 {
-	fetchEarlierTranscript: vi.fn<typeof fetchEarlierTranscript>(async () => Promise.resolve()),
+	fetchEarlierTranscript: vi.fn<typeof fetchEarlierTranscript>(async () => Promise.resolve(undefined)),
 }));
 vi.mock("../src/lib/jump-to-message", () => (
 {
@@ -35,14 +35,14 @@ function wrapper({children}: {children: ReactNode})
 
 interface WindowProps
 {
-	startIndex: number;
+	hasEarlier: boolean;
 	uuidToLine: ReadonlyMap<string, number>;
 }
 
 function renderPendingJump(initialProps: WindowProps)
 {
 	return renderHook(
-		({startIndex, uuidToLine}: WindowProps) => usePendingMessageJump("session-1", startIndex, uuidToLine),
+		({hasEarlier, uuidToLine}: WindowProps) => usePendingMessageJump("session-1", hasEarlier, uuidToLine),
 		{
 			wrapper,
 			initialProps,
@@ -77,7 +77,7 @@ describe("usePendingMessageJump", () =>
 	{
 		const {result} = renderPendingJump(
 			{
-				startIndex: 1_500,
+				hasEarlier: true,
 				uuidToLine: HELD,
 			},
 		);
@@ -104,7 +104,7 @@ describe("usePendingMessageJump", () =>
 	{
 		const {result, rerender} = renderPendingJump(
 			{
-				startIndex: 1_500,
+				hasEarlier: true,
 				uuidToLine: NOT_HELD,
 			},
 		);
@@ -121,7 +121,7 @@ describe("usePendingMessageJump", () =>
 
 		rerender(
 			{
-				startIndex: 1_100,
+				hasEarlier: true,
 				uuidToLine: HELD,
 			},
 		);
@@ -149,7 +149,7 @@ describe("usePendingMessageJump", () =>
 	{
 		const {result, rerender} = renderPendingJump(
 			{
-				startIndex: 1_500,
+				hasEarlier: true,
 				uuidToLine: NOT_HELD,
 			},
 		);
@@ -160,7 +160,35 @@ describe("usePendingMessageJump", () =>
 		});
 		rerender(
 			{
-				startIndex: 1_500,
+				hasEarlier: true,
+				uuidToLine: new Map(),
+			},
+		);
+
+		expect(vi.mocked(fetchEarlierTranscript).mock.calls.length).toBe(1);
+	});
+
+	it("stops asking for history once the earlier cursor is lost", async () =>
+	{
+		vi.mocked(fetchEarlierTranscript).mockResolvedValueOnce("cursor_lost");
+		const {result, rerender} = renderPendingJump(
+			{
+				hasEarlier: true,
+				uuidToLine: NOT_HELD,
+			},
+		);
+
+		act(() =>
+		{
+			result.current("u-1700");
+		});
+		await act(async () =>
+		{
+			await Promise.resolve();
+		});
+		rerender(
+			{
+				hasEarlier: false,
 				uuidToLine: new Map(),
 			},
 		);
@@ -172,7 +200,7 @@ describe("usePendingMessageJump", () =>
 	{
 		const {result} = renderPendingJump(
 			{
-				startIndex: 0,
+				hasEarlier: false,
 				uuidToLine: NOT_HELD,
 			},
 		);
@@ -199,7 +227,7 @@ describe("usePendingMessageJump", () =>
 	{
 		const {result, rerender} = renderPendingJump(
 			{
-				startIndex: 1_500,
+				hasEarlier: true,
 				uuidToLine: HELD,
 			},
 		);
@@ -210,13 +238,13 @@ describe("usePendingMessageJump", () =>
 		});
 		rerender(
 			{
-				startIndex: 1_100,
+				hasEarlier: true,
 				uuidToLine: new Map(HELD),
 			},
 		);
 		rerender(
 			{
-				startIndex: 700,
+				hasEarlier: true,
 				uuidToLine: new Map(HELD),
 			},
 		);
@@ -228,14 +256,14 @@ describe("usePendingMessageJump", () =>
 	{
 		const {rerender} = renderPendingJump(
 			{
-				startIndex: 1_500,
+				hasEarlier: true,
 				uuidToLine: NOT_HELD,
 			},
 		);
 
 		rerender(
 			{
-				startIndex: 1_100,
+				hasEarlier: true,
 				uuidToLine: HELD,
 			},
 		);

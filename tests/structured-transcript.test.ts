@@ -1,5 +1,5 @@
 import {describe, expect, it, beforeEach, afterEach} from "vite-plus/test";
-import {mkdtempSync, rmSync, writeFileSync} from "node:fs";
+import {mkdtempSync, rmSync, utimesSync, writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {openTestDb, type AppDb} from "../src/lib/db/connection";
@@ -7,6 +7,7 @@ import * as schema from "../src/lib/db/schema";
 import
 {
 	readStructuredTranscript,
+	readStructuredTranscriptBefore,
 	transcriptChainVersion,
 	TRANSCRIPT_WINDOW_MAX_BYTES,
 	TRANSCRIPT_WINDOW_MAX_RECORDS,
@@ -157,6 +158,110 @@ describe("readStructuredTranscript", () =>
 		expect(page.records).toStrictEqual(records.slice(0, 25));
 		expect(page.startIndex).toBe(0);
 		expect(page.precedingMessageCount).toBe(0);
+	});
+
+	it("serves the records before a uuid's line when asked for an earlier page by uuid", () =>
+	{
+		const records = Array.from(
+			{
+				length: 10,
+			},
+			(_, i) => userMessage(i),
+		);
+		seedSession("by-uuid", records);
+
+		const page = readStructuredTranscriptBefore(db.index, "by-uuid", "u-6");
+
+		expect(page).toStrictEqual(
+			{
+				records: records.slice(0, 6),
+				byteOffset: page?.byteOffset,
+				startIndex: 0,
+				precedingMessageCount: 0,
+				hiddenUuids: [],
+				cuts: [],
+				chainVersion: transcriptChainVersion([]),
+				chapters: [],
+			},
+		);
+	});
+
+	it("reports a uuid missing from the file as not found", () =>
+	{
+		seedSession("by-uuid", [userMessage(0), userMessage(1)]);
+
+		expect(readStructuredTranscriptBefore(db.index, "by-uuid", "u-9")).toBeUndefined();
+		expect(readStructuredTranscriptBefore(db.index, "missing", "u-0")).toBeUndefined();
+	});
+
+	it("serves an empty page before the first line's uuid", () =>
+	{
+		seedSession("by-uuid", [userMessage(0), userMessage(1)]);
+
+		const page = readStructuredTranscriptBefore(db.index, "by-uuid", "u-0");
+
+		expect(
+			{
+				records: page?.records,
+				startIndex: page?.startIndex,
+			},
+		).toStrictEqual(
+			{
+				records: [],
+				startIndex: 0,
+			},
+		);
+	});
+
+	it("resolves the uuid against the rewritten file, not the index built before a line was removed", () =>
+	{
+		const records = Array.from(
+			{
+				length: 10,
+			},
+			(_, i) => userMessage(i),
+		);
+		seedSession("by-uuid", records);
+		expect(readStructuredTranscriptBefore(db.index, "by-uuid", "u-6")?.startIndex).toBe(0);
+
+		const rewritten = records.filter((_, i) => i !== 3);
+		const filePath = join(tempDir, "by-uuid.jsonl");
+		writeFileSync(filePath, rewritten.map((record) => JSON.stringify(record)).join("\n") + "\n");
+		utimesSync(filePath, new Date(), new Date(Date.now() + 5_000));
+		const page = readStructuredTranscriptBefore(db.index, "by-uuid", "u-6");
+
+		expect(page?.records).toStrictEqual([
+			userMessage(0),
+			userMessage(1),
+			userMessage(2),
+			userMessage(4),
+			userMessage(5),
+		]);
+	});
+
+	it("keeps a page ending where it was asked to when a line in it does not parse", () =>
+	{
+		const filePath = join(tempDir, "garbled.jsonl");
+		seedSession("garbled", [userMessage(0), userMessage(1), userMessage(2), userMessage(3)]);
+		const lines = [userMessage(0), userMessage(1), userMessage(2), userMessage(3)].map((record) =>
+			JSON.stringify(record),
+		);
+		lines.splice(1, 0, "{not json");
+		writeFileSync(filePath, lines.join("\n") + "\n");
+
+		const page = readStructuredTranscriptBefore(db.index, "garbled", "u-3");
+
+		expect(
+			{
+				records: page?.records,
+				startIndex: page?.startIndex,
+			},
+		).toStrictEqual(
+			{
+				records: [userMessage(0), userMessage(1), userMessage(2)],
+				startIndex: 1,
+			},
+		);
 	});
 
 	it("counts only countable records before the window", () =>
