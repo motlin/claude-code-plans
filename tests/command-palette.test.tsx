@@ -1705,17 +1705,46 @@ describe("CommandPalette shell", () =>
 				},
 			);
 
-			fireEvent.click(await within(dialog).findByRole("option", byLabel(/^Keyboard shortcuts/)));
+			const option = await within(dialog).findByRole("option", byLabel(/^Keyboard shortcuts/));
+			// The 100ms hand-off runs on a fake clock: a loaded machine must not let it fire before the first look.
+			vi.useFakeTimers(
+				{
+					toFake: ["setTimeout", "clearTimeout"],
+				},
+			);
+			try
+			{
+				fireEvent.click(option);
+				const closed =
+				{
+					layers: exitLayers().map((layer) => layer.childElementCount),
+					open: getKeyboardShortcutsOpen(),
+				};
+				act(() =>
+				{
+					vi.advanceTimersByTime(100);
+				});
 
-			await waitFor(() =>
+				expect(
+					{
+						closed,
+						open: getKeyboardShortcutsOpen(),
+					},
+				).toStrictEqual(
+					{
+						closed:
+						{
+							layers: [1, 1],
+							open: false,
+						},
+						open: true,
+					},
+				);
+			}
+			finally
 			{
-				expect(exitLayers().map((layer) => layer.childElementCount)).toStrictEqual([1, 1]);
-			});
-			expect(getKeyboardShortcutsOpen()).toBe(false);
-			await waitFor(() =>
-			{
-				expect(getKeyboardShortcutsOpen()).toBe(true);
-			});
+				vi.useRealTimers();
+			}
 		});
 
 		it("hands the scrim to Settings opened 100ms after a settings row closes the palette", async () =>
@@ -1731,13 +1760,38 @@ describe("CommandPalette shell", () =>
 				},
 			);
 
-			fireEvent.click(await within(dialog).findByRole("option", byLabel("Settings → Code")));
-
-			await waitFor(() =>
+			const option = await within(dialog).findByRole("option", byLabel("Settings → Code"));
+			// The 100ms hand-off runs on a fake clock: a loaded machine must not let it fire before the first look.
+			vi.useFakeTimers(
+				{
+					toFake: ["setTimeout", "clearTimeout"],
+				},
+			);
+			let closed;
+			try
 			{
-				expect(exitLayers().map((layer) => layer.childElementCount)).toStrictEqual([1, 1]);
-			});
-			expect(currentRouter?.state.location.hash).toBe("");
+				fireEvent.click(option);
+				closed =
+				{
+					layers: exitLayers().map((layer) => layer.childElementCount),
+					hash: currentRouter?.state.location.hash,
+				};
+				act(() =>
+				{
+					vi.advanceTimersByTime(100);
+				});
+			}
+			finally
+			{
+				vi.useRealTimers();
+			}
+
+			expect(closed).toStrictEqual(
+				{
+					layers: [1, 1],
+					hash: "",
+				},
+			);
 			await waitFor(() =>
 			{
 				expect(currentRouter?.state.location.hash).toBe("settings/claude-code");
