@@ -1,14 +1,35 @@
-import {useState} from "react";
+import {type ReactNode, useState} from "react";
 
 import {assertNever} from "../lib/assert-never";
 import type {RecoveryAction} from "../lib/api-error-recovery";
-import {PRIMARY_MODELS} from "../lib/launch-options";
+import type {RetryModelItem, RetryModelItems} from "../lib/retry-model-items";
 import {ApprovalActionButton} from "./approval-card";
-import {Menu, MenuContent, MenuGroup, MenuLabel, MenuRadioGroup, MenuRadioItem, MenuTrigger} from "./ui/menu";
+import {MENU_BADGE_CLASS} from "./ui/badge-classes";
+import
+{
+	Menu,
+	MenuContent,
+	MenuGroup,
+	MenuLabel,
+	MenuRadioGroup,
+	MenuRadioItem,
+	MenuSeparator,
+	MenuSub,
+	MenuSubContent,
+	MenuSubTrigger,
+	MenuTrigger,
+} from "./ui/menu";
 import {SplitDropdownButton} from "./ui/split-dropdown-button";
 import {Tooltip} from "./ui/tooltip";
 
 const SWITCH_MODEL_AND_RETRY = "Switch model and retry";
+const MORE_MODELS_LABEL = "More models";
+
+const NO_MODEL_ITEMS: RetryModelItems =
+{
+	main: [],
+	more: [],
+};
 
 /** Upstream's ghost model trigger (`TriggerButton variant="ghost"`), in local tokens. */
 const MODEL_TRIGGER_CLASS =
@@ -24,22 +45,109 @@ export interface RecoveryHandlers
 	onRetryWithModel?: (model: string) => Promise<boolean>;
 	/** The fallback model's alias, for "Try again with {label}". */
 	fallbackAlias?: string;
-	/** The primary alias the running model checks in the model menu. */
-	currentModelValue?: string;
+	/** Switch model and retry's rows: upstream's classic list. */
+	modelItems?: RetryModelItems;
 }
 
-/** Upstream's "Switch model and retry" menu (`Vt`): a ghost trigger with the current model and a tooltip. */
+/** A row's title: the name, upstream's muted suffix, then the settings model's trailing badge. */
+function RetryModelTitle({item, pinned}: {item: RetryModelItem; pinned: boolean})
+{
+	let title: ReactNode = <span data-menu-item-label="">{item.label}</span>;
+	if (item.suffix !== undefined)
+	{
+		// Upstream's pinned row appends " Unavailable"; a restricted row lays name and suffix out in a gap-sm line.
+		title = pinned ? (
+			<>
+				<span data-menu-item-label="">{item.label}</span>
+				<span className="text-muted-as-secondary">{` ${item.suffix}`}</span>
+			</>
+		) : (
+			<span className="inline-flex min-w-0 items-center gap-sm">
+				<span data-menu-item-label="" className="truncate">
+					{item.label}
+				</span>
+				<span className="text-muted-as-secondary">{item.suffix}</span>
+			</span>
+		);
+	}
+	if (item.badge === undefined) return title;
+	return (
+		<span className="flex min-w-0 items-center gap-1">
+			{title}
+			<span className="contents">
+				<span
+					data-cds="Badge"
+					className={`${MENU_BADGE_CLASS} min-w-0 truncate bg-alpha-1 text-secondary pointer-events-none`}
+				>
+					{item.badge}
+				</span>
+			</span>
+		</span>
+	);
+}
+
+/**
+ * Upstream's classic row: a disabled row's reason is its second line, and picking any row, the checked one too,
+ * switches to it and retries.
+ */
+function RetryModelRow({
+	item,
+	pinned = false,
+	onPick,
+}: {
+	item: RetryModelItem;
+	pinned?: boolean;
+	onPick: (model: string) => void;
+})
+{
+	return (
+		<MenuRadioItem
+			value={item.value}
+			closeOnClick
+			{...(item.disabled === true &&
+			{
+				disabled: true,
+			})}
+			{...(item.description !== undefined &&
+			{
+				description: item.description,
+			})}
+			onClick={() =>
+			{
+				onPick(item.value);
+			}}
+		>
+			<RetryModelTitle item={item} pinned={pinned} />
+		</MenuRadioItem>
+	);
+}
+
+function checkedValue(items: readonly RetryModelItem[]): string
+{
+	return items.find((item) => item.checked)?.value ?? "";
+}
+
+/**
+ * Upstream's "Switch model and retry" menu (`Ln`): a ghost trigger with the current model and a tooltip, then the
+ * classic list: the pinned current row, the main rows, and More models after a separator.
+ */
 function SwitchModelMenu({
 	label,
-	current,
+	items,
 	onSelect,
 }: {
 	label: string;
-	current: string | undefined;
+	items: RetryModelItems;
 	onSelect: (model: string) => void;
 })
 {
 	const [open, setOpen] = useState(false);
+	const pick = (model: string) =>
+	{
+		setOpen(false);
+		onSelect(model);
+	};
+	const {pinned, main, more} = items;
 	return (
 		<Menu open={open} onOpenChange={setOpen}>
 			<Tooltip content={SWITCH_MODEL_AND_RETRY} suppressAfterPopup>
@@ -50,20 +158,27 @@ function SwitchModelMenu({
 			<MenuContent side="bottom" align="start" className="break-words">
 				<MenuGroup>
 					<MenuLabel>{SWITCH_MODEL_AND_RETRY}</MenuLabel>
-					<MenuRadioGroup
-						value={current ?? ""}
-						onValueChange={(value: string) =>
-						{
-							setOpen(false);
-							onSelect(value);
-						}}
-					>
-						{PRIMARY_MODELS.map((model) => (
-							<MenuRadioItem key={model.id} value={model.id} closeOnClick>
-								<span data-menu-item-label="">{model.label}</span>
-							</MenuRadioItem>
+					<MenuRadioGroup value={checkedValue(pinned === undefined ? main : [pinned, ...main])}>
+						{pinned !== undefined && <RetryModelRow item={pinned} pinned onPick={pick} />}
+						{main.map((item) => (
+							<RetryModelRow key={item.value} item={item} onPick={pick} />
 						))}
 					</MenuRadioGroup>
+					{more.length > 0 && (
+						<>
+							<MenuSeparator />
+							<MenuSub>
+								<MenuSubTrigger>{MORE_MODELS_LABEL}</MenuSubTrigger>
+								<MenuSubContent className="break-words">
+									<MenuRadioGroup value={checkedValue(more)}>
+										{more.map((item) => (
+											<RetryModelRow key={item.value} item={item} onPick={pick} />
+										))}
+									</MenuRadioGroup>
+								</MenuSubContent>
+							</MenuSub>
+						</>
+					)}
 				</MenuGroup>
 			</MenuContent>
 		</Menu>
@@ -163,7 +278,7 @@ export function ErrorRecoveryActions({
 					<SwitchModelMenu
 						key={action.key}
 						label={action.label}
-						current={handlers.currentModelValue}
+						items={handlers.modelItems ?? NO_MODEL_ITEMS}
 						onSelect={retryWithModel}
 					/>
 				);

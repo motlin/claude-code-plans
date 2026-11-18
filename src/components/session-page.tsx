@@ -139,6 +139,7 @@ import {ColdResumeNotice} from "./cold-resume-notice";
 import {RefusalFallbackBand} from "./refusal-fallback-card";
 import {startSessionOnModel} from "../lib/start-session-on-model";
 import {activeRefusalFallback} from "../lib/refusal-fallback";
+import {settingsModelMenu} from "../lib/retry-model-items";
 import {newestRecordMs, usageWindowSpent} from "../lib/cold-resume-notice";
 import
 {
@@ -2181,6 +2182,17 @@ function SessionView({
 	}, [navigate, sessionProjectId]);
 	const sendErrorRecoveryPrompt = liveHerdrPrompt.send;
 	const currentModelId = composerChin.modelId;
+	const {settingsDefault, availableModels} = composerChin;
+	const errorModelMenu = useMemo(
+		() =>
+			settingsModelMenu(
+				{
+					settingsDefault,
+					availableModels,
+				},
+			),
+		[settingsDefault, availableModels],
+	);
 	const errorRecovery = useMemo(
 		() =>
 			errorRecoveryHandlers(
@@ -2191,6 +2203,7 @@ function SessionView({
 				sendErrorRecoveryPrompt,
 				enqueuePrompt,
 				{
+					...errorModelMenu,
 					current: currentModelId,
 					switchTo: async (model) =>
 						switchModelForRetry(
@@ -2216,6 +2229,7 @@ function SessionView({
 			sendErrorRecoveryPrompt,
 			enqueuePrompt,
 			currentModelId,
+			errorModelMenu,
 			sessionId,
 			toast,
 			rewindAvailableFromComposer,

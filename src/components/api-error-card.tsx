@@ -11,9 +11,9 @@ import
 } from "../lib/api-error-category";
 import {parseApiErrorDetails, trailingRequestIds} from "../lib/api-error-details";
 import {categoryRecoveryHelps, fallbackModel, type RecoveryAction, recoveryActions} from "../lib/api-error-recovery";
-import {modelLabel, primaryModelMenuValue, PRIMARY_MODELS} from "../lib/launch-options";
 import {writeClipboardText} from "../lib/clipboard";
 import {type AutoResumeEntry, fireAtSeconds, formatResumeTime} from "../lib/limit-auto-resume";
+import {retryModelItems, type RetryModelOptions} from "../lib/retry-model-items";
 import {type UsageLimit, usageLimitCard} from "../lib/usage-limit-notice";
 import {ErrorCardShell} from "./error-card-shell";
 import type {RecoveryHandlers} from "./error-recovery-actions";
@@ -54,6 +54,8 @@ export interface ApiErrorRecovery
 	onRetryWithModel?: (model: string) => Promise<boolean>;
 	/** The running model's id, e.g. `claude-opus-5-5`. */
 	currentModel?: string;
+	/** How Switch model and retry dresses its rows: the catalog, restrictions, settings default and deprecation. */
+	modelMenu?: RetryModelOptions;
 }
 
 function numericStatus(status: number | string | undefined): number | undefined
@@ -484,8 +486,18 @@ function cardRecovery(
 	handlers: RecoveryHandlers;
 }
 {
-	const {currentModel, onRetry, onCompact, onRewind, onRetryWithModel} = recovery;
-	const current = primaryModelMenuValue(currentModel);
+	const {currentModel, onRetry, onCompact, onRewind, onRetryWithModel, modelMenu} = recovery;
+	const modelItems = retryModelItems(
+		{
+			...modelMenu,
+			current: currentModel,
+		},
+	);
+	const rows = [
+		...(modelItems.pinned === undefined ? [] : [modelItems.pinned]),
+		...modelItems.main,
+		...modelItems.more,
+	];
 	const fallback = currentModel === undefined ? undefined : fallbackModel(currentModel);
 	const actions = recoveryActions(
 		{
@@ -496,7 +508,8 @@ function cardRecovery(
 			canRewind: onRewind !== undefined,
 			canCompact: onCompact !== undefined,
 			canFallback: onRetryWithModel !== undefined && fallback !== undefined,
-			currentModelLabel: current === "" ? (currentModel ?? "") : modelLabel(current),
+			// Upstream's `retryModelLabel`: the checked row's name, or the pinned row's.
+			currentModelLabel: rows.find((row) => row.checked)?.label ?? "",
 			...(fallback !== undefined &&
 			{
 				fallbackModelLabel: fallback.label,
@@ -504,11 +517,7 @@ function cardRecovery(
 			...(onRetryWithModel !== undefined &&
 				currentModel !== undefined &&
 				{
-					modelItems: PRIMARY_MODELS.map((model) => (
-					{
-						value: model.id,
-						checked: model.id === current,
-					})),
+					modelItems: rows,
 				}),
 		},
 	);
@@ -534,10 +543,7 @@ function cardRecovery(
 		{
 			fallbackAlias: fallback.alias,
 		}),
-		...(current !== "" &&
-		{
-			currentModelValue: current,
-		}),
+		modelItems,
 	};
 	return {
 		actions,

@@ -1587,6 +1587,322 @@ describe("SessionChat error recovery", () =>
 		);
 	});
 
+	async function openSwitchModel(container: HTMLElement, trigger: string): Promise<HTMLElement>
+	{
+		fireEvent.click(
+			[...container.querySelectorAll("[data-api-error-actions] button")].find(
+				(button) => button.textContent === trigger,
+			)!,
+		);
+		await waitFor(() =>
+		{
+			expect(screen.getAllByRole("menu")).toHaveLength(1);
+		});
+		return screen.getByRole("menu");
+	}
+
+	function menuRows(menu: HTMLElement)
+	{
+		return [...menu.querySelectorAll("[role=menuitemradio], [role=menuitem], [role=separator]")].map((row) => (
+		{
+			role: row.getAttribute("role"),
+			text: row.querySelector("[data-menu-item-title]")?.textContent ?? row.textContent,
+			checked: row.getAttribute("aria-checked"),
+			disabled: row.getAttribute("aria-disabled"),
+		}));
+	}
+
+	function overloadedWithModel(menu: Omit<ModelRetry, "switchTo">, switchOk = true)
+	{
+		const {events, model, send} = recordingRecovery(switchOk);
+		const recovery = errorRecoveryHandlers(
+			{
+				retryable: true,
+				idle: true,
+			},
+			send,
+			vi.fn<(text: string) => void>(),
+			{
+				...model,
+				...menu,
+			},
+		);
+		return {
+			events,
+			container: renderWithRecovery([PROMPT_RECORD, OVERLOADED_RECORD], recovery!),
+		};
+	}
+
+	it("lists More models after a separator, checks an overflow model there with its name on the trigger, and switches from the submenu", async () =>
+	{
+		const {events, container} = overloadedWithModel(
+			{
+				current: "claude-opus-4-6",
+			},
+		);
+		const menu = await openSwitchModel(container, "Opus 4.6");
+		const main = menuRows(menu);
+		fireEvent.click(
+			within(menu).getByRole(
+				"menuitem",
+				{
+					name: "More models",
+				},
+			),
+		);
+		await waitFor(() =>
+		{
+			expect(screen.getAllByRole("menu")).toHaveLength(2);
+		});
+		const submenu = screen.getAllByRole("menu")[1]!;
+		const more = menuRows(submenu).filter((row) => row.checked === "true");
+		fireEvent.click(
+			within(submenu).getByRole(
+				"menuitemradio",
+				{
+					name: "Sonnet 4.6",
+				},
+			),
+		);
+		await waitFor(() =>
+		{
+			expect(events).toHaveLength(2);
+		});
+
+		expect(
+			{
+				main,
+				more,
+				events,
+			},
+		).toStrictEqual(
+			{
+				main: [
+					...["Opus 5.5", "Fable 5.1", "Sonnet 5.5", "Haiku 5.5"].map((text) => (
+					{
+						role: "menuitemradio",
+						text,
+						checked: "false",
+						disabled: null,
+					})),
+					{
+						role: "separator",
+						text: "",
+						checked: null,
+						disabled: null,
+					},
+					{
+						role: "menuitem",
+						text: "More models",
+						checked: null,
+						disabled: null,
+					},
+				],
+				more: [
+					{
+						role: "menuitemradio",
+						text: "Opus 4.6",
+						checked: "true",
+						disabled: null,
+					},
+				],
+				events: [
+					{
+						liveOption:
+						{
+							kind: "model",
+							model: "claude-sonnet-4-6",
+						},
+					},
+					{
+						prompt: "Try again",
+					},
+				],
+			},
+		);
+	});
+
+	it("pins an off-catalog model first, checked, and retries on it when picked again", async () =>
+	{
+		const {events, container} = overloadedWithModel(
+			{
+				current: "claude-custom-7",
+			},
+		);
+		const menu = await openSwitchModel(container, "Custom 7");
+		const first = menuRows(menu)[0];
+		fireEvent.click(within(menu).getAllByRole("menuitemradio")[0]!);
+		await waitFor(() =>
+		{
+			expect(events).toHaveLength(2);
+		});
+
+		expect(
+			{
+				label: menu.querySelector("[role=group]")?.firstElementChild?.textContent,
+				first,
+				events,
+			},
+		).toStrictEqual(
+			{
+				label: "Switch model and retry",
+				first:
+				{
+					role: "menuitemradio",
+					text: "Custom 7",
+					checked: "true",
+					disabled: null,
+				},
+				events: [
+					{
+						liveOption:
+						{
+							kind: "model",
+							model: "claude-custom-7",
+						},
+					},
+					{
+						prompt: "Try again",
+					},
+				],
+			},
+		);
+	});
+
+	it("badges the settings model's row with a trailing neutral Default, or Set by admin when managed", async () =>
+	{
+		const badges = async (managed: boolean) =>
+		{
+			const {container} = overloadedWithModel(
+				{
+					current: "claude-sonnet-5-5",
+					defaultModel:
+					{
+						value: "opus",
+						managed,
+					},
+				},
+			);
+			const menu = await openSwitchModel(container, "Sonnet 5.5");
+			const result = [...menu.querySelectorAll("[data-cds=Badge]")].map((badge) => (
+			{
+				row: badge.closest("[role=menuitemradio]")?.querySelector("[data-menu-item-label]")?.textContent,
+				text: badge.textContent,
+				inert: badge.classList.contains("pointer-events-none"),
+				wrapper: badge.parentElement?.className,
+			}));
+			cleanup();
+			return result;
+		};
+
+		expect(
+			{
+				user: await badges(false),
+				managed: await badges(true),
+			},
+		).toStrictEqual(
+			{
+				user: [
+					{
+						row: "Opus 5.5",
+						text: "Default",
+						inert: true,
+						wrapper: "contents",
+					},
+				],
+				managed: [
+					{
+						row: "Opus 5.5",
+						text: "Set by admin",
+						inert: true,
+						wrapper: "contents",
+					},
+				],
+			},
+		);
+	});
+
+	it("disables an availableModels-restricted row with a muted Unavailable suffix and its reason as the description", async () =>
+	{
+		const reason = "Not in availableModels set by your Claude Code settings (~/.claude/settings.json)";
+		const {container} = overloadedWithModel(
+			{
+				current: "claude-opus-5-5",
+				restrictionFor: (id: string) => (id === "haiku" || id === "opus" ? reason : undefined),
+			},
+		);
+		const menu = await openSwitchModel(container, "Opus 5.5");
+		const radio = (name: RegExp) =>
+			within(menu).getByRole(
+				"menuitemradio",
+				{
+					name,
+				},
+			);
+		const haiku = radio(/^Haiku 5\.5/);
+		const title = haiku.querySelector("[data-menu-item-title] > span");
+
+		expect(
+			{
+				disabled: haiku.getAttribute("aria-disabled"),
+				title: title?.className,
+				parts: [...(title?.children ?? [])].map((part) => [part.className, part.textContent]),
+				description: haiku.querySelector("[data-menu-item-description]")?.textContent,
+				current:
+				{
+					disabled: radio(/^Opus 5\.5/).getAttribute("aria-disabled"),
+					description: radio(/^Opus 5\.5/).querySelector("[data-menu-item-description]"),
+				},
+			},
+		).toStrictEqual(
+			{
+				disabled: "true",
+				title: "inline-flex min-w-0 items-center gap-sm",
+				parts: [
+					["truncate", "Haiku 5.5"],
+					["text-muted-as-secondary", "Unavailable"],
+				],
+				description: reason,
+				current:
+				{
+					disabled: null,
+					description: null,
+				},
+			},
+		);
+	});
+
+	it("pins a deprecated running model as a disabled, checked Unavailable row with upstream's Legacy description", async () =>
+	{
+		const {container} = overloadedWithModel(
+			{
+				current: "claude-opus-4-1-20250805",
+				isDeprecated: (id: string) => id.startsWith("claude-opus-4-1"),
+			},
+		);
+		const menu = await openSwitchModel(container, "Opus 4.1");
+		const pinned = within(menu).getAllByRole("menuitemradio")[0]!;
+		const suffix = pinned.querySelector("[data-menu-item-title] .text-muted-as-secondary");
+
+		expect(
+			{
+				title: pinned.querySelector("[data-menu-item-title]")?.textContent,
+				suffix: suffix?.textContent,
+				checked: pinned.getAttribute("aria-checked"),
+				disabled: pinned.getAttribute("aria-disabled"),
+				description: pinned.querySelector("[data-menu-item-description]")?.textContent,
+			},
+		).toStrictEqual(
+			{
+				title: "Opus 4.1 Unavailable",
+				suffix: " Unavailable",
+				checked: "true",
+				disabled: "true",
+				description: "Previous-generation model. May be removed in a future update.",
+			},
+		);
+	});
+
 	function sessionRewindRecovery(openRewindPicker: () => void)
 	{
 		return errorRecoveryHandlers(

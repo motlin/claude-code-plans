@@ -33,6 +33,7 @@ import
 	CHIN_MODEL_NAME_CLASS,
 	CHIN_TRIGGER_CLASS,
 } from "./composer-tokens";
+import {MENU_BADGE_CLASS} from "./ui/badge-classes";
 import
 {
 	MENU_HEADER_CLASS,
@@ -173,9 +174,6 @@ export function ModeMenu({
 }
 
 const FABLE_TOOLTIP = "Fable is the most capable model and draws down usage much faster than Opus";
-/** Upstream's cds Badge chip, sized for the compact menu. */
-const EFFORT_BADGE_CLASS =
-	"inline-flex items-center gap-1 h-5 whitespace-nowrap rounded-full px-1.5 text-[11px] font-medium";
 
 /**
  * An Effort row's label line, as upstream's `ON`: the name, then the catalog badge (a neutral Recommended, or the
@@ -190,14 +188,14 @@ function EffortRowLabel({option}: {option: EffortOption})
 				{effortLevelShortLabels[option.id]}
 			</span>
 			{option.recommended && (
-				<span data-effort-recommended="" className={`${EFFORT_BADGE_CLASS} bg-alpha-1 text-secondary`}>
+				<span data-effort-recommended="" className={`${MENU_BADGE_CLASS} bg-alpha-1 text-secondary`}>
 					Recommended
 				</span>
 			)}
 			{option.maxWarning && (
 				<span
 					data-effort-warning=""
-					className={`${EFFORT_BADGE_CLASS} min-w-0 shrink bg-[var(--warning-tint)] text-warning-000`}
+					className={`${MENU_BADGE_CLASS} min-w-0 shrink bg-[var(--warning-tint)] text-warning-000`}
 				>
 					<TriangleAlert aria-hidden="true" className="size-3 shrink-0" />
 					{MAX_WARNING_MESSAGE}
@@ -222,7 +220,7 @@ function ModelRowLabel({label, badge}: {label: string; badge: string | null})
 				<span
 					data-cds="Badge"
 					data-model-default=""
-					className={`${EFFORT_BADGE_CLASS} min-w-0 truncate bg-alpha-1 text-secondary`}
+					className={`${MENU_BADGE_CLASS} min-w-0 truncate bg-alpha-1 text-secondary`}
 				>
 					{badge}
 				</span>

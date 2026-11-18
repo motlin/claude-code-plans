@@ -4,6 +4,7 @@ import type {DeliveryResult} from "../hooks/use-composer-queue";
 import {FAILURE_MESSAGE} from "../hooks/use-live-launch-options";
 import type {LiveOptionChange} from "./launch-options";
 import type {ParkDecision} from "./parked-prompts";
+import type {RetryModelOptions} from "./retry-model-items";
 import type {MessageSessionLine, SessionLine} from "./transcript";
 import type {WorkingMarkerState} from "./working-marker";
 
@@ -49,12 +50,21 @@ export function errorRecoveryAvailability(gate: ErrorRecoveryGate): ErrorRecover
 }
 
 /** The session's running model and how to switch it, for Switch model and retry. */
-export interface ModelRetry
+interface ModelSwitch
 {
 	/** The running model's id, which the menu checks. */
 	current: string | undefined;
 	/** Applies the model to the pane; false when it couldn't. */
 	switchTo: (model: string) => Promise<boolean>;
+}
+
+/** The running model, its switch, and how the menu dresses the composer Model menu's rows. */
+export type ModelRetry = ModelSwitch & RetryModelOptions;
+
+/** The menu options alone, without the running model and its switch. */
+function retryMenuOptions({current: _current, switchTo: _switchTo, ...options}: ModelRetry): RetryModelOptions
+{
+	return options;
 }
 
 /** Types a prompt into the live pane, queueing it like the composer's send when the agent isn't ready. */
@@ -231,6 +241,10 @@ export function errorRecoveryHandlers(
 		...(model?.current !== undefined &&
 		{
 			currentModel: model.current,
+		}),
+		...(model !== undefined &&
+		{
+			modelMenu: retryMenuOptions(model),
 		}),
 	};
 }

@@ -2,6 +2,7 @@
  * Upstream's `availableModels` allowlist (c2319015e `fa`/`ha`, the CLI's `jX` matcher) and its row tooltip
  * (cf6ae6197 `rd` source labels). A restricted Model menu row is disabled with this tooltip.
  */
+import {fullModelId, type ModelCatalog} from "./launch-options";
 
 /** Settings `availableModels` with where it came from, as upstream's host config `{value, source, path}`. */
 export interface AvailableModels
@@ -97,4 +98,19 @@ export function restrictionTooltip({source, path}: Pick<AvailableModels, "source
 	return path !== "" && !path.startsWith(POLICY_PREFIX)
 		? `Not in availableModels set by ${label} (${path})`
 		: `Not in availableModels set by ${label}`;
+}
+
+/** Upstream's `ha` over the Model menu's rows: the `availableModels` tooltip for each row it leaves out. */
+export function modelRestriction(
+	catalog: ModelCatalog,
+	availableModels: AvailableModels | null,
+): ((id: string) => string | undefined) | undefined
+{
+	if (availableModels === null) return undefined;
+	const kindFor = restrictionKindFor(
+		[...catalog.primary, ...catalog.more].map((row) => fullModelId(row.id)),
+		availableModels,
+	);
+	const tooltip = restrictionTooltip(availableModels);
+	return (id) => (kindFor(fullModelId(id)) === "allowlist" ? tooltip : undefined);
 }
