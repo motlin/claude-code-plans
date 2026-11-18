@@ -1,3 +1,5 @@
+import {paletteSearchable} from "./palette-quick-action";
+
 /** Upstream drops the query from the empty copy once it passes this length. */
 const PALETTE_EMPTY_QUERY_MAX = 50;
 
@@ -7,9 +9,28 @@ const PALETTE_EMPTY_QUERY_MAX = 50;
  */
 export function paletteEmptyMessage(query: string, scope: string | null): string
 {
+	// Upstream gates the raw buffer `Pn`; local callers already stop at 50 raw characters via `longPrompt`.
 	const shown = query.length <= PALETTE_EMPTY_QUERY_MAX ? query.trim() : "";
 	if (shown === "") return scope === null ? "No results found" : `No results in ${scope}`;
 	return scope === null ? `No results for “${shown}”` : `No results for “${shown}” in ${scope}`;
+}
+
+/**
+ * Upstream's count live-region branch (`on && ct && … ? "{count} results available" : …`), measured on the raw,
+ * untrimmed query: whitespace-only still speaks, an empty raw query never does. Null falls through to the empty copy.
+ */
+export function paletteLiveCountMessage({
+	rawQuery,
+	count,
+	blocked,
+}: {
+	rawQuery: string;
+	count: number;
+	blocked: boolean;
+}): string | null
+{
+	if (rawQuery === "" || !paletteSearchable(rawQuery) || blocked || count === 0) return null;
+	return `${count} ${count === 1 ? "result" : "results"} available`;
 }
 
 export type PaletteEmptyKind = "nothing" | "filtered" | "failed" | "stalled" | "silent";

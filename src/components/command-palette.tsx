@@ -144,6 +144,7 @@ import
 	paletteFilterHints,
 	paletteInlineSuggestions,
 	paletteProjectMatches,
+	paletteQuotedText,
 	paletteRepoValue,
 	paletteSearchParams,
 	paletteValueSuggestions,
@@ -172,7 +173,8 @@ import {pin, unpin, usePins} from "../lib/pin-store";
 import {toMdSlug} from "../lib/md-slug";
 import {loadRecents, resolveRecentSessions, routeToRecent, type RecentEntry} from "../lib/recents-history";
 import {filterRoutines, formatNextRun, routineHref, routineTitle, sortRoutines} from "../lib/routines";
-import {paletteEmptyKind, paletteEmptyMessage} from "../lib/palette-empty";
+import {ackedAt, useAwaitingAckVersion} from "../lib/awaiting-ack-store";
+import {paletteEmptyKind, paletteEmptyMessage, paletteLiveCountMessage} from "../lib/palette-empty";
 import {PaletteEmptyState} from "./palette-empty-state";
 import {PaletteFilterSpoken} from "./palette-filter-spoken";
 import {PaletteEmptyViewSkeleton, PaletteSkeleton} from "./palette-skeleton";
@@ -1271,6 +1273,7 @@ function freezeMarks(sessions: readonly SessionListItem[], now: number): Readonl
 				now,
 				{
 					explicitUnread: isExplicitUnread(session.id),
+					ackedAtMs: ackedAt(session.id),
 				},
 			);
 			return entry === undefined ? [] : [[session.id, entry] as const];
@@ -1722,8 +1725,9 @@ function PalettePopup({
 	const [actedIds, setActedIds] = useState<ReadonlySet<string>>(() => new Set());
 	const settled = data !== undefined && (historySettled || settleTimedOut);
 	if (settled && frozenMarks === null) setFrozenMarks(freezeMarks(data.sessions, Date.now()));
-	// A hand "Mark as unread" changes only the store, so acted rows recompute on its version too.
+	// A hand "Mark as unread" or "Mark as completed" changes only a store, so acted rows recompute on its version too.
 	const unseenVersion = useUnseenWorkVersion();
+	const ackVersion = useAwaitingAckVersion();
 	const markOf = useCallback(
 		(session: SessionListItem) =>
 			frozenMarks === null || actedIds.has(session.id)
@@ -1732,11 +1736,12 @@ function PalettePopup({
 						Date.now(),
 						{
 							explicitUnread: isExplicitUnread(session.id),
+							ackedAtMs: ackedAt(session.id),
 						},
 					)
 				: frozenMarks.get(session.id),
-		// eslint-disable-next-line react-hooks/exhaustive-deps -- unseenVersion invalidates the store reads above.
-		[frozenMarks, actedIds, unseenVersion],
+		// eslint-disable-next-line react-hooks/exhaustive-deps -- the store versions invalidate the store reads above.
+		[frozenMarks, actedIds, unseenVersion, ackVersion],
 	);
 	const emptyView = useMemo(
 		() =>
@@ -3132,16 +3137,25 @@ function PalettePopup({
 			? "Something went wrong"
 			: type === "files" && tokens.text.trim() === ""
 				? "Type to search file contents"
-				: paletteEmptyMessage(tokens.text, type === "all" ? null : paletteTypeLabels[type]);
+				: paletteEmptyMessage(paletteQuotedText(query), type === "all" ? null : paletteTypeLabels[type]);
 	// Upstream's live region: the empty copy ("silent" speaks the bare No results found 3s after settling), else the ICU count.
+	// Upstream's region text needs a non-empty raw query (`ct`): a type tab listing rows at 0 characters stays silent.
 	const liveMessage =
-		emptyKind === "silent"
-			? silentSpokenFor === silentText
-				? "No results found"
-				: ""
-			: emptyKind === null
-				? `${resultCount} ${resultCount === 1 ? "result" : "results"} available`
-				: emptyMessage;
+		query === ""
+			? ""
+			: emptyKind === "silent"
+				? silentSpokenFor === silentText
+					? "No results found"
+					: ""
+				: emptyKind === null
+					? (paletteLiveCountMessage(
+							{
+								rawQuery: query,
+								count: resultCount,
+								blocked: false,
+							},
+						) ?? "")
+					: emptyMessage;
 	const idle = startStep === "idle";
 	// Upstream's sending Compose keeps the list hidden: the busy Send and the live region carry the state.
 	const composeAtRest = compose && startStep !== "picker";
@@ -3154,6 +3168,13 @@ function PalettePopup({
 	}
 	// Upstream's `emptyViewPending`: until the opening's empty view settles, the grouped skeleton stands in for it.
 	const emptyViewPending = showEmptyState && !whitespacePrompt && frozenView === null && !emptyViewReady;
+	// Upstream counts every empty-view row but its send_message New session, so whitespace speaks "N results available".
+	const emptyViewCount =
+		showEmptyState && !whitespacePrompt && !emptyViewPending
+			? emptyView.groups
+					.flatMap((group) => group.items)
+					.filter((row) => !(row.kind === "action" && row.id === "new_session")).length
+			: 0;
 	// Upstream `Ti && !wi && Ei(false)`: only the first show after the loading shell skips the delayed reveal.
 	if (skeletonHandoff && !emptyViewPending) setSkeletonHandoff(false);
 	const showResults =
@@ -3795,10 +3816,18 @@ function PalettePopup({
 							)}
 							{emptyViewPending && <PaletteEmptyViewSkeleton handoff={skeletonHandoff} />}
 						</Command.List>
-						{/* Upstream's live region stays empty beside the long-prompt New session row: search never ran. */}
-						{(showResults || (idle && longPrompt)) && (
+						{/* Upstream mounts the count region for the palette's life; it stays empty beside the long-prompt New session row. */}
+						{!compose && (
 							<div aria-live="polite" aria-atomic="true" className="sr-only">
-								{showResults && !searching ? liveMessage : ""}
+								{showResults && !searching
+									? liveMessage
+									: (paletteLiveCountMessage(
+											{
+												rawQuery: query,
+												count: emptyViewCount,
+												blocked: false,
+											},
+										) ?? "")}
 							</div>
 						)}
 						{!compose && (

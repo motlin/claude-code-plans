@@ -303,6 +303,112 @@ describe("paletteMark", () =>
 		]);
 	});
 
+	it("drops awaiting and error marks acked at or after the mtime, never running or unread (upstream's hh ack)", () =>
+	{
+		const mtime = new Date(NOW - DAY).toISOString();
+		const at = Date.parse(mtime);
+		const cases: [string, PaletteMarkInput, number | undefined][] = [
+			[
+				"blocked, acked at mtime",
+				input(
+					{
+						bucket: "blocked",
+					},
+				),
+				at,
+			],
+			[
+				"blocked, acked before mtime",
+				input(
+					{
+						bucket: "blocked",
+					},
+				),
+				at - 1,
+			],
+			[
+				"blocked error, acked at mtime",
+				input(
+					{
+						bucket: "blocked",
+						unseenError: true,
+					},
+				),
+				at,
+			],
+			[
+				"working, acked at mtime",
+				input(
+					{
+						bucket: "working",
+					},
+				),
+				at,
+			],
+			[
+				"done + unseen, acked at mtime",
+				input(
+					{
+						unseen: true,
+					},
+				),
+				at,
+			],
+			[
+				"archived, no ack",
+				input(
+					{
+						bucket: "blocked",
+						archived: true,
+						mtime,
+					},
+				),
+				undefined,
+			],
+		];
+
+		expect(
+			cases.map(([name, session, ackedAtMs]) => [
+				name,
+				paletteMark(
+					session,
+					NOW,
+					ackedAtMs === undefined
+						? {}
+						:
+							{
+								ackedAtMs,
+							},
+				),
+			]),
+		).toStrictEqual([
+			["blocked, acked at mtime", undefined],
+			[
+				"blocked, acked before mtime",
+				{
+					mark: "awaiting",
+					leads: true,
+				},
+			],
+			["blocked error, acked at mtime", undefined],
+			[
+				"working, acked at mtime",
+				{
+					mark: "running",
+					leads: true,
+				},
+			],
+			[
+				"done + unseen, acked at mtime",
+				{
+					mark: "unread",
+					leads: true,
+				},
+			],
+			["archived, no ack", undefined],
+		]);
+	});
+
 	it("leads exactly at the 7-day boundary", () =>
 	{
 		expect(

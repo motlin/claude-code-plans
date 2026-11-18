@@ -1230,6 +1230,69 @@ describe("⌘K palette live search", () =>
 		});
 	});
 
+	it("keeps the count region mounted for the palette's life, speaking the frozen empty view's count for whitespace", async () =>
+	{
+		const {dialog} = await openPalette([
+			recentSession("sess-1", "Refactor auth module"),
+			recentSession("sess-2", "Fix login"),
+			recentSession("sess-3", "Blocked one", "blocked"),
+		]);
+		await within(dialog).findByText("Refactor auth module");
+		const countRegions = () => [...dialog.querySelectorAll("[aria-live=polite][aria-atomic=true]:not([role])")];
+		const [region] = countRegions();
+		const opened =
+		{
+			regions: countRegions().length,
+			text: region?.textContent,
+		};
+		const labels = () =>
+			[...dialog.querySelectorAll("[cmdk-item]")].map(
+				(item) => item.querySelector("[data-palette-label]")?.textContent ?? "",
+			);
+		const openedLabels = labels();
+
+		type(dialog, "   ");
+		const whitespace =
+		{
+			same: countRegions()[0] === region,
+			text: region?.textContent,
+			labelsUnchanged: JSON.stringify(labels()) === JSON.stringify(openedLabels),
+		};
+
+		type(dialog, "");
+		const cleared = region?.textContent;
+
+		type(dialog, " ".repeat(51));
+		const long = countRegions()[0]?.textContent;
+
+		expect(
+			{
+				opened,
+				openedLabels,
+				whitespace,
+				cleared,
+				long,
+			},
+		).toStrictEqual(
+			{
+				opened:
+				{
+					regions: 1,
+					text: "",
+				},
+				openedLabels: ["Blocked one Awaiting input", "Refactor auth module", "Fix login", "New session"],
+				whitespace:
+				{
+					same: true,
+					text: "3 results available",
+					labelsUnchanged: true,
+				},
+				cleared: "",
+				long: "",
+			},
+		);
+	});
+
 	it("navigates to the search page with the query and type from the last row", async () =>
 	{
 		const {dialog, router} = await openPalette();
@@ -1586,6 +1649,48 @@ describe("⌘K palette filters", () =>
 		);
 	});
 
+	it("keeps the count region silent on the Code tab until something is typed", async () =>
+	{
+		const {dialog} = await openPalette([
+			recentSession("sess-1", "Refactor auth module"),
+			recentSession("sess-2", "Fix login"),
+		]);
+		const countText = () => dialog.querySelector("[aria-live=polite]:not([role])")?.textContent;
+
+		fireEvent.click(
+			within(dialog).getByRole(
+				"tab",
+				{
+					name: "Code",
+				},
+			),
+		);
+		await waitFor(() =>
+		{
+			expect(optionLabels(dialog)).toStrictEqual(["Refactor auth module", "Fix login"]);
+		});
+		const empty = countText();
+
+		type(dialog, "auth");
+		(await awaitRequest()).resolve([]);
+		await waitFor(() =>
+		{
+			expect(countText()).not.toBe("");
+		});
+
+		expect(
+			{
+				empty,
+				typed: countText(),
+			},
+		).toStrictEqual(
+			{
+				empty: "",
+				typed: "1 result available",
+			},
+		);
+	});
+
 	it("maps type:code onto upstream's Code tab, the local sessions type", async () =>
 	{
 		const {dialog} = await openPalette([]);
@@ -1892,6 +1997,42 @@ describe("⌘K palette filters", () =>
 		{
 			expect(pending.map((search) => search.url)).toContain("/api/search?query=zzqxvq");
 		});
+	});
+
+	it("quotes the no-results query as typed, trimmed only at the ends", async () =>
+	{
+		const {dialog} = await openPalette([]);
+
+		fireEvent.click(
+			within(dialog).getByRole(
+				"tab",
+				{
+					name: "Code",
+				},
+			),
+		);
+		type(dialog, "ZqXv  Mixed  ");
+		(await awaitRequest()).resolve([]);
+
+		const copy = await within(dialog).findByText(
+			"No results for “ZqXv  Mixed” in Code",
+			{
+				selector: "p",
+				normalizer: (text) => text,
+			},
+		);
+
+		expect(
+			{
+				copy: copy.textContent,
+				live: dialog.querySelector("[aria-live=polite]:not([role])")?.textContent,
+			},
+		).toStrictEqual(
+			{
+				copy: "No results for “ZqXv  Mixed” in Code",
+				live: "No results for “ZqXv  Mixed” in Code",
+			},
+		);
 	});
 
 	it("sizes Search all at the palette's comfortable density: 28px tall, 9px padding, 8px radius", async () =>

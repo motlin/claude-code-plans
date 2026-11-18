@@ -53,18 +53,24 @@ export interface PaletteMarkOptions
 {
 	/** The session is in this browser's explicit-unread set (a hand "Mark as unread"). */
 	explicitUnread?: boolean;
+	/** This browser's awaiting ack (upstream `ackedAt[id]`, written by Mark as completed). */
+	ackedAtMs?: number | undefined;
 }
 
 /** A session's palette mark and whether it leads; archived rows are never marked. */
 export function paletteMark(
 	session: PaletteMarkInput,
 	now: number,
-	{explicitUnread = false}: PaletteMarkOptions = {},
+	{explicitUnread = false, ackedAtMs}: PaletteMarkOptions = {},
 ): PaletteMarkEntry | undefined
 {
 	if (session.archived) return undefined;
 	const mark = markFor(session, explicitUnread);
 	if (mark === undefined) return undefined;
+	// Upstream's `hh`: an ack at or after the mtime idles awaiting and error; later activity voids it. Local
+	// `working` is always a live signal (upstream's still-running exception), and the ack never covers unread.
+	const acked = ackedAtMs !== undefined && ackedAtMs >= Date.parse(session.mtime);
+	if (acked && (mark === "awaiting" || mark === "error")) return undefined;
 	const leads =
 		mark === "awaiting" ||
 		Date.parse(session.mtime) >= now - LEAD_WINDOW_MS ||

@@ -10,6 +10,7 @@ import
 	paletteFilterHintMatch,
 	paletteFilterHints,
 	paletteInlineSuggestions,
+	paletteQuotedText,
 	paletteSearchParams,
 	PaletteTypeSchema,
 	paletteValueSuggestions,
@@ -264,6 +265,16 @@ describe("parsePaletteTokens", () =>
 	it.each(cases)("parses %j", (query, expected) =>
 	{
 		expect(parsePaletteTokens(query)).toStrictEqual(expected);
+	});
+});
+
+describe("paletteQuotedText", () =>
+{
+	it("drops token words but keeps the typed whitespace between the rest, trimming only the ends", () =>
+	{
+		expect(
+			["ZqXv  Mixed  ", "  a\t b ", "zqxv  is:archived  qq", "/zqxv qq", ""].map(paletteQuotedText),
+		).toStrictEqual(["ZqXv  Mixed", "a\t b", "zqxv    qq", "/zqxv qq", ""]);
 	});
 });
 

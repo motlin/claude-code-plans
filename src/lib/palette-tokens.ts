@@ -114,6 +114,30 @@ function applyToken(tokens: PaletteTokens, key: string, rawValue: string): boole
 	return false;
 }
 
+/** Whether a word is an inline filter token that `parsePaletteTokens` lifts out of the free text. */
+function isTokenWord(tokens: PaletteTokens, word: string): boolean
+{
+	const match = /^([a-z]+):(.*)$/iu.exec(word);
+	return match?.[1] !== undefined && applyToken(tokens, match[1].toLowerCase(), match[2] ?? "");
+}
+
+/**
+ * The free text as upstream's no-results copy quotes it (`Pn.trim()`): token words dropped like
+ * `parsePaletteTokens`, but the typed whitespace between the remaining words kept.
+ */
+export function paletteQuotedText(rawQuery: string): string
+{
+	const scratch: PaletteTokens =
+	{
+		text: "",
+	};
+	return rawQuery
+		.split(/(\s+)/u)
+		.filter((part) => /^\s*$/u.test(part) || !isTokenWord(scratch, part))
+		.join("")
+		.trim();
+}
+
 /** Split a palette query into free text and upstream's inline filter tokens (last one wins). */
 export function parsePaletteTokens(query: string): PaletteTokens
 {
@@ -125,12 +149,7 @@ export function parsePaletteTokens(query: string): PaletteTokens
 	for (const word of query.split(/\s+/u))
 	{
 		if (word === "") continue;
-		const match = /^([a-z]+):(.*)$/iu.exec(word);
-		if (match?.[1] !== undefined && applyToken(tokens, match[1].toLowerCase(), match[2] ?? ""))
-		{
-			continue;
-		}
-		words.push(word);
+		if (!isTokenWord(tokens, word)) words.push(word);
 	}
 	tokens.text = words.join(" ");
 	return tokens;

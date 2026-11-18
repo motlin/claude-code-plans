@@ -1,5 +1,5 @@
 import {describe, expect, it} from "vite-plus/test";
-import {paletteEmptyKind, paletteEmptyMessage} from "../src/lib/palette-empty";
+import {paletteEmptyKind, paletteEmptyMessage, paletteLiveCountMessage} from "../src/lib/palette-empty";
 
 describe("paletteEmptyMessage", () =>
 {
@@ -139,5 +139,32 @@ describe("paletteEmptyKind", () =>
 			"stalled",
 			"silent",
 		]);
+	});
+});
+
+describe("paletteLiveCountMessage", () =>
+{
+	it("ports upstream's count branch: silent for an empty raw query, over 50 characters, blocked or with no rows", () =>
+	{
+		const cases: [string, number, boolean][] = [
+			["", 25, false],
+			["   ", 7, false],
+			[" ", 1, false],
+			[" ".repeat(51), 7, false],
+			["auth", 3, true],
+			["auth", 0, false],
+		];
+
+		expect(
+			cases.map(([rawQuery, count, blocked]) =>
+				paletteLiveCountMessage(
+					{
+						rawQuery,
+						count,
+						blocked,
+					},
+				),
+			),
+		).toStrictEqual([null, "7 results available", "1 result available", null, null, null]);
 	});
 });

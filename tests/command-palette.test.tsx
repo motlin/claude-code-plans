@@ -3228,6 +3228,38 @@ describe("CommandPalette shell", () =>
 		});
 	});
 
+	it("follows a tab switch made in another tab", async () =>
+	{
+		const opener = await renderPalette();
+		act(() =>
+		{
+			localStorage.setItem("cmdk-mode", "compose");
+			window.dispatchEvent(
+				new StorageEvent(
+					"storage",
+					{
+						key: "cmdk-mode",
+						newValue: "compose",
+					},
+				),
+			);
+		});
+
+		const dialog = await pressOpen(opener);
+
+		expect(
+			{
+				composer: within(dialog).getByRole("combobox").getAttribute("placeholder"),
+				stored: localStorage.getItem("cmdk-mode"),
+			},
+		).toStrictEqual(
+			{
+				composer: "Write a message…",
+				stored: "compose",
+			},
+		);
+	});
+
 	it("ignores an unknown stored cmdk-mode", async () =>
 	{
 		localStorage.setItem("cmdk-mode", "bogus");
@@ -4729,6 +4761,144 @@ describe("CommandPalette shell", () =>
 			}
 			finally
 			{
+				__unreadStoreTesting.reset();
+			}
+		});
+
+		it("drops an awaiting row acked by Mark as completed into Recents at once, until new activity (upstream's ack)", async () =>
+		{
+			const {__awaitingAckTesting} = await import("../src/lib/awaiting-ack-store");
+			const {__unreadStoreTesting} = await import("../src/lib/unread-store");
+			const acked = Date.parse("2026-11-04T10:00:00.000Z");
+			const blocked = recentSession(
+				"s-blocked",
+				"Blocked one",
+				"blocked",
+				{
+					mtime: new Date(acked).toISOString(),
+				},
+			);
+			const plain = recentSession("s-plain", "Plain one");
+			let client: QueryClient | null = null;
+			try
+			{
+				const opener = await renderPalette([blocked, plain], "/", (queryClient) =>
+				{
+					client = queryClient;
+				});
+				const dialog = await pressOpen(opener);
+				await within(dialog).findByRole(
+					"option",
+					{
+						name: /Blocked one/,
+					},
+				);
+				const opening = groupLabels(dialog);
+
+				fireEvent.keyDown(
+					within(dialog).getByRole("combobox"),
+					{
+						key: "Enter",
+						code: "Enter",
+						altKey: true,
+					},
+				);
+				const card = await screen.findByRole(
+					"menu",
+					{
+						name: "Actions",
+					},
+				);
+				fireEvent.click(
+					within(card).getByRole(
+						"menuitem",
+						{
+							name: /Mark as completed/,
+						},
+					),
+				);
+				await waitFor(() =>
+				{
+					expect(groupLabels(dialog)[0]?.[0]).toBe("Recents");
+				});
+				const option = within(dialog).getByRole(
+					"option",
+					{
+						name: /Blocked one/,
+					},
+				);
+				const completed =
+				{
+					groups: groupLabels(dialog),
+					dot: option.querySelector("[data-palette-mark-dot]") !== null,
+				};
+
+				pressK(
+					within(dialog).getByRole("combobox"),
+					{
+						metaKey: true,
+					},
+				);
+				await waitFor(() =>
+				{
+					expect(screen.queryByRole("dialog")).toBeNull();
+				});
+				act(() =>
+				{
+					client?.setQueryData(
+						recentSessionsQueryOptions(PALETTE_RECENT_LIMIT).queryKey,
+						{
+							sessions: [
+								{
+									...blocked,
+									mtime: new Date(acked + 1000).toISOString(),
+								},
+								plain,
+							],
+							nextCursor: null,
+						},
+					);
+				});
+				const reopened = await pressOpen(document.body);
+				await within(reopened).findByRole(
+					"option",
+					{
+						name: /Blocked one/,
+					},
+				);
+
+				expect(
+					{
+						opening,
+						completed,
+						afterActivity: groupLabels(reopened),
+					},
+				).toStrictEqual(
+					{
+						opening: [
+							["Needs attention", ["Blocked one Awaiting input"]],
+							["Recents", ["Plain one"]],
+							["Actions", ["New session"]],
+						],
+						completed:
+						{
+							groups: [
+								["Recents", ["Blocked one", "Plain one"]],
+								["Actions", ["New session"]],
+							],
+							dot: false,
+						},
+						afterActivity: [
+							["Needs attention", ["Blocked one Awaiting input"]],
+							["Recents", ["Plain one"]],
+							["Actions", ["New session"]],
+						],
+					},
+				);
+			}
+			finally
+			{
+				__awaitingAckTesting.reset();
 				__unreadStoreTesting.reset();
 			}
 		});
