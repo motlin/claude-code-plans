@@ -2400,6 +2400,7 @@ export const SystemRecordSchema = z
 			hookCount: z.number().optional(),
 			hookInfos: z.array(JsonValueSchema).optional(),
 			hookErrors: z.array(JsonValueSchema).optional(),
+			failedHookErrorIndexes: z.array(z.number()).optional(),
 			hookAdditionalContext: z.array(JsonValueSchema).optional(),
 			preventedContinuation: z.boolean().optional(),
 			preventContinuation: z.boolean().optional(),
