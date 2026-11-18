@@ -24,6 +24,8 @@ import {SidebarToggleButton} from "./sidebar-toggle";
 import {useSidebarBodyRoving} from "./use-roving-focus";
 import {openCommandPalette} from "../../hooks/use-command-palette";
 import {SidebarSessionGroups} from "./session-filter-menu";
+import {FadeLabel} from "./session-group-section";
+import {ARTIFACTS_CREATE_AT_REST} from "../../lib/artifacts-create-at-rest";
 import {approvalsQueryOptions} from "../../lib/api/approvals";
 import {notificationsQueryOptions, useMarkNotificationsRead} from "../../lib/api/notifications";
 import {activeSessionsQueryOptions} from "../../lib/api/sessions";
@@ -158,12 +160,19 @@ export function Sidebar({
 									data-row-nav=""
 									data-roving-item=""
 									data-selected={item.section === activeSection ? "focused" : undefined}
-									className="group df-nav-row h-[var(--sb-row-h)] data-[row-main-button]:flex-1 rounded-[var(--sb-radius)] hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--color-accent-100),0_0_6px_0_color-mix(in_srgb,var(--color-accent-100)_20%,transparent)]"
+									className="group df-nav-row h-[var(--sb-row-h)] data-[row-main-button]:flex-1 group-data-[action-at-rest]/artifacts-row:pe-[calc(var(--sb-row-px)+var(--sb-row-ctl)+var(--spacing))] rounded-[var(--sb-radius)] hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--color-accent-100),0_0_6px_0_color-mix(in_srgb,var(--color-accent-100)_20%,transparent)]"
 								>
 									<span className="df-leading-slot">
 										<Glyph aria-hidden="true" />
 									</span>
-									<span className="min-w-0 flex-1 truncate">{item.label}</span>
+									{/* Upstream `__` with createAtRest: the cleared fade label instead of an ellipsis, beside the at-rest "+". */}
+									{hasRowActions && ARTIFACTS_CREATE_AT_REST ? (
+										<span className="min-w-0 flex-1">
+											<FadeLabel text={item.label} />
+										</span>
+									) : (
+										<span className="min-w-0 flex-1 truncate">{item.label}</span>
+									)}
 									{badge && badge.count > 0 && (
 										<span className="df-tail-mark">
 											<span

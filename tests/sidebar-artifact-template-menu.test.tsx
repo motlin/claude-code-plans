@@ -24,6 +24,22 @@ import type {NavSection} from "../src/lib/nav-sections";
 import {ToastProvider} from "../src/components/toast";
 import {installLocalStorage} from "./fake-storage";
 
+const atRestGate = vi.hoisted(() => (
+{
+	override: undefined as boolean | undefined,
+}));
+
+vi.mock("../src/lib/artifacts-create-at-rest", async (importActual) =>
+{
+	const actual = await importActual<typeof import("../src/lib/artifacts-create-at-rest")>();
+	return {
+		get ARTIFACTS_CREATE_AT_REST()
+		{
+			return atRestGate.override ?? actual.ARTIFACTS_CREATE_AT_REST;
+		},
+	};
+});
+
 const BASE_SETTINGS =
 {
 	terminalWritesEnabled: false,
@@ -188,6 +204,7 @@ beforeEach(() =>
 
 afterEach(() =>
 {
+	atRestGate.override = undefined;
 	cleanup();
 	vi.unstubAllGlobals();
 });
@@ -524,6 +541,66 @@ describe("sidebar Artifacts template launcher", () =>
 				customize: true,
 				more: true,
 				plans: true,
+			},
+		);
+	});
+
+	it("keeps the + visible at rest behind upstream's __gb__348723301, on locally (M6)", async () =>
+	{
+		const atRestOn = async (override: boolean | undefined) =>
+		{
+			atRestGate.override = override;
+			await renderSidebar();
+			const plus = plusButton();
+			const wrapper = plus.closest<HTMLElement>("[data-row]");
+			const link = screen.getByRole(
+				"link",
+				{
+					name: "Artifacts",
+				},
+			);
+			const actions = plus.closest<HTMLElement>("[data-row-actions]");
+			const result =
+			{
+				actionAtRest: wrapper?.getAttribute("data-action-at-rest") ?? null,
+				actions: [...(actions?.classList ?? [])].filter((name) => name.includes("action-at-rest")),
+				link: [...link.classList].filter((name) => name.includes("action-at-rest")),
+				label: link.querySelector(":scope > span:not(.df-leading-slot)")?.className ?? null,
+				fadeLabel: link.querySelector(".dframe-fade-label")?.textContent ?? null,
+			};
+			cleanup();
+			return result;
+		};
+		const actions = [
+			"group-data-[action-at-rest]/artifacts-row:opacity-100",
+			"group-data-[action-at-rest]/artifacts-row:[pointer-events:inherit]",
+		];
+		const link = [
+			"group-data-[action-at-rest]/artifacts-row:pe-[calc(var(--sb-row-px)+var(--sb-row-ctl)+var(--spacing))]",
+		];
+		expect(
+			{
+				shipped: await atRestOn(undefined),
+				off: await atRestOn(false),
+			},
+		).toStrictEqual(
+			{
+				shipped:
+				{
+					actionAtRest: "",
+					actions,
+					link,
+					label: "min-w-0 flex-1",
+					fadeLabel: "Artifacts",
+				},
+				off:
+				{
+					actionAtRest: null,
+					actions,
+					link,
+					label: "min-w-0 flex-1 truncate",
+					fadeLabel: null,
+				},
 			},
 		);
 	});

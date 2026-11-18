@@ -1477,7 +1477,7 @@ function WorkingTitle({text, still}: {text: string; still: boolean})
  * passes upstream's `data-attention` look for its title's `span.relative`, and `still` when it is
  * the selected row, whose working title holds still.
  */
-function FadeLabel({
+export function FadeLabel({
 	text,
 	attention,
 	still = false,

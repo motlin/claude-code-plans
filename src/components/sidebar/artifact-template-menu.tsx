@@ -2,6 +2,7 @@ import {useNavigate} from "@tanstack/react-router";
 import {Plus} from "lucide-react";
 import {Fragment, useState, type ReactNode} from "react";
 import {ARTIFACT_TEMPLATES} from "../../lib/artifact-templates";
+import {ARTIFACTS_CREATE_AT_REST} from "../../lib/artifacts-create-at-rest";
 import {TemplateBadge} from "../make-something-new";
 import {ArtifactMark} from "../artifact-mark";
 import {Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger} from "../ui/menu";
@@ -30,13 +31,14 @@ export function ArtifactsNavRow({
 		<div
 			data-row=""
 			data-menu-open={open ? "true" : undefined}
+			data-action-at-rest={ARTIFACTS_CREATE_AT_REST ? "" : undefined}
 			data-selected={selected ? "focused" : undefined}
 			className="group/artifacts-row relative flex items-center rounded-[var(--sb-radius)] hover:bg-[var(--sb-hover)] has-[:focus-visible]:bg-[var(--sb-hover)] data-[menu-open=true]:bg-[var(--sb-hover)] data-[selected=focused]:bg-[var(--sb-selected)] [&>.df-nav-row]:bg-transparent"
 		>
 			{children}
 			<div
 				data-row-actions=""
-				className={`absolute top-1/2 right-1 flex -translate-y-1/2 items-center gap-0.5 transition-opacity group-hover/artifacts-row:pointer-events-auto group-hover/artifacts-row:opacity-100 group-has-[:focus-visible]/artifacts-row:pointer-events-auto group-has-[:focus-visible]/artifacts-row:opacity-100 ${open ? "opacity-100" : "pointer-events-none opacity-0"}`}
+				className={`absolute top-1/2 right-1 flex -translate-y-1/2 items-center gap-0.5 transition-opacity group-hover/artifacts-row:pointer-events-auto group-hover/artifacts-row:opacity-100 group-has-[:focus-visible]/artifacts-row:pointer-events-auto group-has-[:focus-visible]/artifacts-row:opacity-100 group-data-[action-at-rest]/artifacts-row:opacity-100 group-data-[action-at-rest]/artifacts-row:[pointer-events:inherit] ${open ? "opacity-100" : "pointer-events-none opacity-0"}`}
 			>
 				<Menu modal={false} onOpenChange={setOpen}>
 					<Tooltip content={LABEL} suppressAfterPopup>
