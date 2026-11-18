@@ -5,6 +5,7 @@ import {useDialogBandBodyClass} from "./ui/dialog-band";
 import {DialogHeader} from "./ui/dialog-header";
 import {DIALOG_FOOTER_CLASS, useDialogPad} from "./ui/dialog-pad";
 import {DialogPopup} from "./ui/dialog-popup";
+import {DIALOG_NESTED_SCRIM_BLUR_CLASS} from "./ui/dialog-classes";
 import {useFizzyLake} from "../lib/fizzy-lake";
 
 const BUTTON_BASE_CLASS =
@@ -93,7 +94,7 @@ export function SessionRenameDialog({
 								{
 									finalFocus,
 								})}
-						className="fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-[400px] -translate-x-1/2 -translate-y-1/2 flex-col rounded-card bg-surface-3 text-body text-primary shadow-panel-lg outline-none transition-[opacity,scale] duration-200 ease-out data-[ending-style]:scale-[0.98] data-[ending-style]:opacity-0 data-[starting-style]:scale-[0.98] data-[starting-style]:opacity-0 motion-reduce:transition-none"
+						className={`${DIALOG_NESTED_SCRIM_BLUR_CLASS} fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-[400px] -translate-x-1/2 -translate-y-1/2 flex-col rounded-card bg-surface-3 text-body text-primary shadow-panel-lg outline-none transition-[opacity,scale] duration-200 ease-out data-[ending-style]:scale-[0.98] data-[ending-style]:opacity-0 data-[starting-style]:scale-[0.98] data-[starting-style]:opacity-0 motion-reduce:transition-none`}
 					>
 						<form
 							className={`flex min-h-0 flex-1 flex-col overflow-y-auto ${pad.p} ${bandBody}`}

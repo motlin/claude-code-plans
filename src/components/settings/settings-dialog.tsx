@@ -48,7 +48,7 @@ import {UsageSettings} from "./usage-settings";
 import {SETTINGS_PHONE_QUERY, useMediaQuery} from "../../lib/use-phone-sheet";
 import {CDS_TAB_CLASS, CDS_TAB_LIST_CLASS} from "../ui/cds-tabs";
 import {DensityScope} from "../ui/density";
-import {DIALOG_BODY_CLASS} from "../ui/dialog-classes";
+import {DIALOG_BODY_CLASS, DIALOG_NESTED_SCRIM_CLASS} from "../ui/dialog-classes";
 import
 {
 	navRowFor,
@@ -582,7 +582,7 @@ export function SettingsDialog()
 						finalFocus={finalFocus}
 						data-perf-overlay="settings_modal"
 						data-perf-screen={customize === null ? tab : `customize-${customize.section}`}
-						className={`fixed inset-4 z-50 m-auto ${phone ? "flex flex-col" : "grid grid-cols-[auto_minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)]"} max-h-[50rem] max-w-[1024px] overflow-hidden dark:border dark:border-white/5 rounded-card bg-[var(--menu-bg)] dark:bg-surface-2 text-body text-primary dark:shadow-[inset_0_0_0_1px_rgb(255_255_255/0.1),0_1px_2px_rgb(11_11_11/0.06),0_2px_8px_rgba(0,0,0,0.24)] not-dark:shadow-[0_0_0_1px_rgb(11_11_11/0.1),0_1px_2px_rgb(11_11_11/0.06),0_2px_8px_rgb(11_11_11/0.08)] outline-none transition-[opacity,scale] duration-200 ease-[cubic-bezier(0.165,0.84,0.44,1)] motion-reduce:transition-none data-[starting-style]:opacity-0 data-[starting-style]:scale-[0.98] motion-reduce:data-[starting-style]:scale-100 data-[ending-style]:opacity-0 data-[ending-style]:scale-[0.98]`}
+						className={`${DIALOG_NESTED_SCRIM_CLASS} fixed inset-4 z-50 m-auto ${phone ? "flex flex-col" : "grid grid-cols-[auto_minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)]"} max-h-[50rem] max-w-[1024px] overflow-hidden dark:border dark:border-white/5 rounded-card bg-[var(--menu-bg)] dark:bg-surface-2 text-body text-primary dark:shadow-[inset_0_0_0_1px_rgb(255_255_255/0.1),0_1px_2px_rgb(11_11_11/0.06),0_2px_8px_rgba(0,0,0,0.24)] not-dark:shadow-[0_0_0_1px_rgb(11_11_11/0.1),0_1px_2px_rgb(11_11_11/0.06),0_2px_8px_rgb(11_11_11/0.08)] outline-none transition-[opacity,scale] duration-200 ease-[cubic-bezier(0.165,0.84,0.44,1)] motion-reduce:transition-none data-[starting-style]:opacity-0 data-[starting-style]:scale-[0.98] motion-reduce:data-[starting-style]:scale-100 data-[ending-style]:opacity-0 data-[ending-style]:scale-[0.98]`}
 					>
 						{phone ? (
 							// Upstream at phone width: one scroll container (p-24) holding the header, the tab strip and a single column; no search.
@@ -608,8 +608,9 @@ export function SettingsDialog()
 							// Upstream's grid shell: nav (row 2), the full-width top row band (row 1), then the panel.
 							<div className="contents">
 								<nav
+									data-perf-region="settings_nav"
 									aria-label="Settings"
-									className="row-start-2 flex w-[212px] min-h-0 shrink-0 flex-col border-e border-[rgb(0_0_0/0.1)] dark:border-white/10 bg-surface-1"
+									className="row-start-2 flex w-53 min-h-0 shrink-0 flex-col border-e border-seam bg-surface-1"
 								>
 									<h2 id={titleId} className="sr-only">
 										Settings
@@ -673,7 +674,10 @@ export function SettingsDialog()
 									{closeButton}
 								</div>
 								{shownCustomize === null ? (
-									<div className="flex min-h-0 min-w-0 flex-1 flex-col">
+									<div
+										data-perf-region="settings_panel"
+										className="flex min-h-0 min-w-0 flex-1 flex-col"
+									>
 										<div
 											aria-busy={switching || undefined}
 											className={`relative min-h-0 flex-1 overflow-x-hidden overflow-y-auto p-4 [scrollbar-gutter:stable]${pendingClass}`}
@@ -682,7 +686,10 @@ export function SettingsDialog()
 										</div>
 									</div>
 								) : (
-									<div className="flex min-h-0 min-w-0 flex-1 flex-col">
+									<div
+										data-perf-region="settings_panel"
+										className="flex min-h-0 min-w-0 flex-1 flex-col"
+									>
 										{/* Upstream's Customize pane: an empty chrome slot (Close lives in the top row), the crumb bar, then the panel. */}
 										<div
 											data-customize-dialog-pane=""

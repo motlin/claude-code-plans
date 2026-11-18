@@ -254,6 +254,45 @@ describe("SettingsDialog", () =>
 		);
 	});
 
+	// Upstream's cds Dialog `bE`: an ::after scrim that fades in over the popup while a nested dialog is open.
+	// Settings takes the unstyled path, so no `data-[nested-dialog-open]:blur-[2px]`.
+	it("leads the popup class with upstream's nested-dialog scrim and no nested blur", async () =>
+	{
+		await renderAt("/#settings/general");
+
+		const dialog = await screen.findByRole(
+			"dialog",
+			{
+				name: "Settings",
+			},
+		);
+		const popupClasses = dialog.className.split(" ");
+
+		expect(
+			{
+				lead: popupClasses.slice(0, 10),
+				blur: popupClasses.includes("data-[nested-dialog-open]:blur-[2px]"),
+			},
+		).toStrictEqual(
+			{
+				lead: [
+					"after:pointer-events-none",
+					"after:absolute",
+					"after:inset-0",
+					"after:rounded-[inherit]",
+					"after:bg-backdrop",
+					"after:opacity-0",
+					"after:z-50",
+					"after:transition-opacity",
+					"after:duration-200",
+					"after:ease-[cubic-bezier(0.165,0.84,0.44,1)]",
+				],
+				blur: false,
+			},
+		);
+		expect(popupClasses).toContain("data-[nested-dialog-open]:after:opacity-100");
+	});
+
 	// Upstream's 2026-11 shell: a grid whose full-width settings-top-row band (visible "Settings" title + the
 	// dialog's only Close) sits above the nav and the panel; the panel header and sticky top fade are gone.
 	it("lays the desktop shell out as upstream's grid under a full-width settings-top-row band", async () =>
@@ -367,6 +406,8 @@ describe("SettingsDialog", () =>
 		expect(
 			{
 				nav: nav.className,
+				region: nav.getAttribute("data-perf-region"),
+				panelRegions: dialog.querySelectorAll('[data-perf-region="settings_panel"]').length,
 				searchWrap: searchWrap?.className,
 				list: listWrap?.className,
 				children: [...(listWrap?.children ?? [])].map((child) => [
@@ -378,7 +419,9 @@ describe("SettingsDialog", () =>
 			},
 		).toStrictEqual(
 			{
-				nav: "row-start-2 flex w-[212px] min-h-0 shrink-0 flex-col border-e border-[rgb(0_0_0/0.1)] dark:border-white/10 bg-surface-1",
+				nav: "row-start-2 flex w-53 min-h-0 shrink-0 flex-col border-e border-seam bg-surface-1",
+				region: "settings_nav",
+				panelRegions: 1,
 				searchWrap: "shrink-0 px-4 pt-4",
 				list: "flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto scroll-fade-y scroll-fade-hide-top scroll-fade-size-6 scroll-pt-2 px-4 pt-3 pb-4",
 				children: [
@@ -936,7 +979,7 @@ describe("SettingsDialog at phone width", () =>
 		expect(
 			{
 				sideNav: within(dialog).queryByRole("navigation"),
-				sideNavWidth: dialog.querySelector(".w-\\[212px\\]"),
+				sideNavWidth: dialog.querySelector(".w-53"),
 				heading: within(dialog).getByRole(
 					"heading",
 					{
@@ -1973,14 +2016,23 @@ describe("SettingsDialog local tabs", () =>
 		);
 
 		expect(
-			[...views.querySelectorAll('[role="radio"]')].map((radio) => [
-				radio.textContent,
-				radio.getAttribute("aria-checked"),
-			]),
-		).toStrictEqual([
-			["Yours", "false"],
-			["Discover", "true"],
-		]);
+			{
+				views: [...views.querySelectorAll('[role="radio"]')].map((radio) => [
+					radio.textContent,
+					radio.getAttribute("aria-checked"),
+				]),
+				// Upstream's perf anchor wraps the Customize pane too.
+				panelRegions: document.querySelectorAll('[data-perf-region="settings_panel"]').length,
+			},
+		).toStrictEqual(
+			{
+				views: [
+					["Yours", "false"],
+					["Discover", "true"],
+				],
+				panelRegions: 1,
+			},
+		);
 	});
 
 	it("opens Connectors from the Customize row, replacing the entry, and ignores a click while Connectors is current", async () =>

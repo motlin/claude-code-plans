@@ -4,7 +4,7 @@ import {AlertDialogPopup} from "./ui/dialog-popup";
 import {useFizzyLake} from "../lib/fizzy-lake";
 import {DensityScope} from "./ui/density";
 import {DIALOG_FOOTER_CLASS} from "./ui/dialog-pad";
-import {DIALOG_BODY_CLASS} from "./ui/dialog-classes";
+import {DIALOG_BODY_CLASS, DIALOG_NESTED_SCRIM_BLUR_CLASS} from "./ui/dialog-classes";
 
 const BUTTON_BASE_CLASS =
 	"h-8 rounded-r6 px-3 text-body font-medium transition-colors hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
@@ -22,8 +22,7 @@ const SIZE_CLASS =
 	md: "max-w-[520px]",
 } as const;
 
-const POPUP_BASE_CLASS =
-	"fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 flex-col rounded-card bg-surface-3 text-body text-primary shadow-panel-lg outline-none transition-[opacity,scale] duration-200 ease-out data-[ending-style]:scale-[0.98] data-[ending-style]:opacity-0 data-[starting-style]:scale-[0.98] data-[starting-style]:opacity-0 motion-reduce:transition-none";
+const POPUP_BASE_CLASS = `${DIALOG_NESTED_SCRIM_BLUR_CLASS} fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 flex-col rounded-card bg-surface-3 text-body text-primary shadow-panel-lg outline-none transition-[opacity,scale] duration-200 ease-out data-[ending-style]:scale-[0.98] data-[ending-style]:opacity-0 data-[starting-style]:scale-[0.98] data-[starting-style]:opacity-0 motion-reduce:transition-none`;
 
 /*
  * Upstream shared-frame ConfirmationDialog under fizzy-lake panels. Comfortable tokens:
@@ -130,7 +129,11 @@ export const ConfirmDialog = memo(function ConfirmDialog({
 		<AlertDialog.Root open={open} onOpenChange={onOpenChange}>
 			<AlertDialog.Portal>
 				<DensityScope density="comfortable">
-					<AlertDialog.Backdrop className="fixed inset-0 z-50 bg-backdrop backdrop-blur-[2px] transition-opacity duration-200 ease-out data-[ending-style]:opacity-0 data-[starting-style]:opacity-0 motion-reduce:transition-none" />
+					{/* Upstream force-renders the backdrop (Base UI drops nested ones) and clears it before a nested popup, whose parent's scrim dims instead. */}
+					<AlertDialog.Backdrop
+						forceRender
+						className="fixed inset-0 z-50 bg-backdrop backdrop-blur-[2px] transition-opacity duration-200 ease-out data-[ending-style]:opacity-0 data-[starting-style]:opacity-0 motion-reduce:transition-none has-[~[data-nested]]:bg-transparent has-[~[data-nested]]:backdrop-blur-none"
+					/>
 					<AlertDialogPopup
 						initialFocus={initialFocus === "confirm" ? confirmRef : cancelRef}
 						data-cds="ConfirmationDialog"
