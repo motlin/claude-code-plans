@@ -759,6 +759,7 @@ export function FileView({
 								onSave={sourceSave.onSave}
 								onDiscard={sourceSave.discard}
 								wordWrap={settings.filesWordWrap}
+								indentGuides={settings.filesIndentGuides}
 								tabSize={tabSize}
 								showWhitespace={settings.filesShowWhitespace}
 								scrollPastEnd={settings.filesScrollPastEnd}

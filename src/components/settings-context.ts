@@ -148,6 +148,8 @@ export interface Settings
 	filesTreeWidth: number;
 	/** Source view word wrap, on by default like upstream. */
 	filesWordWrap: boolean;
+	/** Source view indent guides, on by default like upstream. */
+	filesIndentGuides: boolean;
 	/** Source view tab width: 2, 4 or 8, normalized where it is used. */
 	filesTabSize: number;
 	/** Source view whitespace dots and tab arrows, off by default like upstream. */
@@ -224,6 +226,7 @@ export const DEFAULTS: Settings =
 	filesPreviewTabs: true,
 	filesTreeWidth: 240,
 	filesWordWrap: true,
+	filesIndentGuides: true,
 	filesTabSize: 4,
 	filesShowWhitespace: false,
 	filesScrollPastEnd: false,
@@ -282,6 +285,7 @@ export const STORAGE_KEYS: Record<keyof Settings, string> =
 	filesPreviewTabs: "ccp-files-preview-tabs",
 	filesTreeWidth: "ccp-files-tree-width",
 	filesWordWrap: "ccp-files-word-wrap",
+	filesIndentGuides: "ccp-files-indent-guides",
 	filesTabSize: "ccp-files-tab-size",
 	filesShowWhitespace: "ccp-files-show-whitespace",
 	filesScrollPastEnd: "ccp-files-scroll-past-end",
@@ -497,6 +501,7 @@ const STORED_VALUE_READERS: {[K in keyof Settings]: StoredValueReader<Settings[K
 	filesPreviewTabs: readBoolean,
 	filesTreeWidth: readNumber,
 	filesWordWrap: readBoolean,
+	filesIndentGuides: readBoolean,
 	filesTabSize: readNumber,
 	filesShowWhitespace: readBoolean,
 	filesScrollPastEnd: readBoolean,

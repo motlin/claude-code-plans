@@ -128,6 +128,15 @@ function FilesSettingsMenu({
 					Word wrap
 				</MenuCheckboxItem>
 				<MenuCheckboxItem
+					checked={settings.filesIndentGuides}
+					onCheckedChange={(checked) =>
+					{
+						setSetting("filesIndentGuides", checked);
+					}}
+				>
+					Indent guides
+				</MenuCheckboxItem>
+				<MenuCheckboxItem
 					checked={settings.filesShowWhitespace}
 					onCheckedChange={(checked) =>
 					{

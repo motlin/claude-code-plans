@@ -700,6 +700,7 @@ describe("Files pane header", () =>
 					["File tree positionAutomatic", null],
 					["Preview tabs", "true"],
 					["Word wrap", "true"],
+					["Indent guides", "true"],
 					["Show whitespace", "false"],
 					["Scroll past end", "false"],
 					["Tab size4", null],
@@ -712,7 +713,7 @@ describe("Files pane header", () =>
 		);
 	});
 
-	it("Files settings toggles Word wrap, Show whitespace and Scroll past end and picks a Tab size, all persisted", async () =>
+	it("Files settings toggles Word wrap, Indent guides, Show whitespace and Scroll past end and picks a Tab size, all persisted", async () =>
 	{
 		registerFilesPane();
 		renderSession();
@@ -733,7 +734,7 @@ describe("Files pane header", () =>
 				setTimeout(resolve, 0);
 			});
 		});
-		for (const name of ["Word wrap", "Show whitespace", "Scroll past end"])
+		for (const name of ["Word wrap", "Indent guides", "Show whitespace", "Scroll past end"])
 		{
 			fireEvent.click(
 				screen.getByRole(
@@ -764,6 +765,7 @@ describe("Files pane header", () =>
 		expect(
 			{
 				wrap: localStorage.getItem("ccp-files-word-wrap"),
+				indentGuides: localStorage.getItem("ccp-files-indent-guides"),
 				whitespace: localStorage.getItem("ccp-files-show-whitespace"),
 				pastEnd: localStorage.getItem("ccp-files-scroll-past-end"),
 				tabSize: localStorage.getItem("ccp-files-tab-size"),
@@ -774,6 +776,7 @@ describe("Files pane header", () =>
 		).toStrictEqual(
 			{
 				wrap: "false",
+				indentGuides: "false",
 				whitespace: "true",
 				pastEnd: "true",
 				tabSize: "8",
@@ -818,6 +821,7 @@ describe("Files pane header", () =>
 			"Preview tabs",
 			"─",
 			"Word wrap",
+			"Indent guides",
 			"Show whitespace",
 			"Scroll past end",
 			"Tab size",
