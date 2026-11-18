@@ -1,4 +1,5 @@
 import {type LaunchPermissionMode, LaunchPermissionModeSchema, type ModeBadgeSettings} from "./launch-options";
+import type {CliFallbackMode} from "./composer-state";
 import {consentWorkspaceKey} from "./permission-mode-consent";
 
 /*
@@ -224,21 +225,39 @@ export function carryPickToFolder({pick}: {pick: LaunchPermissionMode}): boolean
 }
 
 /**
- * A new draft's mode in `cwd`: the user default, else the folder memory, else the project default, else Manual,
- * clamped to the modes on offer. `launchFlag` is set when the CLI, which merges a project `defaultMode` over the
- * user's, wouldn't start in that mode by itself.
+ * The mode a no-flag CLI launch starts in. The CLI merges a project `defaultMode` over the user's, but CLI 2.1.327
+ * `wCn` ignores a project/local `auto` or `bypassPermissions` that no user/policy layer also grants and falls back.
+ */
+function cliStartMode(
+	userSettingsDefault: string | null,
+	repoSettingsDefault: string | null,
+	cliFallbackMode: CliFallbackMode,
+): string
+{
+	if (repoSettingsDefault === null) return userSettingsDefault ?? cliFallbackMode;
+	const repoOnlyMayNotGrant = repoSettingsDefault === "auto" || repoSettingsDefault === "bypassPermissions";
+	if (!repoOnlyMayNotGrant || repoSettingsDefault === userSettingsDefault) return repoSettingsDefault;
+	return cliFallbackMode;
+}
+
+/**
+ * A new draft's mode in `cwd`: the user default, else the folder memory, else the project default, else the mode the
+ * CLI starts in with no flag (`cliFallbackMode`), clamped to the modes on offer. `launchFlag` is set when the CLI
+ * wouldn't start in that mode by itself.
  */
 export function draftPermissionMode({
 	cwd,
 	modes,
 	userSettingsDefault,
 	repoSettingsDefault,
+	cliFallbackMode,
 	available,
 }: {
 	cwd: string | undefined;
 	modes: FolderModes;
 	userSettingsDefault: string | null;
 	repoSettingsDefault: string | null;
+	cliFallbackMode: CliFallbackMode;
 	available: readonly LaunchPermissionMode[];
 }):
 {
@@ -252,7 +271,7 @@ export function draftPermissionMode({
 			userSettingsDefault: userSettingsDefault ?? undefined,
 			folderChoice: folderChoice(modes, folderModeKey(cwd)),
 			repoSettingsDefault: repoSettingsDefault ?? undefined,
-			fallback: "default",
+			fallback: cliFallbackMode,
 		},
 	);
 	const known = LaunchPermissionModeSchema.safeParse(base.mode);
@@ -262,7 +281,7 @@ export function draftPermissionMode({
 			launchFlag: undefined,
 		};
 	const mode = clampToAvailable(known.data, available);
-	const cliOwn = repoSettingsDefault ?? userSettingsDefault ?? "default";
+	const cliOwn = cliStartMode(userSettingsDefault, repoSettingsDefault, cliFallbackMode);
 	return {
 		mode,
 		launchFlag: mode === cliOwn ? undefined : mode,

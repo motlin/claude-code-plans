@@ -1,17 +1,20 @@
 import {type ComposerDefaults, resolveComposerState} from "./composer-state";
-import {getComposerDefaults} from "./composer-state-server";
+import {type FastModeBlockDependencies, getComposerDefaults} from "./composer-state-server";
 import {EffortLevelSchema} from "./launch-options";
 import {effortLevelShortLabels} from "./schema-choices";
 import {setShellChinLabels, type ShellChinLabels} from "./shell-chin-store";
 
-/** The mode, model and effort text the live home chin shows for these settings defaults. */
+/**
+ * The mode, model and effort text the live home chin shows for these settings defaults. With no settings mode the chin
+ * names the CLI's own no-flag start mode.
+ */
 export function resolveShellChinLabels(defaults: ComposerDefaults | null): ShellChinLabels
 {
 	const state = resolveComposerState(
 		{
 			hookPermissionMode: null,
 			jsonlPermissionMode: null,
-			settingsDefaultMode: defaults?.defaultMode ?? null,
+			settingsDefaultMode: defaults?.defaultMode ?? defaults?.cliFallbackMode ?? null,
 			statuslineModel: null,
 			statuslineModelId: null,
 			lastAssistantModel: null,
@@ -42,17 +45,22 @@ function rendersShell(request: Request): boolean
 }
 
 /**
- * Re-reads settings.json before each page render so the hard-load fallback's
+ * Re-reads settings.json, the managed settings and the CLI config before each page render so the hard-load fallback's
  * chin shows the defaults the live chin will, without the client fetching them.
  */
 export function withShellChinLabels(
 	fetch: (request: Request) => Response | Promise<Response>,
 	readSettings: () => Promise<unknown>,
+	blockDependencies: () => Promise<FastModeBlockDependencies>,
 ): (request: Request) => Promise<Response>
 {
 	return async (request) =>
 	{
-		if (rendersShell(request)) setShellChinLabels(resolveShellChinLabels(await getComposerDefaults(readSettings)));
+		if (rendersShell(request))
+		{
+			const defaults = await getComposerDefaults(readSettings, await blockDependencies());
+			setShellChinLabels(resolveShellChinLabels(defaults));
+		}
 		return fetch(request);
 	};
 }

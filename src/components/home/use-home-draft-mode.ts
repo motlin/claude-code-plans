@@ -29,6 +29,8 @@ export function useHomeDraftMode(cwd: string | undefined): HomeDraftMode
 	const folderModes = useFolderModeMemory(cwd);
 	const {data: folderDefaults} = useQuery(composerFolderDefaultsQueryOptions(cwd));
 	const bypassPermissionsAllowed = defaults?.bypassPermissionsAllowed ?? false;
+	// The folder read also weighs the project layers' `disableAutoMode`, so it's the closer answer once it loads.
+	const cliFallbackMode = folderDefaults?.cliFallbackMode ?? defaults?.cliFallbackMode ?? "default";
 	const draftMode = useMemo(
 		() =>
 			draftPermissionMode(
@@ -37,10 +39,18 @@ export function useHomeDraftMode(cwd: string | undefined): HomeDraftMode
 					modes: folderModes.modes,
 					userSettingsDefault: defaults?.defaultMode ?? null,
 					repoSettingsDefault: folderDefaults?.repoDefaultMode ?? null,
+					cliFallbackMode,
 					available: modeMenuItems(bypassPermissionsAllowed).map((item) => item.id),
 				},
 			),
-		[cwd, folderModes.modes, defaults?.defaultMode, folderDefaults?.repoDefaultMode, bypassPermissionsAllowed],
+		[
+			cwd,
+			folderModes.modes,
+			defaults?.defaultMode,
+			folderDefaults?.repoDefaultMode,
+			cliFallbackMode,
+			bypassPermissionsAllowed,
+		],
 	);
 	return {
 		draftMode,

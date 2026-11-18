@@ -37,6 +37,7 @@ import {initPrStatusService} from "./lib/pr-status-service";
 import {takeOverServerShutdown} from "./lib/server-shutdown";
 import {announceThisDevEnvReady} from "./lib/dev-env-ready-gate";
 import {defined} from "./lib/defined";
+import {nodeFastModeBlockDependencies} from "./lib/composer-state-server";
 import {withShellChinLabels} from "./lib/shell-chin-labels";
 import {CONTEXT_MIRROR_DIR} from "./lib/context-breakdown-reader";
 
@@ -259,6 +260,7 @@ export default createServerEntry(
 					withShellChinLabels(
 						(request): Response | Promise<Response> => handler.fetch(request),
 						readClaudeSettings,
+						nodeFastModeBlockDependencies,
 					),
 				),
 			),

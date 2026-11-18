@@ -2721,6 +2721,51 @@ describe("HomeComposer", () =>
 			);
 		});
 
+		it("flags a remembered Manual when the CLI would start in its Auto fallback", async () =>
+		{
+			rememberModes(
+				{
+					[HERE]: "default",
+				},
+			);
+			await renderApp(
+				"/",
+				"claude-opus-4-8[1m]",
+				() => {},
+				false,
+				{
+					defaultMode: null,
+					cliFallbackMode: "auto",
+				},
+			);
+			await waitFor(() =>
+			{
+				expect(modeReadout()).toBe("Manual");
+			});
+			await typePrompt("hello");
+
+			fireEvent.click(
+				screen.getByRole(
+					"button",
+					{
+						name: "Send",
+					},
+				),
+			);
+
+			await waitFor(() =>
+			{
+				expect(launchCalls.length).toBe(1);
+			});
+			expect(launchBody(launchCalls[0])).toStrictEqual(
+				{
+					cwd: HERE,
+					prompt: "hello",
+					args: ["--permission-mode", "default"],
+				},
+			);
+		});
+
 		it("lets the user-scope default beat the folder memory and launches without a flag", async () =>
 		{
 			rememberModes(
@@ -2848,19 +2893,23 @@ describe("HomeComposer", () =>
 				false,
 				{
 					defaultMode: null,
+					cliFallbackMode: "auto",
 				},
 			);
+			const unset = modeReadout();
 			await pickMode(/^Plan/);
 			const afterPlan = storedModes();
 			await pickMode(/^Manual/);
 
 			expect(
 				{
+					unset,
 					afterPlan,
 					afterManual: storedModes(),
 				},
 			).toStrictEqual(
 				{
+					unset: "Auto",
 					afterPlan: null,
 					afterManual:
 					{

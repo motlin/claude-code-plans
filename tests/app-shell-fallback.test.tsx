@@ -425,6 +425,36 @@ describe("AppShellFallback", () =>
 		);
 	});
 
+	it("labels the loading chin with the CLI's no-flag start mode when no settings layer sets one", () =>
+	{
+		const host = document.createElement("div");
+		host.innerHTML = renderToStaticMarkup(
+			<AppShellFallback
+				chin={resolveShellChinLabels(
+					{
+						model: null,
+						effortLevel: null,
+						defaultMode: null,
+						defaultModeManaged: false,
+						repoDefaultMode: null,
+						modelManaged: false,
+						availableModels: null,
+						bypassPermissionsAllowed: false,
+						fastMode: false,
+						fastModeBlocked: null,
+						cliFallbackMode: "auto",
+					},
+				)}
+			/>,
+		);
+
+		expect(chinReadouts(host.querySelector('[data-cds="ChatComposerChin"]')!)).toStrictEqual([
+			"+",
+			"Opus 5.5 Medium",
+			"Auto",
+		]);
+	});
+
 	it("labels the loading chin as the live chin does when settings.json is missing", () =>
 	{
 		const host = document.createElement("div");

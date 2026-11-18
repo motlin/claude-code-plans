@@ -3,6 +3,7 @@ import
 {
 	carryPickToFolder,
 	clampToAvailable,
+	draftPermissionMode,
 	FOLDER_PERMISSION_MODE_STORAGE_KEY,
 	folderChoice,
 	folderModeKey,
@@ -272,6 +273,79 @@ describe("folder permission mode memory", () =>
 				mode: "default",
 				source: "fallback",
 				hasExplicitChoice: false,
+			},
+		]);
+	});
+
+	it("starts a draft in the CLI's no-flag mode and flags only what the CLI wouldn't start in by itself", () =>
+	{
+		const all: LaunchPermissionMode[] = ["auto", "default", "acceptEdits", "plan"];
+		const draft = (
+			modes: Record<string, LaunchPermissionMode>,
+			userSettingsDefault: string | null,
+			repoSettingsDefault: string | null,
+			cliFallbackMode: "auto" | "default",
+		) =>
+			draftPermissionMode(
+				{
+					cwd: "/w",
+					modes,
+					userSettingsDefault,
+					repoSettingsDefault,
+					cliFallbackMode,
+					available: all,
+				},
+			);
+		expect([
+			draft({}, null, null, "auto"),
+			draft(
+				{
+					"/w": "default",
+				},
+				null,
+				null,
+				"auto",
+			),
+			draft({}, null, "auto", "default"),
+			draft({}, null, null, "default"),
+			draft({}, "auto", "acceptEdits", "default"),
+			draft({}, "auto", "auto", "default"),
+			draft(
+				{
+					"/w": "acceptEdits",
+				},
+				null,
+				"bypassPermissions",
+				"auto",
+			),
+		]).toStrictEqual([
+			{
+				mode: "auto",
+				launchFlag: undefined,
+			},
+			{
+				mode: "default",
+				launchFlag: "default",
+			},
+			{
+				mode: "auto",
+				launchFlag: "auto",
+			},
+			{
+				mode: "default",
+				launchFlag: undefined,
+			},
+			{
+				mode: "auto",
+				launchFlag: "auto",
+			},
+			{
+				mode: "auto",
+				launchFlag: undefined,
+			},
+			{
+				mode: "acceptEdits",
+				launchFlag: "acceptEdits",
 			},
 		]);
 	});
