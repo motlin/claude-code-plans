@@ -46,6 +46,7 @@ import
 	modelLabel,
 	modelMenuValue,
 	withModel,
+	type ModeBadgeSettings,
 } from "../lib/launch-options";
 import {settingsModelMenu} from "../lib/retry-model-items";
 import {useShortcutKeys} from "../hooks/use-shortcut";
@@ -373,6 +374,8 @@ export interface ChinLaunchControls
 	openMenu: ChinMenu | null;
 	onOpenMenuChange: (menu: ChinMenu | null) => void;
 	bypassPermissionsAllowed: boolean;
+	/** What the Mode menu's Default / Recommended badges read. */
+	modeBadges?: ModeBadgeSettings | undefined;
 	/** The folder the Bypass ack is kept for (`consentWorkspaceKey`), or "" before one is known. */
 	permissionWorkspace: string;
 	/** A Mode menu pick that passed the consent guard, for the folder's remembered mode. */
@@ -601,6 +604,7 @@ export const ComposerChin = memo(function ComposerChin({
 			current={launchOptions.permissionMode ?? state.mode?.id ?? "default"}
 			currentLabel={modeLabel}
 			bypassPermissionsAllowed={launch.bypassPermissionsAllowed}
+			badges={launch.modeBadges}
 			workspace={launch.permissionWorkspace}
 			onSelect={(permissionMode) =>
 			{

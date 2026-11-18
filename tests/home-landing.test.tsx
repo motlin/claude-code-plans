@@ -472,6 +472,7 @@ describe("HomeLanding", () =>
 			model: null,
 			effortLevel: null,
 			defaultMode: "default",
+			defaultModeManaged: false,
 			repoDefaultMode: null,
 			modelManaged: false,
 			availableModels: null,

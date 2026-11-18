@@ -182,10 +182,16 @@ function sessionEndpoints(id: string): Array<
 				id,
 			},
 		},
-		// The session composer: slash commands for the transcript's cwd, this session's prompt history, and usage.
+		// The session composer: slash commands and the Mode menu's settings defaults for the transcript's cwd, this
+		// session's prompt history, and usage.
 		{
 			path: `/api/commands?cwd=${encodeURIComponent(FIXTURE_CWD)}`,
 			module: "../../src/routes/api/commands",
+			params: {},
+		},
+		{
+			path: `/api/composer-defaults?cwd=${encodeURIComponent(FIXTURE_CWD)}`,
+			module: "../../src/routes/api/composer-defaults",
 			params: {},
 		},
 		{

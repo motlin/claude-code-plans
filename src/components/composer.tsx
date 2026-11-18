@@ -115,6 +115,7 @@ import
 	type LaunchPermissionMode,
 	MORE_MODELS,
 	PRIMARY_MODELS,
+	type ModeBadgeSettings,
 } from "../lib/launch-options";
 import
 {
@@ -370,6 +371,8 @@ interface ComposerProps
 	onSlashMenuOpen?: (() => void) | undefined;
 	/** Settings allow launching in Bypass permissions mode. */
 	bypassPermissionsAllowed?: boolean | undefined;
+	/** What the Mode menu's Default / Recommended badges read. */
+	modeBadges?: ModeBadgeSettings | undefined;
 	/** The session's or chosen folder's working directory, which a Bypass consent and mode pick are remembered for. */
 	permissionCwd?: string | undefined;
 	/** A Mode menu pick, remembered for `permissionCwd`'s folder (upstream's per-folder mode memory). */
@@ -1184,6 +1187,7 @@ export function Composer({
 	slashCommandsLoading = false,
 	onSlashMenuOpen,
 	bypassPermissionsAllowed = false,
+	modeBadges,
 	permissionCwd,
 	onPermissionModePick,
 	launchOptions: heldLaunchOptions,
@@ -3179,6 +3183,7 @@ export function Composer({
 			openMenu,
 			onOpenMenuChange: setOpenMenu,
 			bypassPermissionsAllowed,
+			modeBadges,
 			permissionWorkspace: consentWorkspaceKey(permissionCwd),
 			onPermissionModePick,
 			tryAutoCoach,
@@ -3190,6 +3195,7 @@ export function Composer({
 			draftKey,
 			openMenu,
 			bypassPermissionsAllowed,
+			modeBadges,
 			permissionCwd,
 			onPermissionModePick,
 			tryAutoCoach,

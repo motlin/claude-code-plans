@@ -56,6 +56,7 @@ function setup({
 			model: null,
 			effortLevel: null,
 			defaultMode: offer?.nudgeMode ?? null,
+			defaultModeManaged: false,
 			repoDefaultMode: null,
 			modelManaged: false,
 			availableModels: null,

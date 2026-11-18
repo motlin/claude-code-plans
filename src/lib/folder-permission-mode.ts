@@ -1,4 +1,4 @@
-import {type LaunchPermissionMode, LaunchPermissionModeSchema} from "./launch-options";
+import {type LaunchPermissionMode, LaunchPermissionModeSchema, type ModeBadgeSettings} from "./launch-options";
 import {consentWorkspaceKey} from "./permission-mode-consent";
 
 /*
@@ -114,6 +114,29 @@ export function folderChoice(modes: FolderModes, key: string | null): LaunchPerm
 	if (key === null) return undefined;
 	const mode = modes[key];
 	return mode === "plan" ? undefined : mode;
+}
+
+/**
+ * What the Mode menu's badges read. Default goes on upstream's `ka = fn ?? (Vn === undefined ? pn : undefined)`: a
+ * user or managed default always, a project default only while the folder remembers no mode. A managed default other
+ * than auto hides Recommended (upstream's `vn`, without the mode ceiling, which nothing local reads).
+ */
+export function modeBadges({
+	userSettingsDefault,
+	userSettingsDefaultManaged,
+	folderChoice: folder,
+	repoSettingsDefault,
+}: {
+	userSettingsDefault: string | null;
+	userSettingsDefaultManaged: boolean;
+	folderChoice: LaunchPermissionMode | undefined;
+	repoSettingsDefault: string | null;
+}): ModeBadgeSettings
+{
+	return {
+		defaultMode: userSettingsDefault ?? (folder === undefined ? repoSettingsDefault : null),
+		recommendAuto: !(userSettingsDefaultManaged && userSettingsDefault !== "auto"),
+	};
 }
 
 export type DraftBaseModeSource =

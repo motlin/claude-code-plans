@@ -172,6 +172,7 @@ import {useShortcutKeys} from "../hooks/use-shortcut";
 import {useSlashCommands} from "../hooks/use-slash-commands";
 import {useLiveLaunchOptions} from "../hooks/use-live-launch-options";
 import {useFolderModeMemory} from "../hooks/use-folder-mode-memory";
+import {useModeBadges} from "../hooks/use-mode-badges";
 import {useRewindPicker} from "../hooks/use-rewind-shortcut";
 import {useRewindRequest} from "../hooks/use-rewind-request";
 import {useRefusalEditRetry} from "../hooks/use-refusal-edit-retry";
@@ -1273,6 +1274,7 @@ function SessionView({
 		[bypassPermissionsAllowed],
 	);
 	const folderModes = useFolderModeMemory(sessionDirectory ?? undefined);
+	const modeBadges = useModeBadges(sessionDirectory ?? undefined, folderModes.modes);
 	const liveLaunch = useLiveLaunchOptions(
 		{
 			sessionId,
@@ -3090,6 +3092,7 @@ function SessionView({
 																		bypassPermissionsAllowed={
 																			bypassPermissionsAllowed
 																		}
+																		modeBadges={modeBadges}
 																		permissionCwd={sessionDirectory}
 																		onPermissionModePick={folderModes.remember}
 																		live={

@@ -6,6 +6,7 @@ import
 	FOLDER_PERMISSION_MODE_STORAGE_KEY,
 	folderChoice,
 	folderModeKey,
+	modeBadges,
 	readFolderModes,
 	resolveDraftBaseMode,
 	restoreFolderMode,
@@ -13,6 +14,7 @@ import
 	writeFolderMode,
 } from "../src/lib/folder-permission-mode";
 import {installLocalStorage} from "./fake-storage";
+import type {LaunchPermissionMode} from "../src/lib/launch-options";
 
 describe("folder permission mode memory", () =>
 {
@@ -172,6 +174,57 @@ describe("folder permission mode memory", () =>
 				hasExplicitChoice: true,
 			},
 		);
+	});
+
+	it("badges a user default always, a project default only while the folder remembers no mode, and lets a managed non-auto default hide Recommended", () =>
+	{
+		const badges = (
+			userSettingsDefault: string | null,
+			folder: LaunchPermissionMode | undefined,
+			repoSettingsDefault: string | null,
+			userSettingsDefaultManaged = false,
+		) =>
+			modeBadges(
+				{
+					userSettingsDefault,
+					userSettingsDefaultManaged,
+					folderChoice: folder,
+					repoSettingsDefault,
+				},
+			);
+		expect([
+			badges(null, undefined, "plan"),
+			badges(null, "acceptEdits", "plan"),
+			badges("auto", "acceptEdits", "plan"),
+			badges(null, undefined, null),
+			badges("acceptEdits", undefined, null, true),
+			badges("auto", undefined, null, true),
+		]).toStrictEqual([
+			{
+				defaultMode: "plan",
+				recommendAuto: true,
+			},
+			{
+				defaultMode: null,
+				recommendAuto: true,
+			},
+			{
+				defaultMode: "auto",
+				recommendAuto: true,
+			},
+			{
+				defaultMode: null,
+				recommendAuto: true,
+			},
+			{
+				defaultMode: "acceptEdits",
+				recommendAuto: false,
+			},
+			{
+				defaultMode: "auto",
+				recommendAuto: true,
+			},
+		]);
 	});
 
 	it("falls through the in-session pick, repo default and fallback", () =>

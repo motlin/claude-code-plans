@@ -1372,6 +1372,7 @@ describe("getComposerState", () =>
 		).toStrictEqual(
 			{
 				settingsDefaultMode: "auto",
+				settingsDefaultModeManaged: false,
 				settingsModel: "fable",
 				settingsModelManaged: false,
 				settingsAvailableModels: null,
@@ -1531,6 +1532,94 @@ describe("getComposerState", () =>
 		);
 	});
 
+	it("reads permissions.defaultMode managed first, with its managed flag, for sessions and the home bar", async () =>
+	{
+		const read = async (user: unknown, managed?: unknown) =>
+		{
+			const dependencies =
+				managed === undefined
+					? {}
+					:
+						{
+							readManagedSettings: async () => Promise.resolve(managed),
+							managedSettingsPath: "/etc/claude-code/managed-settings.json",
+						};
+			const state = await getComposerState(
+				"erin-session",
+				{
+					readStatusline: async () => Promise.reject(new Error("ENOENT: fabricated")),
+					readSettings: async () => Promise.resolve(user),
+					...dependencies,
+				},
+			);
+			const defaults = await getComposerDefaults(async () => Promise.resolve(user), dependencies);
+			return {
+				session: [state.settingsDefaultMode, state.settingsDefaultModeManaged],
+				home: [defaults.defaultMode, defaults.defaultModeManaged],
+			};
+		};
+
+		const userAuto =
+		{
+			permissions:
+			{
+				defaultMode: "auto",
+			},
+		};
+		expect(
+			{
+				managed: await read(
+					userAuto,
+					{
+						permissions:
+						{
+							defaultMode: "acceptEdits",
+						},
+					},
+				),
+				managedWithoutMode: await read(
+					userAuto,
+					{
+						model: "sonnet",
+					},
+				),
+				noUserFile: await read(
+					undefined,
+					{
+						permissions:
+						{
+							defaultMode: "plan",
+						},
+					},
+				),
+				user: await read(userAuto),
+			},
+		).toStrictEqual(
+			{
+				managed:
+				{
+					session: ["acceptEdits", true],
+					home: ["acceptEdits", true],
+				},
+				managedWithoutMode:
+				{
+					session: ["auto", false],
+					home: ["auto", false],
+				},
+				noUserFile:
+				{
+					session: ["plan", true],
+					home: ["plan", true],
+				},
+				user:
+				{
+					session: ["auto", false],
+					home: ["auto", false],
+				},
+			},
+		);
+	});
+
 	it("gives the home bar's defaults the same availableModels and managed model", async () =>
 	{
 		const defaults = await getComposerDefaults(
@@ -1590,6 +1679,7 @@ describe("getComposerState", () =>
 		expect(result).toStrictEqual(
 			{
 				settingsDefaultMode: null,
+				settingsDefaultModeManaged: false,
 				settingsModel: null,
 				settingsModelManaged: false,
 				settingsAvailableModels: null,
@@ -1810,6 +1900,7 @@ describe("getComposerState", () =>
 				body:
 				{
 					settingsDefaultMode: null,
+					settingsDefaultModeManaged: false,
 					settingsModel: null,
 					settingsModelManaged: false,
 					settingsAvailableModels: null,
@@ -2136,6 +2227,7 @@ describe("composer defaults for a project folder", () =>
 				model: null,
 				effortLevel: null,
 				defaultMode: null,
+				defaultModeManaged: false,
 				repoDefaultMode: "plan",
 				modelManaged: false,
 				availableModels: null,
@@ -2147,6 +2239,7 @@ describe("composer defaults for a project folder", () =>
 				model: null,
 				effortLevel: null,
 				defaultMode: null,
+				defaultModeManaged: false,
 				repoDefaultMode: "acceptEdits",
 				modelManaged: false,
 				availableModels: null,
@@ -2158,6 +2251,7 @@ describe("composer defaults for a project folder", () =>
 				model: null,
 				effortLevel: null,
 				defaultMode: null,
+				defaultModeManaged: false,
 				repoDefaultMode: null,
 				modelManaged: false,
 				availableModels: null,
@@ -2221,6 +2315,7 @@ describe("composer defaults for a project folder", () =>
 							model: null,
 							effortLevel: null,
 							defaultMode: null,
+							defaultModeManaged: false,
 							repoDefaultMode: "plan",
 							modelManaged: false,
 							availableModels: null,
@@ -2250,6 +2345,7 @@ describe("composer defaults for a project folder", () =>
 							model: null,
 							effortLevel: null,
 							defaultMode: null,
+							defaultModeManaged: false,
 							repoDefaultMode: null,
 							modelManaged: false,
 							availableModels: null,

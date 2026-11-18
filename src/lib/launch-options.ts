@@ -97,6 +97,17 @@ export interface ModeMenuItem
 	label: string;
 	description: string;
 	warning: boolean;
+	/** Upstream's inline mode badge: the settings default (`ar`) or the Recommended Auto row (`or`). */
+	badge?: "default" | "recommended";
+}
+
+/** What the Mode menu's badges read: the settings default mode, and whether Auto may be recommended. */
+export interface ModeBadgeSettings
+{
+	/** The `permissions.defaultMode` that earns the Default badge (see `modeBadgeDefault`), or null. */
+	defaultMode: string | null;
+	/** False when a managed default other than auto hides Recommended (upstream's `vn`). */
+	recommendAuto: boolean;
 }
 
 const MODE_DESCRIPTIONS =
@@ -114,18 +125,41 @@ export function modeTriggerLabel(mode: LaunchPermissionMode): string
 	return mode === "bypassPermissions" ? "Bypass" : launchPermissionModeLabels[mode];
 }
 
-/** Mode menu rows for a local session: Auto · Manual · Accept edits · Plan (+ Bypass when allowed). */
-export function modeMenuItems(bypassPermissionsAllowed: boolean): ModeMenuItem[]
+/**
+ * Mode menu rows for a local session: Auto · Manual · Accept edits · Plan (+ Bypass when allowed). With `badges`, the
+ * rows carry upstream's `or(ar(rows, n === r ? -1 : n), r)`: Recommended on Auto when it isn't current, and Default on
+ * the settings default mode's row unless that is the Recommended row. Upstream's other Recommended gates (a model
+ * that requires auto, a CLI too old to switch modes, the managed mode ceiling) have no local data.
+ */
+export function modeMenuItems(
+	bypassPermissionsAllowed: boolean,
+	badges?: Partial<ModeBadgeSettings> &
+	{
+		current?: string;
+	},
+): ModeMenuItem[]
 {
-	return LaunchPermissionModeSchema.options
-		.filter((id) => id !== "bypassPermissions" || bypassPermissionsAllowed)
-		.map((id) => (
+	const ids = LaunchPermissionModeSchema.options.filter(
+		(id) => id !== "bypassPermissions" || bypassPermissionsAllowed,
+	);
+	const recommended =
+		badges !== undefined && badges.recommendAuto !== false && badges.current !== "auto" && ids.includes("auto")
+			? "auto"
+			: undefined;
+	const defaultMode = badges?.defaultMode === recommended ? undefined : badges?.defaultMode;
+	return ids.map((id) =>
+	{
+		const item: ModeMenuItem =
 		{
 			id,
 			label: launchPermissionModeLabels[id],
 			description: MODE_DESCRIPTIONS[id],
 			warning: id === "bypassPermissions",
-		}));
+		};
+		if (id === recommended) item.badge = "recommended";
+		else if (id === defaultMode) item.badge = "default";
+		return item;
+	});
 }
 
 /**

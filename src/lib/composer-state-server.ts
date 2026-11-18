@@ -124,12 +124,30 @@ function modelSettings(
 	};
 }
 
+/** `permissions.defaultMode` as the CLI resolves it: managed settings beat the user's. */
+function settingsDefaultMode(
+	user: ClaudeSettings | null,
+	managed: ClaudeSettings | null,
+):
+{
+	mode: string | null;
+	managed: boolean;
+}
+{
+	const managedMode = managed?.permissions?.defaultMode;
+	return {
+		mode: managedMode ?? user?.permissions?.defaultMode ?? null,
+		managed: managedMode !== undefined,
+	};
+}
+
 async function readSettingsDefaults(
 	dependencies: ComposerStateDependencies,
 ): Promise<
 	Pick<
 		ComposerServerState,
 		| "settingsDefaultMode"
+		| "settingsDefaultModeManaged"
 		| "settingsModel"
 		| "settingsModelManaged"
 		| "settingsAvailableModels"
@@ -153,10 +171,12 @@ async function readSettingsDefaults(
 		settingsAvailableModels: availableModels,
 	};
 	const blocked = fastModeBlocked(settings?.env, managed, dependencies);
+	const defaultMode = settingsDefaultMode(settings, managed);
 	if (settings === null)
 	{
 		return {
-			settingsDefaultMode: null,
+			settingsDefaultMode: defaultMode.mode,
+			settingsDefaultModeManaged: defaultMode.managed,
 			...models,
 			settingsEffortLevel: null,
 			settingsBypassPermissionsAllowed: false,
@@ -166,7 +186,8 @@ async function readSettingsDefaults(
 		};
 	}
 	return {
-		settingsDefaultMode: settings.permissions?.defaultMode ?? null,
+		settingsDefaultMode: defaultMode.mode,
+		settingsDefaultModeManaged: defaultMode.managed,
 		...models,
 		settingsEffortLevel: settings.effortLevel ?? null,
 		settingsBypassPermissionsAllowed: isBypassPermissionsAllowed(
@@ -256,12 +277,14 @@ export async function getComposerDefaults(
 	]);
 	const models = modelSettings(settings, managed, blockDependencies);
 	const blocked = fastModeBlocked(settings?.env, managed, blockDependencies);
+	const defaultMode = settingsDefaultMode(settings, managed);
 	if (settings === null)
 	{
 		return {
 			...models,
 			effortLevel: null,
-			defaultMode: null,
+			defaultMode: defaultMode.mode,
+			defaultModeManaged: defaultMode.managed,
 			repoDefaultMode,
 			bypassPermissionsAllowed: false,
 			fastMode: false,
@@ -271,7 +294,8 @@ export async function getComposerDefaults(
 	return {
 		...models,
 		effortLevel: settings.effortLevel ?? null,
-		defaultMode: settings.permissions?.defaultMode ?? null,
+		defaultMode: defaultMode.mode,
+		defaultModeManaged: defaultMode.managed,
 		repoDefaultMode,
 		bypassPermissionsAllowed: isBypassPermissionsAllowed(
 			{

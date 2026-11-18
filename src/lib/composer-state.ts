@@ -633,7 +633,10 @@ const AvailableModelsSchema: z.ZodType<AvailableModels> = z.strictObject(
 /** The server-side half of the chin: settings defaults plus the statusline snapshot. */
 export interface ComposerServerState
 {
+	/** `permissions.defaultMode`, managed settings beating the user's. */
 	settingsDefaultMode: string | null;
+	/** `settingsDefaultMode` comes from managed (policy) settings. */
+	settingsDefaultModeManaged: boolean;
 	settingsModel: string | null;
 	/** `settingsModel` comes from managed (policy) settings. */
 	settingsModelManaged: boolean;
@@ -655,6 +658,7 @@ export interface ComposerServerState
 export const ComposerServerStateResponse: z.ZodType<ComposerServerState> = z.strictObject(
 	{
 		settingsDefaultMode: z.string().nullable(),
+		settingsDefaultModeManaged: z.boolean(),
 		settingsModel: z.string().nullable(),
 		settingsModelManaged: z.boolean(),
 		settingsAvailableModels: AvailableModelsSchema.nullable(),
@@ -676,7 +680,10 @@ export interface ComposerDefaults
 	modelManaged: boolean;
 	availableModels: AvailableModels | null;
 	effortLevel: string | null;
+	/** `permissions.defaultMode`, managed settings beating the user's. */
 	defaultMode: string | null;
+	/** `defaultMode` comes from managed (policy) settings. */
+	defaultModeManaged: boolean;
 	/** The `?cwd=` project folder's `permissions.defaultMode` (settings.local.json over settings.json), or null. */
 	repoDefaultMode: string | null;
 	bypassPermissionsAllowed: boolean;
@@ -693,6 +700,7 @@ export const ComposerDefaultsResponse: z.ZodType<ComposerDefaults> = z.strictObj
 		availableModels: AvailableModelsSchema.nullable(),
 		effortLevel: z.string().nullable(),
 		defaultMode: z.string().nullable(),
+		defaultModeManaged: z.boolean(),
 		repoDefaultMode: z.string().nullable(),
 		bypassPermissionsAllowed: z.boolean(),
 		fastMode: z.boolean(),

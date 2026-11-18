@@ -16,6 +16,8 @@ import
 	fullModelId,
 	type ModelCatalog,
 	type ModelChoice,
+	type ModeBadgeSettings,
+	type ModeMenuItem,
 	modeMenuItems,
 	moreModelsMenuValue,
 	primaryModelMenuValue,
@@ -81,6 +83,7 @@ export function ModeMenu({
 	current,
 	currentLabel,
 	bypassPermissionsAllowed,
+	badges,
 	workspace,
 	onSelect,
 	surface,
@@ -91,6 +94,8 @@ export function ModeMenu({
 	current: string;
 	currentLabel: string;
 	bypassPermissionsAllowed: boolean;
+	/** The settings default and Recommended gate behind upstream's Default / Recommended row badges. */
+	badges?: ModeBadgeSettings | undefined;
 	/** The consent workspace key (`consentWorkspaceKey`), or "" before a folder is known. */
 	workspace: string;
 	onSelect: (mode: LaunchPermissionMode) => void;
@@ -138,7 +143,13 @@ export function ModeMenu({
 							});
 						}}
 					>
-						{modeMenuItems(bypassPermissionsAllowed).map((item, index) => (
+						{modeMenuItems(
+							bypassPermissionsAllowed,
+							{
+								...badges,
+								current,
+							},
+						).map((item, index) => (
 							<MenuRadioItem
 								key={item.id}
 								value={item.id}
@@ -152,17 +163,7 @@ export function ModeMenu({
 								data-variant={item.warning ? "warning" : "default"}
 								description={item.description}
 							>
-								<span
-									data-menu-item-label=""
-									{...(item.warning
-										?
-											{
-												className: "text-warning-100",
-											}
-										: {})}
-								>
-									{item.label}
-								</span>
+								<ModeRowLabel item={item} />
 							</MenuRadioItem>
 						))}
 					</MenuRadioGroup>
@@ -170,6 +171,49 @@ export function ModeMenu({
 			</Menu>
 			{gate}
 		</>
+	);
+}
+
+/** Upstream's neutral xxs cds Badge (`cr`): 16px tall, 10px/13px, 4px inline padding and radius. */
+const MODE_BADGE_CLASS =
+	"inline-flex h-4 min-w-0 items-center gap-1 whitespace-nowrap rounded-r3 px-1 align-middle text-[10px]/[13px] font-medium bg-alpha-1 text-secondary pointer-events-none truncate";
+
+const MODE_BADGE_TEXT =
+{
+	default: "Default",
+	recommended: "Recommended",
+} satisfies Record<NonNullable<ModeMenuItem["badge"]>, string>;
+
+/**
+ * A Mode row's label. A badged row takes upstream's inline `sr` label: the truncating name, a space, then the Badge,
+ * on one `gap-sm` line. Bypass keeps its warning ink.
+ */
+function ModeRowLabel({item}: {item: ModeMenuItem})
+{
+	const labelClass = [item.badge !== undefined && "truncate", item.warning && "text-warning-100"]
+		.filter(Boolean)
+		.join(" ");
+	const label = (
+		<span
+			data-menu-item-label=""
+			{...(labelClass === ""
+				? {}
+				:
+					{
+						className: labelClass,
+					})}
+		>
+			{item.label}
+		</span>
+	);
+	if (item.badge === undefined) return label;
+	return (
+		<span className="flex min-w-0 items-center gap-sm">
+			{label}{" "}
+			<span data-cds="Badge" data-mode-badge={item.badge} className={MODE_BADGE_CLASS}>
+				<span className="overflow-x-clip text-ellipsis whitespace-nowrap">{MODE_BADGE_TEXT[item.badge]}</span>
+			</span>
+		</span>
 	);
 }
 

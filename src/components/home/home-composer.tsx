@@ -6,6 +6,7 @@ import {HOME_DOCK_CLASS} from "../dock-tokens";
 
 import {useActiveSessionsIfAvailable} from "../../hooks/use-claude-events";
 import {useIdlePrefetch} from "../../hooks/use-idle-prefetch";
+import {useModeBadges} from "../../hooks/use-mode-badges";
 import {useSlashCommands} from "../../hooks/use-slash-commands";
 import {useAgentMentionProvider} from "../../hooks/use-agent-mention-provider";
 import {promptHistoryQueryOptions} from "../../lib/api/prompt-history";
@@ -198,6 +199,7 @@ export function HomeComposer({
 		project?.projectPath,
 	);
 	const launchDraft = useHomeLaunchOptions(project?.projectPath);
+	const modeBadges = useModeBadges(project?.projectPath, folderModes.modes);
 	const {data: autoDefaultOffer} = useQuery(autoDefaultOfferQueryOptions);
 	// The Auto dialogs decide once, so they wait for the folder and its project settings.
 	const autoDefaultOfferSettled = defaults !== undefined && project !== undefined && folderDefaults !== undefined;
@@ -524,6 +526,7 @@ export function HomeComposer({
 				promptHistory={promptHistory?.prompts}
 				subscribePrefill={onHomeComposerPrefillRequest}
 				bypassPermissionsAllowed={bypassPermissionsAllowed}
+				modeBadges={modeBadges}
 				permissionCwd={project?.projectPath}
 				mentionFolder={project?.projectPath}
 				mentionCwd={project?.projectPath}

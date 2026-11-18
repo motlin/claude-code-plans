@@ -13,7 +13,7 @@ import {type SessionMcpStatus, sessionMcpStatusQueryOptions} from "../src/lib/ap
 import {toConnectorSlug} from "../src/lib/customize/mcp-tool-permissions";
 import type {ComposerState} from "../src/lib/composer-state";
 import type {LiveLaunchControls} from "../src/hooks/use-live-launch-options";
-import type {LaunchOptions} from "../src/lib/launch-options";
+import type {LaunchOptions, ModeBadgeSettings} from "../src/lib/launch-options";
 
 const navigate = vi.hoisted(() => vi.fn<ReturnType<typeof useNavigate>>());
 vi.mock("@tanstack/react-router", async (importOriginal) => (
@@ -55,6 +55,7 @@ function renderComposer(
 		bypassPermissionsAllowed?: boolean;
 		live?: LiveLaunchControls;
 		chin?: ComposerState;
+		modeBadges?: ModeBadgeSettings;
 	} = {},
 )
 {
@@ -296,6 +297,111 @@ describe("Composer mode menu", () =>
 						},
 					],
 				],
+			},
+		);
+	});
+
+	it("badges the settings default row Default inline, or Auto Recommended when Auto isn't current", async () =>
+	{
+		const badgedRows = (menu: HTMLElement) =>
+			within(menu)
+				.getAllByRole("menuitemradio")
+				.flatMap((item) =>
+				{
+					const badge = item.querySelector<HTMLElement>("[data-mode-badge]");
+					if (badge === null) return [];
+					const wrapper = badge.parentElement;
+					return [
+						{
+							name: item.textContent,
+							key: item.getAttribute("aria-keyshortcuts"),
+							wrapper: wrapper?.className,
+							parts: [...(wrapper?.childNodes ?? [])].map((node) =>
+								node instanceof HTMLElement
+									? `${node.tagName.toLowerCase()}.${node.className}${node.hasAttribute("data-menu-item-label") ? "[label]" : ""}`
+									: node.textContent,
+							),
+							badge: badge.getAttribute("data-mode-badge"),
+							cds: badge.getAttribute("data-cds"),
+							badgeClass: badge.className,
+							text: badge.firstElementChild?.className,
+						},
+					];
+				});
+		const BADGE =
+			"inline-flex h-4 min-w-0 items-center gap-1 whitespace-nowrap rounded-r3 px-1 align-middle text-[10px]/[13px] font-medium bg-alpha-1 text-secondary pointer-events-none truncate";
+		const badgeRow = (label: string, badge: string, key: string, description: string) => (
+		{
+			name: `${label} ${badge === "default" ? "Default" : "Recommended"}${description}${key}`,
+			key,
+			wrapper: "flex min-w-0 items-center gap-sm",
+			parts: ["span.truncate[label]", " ", `span.${BADGE}`],
+			badge,
+			cds: "Badge",
+			badgeClass: BADGE,
+			text: "overflow-x-clip text-ellipsis whitespace-nowrap",
+		});
+
+		renderComposer(
+			{
+				chin:
+				{
+					...CHIN,
+					mode:
+					{
+						id: "auto",
+						label: "Auto",
+					},
+				},
+				modeBadges:
+				{
+					defaultMode: "auto",
+					recommendAuto: true,
+				},
+			},
+		);
+		openModeMenu();
+		const onAuto = badgedRows(await screen.findByRole("menu"));
+		cleanup();
+
+		renderComposer(
+			{
+				modeBadges:
+				{
+					defaultMode: "acceptEdits",
+					recommendAuto: true,
+				},
+			},
+		);
+		openModeMenu();
+		const onManual = badgedRows(await screen.findByRole("menu"));
+		fireEvent.click(
+			within(screen.getByRole("menu")).getByRole(
+				"menuitemradio",
+				{
+					name: /^Accept edits Default/,
+				},
+			),
+		);
+		await waitFor(() =>
+		{
+			expect(screen.queryByRole("menu")).toBeNull();
+		});
+
+		expect(
+			{
+				onAuto,
+				onManual,
+				readout: document.querySelector("[data-chin-mode]")?.textContent,
+			},
+		).toStrictEqual(
+			{
+				onAuto: [badgeRow("Auto", "default", "1", "Claude handles permission decisions")],
+				onManual: [
+					badgeRow("Auto", "recommended", "1", "Claude handles permission decisions"),
+					badgeRow("Accept edits", "default", "3", "Automatically accept all file edits"),
+				],
+				readout: "Accept edits",
 			},
 		);
 	});

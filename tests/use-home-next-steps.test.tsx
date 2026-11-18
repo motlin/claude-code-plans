@@ -871,6 +871,7 @@ describe("useHomeNextSteps", () =>
 				model: null,
 				effortLevel: null,
 				defaultMode,
+				defaultModeManaged: false,
 				repoDefaultMode: null,
 				modelManaged: false,
 				availableModels: null,
