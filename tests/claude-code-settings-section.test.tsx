@@ -777,6 +777,280 @@ describe("Claude Code settings ▸ Sessions", () =>
 	});
 });
 
+describe("Claude Code settings ▸ row chrome", () =>
+{
+	function chrome(slug: string)
+	{
+		const element = row(slug);
+		return {
+			dot: element.querySelector("[data-testid=setting-modified-dot]")?.getAttribute("aria-label") ?? null,
+			badge:
+				element.querySelector("span.inline-flex.h-5.items-center.gap-1\\.5 [data-cds=Badge]")?.textContent ??
+				null,
+			reset: element.querySelector("button[data-cds=Button]")?.getAttribute("aria-label") ?? null,
+		};
+	}
+
+	it("dots each settings.json row changed from the CLI default, and Reset deletes the key", async () =>
+	{
+		const endpoint = fakeEndpoint(
+			{
+				mtimeMs: 1,
+				values:
+				{
+					skipDangerousModePermissionPrompt: true,
+					enableWorkflows: false,
+					outputStyle: "Explanatory",
+					remoteControlAtStartup: false,
+				},
+			},
+			undefined,
+			7,
+		);
+		vi.stubGlobal("fetch", endpoint.fetchMock);
+		await renderTab();
+		await settled();
+		await waitFor(() =>
+		{
+			expect(chrome("archive-inactive-sessions").dot).not.toBeNull();
+		});
+		const slugs = [
+			"allow-bypass-permissions-mode",
+			"dynamic-workflows",
+			"switch-models-local",
+			"local-sandbox",
+			"output-style",
+			"archive-inactive-sessions",
+			"connect-new-sessions-to-remote-control",
+		];
+		const before = Object.fromEntries(slugs.map((slug) => [slug, chrome(slug)]));
+
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Reset Allow bypass permissions mode to default",
+				},
+			),
+		);
+		await endpoint.reply(0, "ok");
+
+		expect(
+			{
+				before,
+				posted: endpoint.posts[0],
+				after: chrome("allow-bypass-permissions-mode"),
+			},
+		).toStrictEqual(
+			{
+				before:
+				{
+					"allow-bypass-permissions-mode":
+					{
+						dot: "Changed from the default (Off)",
+						badge: null,
+						reset: "Reset Allow bypass permissions mode to default",
+					},
+					"dynamic-workflows":
+					{
+						dot: "Changed from the default (On)",
+						badge: null,
+						reset: "Reset Dynamic workflows to default",
+					},
+					"switch-models-local":
+					{
+						dot: null,
+						badge: null,
+						reset: null,
+					},
+					"local-sandbox":
+					{
+						dot: null,
+						badge: null,
+						reset: null,
+					},
+					"output-style":
+					{
+						dot: "Changed from the default (Default)",
+						badge: null,
+						reset: "Reset Output style to default",
+					},
+					"archive-inactive-sessions":
+					{
+						dot: "Changed from the default (Never)",
+						badge: null,
+						reset: "Reset Archive inactive sessions to default",
+					},
+					// A written false equals the CLI default (off), so the row is not modified.
+					"connect-new-sessions-to-remote-control":
+					{
+						dot: null,
+						badge: null,
+						reset: null,
+					},
+				},
+				posted:
+				{
+					key: "skipDangerousModePermissionPrompt",
+					expectedMtimeMs: 1,
+				},
+				after:
+				{
+					dot: null,
+					badge: null,
+					reset: null,
+				},
+			},
+		);
+	});
+
+	it("resets Remote Control by deleting remoteControlAtStartup and Archive inactive sessions to Never", async () =>
+	{
+		const endpoint = fakeEndpoint(
+			{
+				mtimeMs: 1,
+				values:
+				{
+					remoteControlAtStartup: true,
+				},
+			},
+			undefined,
+			7,
+		);
+		vi.stubGlobal("fetch", endpoint.fetchMock);
+		await renderTab();
+		await settled();
+		await waitFor(() =>
+		{
+			expect(chrome("archive-inactive-sessions").dot).not.toBeNull();
+		});
+
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Reset Connect new sessions to Remote Control to default",
+				},
+			),
+		);
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Reset Archive inactive sessions to default",
+				},
+			),
+		);
+		await endpoint.reply(0, "ok");
+		await waitFor(() =>
+		{
+			expect(chrome("archive-inactive-sessions").dot).toBeNull();
+		});
+
+		expect(
+			{
+				posts: endpoint.posts,
+				archivePuts: endpoint.archivePuts,
+				remote: chrome("connect-new-sessions-to-remote-control"),
+			},
+		).toStrictEqual(
+			{
+				posts: [
+					{
+						key: "remoteControlAtStartup",
+						expectedMtimeMs: 1,
+					},
+				],
+				archivePuts: [
+					{
+						days: 0,
+					},
+				],
+				remote:
+				{
+					dot: null,
+					badge: null,
+					reset: null,
+				},
+			},
+		);
+	});
+
+	it("keeps the dot when a Reset write is refused, with the write-failure alert under the row", async () =>
+	{
+		const endpoint = fakeEndpoint(
+			{
+				mtimeMs: 1,
+				values:
+				{
+					"sandbox.enabled": true,
+				},
+			},
+		);
+		vi.stubGlobal("fetch", endpoint.fetchMock);
+		await renderTab();
+		await settled();
+
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Reset Local sandbox to default",
+				},
+			),
+		);
+		await endpoint.reply(0, "fail");
+		await waitFor(() =>
+		{
+			expect(screen.getByRole("alert").textContent).toBe("Couldn’t save this setting.");
+		});
+
+		expect(
+			{
+				chrome: chrome("local-sandbox"),
+				alertInRow: row("local-sandbox").contains(screen.getByRole("alert")),
+			},
+		).toStrictEqual(
+			{
+				chrome:
+				{
+					dot: "Changed from the default (Off)",
+					badge: null,
+					reset: "Reset Local sandbox to default",
+				},
+				alertInRow: true,
+			},
+		);
+	});
+
+	it("shows Managed instead of the dot and Reset when bypass is disabled by policy", async () =>
+	{
+		vi.stubGlobal(
+			"fetch",
+			fakeEndpoint(
+				{
+					mtimeMs: 1,
+					values:
+					{
+						skipDangerousModePermissionPrompt: true,
+					},
+					bypassPermissionsModeDisabled: true,
+				},
+			).fetchMock,
+		);
+		await renderTab();
+		await settled();
+
+		expect(chrome("allow-bypass-permissions-mode")).toStrictEqual(
+			{
+				dot: null,
+				badge: "Managed",
+				reset: null,
+			},
+		);
+	});
+});
+
 describe("Claude Code settings ▸ Remote Control", () =>
 {
 	it("renders section#remote-control before Sessions with one Connect new sessions switch row", async () =>

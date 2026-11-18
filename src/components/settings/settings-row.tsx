@@ -74,6 +74,8 @@ interface SettingsRowProps
 	className?: string;
 	/** Keeps the description for screen readers only (upstream's `descriptionHidden`, a `div.sr-only`). */
 	descriptionHidden?: boolean;
+	/** Content after the title (upstream's `labelAdornment`: the modified dot, scope badge and Reset). */
+	labelAdornment?: ReactNode;
 }
 
 export function SettingsRow({
@@ -85,6 +87,7 @@ export function SettingsRow({
 	below,
 	className,
 	descriptionHidden = false,
+	labelAdornment,
 }: SettingsRowProps)
 {
 	const baseId = useId();
@@ -115,16 +118,25 @@ export function SettingsRow({
 			);
 	}, [flash, flashing]);
 
+	const titleDiv = (
+		<div id={titleId} className="text-body text-primary">
+			<span className={`settings-row-title inline-block align-top ${lit ? "feature-anchor-highlight" : ""}`}>
+				{title}
+			</span>
+		</div>
+	);
+
 	const inner = (
 		<>
 			<div data-settings-text="" className="flex min-w-0 flex-1 flex-col justify-center gap-1">
-				<div id={titleId} className="text-body text-primary">
-					<span
-						className={`settings-row-title inline-block align-top ${lit ? "feature-anchor-highlight" : ""}`}
-					>
-						{title}
+				{labelAdornment === undefined || labelAdornment === null ? (
+					titleDiv
+				) : (
+					<span className="inline-flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+						{titleDiv}
+						{labelAdornment}
 					</span>
-				</div>
+				)}
 				{description === undefined ? null : (
 					<div
 						id={descriptionId}

@@ -1,6 +1,16 @@
 import {Link} from "@tanstack/react-router";
 import {useQuery} from "@tanstack/react-query";
-import {type KeyboardEvent, lazy, type ReactNode, Suspense, useEffect, useRef, useState} from "react";
+import
+{
+	type KeyboardEvent,
+	lazy,
+	type ReactElement,
+	type ReactNode,
+	Suspense,
+	useEffect,
+	useRef,
+	useState,
+} from "react";
 import {ArrowDown, ArrowUp, Monitor, Moon, Plus, Sun, Trash2} from "lucide-react";
 import
 {
@@ -53,6 +63,8 @@ import {useTheme} from "../theme-context";
 import {ExternalTextLink} from "../external-text-link";
 import {HookSetup} from "../hook-setup";
 import {SegmentedControl} from "./segmented-control";
+import {SettingRowChrome} from "./setting-row-chrome";
+import {hasRowChrome, optionDefaultLabel, type SettingRowChromeProps} from "./setting-row-chrome-logic";
 import {SettingsRow, SettingsSection} from "./settings-row";
 import {Switch} from "./switch";
 import {useClaudeCodeSetting} from "./use-claude-code-setting";
@@ -541,6 +553,12 @@ function InterfaceFontRow()
 	);
 }
 
+/** Upstream's row chrome, or undefined when there's nothing to show, so `labelAdornment` leaves the title bare. */
+function rowChrome(props: SettingRowChromeProps): ReactElement | undefined
+{
+	return hasRowChrome(props) ? <SettingRowChrome {...props} /> : undefined;
+}
+
 function AppearanceSection()
 {
 	const {settings, setVerbosity} = useSettings();
@@ -551,6 +569,18 @@ function AppearanceSection()
 				slug="default-transcript-view"
 				title="Default transcript view"
 				description="The view sessions open in. Picking a view from a session’s Transcript view menu changes only that session."
+				labelAdornment={rowChrome(
+					{
+						modified: settings.verbosity !== DEFAULTS.verbosity,
+						managed: false,
+						defaultLabel: optionDefaultLabel(VERBOSITY_OPTIONS, DEFAULTS.verbosity),
+						labelText: "Default transcript view",
+						onReset: () =>
+						{
+							setVerbosity(DEFAULTS.verbosity);
+						},
+					},
+				)}
 			>
 				<SegmentedControl value={settings.verbosity} options={VERBOSITY_OPTIONS} onValueChange={setVerbosity} />
 			</SettingsRow>
@@ -617,6 +647,7 @@ function AppearanceChoiceRow<T extends string>({
 	value,
 	options,
 	onValueChange,
+	defaultValue,
 }: {
 	slug: string;
 	title: string;
@@ -630,14 +661,31 @@ function AppearanceChoiceRow<T extends string>({
 		label: string;
 	}>;
 	onValueChange: (next: T) => void;
+	/** Draws upstream's modified dot and Reset against this default (rows bound to a default in upstream's `Z`). */
+	defaultValue?: T;
 })
 {
 	const typeLed = useFizzyLake("type");
+	const labelAdornment =
+		defaultValue === undefined
+			? undefined
+			: rowChrome(
+					{
+						modified: value !== defaultValue,
+						managed: false,
+						defaultLabel: optionDefaultLabel(options, defaultValue),
+						labelText: title,
+						onReset: () =>
+						{
+							onValueChange(defaultValue);
+						},
+					},
+				);
 
 	if (!typeLed)
 	{
 		return (
-			<SettingsRow slug={slug} title={title} description={description}>
+			<SettingsRow slug={slug} title={title} description={description} labelAdornment={labelAdornment}>
 				<SegmentedControl value={value} options={options} onValueChange={onValueChange} />
 			</SettingsRow>
 		);
@@ -647,6 +695,7 @@ function AppearanceChoiceRow<T extends string>({
 		<SettingsRow
 			slug={slug}
 			title={title}
+			labelAdornment={labelAdornment}
 			{...(typeLedDescription
 				?
 					{
@@ -679,6 +728,7 @@ function TranscriptTextSizeRow()
 			typeLedDescription={false}
 			value={settings.transcriptTextSize}
 			options={TRANSCRIPT_TEXT_SIZE_OPTIONS}
+			defaultValue={DEFAULTS.transcriptTextSize}
 			onValueChange={(next) =>
 			{
 				setSetting("transcriptTextSize", next);
@@ -699,6 +749,7 @@ function TranscriptWidthRow()
 			typeLedDescription
 			value={settings.transcriptWidth}
 			options={TRANSCRIPT_WIDTH_OPTIONS}
+			defaultValue={DEFAULTS.transcriptWidth}
 			onValueChange={(next) =>
 			{
 				setSetting("transcriptWidth", next);
@@ -1248,6 +1299,20 @@ function CodeFontSizeRow()
 			slug="code-font-size"
 			title="Code font size"
 			description="Applies to open files, diffs, code blocks, command output, and the terminal."
+			labelAdornment={rowChrome(
+				{
+					modified: settings.codeFontSize !== DEFAULTS.codeFontSize,
+					managed: false,
+					// Upstream's `D`: no label when the chosen size is the default's own px value.
+					defaultLabel:
+						settings.codeFontSize === DEFAULT_CODE_FONT_SIZE ? undefined : `${DEFAULT_CODE_FONT_SIZE} px`,
+					labelText: "Code font size",
+					onReset: () =>
+					{
+						setSetting("codeFontSize", DEFAULTS.codeFontSize);
+					},
+				},
+			)}
 		>
 			<div className="w-56">
 				<ThemedCombobox
@@ -1328,6 +1393,17 @@ function CodeAppearanceSection()
 				slug="code-font"
 				title="Code font"
 				description="Set a custom monospace font for code and terminal."
+				labelAdornment={rowChrome(
+					{
+						modified: settings.codeFont !== DEFAULTS.codeFont,
+						managed: false,
+						labelText: "Code font",
+						onReset: () =>
+						{
+							setSetting("codeFont", DEFAULTS.codeFont);
+						},
+					},
+				)}
 			>
 				<TextInput
 					aria-label="Code font family"
@@ -1362,12 +1438,18 @@ function ClaudeCodeSwitchRow({
 	isOn,
 	valueFor,
 	disabledReason,
+	defaultOn,
+	managed,
 }: {
 	slug: string;
 	title: string;
 	description: ReactNode;
 	settingKey: ClaudeCodeSettingKey;
 	isOn: (value: string | boolean | undefined) => boolean;
+	/** The CLI's own default (the switch with the key absent): the row is modified when it differs. */
+	defaultOn: boolean;
+	/** A policy locks this setting: upstream's "Managed" badge replaces the dot and Reset. */
+	managed?: (state: ClaudeCodeSettingsState) => boolean;
 	/** The value to write for each position; undefined deletes the key. */
 	valueFor: (on: boolean) => string | boolean | undefined;
 	disabledReason?: (state: ClaudeCodeSettingsState) => string | null;
@@ -1383,6 +1465,18 @@ function ClaudeCodeSwitchRow({
 			title={title}
 			description={setting.loading ? "Loading…" : description}
 			below={setting.writeFailed ? WRITE_FAILED_ALERT : undefined}
+			labelAdornment={rowChrome(
+				{
+					modified: !setting.loading && checked !== defaultOn,
+					managed: setting.state !== undefined && (managed?.(setting.state) ?? false),
+					defaultLabel: defaultOn ? "On" : "Off",
+					labelText: title,
+					onReset: () =>
+					{
+						setting.write(undefined);
+					},
+				},
+			)}
 		>
 			<DisabledReason reason={reason}>
 				<Switch
@@ -1421,6 +1515,18 @@ function OutputStyleRow()
 					: "How Claude structures its responses in Code sessions. Applies to new sessions; the session menu can override it for a single session."
 			}
 			below={setting.writeFailed ? WRITE_FAILED_ALERT : undefined}
+			labelAdornment={rowChrome(
+				{
+					modified: !setting.loading && value !== DEFAULT_OUTPUT_STYLE,
+					managed: false,
+					defaultLabel: optionDefaultLabel(options, DEFAULT_OUTPUT_STYLE),
+					labelText: "Output style",
+					onReset: () =>
+					{
+						setting.write(undefined);
+					},
+				},
+			)}
 		>
 			<div className="w-[160px]">
 				<ThemedCombobox
@@ -1461,6 +1567,18 @@ function ArchiveInactiveSessionsRow()
 					: "Automatically archive local sessions after a period of no activity. Sessions that are running or have background work are never archived, and a worktree with uncommitted changes is kept on disk."
 			}
 			below={save.isError ? WRITE_FAILED_ALERT : undefined}
+			labelAdornment={rowChrome(
+				{
+					modified: setting.data !== undefined && days !== 0,
+					managed: false,
+					defaultLabel: optionDefaultLabel(autoArchiveDayOptions(days), "0"),
+					labelText: "Archive inactive sessions",
+					onReset: () =>
+					{
+						save.mutate(0);
+					},
+				},
+			)}
 		>
 			<div className="w-[160px]">
 				<ThemedCombobox
@@ -1511,12 +1629,15 @@ function LocalSessionsSection()
 				disabledReason={(state) =>
 					state.bypassPermissionsModeDisabled === true ? "Managed by your organization" : null
 				}
+				managed={(state) => state.bypassPermissionsModeDisabled === true}
+				defaultOn={false}
 			/>
 			<ClaudeCodeSwitchRow
 				slug="dynamic-workflows"
 				title="Dynamic workflows"
 				description="Let Claude run multiple agents in parallel for complex tasks. Workflows can use a lot of your usage limit quickly."
 				settingKey="enableWorkflows"
+				defaultOn
 				isOn={(value) => value !== false}
 				valueFor={(on) => (on ? undefined : false)}
 			/>
@@ -1526,6 +1647,7 @@ function LocalSessionsSection()
 				title="Switch models in Claude Code on this computer"
 				description="When a message is flagged, switch without asking. When off, Claude asks first, or stops if it can’t ask."
 				settingKey="switchModelsOnFlag"
+				defaultOn
 				isOn={(value) => value !== false}
 				valueFor={(on) => (on ? undefined : false)}
 			/>
@@ -1535,6 +1657,7 @@ function LocalSessionsSection()
 				title="Local sandbox"
 				description="Runs commands from Claude Code in an isolated sandbox. Applies to new sessions."
 				settingKey="sandbox.enabled"
+				defaultOn={false}
 				isOn={(value) => value === true}
 				valueFor={(on) => on}
 			/>
@@ -1556,6 +1679,7 @@ function RemoteControlSection()
 				title="Connect new sessions to Remote Control"
 				description="Sessions you start on this computer connect to Remote Control automatically, so you can continue them from other devices."
 				settingKey="remoteControlAtStartup"
+				defaultOn={false}
 				isOn={(value) => value === true}
 				valueFor={(on) => on}
 			/>

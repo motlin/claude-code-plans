@@ -845,7 +845,84 @@ describe("Appearance settings", () =>
 				thinking: "true",
 				checked: "Verbose",
 				description:
-					"Default transcript viewThe view sessions open in. Picking a view from a session’s Transcript view menu changes only that session.NormalThinkingVerbose",
+					"Default transcript viewResetThe view sessions open in. Picking a view from a session’s Transcript view menu changes only that session.NormalThinkingVerbose",
+			},
+		);
+	});
+
+	it("marks rows changed from their default with upstream's dot and Reset, and Reset restores the default", async () =>
+	{
+		await renderTab(
+			<FizzyLakeContext.Provider value={PRE_TYPE_PARTS}>
+				<GeneralSettings />
+				<ClaudeCodeSettings />
+			</FizzyLakeContext.Provider>,
+		);
+		const chrome = (name: string) =>
+		{
+			const row = screen.getByRole(
+				"group",
+				{
+					name,
+				},
+			);
+			return {
+				dot: row.querySelector("[data-testid=setting-modified-dot]")?.getAttribute("aria-label") ?? null,
+				reset: row.querySelector("button[data-cds=Button]")?.getAttribute("aria-label") ?? null,
+			};
+		};
+		const rows = ["Transcript text size", "Transcript width", "Default transcript view"];
+		const atDefaults = rows.map(chrome);
+
+		pick("Transcript text size", "Large");
+		pick("Transcript width", "Wide");
+		pick("Default transcript view", "Verbose");
+		const changed = rows.map(chrome);
+
+		for (const name of rows)
+			fireEvent.click(
+				screen.getByRole(
+					"button",
+					{
+						name: `Reset ${name} to default`,
+					},
+				),
+			);
+
+		expect(
+			{
+				atDefaults,
+				changed,
+				reset: rows.map(chrome),
+				checked: rows.map(checked),
+			},
+		).toStrictEqual(
+			{
+				atDefaults: rows.map(() => (
+				{
+					dot: null,
+					reset: null,
+				})),
+				changed: [
+					{
+						dot: "Changed from the default (Medium)",
+						reset: "Reset Transcript text size to default",
+					},
+					{
+						dot: "Changed from the default (Narrow)",
+						reset: "Reset Transcript width to default",
+					},
+					{
+						dot: "Changed from the default (Normal)",
+						reset: "Reset Default transcript view to default",
+					},
+				],
+				reset: rows.map(() => (
+				{
+					dot: null,
+					reset: null,
+				})),
+				checked: ["Medium", "Narrow", "Normal"],
 			},
 		);
 	});

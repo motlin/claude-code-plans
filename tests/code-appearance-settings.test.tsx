@@ -465,6 +465,128 @@ describe("Appearance settings ▸ Code", () =>
 		);
 	});
 
+	it("marks a changed Code font and Code font size with upstream's dot labels, and Reset restores the defaults", async () =>
+	{
+		await renderAppearance();
+		const chrome = (name: string) =>
+		{
+			const row = screen.getByRole(
+				"group",
+				{
+					name,
+				},
+			);
+			return {
+				dot: row.querySelector("[data-testid=setting-modified-dot]")?.getAttribute("aria-label") ?? null,
+				reset: row.querySelector("button[data-cds=Button]")?.getAttribute("aria-label") ?? null,
+			};
+		};
+		const pickSize = (name: string) =>
+		{
+			fireEvent.click(
+				screen.getByRole(
+					"combobox",
+					{
+						name: "Code font size",
+					},
+				),
+			);
+			fireEvent.click(
+				screen.getByRole(
+					"option",
+					{
+						name,
+					},
+				),
+			);
+		};
+		const atDefaults = [chrome("Code font"), chrome("Code font size")];
+
+		fireEvent.change(
+			screen.getByRole(
+				"textbox",
+				{
+					name: "Code font family",
+				},
+			),
+			{
+				target:
+				{
+					value: "Iosevka",
+				},
+			},
+		);
+		pickSize("13 px");
+		const atThirteen = [chrome("Code font"), chrome("Code font size")];
+		pickSize("15 px");
+		const atFifteen = chrome("Code font size");
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Reset Code font to default",
+				},
+			),
+		);
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Reset Code font size to default",
+				},
+			),
+		);
+
+		expect(
+			{
+				atDefaults,
+				atThirteen,
+				atFifteen,
+				afterReset: [chrome("Code font"), chrome("Code font size")],
+				stored: [localStorage.getItem("ccp-code-font"), localStorage.getItem("ccp-code-font-size")],
+			},
+		).toStrictEqual(
+			{
+				atDefaults: [
+					{
+						dot: null,
+						reset: null,
+					},
+					{
+						dot: null,
+						reset: null,
+					},
+				],
+				atThirteen: [
+					{
+						dot: "Changed from the default",
+						reset: "Reset Code font to default",
+					},
+					{
+						dot: "Changed from the default",
+						reset: "Reset Code font size to default",
+					},
+				],
+				atFifteen:
+				{
+					dot: "Changed from the default (13 px)",
+					reset: "Reset Code font size to default",
+				},
+				afterReset: [
+					{
+						dot: null,
+						reset: null,
+					},
+					{
+						dot: null,
+						reset: null,
+					},
+				],
+				stored: ["", "null"],
+			},
+		);
+	});
+
 	it("lets the terminal use the Ghostty config instead of the code theme", async () =>
 	{
 		await renderAppearance();

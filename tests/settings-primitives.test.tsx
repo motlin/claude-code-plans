@@ -361,6 +361,73 @@ describe("SettingsSection and SettingsRow", () =>
 			},
 		);
 	});
+
+	it("wraps the title and a labelAdornment in upstream's flex-wrap span, and leaves the title bare without one", () =>
+	{
+		render(
+			<>
+				<SettingsRow slug="adorned" title="Adorned" labelAdornment={<i data-a="" />} />
+				<SettingsRow slug="bare" title="Bare" />
+			</>,
+		);
+		const textOf = (name: string) =>
+		{
+			const text = screen
+				.getByRole(
+					"group",
+					{
+						name,
+					},
+				)
+				.querySelector("[data-settings-text]");
+			const first = text?.firstElementChild;
+			return {
+				firstTag: first?.tagName,
+				firstClass: first?.className,
+				children: [...(first?.children ?? [])].map((child) => (
+				{
+					tag: child.tagName,
+					isTitle: child.id !== "" && child.id.endsWith("-title"),
+				})),
+			};
+		};
+
+		expect(
+			{
+				adorned: textOf("Adorned"),
+				bare: textOf("Bare"),
+			},
+		).toStrictEqual(
+			{
+				adorned:
+				{
+					firstTag: "SPAN",
+					firstClass: "inline-flex flex-wrap items-center gap-x-1.5 gap-y-0.5",
+					children: [
+						{
+							tag: "DIV",
+							isTitle: true,
+						},
+						{
+							tag: "I",
+							isTitle: false,
+						},
+					],
+				},
+				bare:
+				{
+					firstTag: "DIV",
+					firstClass: "text-body text-primary",
+					children: [
+						{
+							tag: "SPAN",
+							isTitle: false,
+						},
+					],
+				},
+			},
+		);
+	});
 });
 
 describe("Switch", () =>
