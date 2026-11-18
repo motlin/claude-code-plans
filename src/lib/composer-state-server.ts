@@ -1,5 +1,6 @@
 import {StatuslineSchema, SESSION_ID_PATTERN} from "./api/statusline";
 import type {ComposerDefaults, ComposerServerState} from "./composer-state";
+import type {AvailableModels} from "./model-restrictions";
 import {isBypassPermissionsAllowed} from "./launch-options";
 import {ClaudeSettingsSchema} from "./runtime-schemas";
 import {type FastModeBlocked, fastModeBlockedReason, sessionFastMode} from "./session-fast-mode";
@@ -13,6 +14,8 @@ export interface FastModeBlockDependencies
 	env?: Readonly<Record<string, string | undefined>>;
 	/** The managed (policy) settings file. */
 	readManagedSettings?: () => Promise<unknown>;
+	/** Where `readManagedSettings` reads, for upstream's availableModels tooltip; defaults to this platform's. */
+	managedSettingsPath?: string;
 }
 
 export interface ComposerStateDependencies extends FastModeBlockDependencies
@@ -25,28 +28,19 @@ export interface ComposerStateDependencies extends FastModeBlockDependencies
 	readSettings(): Promise<unknown>;
 }
 
-async function readPolicyFastMode(dependencies: FastModeBlockDependencies): Promise<boolean | undefined>
-{
-	if (dependencies.readManagedSettings === undefined) return undefined;
-	try
-	{
-		const parsed = ClaudeSettingsSchema.safeParse(await dependencies.readManagedSettings());
-		return parsed.success ? parsed.data.fastMode : undefined;
-	}
-	catch
-	{
-		// No managed settings: no policy.
-		return undefined;
-	}
-}
+/** The user settings file every composer read uses, tildified as upstream shows it. */
+const USER_SETTINGS_PATH = "~/.claude/settings.json";
+
+type ClaudeSettings = NonNullable<Awaited<ReturnType<typeof readSettingsData>>>;
 
 /** `fastModeBlockedReason` over settings.json `env` merged over the server env, and the managed policy. */
-async function readFastModeBlocked(
+function fastModeBlocked(
 	settingsEnv: Readonly<Record<string, string>> | undefined,
+	managed: ClaudeSettings | null,
 	dependencies: FastModeBlockDependencies,
-): Promise<FastModeBlocked | null>
+): FastModeBlocked | null
 {
-	const policyFastMode = await readPolicyFastMode(dependencies);
+	const policyFastMode = managed?.fastMode;
 	return fastModeBlockedReason(
 		{
 			env:
@@ -81,6 +75,55 @@ async function readSettingsData(readSettings: () => Promise<unknown>)
 	}
 }
 
+/** Managed settings, or null when there are none. */
+async function readManagedSettingsData(dependencies: FastModeBlockDependencies): Promise<ClaudeSettings | null>
+{
+	const {readManagedSettings} = dependencies;
+	return readManagedSettings === undefined ? null : readSettingsData(readManagedSettings);
+}
+
+/**
+ * The model and `availableModels` the CLI resolves, managed settings beating the user's. The allowlist keeps its
+ * source and path for upstream's "Not in availableModels set by …" tooltip.
+ */
+function modelSettings(
+	user: ClaudeSettings | null,
+	managed: ClaudeSettings | null,
+	dependencies: FastModeBlockDependencies,
+):
+{
+	model: string | null;
+	modelManaged: boolean;
+	availableModels: AvailableModels | null;
+}
+{
+	const managedModel = managed?.model;
+	let availableModels: AvailableModels | null = null;
+	if (managed?.availableModels !== undefined)
+	{
+		availableModels =
+		{
+			value: managed.availableModels,
+			source: "managed",
+			path: dependencies.managedSettingsPath ?? managedSettingsPath(process.platform),
+		};
+	}
+	else if (user?.availableModels !== undefined)
+	{
+		availableModels =
+		{
+			value: user.availableModels,
+			source: "user",
+			path: USER_SETTINGS_PATH,
+		};
+	}
+	return {
+		model: managedModel ?? user?.model ?? null,
+		modelManaged: managedModel !== undefined,
+		availableModels,
+	};
+}
+
 async function readSettingsDefaults(
 	dependencies: ComposerStateDependencies,
 ): Promise<
@@ -88,6 +131,8 @@ async function readSettingsDefaults(
 		ComposerServerState,
 		| "settingsDefaultMode"
 		| "settingsModel"
+		| "settingsModelManaged"
+		| "settingsAvailableModels"
 		| "settingsEffortLevel"
 		| "settingsBypassPermissionsAllowed"
 		| "settingsFastMode"
@@ -96,23 +141,33 @@ async function readSettingsDefaults(
 	>
 >
 {
-	const settings = await readSettingsData(async () => dependencies.readSettings());
-	const fastModeBlocked = await readFastModeBlocked(settings?.env, dependencies);
+	const [settings, managed] = await Promise.all([
+		readSettingsData(async () => dependencies.readSettings()),
+		readManagedSettingsData(dependencies),
+	]);
+	const {model, modelManaged, availableModels} = modelSettings(settings, managed, dependencies);
+	const models =
+	{
+		settingsModel: model,
+		settingsModelManaged: modelManaged,
+		settingsAvailableModels: availableModels,
+	};
+	const blocked = fastModeBlocked(settings?.env, managed, dependencies);
 	if (settings === null)
 	{
 		return {
 			settingsDefaultMode: null,
-			settingsModel: null,
+			...models,
 			settingsEffortLevel: null,
 			settingsBypassPermissionsAllowed: false,
 			settingsFastMode: false,
 			settingsAdvisorModel: null,
-			fastModeBlocked,
+			fastModeBlocked: blocked,
 		};
 	}
 	return {
 		settingsDefaultMode: settings.permissions?.defaultMode ?? null,
-		settingsModel: settings.model ?? null,
+		...models,
 		settingsEffortLevel: settings.effortLevel ?? null,
 		settingsBypassPermissionsAllowed: isBypassPermissionsAllowed(
 			{
@@ -122,7 +177,7 @@ async function readSettingsDefaults(
 		),
 		settingsFastMode: sessionFastMode([], settings),
 		settingsAdvisorModel: settings.advisorModel ?? null,
-		fastModeBlocked,
+		fastModeBlocked: blocked,
 	};
 }
 
@@ -194,25 +249,27 @@ export async function getComposerDefaults(
 	readProjectSettings?: ReadProjectSettings,
 ): Promise<ComposerDefaults>
 {
-	const [settings, repoDefaultMode] = await Promise.all([
+	const [settings, managed, repoDefaultMode] = await Promise.all([
 		readSettingsData(readSettings),
+		readManagedSettingsData(blockDependencies),
 		readRepoDefaultMode(readProjectSettings),
 	]);
-	const fastModeBlocked = await readFastModeBlocked(settings?.env, blockDependencies);
+	const models = modelSettings(settings, managed, blockDependencies);
+	const blocked = fastModeBlocked(settings?.env, managed, blockDependencies);
 	if (settings === null)
 	{
 		return {
-			model: null,
+			...models,
 			effortLevel: null,
 			defaultMode: null,
 			repoDefaultMode,
 			bypassPermissionsAllowed: false,
 			fastMode: false,
-			fastModeBlocked,
+			fastModeBlocked: blocked,
 		};
 	}
 	return {
-		model: settings.model ?? null,
+		...models,
 		effortLevel: settings.effortLevel ?? null,
 		defaultMode: settings.permissions?.defaultMode ?? null,
 		repoDefaultMode,
@@ -223,7 +280,7 @@ export async function getComposerDefaults(
 			},
 		),
 		fastMode: sessionFastMode([], settings),
-		fastModeBlocked,
+		fastModeBlocked: blocked,
 	};
 }
 
@@ -287,9 +344,10 @@ export function managedSettingsPath(platform: NodeJS.Platform): string
 export async function nodeFastModeBlockDependencies(): Promise<Required<FastModeBlockDependencies>>
 {
 	const {readFile} = await import("node:fs/promises");
+	const path = managedSettingsPath(process.platform);
 	return {
 		env: process.env,
-		readManagedSettings: async () =>
-			JSON.parse(await readFile(managedSettingsPath(process.platform), "utf-8")) as unknown,
+		readManagedSettings: async () => JSON.parse(await readFile(path, "utf-8")) as unknown,
+		managedSettingsPath: path,
 	};
 }

@@ -20,6 +20,8 @@ export function resolveShellChinLabels(defaults: ComposerDefaults | null): Shell
 			fastMode: defaults?.fastMode ?? false,
 			fastModeBlocked: defaults?.fastModeBlocked ?? null,
 			settingsModel: defaults?.model ?? null,
+			settingsModelManaged: defaults?.modelManaged ?? false,
+			settingsAvailableModels: defaults?.availableModels ?? null,
 			settingsEffortLevel: defaults?.effortLevel ?? null,
 			statusline: null,
 			statuslineUpdatedAt: null,

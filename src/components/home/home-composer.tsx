@@ -254,6 +254,8 @@ export function HomeComposer({
 								fastMode: defaults.fastMode,
 								fastModeBlocked: defaults.fastModeBlocked,
 								settingsModel: defaults.model,
+								settingsModelManaged: defaults.modelManaged,
+								settingsAvailableModels: defaults.availableModels,
 								settingsEffortLevel: defaults.effortLevel,
 								statusline: null,
 								statuslineUpdatedAt: null,

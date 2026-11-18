@@ -41,11 +41,16 @@ import
 	fastModeSupported,
 	type LaunchOptions,
 	type LaunchPermissionMode,
+	catalogMenuValue,
+	fullModelId,
+	type ModelCatalog,
 	modeTriggerLabel,
 	modelLabel,
 	modelMenuValue,
+	modelRowsFor,
 	withModel,
 } from "../lib/launch-options";
+import {restrictionKindFor, restrictionTooltip} from "../lib/model-restrictions";
 import {useShortcutKeys} from "../hooks/use-shortcut";
 import {effortLevelLabels} from "../lib/schema-choices";
 import {ConnectorsLoadingItem} from "./composer-connectors-loading";
@@ -74,6 +79,22 @@ import type {UsageRingContext, UsagePopoverContextSection} from "./usage-popover
 import {loadedUsagePopoverContext, preloadUsagePopoverContext} from "./usage-popover-context-loader";
 import {useRenameAfterMenuClose} from "./use-rename-after-menu-close";
 import {UsageBars} from "./usage-bars";
+
+/** Upstream's `ha` over the menu's rows: the `availableModels` tooltip for each row it leaves out. */
+function modelRestriction(
+	catalog: ModelCatalog,
+	state: Pick<ComposerState, "availableModels">,
+): ((id: string) => string | undefined) | undefined
+{
+	const {availableModels} = state;
+	if (availableModels === null) return undefined;
+	const kindFor = restrictionKindFor(
+		[...catalog.primary, ...catalog.more].map((row) => fullModelId(row.id)),
+		availableModels,
+	);
+	const tooltip = restrictionTooltip(availableModels);
+	return (id) => (kindFor(fullModelId(id)) === "allowlist" ? tooltip : undefined);
+}
 
 const LazyTryAutoCoachMark = lazy(async () =>
 	import("./try-auto-coach-mark").then((module) => (
@@ -500,7 +521,14 @@ export const ComposerChin = memo(function ComposerChin({
 	{
 		onLaunchOptionsChange(withModel(launchOptions, model));
 	};
-	const currentModel = launchOptions.model ?? modelMenuValue(state.modelId) ?? undefined;
+	const catalog = modelRowsFor(
+		{
+			settingsModel: state.settingsDefault?.id ?? null,
+			availableModels: state.availableModels?.value,
+		},
+	);
+	// A session model neither list has stays the current value: upstream's checked "Unsupported model" row.
+	const currentModel = launchOptions.model ?? catalogMenuValue(state.modelId, catalog) ?? state.modelId;
 	// Upstream's `fastModeOn = !blocked && value`; a blocked session can't pick it either.
 	const fastModeBlocked = state.fastModeBlocked;
 	const fastMode = fastModeBlocked === null && (launchOptions.fastMode ?? state.fastMode);
@@ -525,7 +553,7 @@ export const ComposerChin = memo(function ComposerChin({
 		fastState: () => (
 		{
 			on: fastMode,
-			canToggle: fastModeBlocked === null && currentModel !== undefined && fastModeSupported(currentModel),
+			canToggle: fastModeBlocked === null && fastModeSupported(currentModel),
 		}),
 		openContext: () =>
 		{
@@ -569,6 +597,17 @@ export const ComposerChin = memo(function ComposerChin({
 			currentLabel={modelText}
 			currentEffort={currentEffort}
 			onSelect={selectModel}
+			catalog={catalog}
+			restrictionFor={modelRestriction(catalog, state)}
+			defaultModel={
+				state.settingsDefault === null
+					? null
+					:
+						{
+							value: catalogMenuValue(state.settingsDefault.id, catalog) ?? state.settingsDefault.id,
+							managed: state.settingsDefault.managed,
+						}
+			}
 			settingsOverride={
 				overridden
 					?
@@ -579,7 +618,7 @@ export const ComposerChin = memo(function ComposerChin({
 					: null
 			}
 			onSelectEffort={selectEffort}
-			effortOptions={effortOptionsFor(currentModel ?? state.modelId)}
+			effortOptions={effortOptionsFor(currentModel)}
 			ultracode={ultracode}
 			onUltracodeChange={selectUltracode}
 			fastMode={fastMode}

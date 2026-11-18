@@ -1,4 +1,5 @@
 import {Info, TriangleAlert} from "lucide-react";
+import type {ComponentProps, ReactElement} from "react";
 
 import {useShortcutKeys} from "../hooks/use-shortcut";
 
@@ -11,13 +12,15 @@ import
 	MAX_EFFORT_TOOLTIP,
 	type LaunchPermissionMode,
 	LaunchPermissionModeSchema,
-	MORE_MODELS,
+	DEFAULT_MODEL_CATALOG,
+	fullModelId,
+	type ModelCatalog,
+	type ModelChoice,
 	modeMenuItems,
 	moreModelsMenuValue,
-	PRIMARY_MODELS,
 	primaryModelMenuValue,
-	resolveLaunchModel,
 } from "../lib/launch-options";
+import {formatModelName} from "../lib/model-name";
 import {effortLevelShortLabels} from "../lib/schema-choices";
 import type {FastModeBlocked} from "../lib/session-fast-mode";
 import
@@ -207,6 +210,103 @@ function EffortRowLabel({option}: {option: EffortOption})
 	);
 }
 
+/** Upstream's catalog row name line (`ON`): the truncating name, then the host's Default / Set by admin badge. */
+function ModelRowLabel({label, badge}: {label: string; badge: string | null})
+{
+	return (
+		<span className="flex min-w-0 items-center gap-1">
+			<span data-menu-item-label="" className="truncate">
+				{label}
+			</span>
+			{badge !== null && (
+				<span
+					data-cds="Badge"
+					data-model-default=""
+					className={`${EFFORT_BADGE_CLASS} min-w-0 truncate bg-alpha-1 text-secondary`}
+				>
+					{badge}
+				</span>
+			)}
+		</span>
+	);
+}
+
+/** The settings model's row: upstream badges it "Default", or "Set by admin" from managed settings. */
+export interface ModelMenuDefault
+{
+	/** The Model menu value the settings model selects. */
+	value: string;
+	managed: boolean;
+}
+
+/** One Model menu row after upstream's host transform: its digit (selectable rows only) and restriction. */
+interface ModelMenuRow extends ModelChoice
+{
+	accelerator: string | undefined;
+	restriction: string | undefined;
+	badge: string | null;
+}
+
+/**
+ * Upstream's `su` + `qZ` over the catalog rows: an allowlist-restricted row (never the checked one) is disabled with
+ * its tooltip, digits count only selectable rows, and the settings model's row carries its badge.
+ */
+function decorateRows(
+	rows: readonly ModelChoice[],
+	checked: string,
+	restrictionFor: ((id: string) => string | undefined) | undefined,
+	defaultModel: ModelMenuDefault | null,
+	digits: boolean,
+): ModelMenuRow[]
+{
+	let digit = 0;
+	return rows.map((row) =>
+	{
+		const restriction = row.id === checked ? undefined : restrictionFor?.(row.id);
+		if (digits && restriction === undefined) digit += 1;
+		return {
+			...row,
+			accelerator: digits && restriction === undefined ? String(digit) : undefined,
+			restriction,
+			badge: defaultModel?.value === row.id ? (defaultModel.managed ? "Set by admin" : "Default") : null,
+		};
+	});
+}
+
+type TooltipChild = ComponentProps<typeof Tooltip>["children"];
+
+/** A restricted row: disabled, described by its reason, which a left tooltip shows on hover (upstream's `uc`). */
+function withRestriction(row: ModelMenuRow, item: TooltipChild, fallbackTooltip?: string): ReactElement
+{
+	if (row.restriction !== undefined)
+	{
+		return (
+			<Tooltip key={row.id} content={row.restriction} side="left" portal className="flex w-full">
+				<div role="none" className="w-full">
+					{item}
+				</div>
+			</Tooltip>
+		);
+	}
+	if (fallbackTooltip === undefined) return item;
+	return (
+		<Tooltip key={row.id} content={fallbackTooltip} side="left" portal className="flex w-full">
+			{item}
+		</Tooltip>
+	);
+}
+
+function restrictionProps(row: ModelMenuRow)
+{
+	return row.restriction === undefined
+		? {}
+		:
+			{
+				disabled: true,
+				"aria-description": row.restriction,
+			};
+}
+
 /**
  * claude.ai/code's single model + effort picker: the trigger reads "Opus 5.5 High", and its menu lists
  * the primary models with digit keys, an Effort submenu (upstream's hint, then Low … Max and Ultracode with the
@@ -230,8 +330,17 @@ export function ModelMenu({
 	onFastModeChange,
 	settingsOverride,
 	surface,
+	catalog = DEFAULT_MODEL_CATALOG,
+	restrictionFor,
+	defaultModel = null,
 }: ControlledMenuProps &
 {
+	/** The rows, with any `[1m]` twins (`modelRowsFor`). */
+	catalog?: ModelCatalog;
+	/** Why settings' `availableModels` leaves a row out, or undefined when it may run. */
+	restrictionFor?: ((id: string) => string | undefined) | undefined;
+	/** The settings model's row, badged "Default" / "Set by admin". */
+	defaultModel?: ModelMenuDefault | null;
 	/** Upstream's new-session bar pins a "Model · this session" header; session chins have none. */
 	surface: ChinSurface;
 	/** Opened from ⇧⌘E: show the Effort submenu straight away. */
@@ -260,7 +369,17 @@ export function ModelMenu({
 })
 {
 	/** Upstream's checked row shows its ✓ in place of its digit; the others keep their position's digit. */
-	const primary = primaryModelMenuValue(current);
+	const primary = primaryModelMenuValue(current, catalog);
+	const moreValue = moreModelsMenuValue(current, catalog);
+	/** Upstream appends a current model the catalog lacks as a checked, disabled "deprecated" row with no digit. */
+	const unsupported =
+		current !== undefined &&
+		!catalog.primary.some((row) => row.id === primary) &&
+		!catalog.more.some((row) => row.id === moreValue)
+			? current
+			: null;
+	const primaryRows = decorateRows(catalog.primary, primary, restrictionFor, defaultModel, true);
+	const moreRows = decorateRows(catalog.more, moreValue, restrictionFor, defaultModel, false);
 	const level = EffortLevelSchema.safeParse(currentEffort);
 	const effortLabel = level.success ? effortLevelShortLabels[level.data] : currentEffort;
 	/** Upstream's trigger has no effort word (nor Max's warning) for a model with no effort levels. */
@@ -376,34 +495,39 @@ export function ModelMenu({
 					: {})}
 			>
 				<MenuRadioGroup
-					value={primary}
+					value={unsupported ?? primary}
 					onValueChange={(value: string) =>
 					{
-						onSelect(value);
+						if (value !== unsupported) onSelect(value);
 					}}
 				>
-					{PRIMARY_MODELS.map((model, index) =>
+					{primaryRows.map((model) =>
 					{
 						const row = (
 							<MenuRadioItem
 								key={model.id}
 								value={model.id}
-								data-model-id={resolveLaunchModel(model.id)}
-								accelerator={String(index + 1)}
+								data-model-id={fullModelId(model.id)}
+								{...(model.accelerator === undefined
+									? {}
+									:
+										{
+											accelerator: model.accelerator,
+										})}
 								acceleratorInSlot
 								closeOnClick
+								{...restrictionProps(model)}
 							>
-								<span data-menu-item-label="">{model.label}</span>
+								<ModelRowLabel label={model.label} badge={model.badge} />
 							</MenuRadioItem>
 						);
-						return model.id === "fable" ? (
-							<Tooltip key={model.id} content={FABLE_TOOLTIP} side="left" portal className="flex w-full">
-								{row}
-							</Tooltip>
-						) : (
-							row
-						);
+						return withRestriction(model, row, model.id === "fable" ? FABLE_TOOLTIP : undefined);
 					})}
+					{unsupported !== null && (
+						<MenuRadioItem value={unsupported} data-model-id={unsupported}>
+							<ModelRowLabel label={formatModelName(unsupported) ?? "Unsupported model"} badge={null} />
+						</MenuRadioItem>
+					)}
 				</MenuRadioGroup>
 				{effortShown && (
 					<>
@@ -488,18 +612,27 @@ export function ModelMenu({
 					<MenuSubTrigger>More models</MenuSubTrigger>
 					<MenuSubContent className="max-h-[min(50vh,var(--available-height))]">
 						<MenuRadioGroup
-							value={moreModelsMenuValue(current)}
+							value={moreValue}
 							onValueChange={(value: string) =>
 							{
 								onSelect(value);
 								onOpenChange(false);
 							}}
 						>
-							{MORE_MODELS.map((model) => (
-								<MenuRadioItem key={model.id} value={model.id} data-model-id={model.id} closeOnClick>
-									<span data-menu-item-label="">{model.label}</span>
-								</MenuRadioItem>
-							))}
+							{moreRows.map((model) =>
+								withRestriction(
+									model,
+									<MenuRadioItem
+										key={model.id}
+										value={model.id}
+										data-model-id={model.id}
+										closeOnClick
+										{...restrictionProps(model)}
+									>
+										<ModelRowLabel label={model.label} badge={model.badge} />
+									</MenuRadioItem>,
+								),
+							)}
 						</MenuRadioGroup>
 					</MenuSubContent>
 				</MenuSub>

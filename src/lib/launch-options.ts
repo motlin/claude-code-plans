@@ -188,6 +188,86 @@ export function resolveLaunchModel(settingsModel: string | null): string
 	return (Object.hasOwn(ALIAS_LATEST, settingsModel) ? ALIAS_LATEST[settingsModel] : undefined) ?? settingsModel;
 }
 
+/** The CLI's `[1m]` long-context suffix: the same model with a 1M-token window. */
+const LONG_CONTEXT_SUFFIX = "[1m]";
+
+function splitLongContext(id: string):
+{
+	bare: string;
+	twin: boolean;
+}
+{
+	return id.endsWith(LONG_CONTEXT_SUFFIX)
+		?
+			{
+				bare: id.slice(0, -LONG_CONTEXT_SUFFIX.length),
+				twin: true,
+			}
+		:
+			{
+				bare: id,
+				twin: false,
+			};
+}
+
+/** The full id a Model menu row launches: an alias resolves to its latest model, keeping a `[1m]` suffix. */
+export function fullModelId(id: string): string
+{
+	const {bare, twin} = splitLongContext(id);
+	return `${resolveLaunchModel(bare)}${twin ? LONG_CONTEXT_SUFFIX : ""}`;
+}
+
+/** The Model menu's rows: the primary aliases and the More models submenu. */
+export interface ModelCatalog
+{
+	primary: readonly ModelChoice[];
+	more: readonly ModelChoice[];
+}
+
+export const DEFAULT_MODEL_CATALOG: ModelCatalog =
+{
+	primary: PRIMARY_MODELS,
+	more: MORE_MODELS,
+};
+
+/**
+ * Upstream's `uK` + `Kc`: every settings `model` or `availableModels` entry ending `[1m]` adds that model's
+ * long-context twin right after its row, named with the " 1M" suffix (upstream gates this on the
+ * `cc_settings_long_context_rows_main` flag).
+ */
+export function modelRowsFor({
+	settingsModel,
+	availableModels,
+}: {
+	settingsModel: string | null;
+	availableModels: readonly string[] | undefined;
+}): ModelCatalog
+{
+	const twins = new Set(
+		[settingsModel, ...(availableModels ?? [])]
+			.map((entry) => entry?.trim() ?? "")
+			.filter((entry) => entry.endsWith(LONG_CONTEXT_SUFFIX))
+			.map(fullModelId),
+	);
+	if (twins.size === 0) return DEFAULT_MODEL_CATALOG;
+	const withTwins = (rows: readonly ModelChoice[]) =>
+		rows.flatMap((row) =>
+			twins.has(`${fullModelId(row.id)}${LONG_CONTEXT_SUFFIX}`)
+				? [
+						row,
+						{
+							id: `${row.id}${LONG_CONTEXT_SUFFIX}`,
+							label: `${row.label} 1M`,
+						},
+					]
+				: [row],
+		);
+	return {
+		primary: withTwins(DEFAULT_MODEL_CATALOG.primary),
+		more: withTwins(DEFAULT_MODEL_CATALOG.more),
+	};
+}
+
 /**
  * The Model menu value a session's model id selects: the full id when "More
  * models" lists it, else its family alias, else null.
@@ -201,19 +281,38 @@ export function modelMenuValue(id: string | null): string | null
 	return PRIMARY_MODELS.find((model) => model.id === family)?.id ?? null;
 }
 
-/** The primary row a menu value checks: an alias, or the full id an alias launches. */
-export function primaryModelMenuValue(current: string | undefined): string
+/** A value's `[1m]` twin when the rows list it, else the value itself. */
+function withTwin(value: string, twin: boolean, rows: readonly ModelChoice[]): string
+{
+	const twinId = `${value}${LONG_CONTEXT_SUFFIX}`;
+	return twin && rows.some((row) => row.id === twinId) ? twinId : value;
+}
+
+/** `modelMenuValue`, checking a `[1m]` id's twin row when the catalog lists it. */
+export function catalogMenuValue(id: string, catalog: ModelCatalog): string | null
+{
+	const value = modelMenuValue(id);
+	if (value === null) return null;
+	return withTwin(value, splitLongContext(id).twin, [...catalog.primary, ...catalog.more]);
+}
+
+/** The primary row a menu value checks: an alias, or the full id an alias launches; a `[1m]` value checks its twin. */
+export function primaryModelMenuValue(current: string | undefined, catalog = DEFAULT_MODEL_CATALOG): string
 {
 	if (current === undefined) return "";
-	if (Object.hasOwn(ALIAS_LATEST, current)) return current;
-	return Object.entries(ALIAS_LATEST).find(([, latest]) => latest === current)?.[0] ?? "";
+	const {bare, twin} = splitLongContext(current);
+	const alias = Object.hasOwn(ALIAS_LATEST, bare)
+		? bare
+		: (Object.entries(ALIAS_LATEST).find(([, latest]) => latest === bare)?.[0] ?? "");
+	return alias === "" ? "" : withTwin(alias, twin, catalog.primary);
 }
 
 /** The "More models" row a menu value checks: an alias checks the full id it launches. */
-export function moreModelsMenuValue(current: string | undefined): string
+export function moreModelsMenuValue(current: string | undefined, catalog = DEFAULT_MODEL_CATALOG): string
 {
 	if (current === undefined) return "";
-	return (Object.hasOwn(ALIAS_LATEST, current) ? ALIAS_LATEST[current] : undefined) ?? current;
+	const {bare, twin} = splitLongContext(current);
+	return withTwin(resolveLaunchModel(bare), twin, catalog.more);
 }
 
 /** Models whose catalog entry offers the Fast mode toggle (upstream `fast_mode:{type:"toggle"}`). */
@@ -416,6 +515,8 @@ export function withModel(options: LaunchOptions, model: string): LaunchOptions
 export function modelLabel(id: string): string
 {
 	if (id === "default") return modelLabel(CLI_DEFAULT_MODEL);
+	const {bare, twin} = splitLongContext(id);
+	if (twin) return `${modelLabel(bare)} 1M`;
 	return [...PRIMARY_MODELS, ...MORE_MODELS].find((model) => model.id === id)?.label ?? formatModelName(id) ?? id;
 }
 

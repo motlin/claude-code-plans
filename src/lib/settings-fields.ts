@@ -300,6 +300,7 @@ export const DEDICATED_EDITOR_KEYS = new Set([
 	"enabledPlugins",
 	"enabledMcpjsonServers",
 	"additionalDirectories",
+	"availableModels",
 	"extraKnownMarketplaces",
 	"sandbox",
 	"remote",

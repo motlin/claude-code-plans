@@ -2316,6 +2316,18 @@ export function FormEditor({filename, initialContent, path}: {filename: string; 
 				</div>
 
 				<div>
+					<h3 className="text-xs font-semibold uppercase tracking-wider text-t6 mb-1">Models</h3>
+					<StringListEditor
+						label="Available models"
+						description="Models the model picker may launch; unset allows every model"
+						fieldKey="availableModels"
+						entries={data["availableModels"]}
+						onChange={handleFieldChange}
+						placeholder="opus"
+					/>
+				</div>
+
+				<div>
 					<h3 className="text-xs font-semibold uppercase tracking-wider text-t6 mb-1">Marketplaces</h3>
 					<MarketplacesEditor
 						value={asRecord(data["extraKnownMarketplaces"]) ?? {}}

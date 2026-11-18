@@ -473,6 +473,8 @@ describe("HomeLanding", () =>
 			effortLevel: null,
 			defaultMode: "default",
 			repoDefaultMode: null,
+			modelManaged: false,
+			availableModels: null,
 			bypassPermissionsAllowed: false,
 			fastMode: false,
 			fastModeBlocked: null,

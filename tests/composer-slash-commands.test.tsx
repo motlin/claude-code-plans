@@ -2501,6 +2501,8 @@ describe("Composer slash commands", () =>
 			model: "Opus 5.5",
 			modelId: "claude-opus-5-5",
 			settingsModelId: "claude-opus-5-5",
+			settingsDefault: null,
+			availableModels: null,
 			fastMode: false,
 			fastModeBlocked: null,
 			effort:
@@ -2657,6 +2659,8 @@ describe("Composer host commands", () =>
 		model: "Opus 5.5",
 		modelId: "claude-opus-5-5",
 		settingsModelId: "claude-opus-5-5",
+		settingsDefault: null,
+		availableModels: null,
 		fastMode: false,
 		fastModeBlocked: null,
 		effort:

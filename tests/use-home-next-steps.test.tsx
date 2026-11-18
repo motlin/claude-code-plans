@@ -872,6 +872,8 @@ describe("useHomeNextSteps", () =>
 				effortLevel: null,
 				defaultMode,
 				repoDefaultMode: null,
+				modelManaged: false,
+				availableModels: null,
 				bypassPermissionsAllowed: false,
 				fastMode: false,
 				fastModeBlocked: null,

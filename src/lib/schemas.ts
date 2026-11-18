@@ -3521,6 +3521,8 @@ export const ClaudeSettingsSchema = z
 		{
 			$schema: z.string().optional(),
 			model: z.string().optional(),
+			/** The CLI's model allowlist; a malformed value is dropped rather than losing the rest of the file. */
+			availableModels: z.array(z.string()).optional().catch(undefined),
 			theme: z.string().optional(),
 			tui: z.string().optional(),
 			verbose: z.boolean().optional(),

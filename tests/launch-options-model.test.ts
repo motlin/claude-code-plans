@@ -12,8 +12,12 @@ import
 	MAX_EFFORT_TOOLTIP,
 	fastModeSupported,
 	MORE_MODELS,
+	catalogMenuValue,
+	DEFAULT_MODEL_CATALOG,
+	fullModelId,
 	modelLabel,
 	modelMenuValue,
+	modelRowsFor,
 	moreModelsMenuValue,
 	primaryModelMenuValue,
 	resolveLaunchModel,
@@ -112,6 +116,156 @@ describe("primary and More models values", () =>
 			{
 				primary,
 				more,
+			},
+		);
+	});
+});
+
+describe("modelRowsFor [1m] twins", () =>
+{
+	const ids = (
+		rows: readonly
+		{
+			id: string;
+		}[],
+	) => rows.map((row) => row.id);
+
+	it("inserts a settings model's [1m] twin right after its base row, named with upstream's 1M suffix", () =>
+	{
+		const catalog = modelRowsFor(
+			{
+				settingsModel: "opus[1m]",
+				availableModels: undefined,
+			},
+		);
+		expect(
+			{
+				primary: catalog.primary,
+				more: ids(catalog.more),
+			},
+		).toStrictEqual(
+			{
+				primary: [
+					{
+						id: "opus",
+						label: "Opus 5.5",
+					},
+					{
+						id: "opus[1m]",
+						label: "Opus 5.5 1M",
+					},
+					{
+						id: "fable",
+						label: "Fable 5.1",
+					},
+					{
+						id: "sonnet",
+						label: "Sonnet 5.5",
+					},
+					{
+						id: "haiku",
+						label: "Haiku 5.5",
+					},
+				],
+				more: ids(DEFAULT_MODEL_CATALOG.more),
+			},
+		);
+	});
+
+	it("twins every availableModels entry ending [1m], primary and More models alike", () =>
+	{
+		const catalog = modelRowsFor(
+			{
+				settingsModel: "sonnet",
+				availableModels: ["claude-sonnet-5-5[1m]", " claude-opus-4-8[1m] ", "opus"],
+			},
+		);
+		expect(
+			{
+				primary: ids(catalog.primary),
+				more: catalog.more.slice(4, 6),
+			},
+		).toStrictEqual(
+			{
+				primary: ["opus", "fable", "sonnet", "sonnet[1m]", "haiku"],
+				more: [
+					{
+						id: "claude-opus-4-8",
+						label: "Opus 4.8",
+					},
+					{
+						id: "claude-opus-4-8[1m]",
+						label: "Opus 4.8 1M",
+					},
+				],
+			},
+		);
+	});
+
+	it("inserts nothing without a [1m] entry", () =>
+	{
+		expect(
+			modelRowsFor(
+				{
+					settingsModel: "opus",
+					availableModels: ["opus", "sonnet"],
+				},
+			),
+		).toStrictEqual(DEFAULT_MODEL_CATALOG);
+	});
+
+	it("checks the twin for a [1m] current model when it exists, else the base row", () =>
+	{
+		const twinned = modelRowsFor(
+			{
+				settingsModel: "opus[1m]",
+				availableModels: ["claude-opus-4-8[1m]"],
+			},
+		);
+		expect(
+			{
+				primary: primaryModelMenuValue("opus[1m]", twinned),
+				primaryBare: primaryModelMenuValue("opus", twinned),
+				primaryNoTwin: primaryModelMenuValue("opus[1m]", DEFAULT_MODEL_CATALOG),
+				more: moreModelsMenuValue("claude-opus-4-8[1m]", twinned),
+				moreNoTwin: moreModelsMenuValue("claude-opus-4-8[1m]", DEFAULT_MODEL_CATALOG),
+				session: catalogMenuValue("claude-opus-5-5[1m]", twinned),
+				sessionNoTwin: catalogMenuValue("claude-opus-5-5[1m]", DEFAULT_MODEL_CATALOG),
+				sessionMore: catalogMenuValue("claude-opus-4-8[1m]", twinned),
+				unknown: catalogMenuValue("my-custom-model", twinned),
+			},
+		).toStrictEqual(
+			{
+				primary: "opus[1m]",
+				primaryBare: "opus",
+				primaryNoTwin: "opus",
+				more: "claude-opus-4-8[1m]",
+				moreNoTwin: "claude-opus-4-8",
+				session: "opus[1m]",
+				sessionNoTwin: "opus",
+				sessionMore: "claude-opus-4-8[1m]",
+				unknown: null,
+			},
+		);
+	});
+
+	it("resolves a twin's alias to the full id it launches and labels it 1M", () =>
+	{
+		expect(
+			{
+				twin: fullModelId("opus[1m]"),
+				alias: fullModelId("sonnet"),
+				full: fullModelId("claude-opus-4-8[1m]"),
+				label: modelLabel("opus[1m]"),
+				moreLabel: modelLabel("claude-opus-4-8[1m]"),
+			},
+		).toStrictEqual(
+			{
+				twin: "claude-opus-5-5[1m]",
+				alias: "claude-sonnet-5-5",
+				full: "claude-opus-4-8[1m]",
+				label: "Opus 5.5 1M",
+				moreLabel: "Opus 4.8 1M",
 			},
 		);
 	});

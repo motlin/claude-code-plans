@@ -57,6 +57,8 @@ function setup({
 			effortLevel: null,
 			defaultMode: offer?.nudgeMode ?? null,
 			repoDefaultMode: null,
+			modelManaged: false,
+			availableModels: null,
 			bypassPermissionsAllowed: false,
 			fastMode: false,
 			fastModeBlocked: null,

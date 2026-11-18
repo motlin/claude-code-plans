@@ -35,6 +35,8 @@ const CHIN: ComposerState =
 	model: "Opus 5.5",
 	modelId: "claude-opus-5-5",
 	settingsModelId: "claude-opus-5-5",
+	settingsDefault: null,
+	availableModels: null,
 	fastMode: false,
 	fastModeBlocked: null,
 	effort:
@@ -1344,6 +1346,519 @@ describe("Composer model menu", () =>
 						},
 					],
 				],
+			},
+		);
+	});
+});
+
+describe("Composer model menu catalog rows (upstream's host transform)", () =>
+{
+	const USER_ALLOWLIST =
+	{
+		source: "user",
+		path: "~/.claude/settings.json",
+	};
+	const RESTRICTED = "Not in availableModels set by your Claude Code settings (~/.claude/settings.json)";
+
+	async function openMoreModels()
+	{
+		const subTrigger = await screen.findByRole(
+			"menuitem",
+			{
+				name: /More models/,
+			},
+		);
+		fireEvent.pointerEnter(
+			subTrigger,
+			{
+				pointerType: "mouse",
+			},
+		);
+		fireEvent.mouseEnter(subTrigger);
+		fireEvent.pointerMove(
+			subTrigger,
+			{
+				pointerType: "mouse",
+			},
+		);
+		fireEvent.mouseMove(subTrigger);
+		await waitFor(() =>
+		{
+			expect(screen.getAllByRole("menu")).toHaveLength(2);
+		});
+		return screen.getAllByRole("menu")[1]!;
+	}
+
+	function restrictionRows(menu: HTMLElement)
+	{
+		return within(menu)
+			.getAllByRole("menuitemradio")
+			.map((item) => (
+			{
+				label: item.querySelector("[data-menu-item-label]")?.textContent,
+				key: item.getAttribute("aria-keyshortcuts"),
+				disabled: item.getAttribute("aria-disabled"),
+				description: item.getAttribute("aria-description"),
+			}));
+	}
+
+	it("disables the rows availableModels leaves out, with upstream's tooltip, and digits only the selectable rows", async () =>
+	{
+		const onSend = renderComposer(
+			{
+				chin:
+				{
+					...CHIN,
+					availableModels:
+					{
+						...USER_ALLOWLIST,
+						value: ["opus", "sonnet", "haiku"],
+					},
+				},
+			},
+		);
+
+		openModelMenu();
+		const menu = await screen.findByRole("menu");
+		const rows = restrictionRows(menu);
+		const fable = within(menu).getByRole(
+			"menuitemradio",
+			{
+				name: /^Fable/,
+			},
+		);
+		const anchor = fable.parentElement;
+		if (anchor === null) throw new Error("Fable row has no tooltip anchor");
+		fireEvent.pointerEnter(anchor);
+		const tooltip = await screen.findByRole("tooltip");
+		const tip =
+		{
+			text: tooltip.textContent,
+			side: tooltip.getAttribute("data-side"),
+		};
+		fireEvent.keyDown(
+			menu,
+			{
+				key: "2",
+				code: "Digit2",
+			},
+		);
+		await waitFor(() =>
+		{
+			expect(screen.queryByRole("menu")).toBeNull();
+		});
+		sendPrompt("Continue Ivan's test");
+
+		expect(
+			{
+				rows,
+				tip,
+				calls: onSend.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				rows: [
+					{
+						label: "Opus 5.5",
+						key: "1",
+						disabled: null,
+						description: null,
+					},
+					{
+						label: "Fable 5.1",
+						key: null,
+						disabled: "true",
+						description: RESTRICTED,
+					},
+					{
+						label: "Sonnet 5.5",
+						key: "2",
+						disabled: null,
+						description: null,
+					},
+					{
+						label: "Haiku 5.5",
+						key: "3",
+						disabled: null,
+						description: null,
+					},
+				],
+				tip:
+				{
+					text: RESTRICTED,
+					side: "left",
+				},
+				calls: [
+					[
+						"Continue Ivan's test",
+						{
+							model: "sonnet",
+						},
+					],
+				],
+			},
+		);
+	});
+
+	it("disables restricted More models rows too, but never the current model's row", async () =>
+	{
+		renderComposer(
+			{
+				chin:
+				{
+					...CHIN,
+					model: "Fable 5",
+					modelId: "claude-fable-5",
+					availableModels:
+					{
+						...USER_ALLOWLIST,
+						value: ["claude-opus-4-8", "claude-sonnet-4-6"],
+					},
+				},
+			},
+		);
+
+		openModelMenu();
+		const menu = await screen.findByRole("menu");
+		const main = restrictionRows(menu).map((row) => row.disabled);
+		const more = restrictionRows(await openMoreModels()).map(({label, disabled}) => (
+		{
+			label,
+			disabled,
+		}));
+
+		expect(
+			{
+				main,
+				more,
+			},
+		).toStrictEqual(
+			{
+				main: ["true", "true", "true", "true"],
+				more: [
+					{
+						label: "Haiku 4.5",
+						disabled: "true",
+					},
+					{
+						label: "Sonnet 5",
+						disabled: "true",
+					},
+					{
+						label: "Opus 5",
+						disabled: "true",
+					},
+					{
+						label: "Fable 5",
+						disabled: null,
+					},
+					{
+						label: "Opus 4.8",
+						disabled: null,
+					},
+					{
+						label: "Opus 4.7",
+						disabled: "true",
+					},
+					{
+						label: "Opus 4.6",
+						disabled: "true",
+					},
+					{
+						label: "Sonnet 4.6",
+						disabled: null,
+					},
+				],
+			},
+		);
+	});
+
+	function badges(menu: HTMLElement)
+	{
+		return within(menu)
+			.getAllByRole("menuitemradio")
+			.flatMap((item) =>
+			{
+				const badge = item.querySelector("[data-cds=Badge][data-model-default]");
+				if (badge === null) return [];
+				const line = badge.parentElement;
+				return [
+					{
+						row: item.getAttribute("data-model-id"),
+						line: line?.getAttribute("class"),
+						name: line?.firstElementChild?.getAttribute("class"),
+						text: badge.textContent,
+						badge: badge.getAttribute("class"),
+					},
+				];
+			});
+	}
+
+	const BADGE =
+		"inline-flex items-center gap-1 h-5 whitespace-nowrap rounded-full px-1.5 text-[11px] font-medium min-w-0 truncate bg-alpha-1 text-secondary";
+
+	it("badges the settings model's row Default, or Set by admin when managed, and nothing when settings name no model", async () =>
+	{
+		const render = async (settingsDefault: ComposerState["settingsDefault"]) =>
+		{
+			renderComposer(
+				{
+					chin:
+					{
+						...CHIN,
+						settingsDefault,
+					},
+				},
+			);
+			openModelMenu();
+			const shown = badges(await screen.findByRole("menu"));
+			cleanup();
+			return shown;
+		};
+
+		expect(
+			{
+				user: await render(
+					{
+						id: "claude-opus-5-5",
+						managed: false,
+					},
+				),
+				managed: await render(
+					{
+						id: "claude-sonnet-5-5",
+						managed: true,
+					},
+				),
+				none: await render(null),
+			},
+		).toStrictEqual(
+			{
+				user: [
+					{
+						row: "claude-opus-5-5",
+						line: "flex min-w-0 items-center gap-1",
+						name: "truncate",
+						text: "Default",
+						badge: BADGE,
+					},
+				],
+				managed: [
+					{
+						row: "claude-sonnet-5-5",
+						line: "flex min-w-0 items-center gap-1",
+						name: "truncate",
+						text: "Set by admin",
+						badge: BADGE,
+					},
+				],
+				none: [],
+			},
+		);
+	});
+
+	it("badges a More models row when settings name an older model", async () =>
+	{
+		renderComposer(
+			{
+				chin:
+				{
+					...CHIN,
+					settingsModelId: "claude-opus-4-8",
+					settingsDefault:
+					{
+						id: "claude-opus-4-8",
+						managed: false,
+					},
+				},
+			},
+		);
+
+		openModelMenu();
+		const main = badges(await screen.findByRole("menu"));
+		const more = badges(await openMoreModels()).map(({row, text}) => (
+		{
+			row,
+			text,
+		}));
+
+		expect(
+			{
+				main,
+				more,
+			},
+		).toStrictEqual(
+			{
+				main: [],
+				more: [
+					{
+						row: "claude-opus-4-8",
+						text: "Default",
+					},
+				],
+			},
+		);
+	});
+
+	it("lists a [1m] settings model's twin right after its base row and checks it for a [1m] session", async () =>
+	{
+		renderComposer(
+			{
+				chin:
+				{
+					...CHIN,
+					model: "Opus 5.5",
+					modelId: "claude-opus-5-5[1m]",
+					settingsModelId: "claude-opus-5-5[1m]",
+					settingsDefault:
+					{
+						id: "claude-opus-5-5[1m]",
+						managed: false,
+					},
+				},
+			},
+		);
+
+		openModelMenu();
+		const menu = await screen.findByRole("menu");
+		const rows = within(menu)
+			.getAllByRole("menuitemradio")
+			.map((item) => (
+			{
+				id: item.getAttribute("data-model-id"),
+				label: item.querySelector("[data-menu-item-label]")?.textContent,
+				key: item.getAttribute("aria-keyshortcuts"),
+				checked: item.getAttribute("aria-checked"),
+			}));
+
+		expect(
+			{
+				rows,
+				badges: badges(menu).map((badge) => badge.row),
+			},
+		).toStrictEqual(
+			{
+				rows: [
+					{
+						id: "claude-opus-5-5",
+						label: "Opus 5.5",
+						key: "1",
+						checked: "false",
+					},
+					{
+						id: "claude-opus-5-5[1m]",
+						label: "Opus 5.5 1M",
+						key: "2",
+						checked: "true",
+					},
+					{
+						id: "claude-fable-5-1",
+						label: "Fable 5.1",
+						key: "3",
+						checked: "false",
+					},
+					{
+						id: "claude-sonnet-5-5",
+						label: "Sonnet 5.5",
+						key: "4",
+						checked: "false",
+					},
+					{
+						id: "claude-haiku-5-5",
+						label: "Haiku 5.5",
+						key: "5",
+						checked: "false",
+					},
+				],
+				badges: ["claude-opus-5-5[1m]"],
+			},
+		);
+	});
+
+	it("appends a checked, digitless row for a current model neither list has, which picks nothing", async () =>
+	{
+		const onSend = renderComposer(
+			{
+				chin:
+				{
+					...CHIN,
+					model: "Mythos 5",
+					modelId: "claude-mythos-5",
+				},
+			},
+		);
+
+		openModelMenu();
+		const menu = await screen.findByRole("menu");
+		const rows = within(menu)
+			.getAllByRole("menuitemradio")
+			.map((item) => (
+			{
+				id: item.getAttribute("data-model-id"),
+				label: item.querySelector("[data-menu-item-label]")?.textContent,
+				key: item.getAttribute("aria-keyshortcuts"),
+				checked: item.getAttribute("aria-checked"),
+			}));
+		fireEvent.click(
+			within(menu).getByRole(
+				"menuitemradio",
+				{
+					name: "Mythos 5",
+				},
+			),
+		);
+		fireEvent.keyDown(
+			document.activeElement ?? menu,
+			{
+				key: "Escape",
+			},
+		);
+		await waitFor(() =>
+		{
+			expect(screen.queryByRole("menu")).toBeNull();
+		});
+		sendPrompt("Continue Judy's test");
+
+		expect(
+			{
+				rows,
+				calls: onSend.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				rows: [
+					{
+						id: "claude-opus-5-5",
+						label: "Opus 5.5",
+						key: "1",
+						checked: "false",
+					},
+					{
+						id: "claude-fable-5-1",
+						label: "Fable 5.1",
+						key: "2",
+						checked: "false",
+					},
+					{
+						id: "claude-sonnet-5-5",
+						label: "Sonnet 5.5",
+						key: "3",
+						checked: "false",
+					},
+					{
+						id: "claude-haiku-5-5",
+						label: "Haiku 5.5",
+						key: "4",
+						checked: "false",
+					},
+					{
+						id: "claude-mythos-5",
+						label: "Mythos 5",
+						key: null,
+						checked: "true",
+					},
+				],
+				calls: [["Continue Judy's test", {}]],
 			},
 		);
 	});

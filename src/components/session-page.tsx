@@ -1012,6 +1012,8 @@ function SessionView({
 						lastAssistantEffort: lastAssistantEffortFromRecords(transcript.records),
 						...sessionComposerFastMode(transcript.records, composerServerState),
 						settingsModel: composerServerState?.settingsModel ?? null,
+						settingsModelManaged: composerServerState?.settingsModelManaged ?? false,
+						settingsAvailableModels: composerServerState?.settingsAvailableModels ?? null,
 						settingsEffortLevel: composerServerState?.settingsEffortLevel ?? null,
 						statusline: composerServerState?.statusline ?? null,
 						statuslineUpdatedAt: composerServerState?.statuslineUpdatedAt ?? null,

@@ -87,6 +87,8 @@ const EMPTY_SOURCES: ComposerStateSources =
 	fastMode: false,
 	fastModeBlocked: null,
 	settingsModel: null,
+	settingsModelManaged: false,
+	settingsAvailableModels: null,
 	settingsEffortLevel: null,
 	statusline: null,
 	statuslineUpdatedAt: null,
@@ -110,6 +112,72 @@ describe("resolveComposerState precedence", () =>
 			{
 				on: true,
 				off: false,
+			},
+		);
+	});
+
+	it("carries the settings model as the menu's default, with its managed flag, and the availableModels allowlist", () =>
+	{
+		const availableModels =
+		{
+			value: ["opus", "sonnet"],
+			source: "user",
+			path: "~/.claude/settings.json",
+		};
+		const pick = (sources: Partial<ComposerStateSources>) =>
+		{
+			const state = resolveComposerState(
+				{
+					...EMPTY_SOURCES,
+					...sources,
+				},
+			);
+			return {
+				settingsDefault: state.settingsDefault,
+				availableModels: state.availableModels,
+			};
+		};
+		expect(
+			{
+				set: pick(
+					{
+						settingsModel: "opus",
+						settingsAvailableModels: availableModels,
+					},
+				),
+				managed: pick(
+					{
+						settingsModel: "claude-sonnet-5",
+						settingsModelManaged: true,
+					},
+				),
+				unset: pick({}),
+			},
+		).toStrictEqual(
+			{
+				set:
+				{
+					settingsDefault:
+					{
+						id: "claude-opus-5-5",
+						managed: false,
+					},
+					availableModels,
+				},
+				managed:
+				{
+					settingsDefault:
+					{
+						id: "claude-sonnet-5",
+						managed: true,
+					},
+					availableModels: null,
+				},
+				unset:
+				{
+					settingsDefault: null,
+					availableModels: null,
+				},
 			},
 		);
 	});
@@ -1305,6 +1373,8 @@ describe("getComposerState", () =>
 			{
 				settingsDefaultMode: "auto",
 				settingsModel: "fable",
+				settingsModelManaged: false,
+				settingsAvailableModels: null,
 				settingsEffortLevel: "xhigh",
 				settingsBypassPermissionsAllowed: false,
 				settingsFastMode: false,
@@ -1370,6 +1440,136 @@ describe("getComposerState", () =>
 		);
 	});
 
+	it("reads availableModels with its source, a managed file winning over user settings, and a managed model", async () =>
+	{
+		const read = async (user: unknown, managed?: unknown) =>
+		{
+			const state = await getComposerState(
+				"dave-session",
+				{
+					readStatusline: async () => Promise.reject(new Error("ENOENT: fabricated")),
+					readSettings: async () => Promise.resolve(user),
+					...(managed === undefined
+						? {}
+						:
+							{
+								readManagedSettings: async () => Promise.resolve(managed),
+								managedSettingsPath: "/Library/Application Support/ClaudeCode/managed-settings.json",
+							}),
+				},
+			);
+			return {
+				model: state.settingsModel,
+				managed: state.settingsModelManaged,
+				availableModels: state.settingsAvailableModels,
+			};
+		};
+
+		expect(
+			{
+				user: await read(
+					{
+						model: "opus",
+						availableModels: ["opus", "claude-sonnet-5-5"],
+					},
+				),
+				managed: await read(
+					{
+						model: "opus",
+						availableModels: ["opus"],
+					},
+					{
+						model: "sonnet",
+						availableModels: ["sonnet"],
+					},
+				),
+				absent: await read({}),
+				notArray: await read(
+					{
+						model: "fable",
+						availableModels: "opus",
+					},
+				),
+			},
+		).toStrictEqual(
+			{
+				user:
+				{
+					model: "opus",
+					managed: false,
+					availableModels:
+					{
+						value: ["opus", "claude-sonnet-5-5"],
+						source: "user",
+						path: "~/.claude/settings.json",
+					},
+				},
+				managed:
+				{
+					model: "sonnet",
+					managed: true,
+					availableModels:
+					{
+						value: ["sonnet"],
+						source: "managed",
+						path: "/Library/Application Support/ClaudeCode/managed-settings.json",
+					},
+				},
+				absent:
+				{
+					model: null,
+					managed: false,
+					availableModels: null,
+				},
+				notArray:
+				{
+					model: "fable",
+					managed: false,
+					availableModels: null,
+				},
+			},
+		);
+	});
+
+	it("gives the home bar's defaults the same availableModels and managed model", async () =>
+	{
+		const defaults = await getComposerDefaults(
+			async () =>
+				Promise.resolve(
+					{
+						availableModels: ["opus"],
+					},
+				),
+			{
+				readManagedSettings: async () =>
+					Promise.resolve(
+						{
+							model: "haiku",
+						},
+					),
+				managedSettingsPath: "/etc/claude-code/managed-settings.json",
+			},
+		);
+		expect(
+			{
+				model: defaults.model,
+				modelManaged: defaults.modelManaged,
+				availableModels: defaults.availableModels,
+			},
+		).toStrictEqual(
+			{
+				model: "haiku",
+				modelManaged: true,
+				availableModels:
+				{
+					value: ["opus"],
+					source: "user",
+					path: "~/.claude/settings.json",
+				},
+			},
+		);
+	});
+
 	it("returns nulls when files are missing or invalid", async () =>
 	{
 		const result = await getComposerState(
@@ -1391,6 +1591,8 @@ describe("getComposerState", () =>
 			{
 				settingsDefaultMode: null,
 				settingsModel: null,
+				settingsModelManaged: false,
+				settingsAvailableModels: null,
 				settingsEffortLevel: null,
 				settingsBypassPermissionsAllowed: false,
 				settingsFastMode: false,
@@ -1609,6 +1811,8 @@ describe("getComposerState", () =>
 				{
 					settingsDefaultMode: null,
 					settingsModel: null,
+					settingsModelManaged: false,
+					settingsAvailableModels: null,
 					settingsEffortLevel: null,
 					settingsBypassPermissionsAllowed: false,
 					settingsFastMode: false,
@@ -1858,6 +2062,8 @@ describe("withAccountLimits", () =>
 				fastMode: false,
 				fastModeBlocked: null,
 				settingsModel: null,
+				settingsModelManaged: false,
+				settingsAvailableModels: null,
 				settingsEffortLevel: null,
 				statusline: null,
 				statuslineUpdatedAt: null,
@@ -1931,6 +2137,8 @@ describe("composer defaults for a project folder", () =>
 				effortLevel: null,
 				defaultMode: null,
 				repoDefaultMode: "plan",
+				modelManaged: false,
+				availableModels: null,
 				bypassPermissionsAllowed: false,
 				fastMode: false,
 				fastModeBlocked: null,
@@ -1940,6 +2148,8 @@ describe("composer defaults for a project folder", () =>
 				effortLevel: null,
 				defaultMode: null,
 				repoDefaultMode: "acceptEdits",
+				modelManaged: false,
+				availableModels: null,
 				bypassPermissionsAllowed: false,
 				fastMode: false,
 				fastModeBlocked: null,
@@ -1949,6 +2159,8 @@ describe("composer defaults for a project folder", () =>
 				effortLevel: null,
 				defaultMode: null,
 				repoDefaultMode: null,
+				modelManaged: false,
+				availableModels: null,
 				bypassPermissionsAllowed: false,
 				fastMode: false,
 				fastModeBlocked: null,
@@ -2010,6 +2222,8 @@ describe("composer defaults for a project folder", () =>
 							effortLevel: null,
 							defaultMode: null,
 							repoDefaultMode: "plan",
+							modelManaged: false,
+							availableModels: null,
 							bypassPermissionsAllowed: false,
 							fastMode: false,
 							fastModeBlocked: null,
@@ -2037,6 +2251,8 @@ describe("composer defaults for a project folder", () =>
 							effortLevel: null,
 							defaultMode: null,
 							repoDefaultMode: null,
+							modelManaged: false,
+							availableModels: null,
 							bypassPermissionsAllowed: false,
 							fastMode: false,
 							fastModeBlocked: null,

@@ -2,6 +2,7 @@ import {z} from "zod";
 import {type Statusline, StatuslineSchema} from "./api/statusline";
 import {defaultEffortFor, resolveLaunchModel} from "./launch-options";
 import {formatModelName, SYNTHETIC_MODEL} from "./model-name";
+import type {AvailableModels} from "./model-restrictions";
 import {formatWeeklyReset, type UsageSummary} from "./usage";
 import {type ScopedMeter, scopedEmptyCaption, visibleScopedMeters} from "./usage-family";
 import {nonEmpty} from "./non-empty";
@@ -55,6 +56,9 @@ export interface ComposerStateSources
 	lastAssistantEffort: string | null;
 	/** settings.json `model`: what a session with no model yet launches with. */
 	settingsModel: string | null;
+	/** `settingsModel` comes from managed (policy) settings: upstream's "Set by admin". */
+	settingsModelManaged: boolean;
+	settingsAvailableModels: AvailableModels | null;
 	settingsEffortLevel: string | null;
 	/** `sessionFastMode` over the transcript, settings.json and the live statusline. */
 	fastMode: boolean;
@@ -105,6 +109,14 @@ export interface ComposerState
 	modelId: string;
 	/** The model settings.json launches with; a session pick that differs gets upstream's overridden cue. */
 	settingsModelId: string;
+	/** The model settings name, badged "Default" ("Set by admin" when managed) in the Model menu; null when unset. */
+	settingsDefault:
+	{
+		id: string;
+		managed: boolean;
+	} | null;
+	/** Settings `availableModels`: Model menu rows it leaves out are disabled. */
+	availableModels: AvailableModels | null;
 	effort: ComposerLabelled;
 	/** The trigger's " Fast" word and the chin's "Fast mode on|off" live status; always off while blocked. */
 	fastMode: boolean;
@@ -222,6 +234,15 @@ export function resolveComposerState(sources: ComposerStateSources): ComposerSta
 		model: nonEmpty(sources.statuslineModel) ?? formatModelName(modelId) ?? modelId,
 		modelId,
 		settingsModelId: resolveLaunchModel(sources.settingsModel),
+		settingsDefault:
+			nonEmpty(sources.settingsModel) === undefined
+				? null
+				:
+					{
+						id: resolveLaunchModel(sources.settingsModel),
+						managed: sources.settingsModelManaged,
+					},
+		availableModels: sources.settingsAvailableModels,
 		effort:
 		{
 			id: effortId,
@@ -601,11 +622,23 @@ const FastModeBlockedResponse: z.ZodType<FastModeBlocked> = z.strictObject(
 	},
 );
 
+const AvailableModelsSchema: z.ZodType<AvailableModels> = z.strictObject(
+	{
+		value: z.array(z.string()),
+		source: z.string(),
+		path: z.string(),
+	},
+);
+
 /** The server-side half of the chin: settings defaults plus the statusline snapshot. */
 export interface ComposerServerState
 {
 	settingsDefaultMode: string | null;
 	settingsModel: string | null;
+	/** `settingsModel` comes from managed (policy) settings. */
+	settingsModelManaged: boolean;
+	/** Settings `availableModels` with its source (managed beats user), or null when unset. */
+	settingsAvailableModels: AvailableModels | null;
 	settingsEffortLevel: string | null;
 	/** Settings let a launch use Bypass permissions (see `isBypassPermissionsAllowed`). */
 	settingsBypassPermissionsAllowed: boolean;
@@ -623,6 +656,8 @@ export const ComposerServerStateResponse: z.ZodType<ComposerServerState> = z.str
 	{
 		settingsDefaultMode: z.string().nullable(),
 		settingsModel: z.string().nullable(),
+		settingsModelManaged: z.boolean(),
+		settingsAvailableModels: AvailableModelsSchema.nullable(),
 		settingsEffortLevel: z.string().nullable(),
 		settingsBypassPermissionsAllowed: z.boolean(),
 		settingsFastMode: z.boolean(),
@@ -637,6 +672,9 @@ export const ComposerServerStateResponse: z.ZodType<ComposerServerState> = z.str
 export interface ComposerDefaults
 {
 	model: string | null;
+	/** `model` comes from managed (policy) settings. */
+	modelManaged: boolean;
+	availableModels: AvailableModels | null;
 	effortLevel: string | null;
 	defaultMode: string | null;
 	/** The `?cwd=` project folder's `permissions.defaultMode` (settings.local.json over settings.json), or null. */
@@ -651,6 +689,8 @@ export interface ComposerDefaults
 export const ComposerDefaultsResponse: z.ZodType<ComposerDefaults> = z.strictObject(
 	{
 		model: z.string().nullable(),
+		modelManaged: z.boolean(),
+		availableModels: AvailableModelsSchema.nullable(),
 		effortLevel: z.string().nullable(),
 		defaultMode: z.string().nullable(),
 		repoDefaultMode: z.string().nullable(),

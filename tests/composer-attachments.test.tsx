@@ -28,6 +28,8 @@ const CHIN: ComposerState =
 	model: "Opus 5.5",
 	modelId: "claude-opus-5-5",
 	settingsModelId: "claude-opus-5-5",
+	settingsDefault: null,
+	availableModels: null,
 	fastMode: false,
 	fastModeBlocked: null,
 	effort:
