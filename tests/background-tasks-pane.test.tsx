@@ -1,12 +1,13 @@
 // @vitest-environment jsdom
 
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
-import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
+import {act, cleanup, fireEvent, render, renderHook, screen} from "@testing-library/react";
 import type {ReactNode} from "react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {BackgroundTasksList} from "../src/components/panes/background-tasks-pane";
 import {PaneHostContext, type PaneHostApi} from "../src/components/panes/pane-host-context";
+import {resetStoppingTasks, useBackgroundTaskStop} from "../src/hooks/use-background-task-stop";
 import type {BackgroundTask, BackgroundTaskGroups} from "../src/lib/background-tasks";
 import {requestBackgroundTaskFocus, setTaskRowsOpen} from "../src/lib/background-task-focus";
 import {defaultPaneLayout} from "../src/lib/pane-layout";
@@ -1437,6 +1438,164 @@ describe("BackgroundTasksList focus requests", () =>
 			{
 				scrollCalls: [],
 				expanded: [],
+			},
+		);
+	});
+});
+
+describe("BackgroundTasksList per-row Stop", () =>
+{
+	afterEach(() =>
+	{
+		resetStoppingTasks();
+	});
+
+	function stopButtons()
+	{
+		return screen.queryAllByRole(
+			"button",
+			{
+				name: "Stop this task",
+			},
+		);
+	}
+
+	it("puts a Stop after each running row's opener, described by the row's title, and none on finished rows", () =>
+	{
+		const stop = vi.fn<(task: BackgroundTask) => void>();
+		render(
+			<BackgroundTasksList
+				groups={GROUPS}
+				sessionId="session-stop"
+				stop={
+				{
+					stop,
+				}}
+			/>,
+		);
+		fireEvent.click(finishedToggle());
+		expect(
+			stopButtons().map((button) => (
+			{
+				slot: button.closest("[data-task-stop]")?.className,
+				description: document.getElementById(button.getAttribute("aria-describedby") ?? "")?.textContent,
+				row: button.closest("[data-task-id]")?.getAttribute("data-task-id"),
+				busy: button.getAttribute("aria-busy"),
+			})),
+		).toStrictEqual([
+			{
+				slot: "absolute inset-y-0 end-0 flex w-10 items-center justify-end pe-3",
+				description: "Serve the fabricated app",
+				row: "bfab1serve",
+				busy: null,
+			},
+			{
+				// The agent row's opener is not a button, so upstream sets no data-task-stop on its slot.
+				slot: undefined,
+				description: "Review the fabricated diff",
+				row: "afab1review",
+				busy: null,
+			},
+		]);
+	});
+
+	it("clears the Stop with pe-9.5 on a running row's opener, and not on a finished one", () =>
+	{
+		render(
+			<BackgroundTasksList
+				groups={GROUPS}
+				sessionId="session-stop"
+				stop={
+				{
+					stop: vi.fn<(task: BackgroundTask) => void>(),
+				}}
+			/>,
+		);
+		expect(
+			[...document.querySelectorAll("[data-task-id] [data-background-task]")].map((opener) =>
+				opener.className.split(" ").includes("pe-9.5"),
+			),
+		).toStrictEqual([true, true, false]);
+	});
+
+	it("draws no Stop when the session can't take writes", () =>
+	{
+		render(<BackgroundTasksList groups={GROUPS} sessionId="session-stop" stop={null} />);
+		expect(stopButtons()).toStrictEqual([]);
+	});
+
+	it("stops once on a press, ignores a double-click's second press, and leaves the row closed", () =>
+	{
+		const stop = vi.fn<(task: BackgroundTask) => void>();
+		render(
+			<BackgroundTasksList
+				groups={GROUPS}
+				sessionId="session-stop"
+				stop={
+				{
+					stop,
+				}}
+			/>,
+		);
+		const [first] = stopButtons();
+		if (first === undefined) throw new Error("no Stop");
+		fireEvent.click(
+			first,
+			{
+				detail: 1,
+			},
+		);
+		fireEvent.click(
+			first,
+			{
+				detail: 2,
+			},
+		);
+		expect(
+			{
+				stopped: stop.mock.calls.map(([stopped]) => stopped.id),
+				expanded: document
+					.querySelector("[data-task-id='bfab1serve'] [data-background-task]")
+					?.getAttribute("aria-expanded"),
+			},
+		).toStrictEqual(
+			{
+				stopped: ["bfab1serve"],
+				expanded: "false",
+			},
+		);
+	});
+
+	it("shows a stopping task busy, with Stopping… in its status column", () =>
+	{
+		const control = renderHook(() =>
+			useBackgroundTaskStop(
+				{
+					sessionId: "session-stop",
+					enabled: true,
+					running: GROUPS.running,
+					toast: () =>
+					{
+					},
+					stop: async () => new Promise<void>(() => {}),
+				},
+			),
+		);
+		render(<BackgroundTasksList groups={GROUPS} sessionId="session-stop" stop={control.result.current} />);
+		act(() =>
+		{
+			stopButtons()[0]?.click();
+		});
+		const row = document.querySelector("[data-task-id='bfab1serve']");
+		expect(
+			{
+				busy: row?.querySelector("[data-task-stop] button")?.getAttribute("aria-busy"),
+				status: row?.querySelector("[data-background-task] > span:last-child")?.textContent,
+			},
+		).toStrictEqual(
+			{
+				busy: "true",
+				status: "Stopping…",
 			},
 		);
 	});

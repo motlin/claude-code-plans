@@ -7,6 +7,7 @@ import type {PermissionDialogDecision} from "../permission-suggestions";
 import {PlanDialogSchema, type PlanDecision, type PlanDialog} from "../plan-approval";
 import {apiFetch} from "./client";
 import {SessionViewedStateSchema} from "./viewed-state";
+import type {BackgroundTask} from "../background-tasks";
 
 /**
  * Response shape mirroring the `HerdrPaneLink` interface produced by
@@ -542,6 +543,40 @@ export async function stopHerdrBackgroundAgents(sessionId: string, fetcher: type
 			body: JSON.stringify(
 				{
 					sessionId,
+				},
+			),
+		},
+	);
+	const json: unknown = await response.json();
+	if (!response.ok) throw new Error(HerdrPromptErrorResponse.parse(json).error);
+	HerdrPromptSuccessResponse.parse(json);
+}
+
+/** The fields the CLI's `/tasks` dialog shows for a task, which the server matches on screen. */
+export type StoppableTask = Pick<BackgroundTask, "kind" | "description" | "command">;
+
+/** Stop one background task through the CLI's `/tasks` dialog in the session's live pane. */
+export async function stopHerdrBackgroundTask(
+	sessionId: string,
+	task: StoppableTask,
+	fetcher: typeof fetch = fetch,
+): Promise<void>
+{
+	const response = await fetcher(
+		"/api/herdr/stop-task",
+		{
+			method: "POST",
+			credentials: "same-origin",
+			headers:
+			{
+				"Content-Type": "application/json",
+			},
+			body: JSON.stringify(
+				{
+					sessionId,
+					kind: task.kind,
+					description: task.description,
+					command: task.command,
 				},
 			),
 		},

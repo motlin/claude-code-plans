@@ -1,5 +1,6 @@
 import {useEffect, useMemo} from "react";
 
+import type {BackgroundTaskStop} from "../../hooks/use-background-task-stop";
 import type {SessionWorkflowRun} from "../../lib/api/session-workflow-runs";
 import {type BackgroundTaskGroups, runningDismissedIds, withoutDismissed} from "../../lib/background-tasks";
 import {undismissTasks, useDismissedTasks} from "../../lib/dismissed-tasks";
@@ -35,6 +36,7 @@ export function useRegisterBackgroundTasksPane(
 	groups: BackgroundTaskGroups,
 	subagentCount: number,
 	workflowRuns?: readonly SessionWorkflowRun[],
+	stop: BackgroundTaskStop | null = null,
 ): void
 {
 	useEffect(
@@ -53,6 +55,7 @@ export function useRegisterBackgroundTasksPane(
 							{
 								groups,
 								sessionId,
+								stop,
 								subagents:
 								{
 									sessionId,
@@ -69,6 +72,6 @@ export function useRegisterBackgroundTasksPane(
 					),
 				},
 			),
-		[sessionId, groups, subagentCount, workflowRuns],
+		[sessionId, groups, subagentCount, workflowRuns, stop],
 	);
 }

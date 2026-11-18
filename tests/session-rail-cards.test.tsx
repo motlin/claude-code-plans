@@ -19,6 +19,7 @@ import {cdsButtonClass} from "../src/components/ui/cds-button";
 import {Shortcut} from "../src/components/ui/shortcut";
 import {createStreamDropStore, EventStreamStatusContext} from "../src/hooks/use-claude-events";
 import {useShortcutKeys} from "../src/hooks/use-shortcut";
+import {resetStoppingTasks, useBackgroundTaskStop} from "../src/hooks/use-background-task-stop";
 import type {StreamDrop} from "../src/lib/stream-drop";
 import {customizeMcpServersQueryOptions, type McpServerSummary} from "../src/lib/api/customize";
 import type {HerdrPaneIndexData} from "../src/lib/api/herdr";
@@ -2321,6 +2322,171 @@ describe("Background tasks card", () =>
 		await renderCards(withTasks([], [finishedTask()]));
 
 		expect(document.querySelector('[data-rail-section="backgroundTasks"]')).toBe(null);
+	});
+
+	describe("per-row Stop", () =>
+	{
+		afterEach(() =>
+		{
+			resetStoppingTasks();
+		});
+
+		/** The session's real stop control over a stop request that never answers, or `answer` when given. */
+		function liveStop(
+			running: BackgroundTask[],
+			answer: () => Promise<void> = async () => new Promise<void>(() => {}),
+		)
+		{
+			return renderHook(() =>
+				useBackgroundTaskStop(
+					{
+						sessionId: SESSION_ID,
+						enabled: true,
+						running,
+						toast: () =>
+						{
+						},
+						stop: answer,
+					},
+				),
+			).result.current;
+		}
+
+		function stopButtons()
+		{
+			return screen.queryAllByRole(
+				"button",
+				{
+					name: "Stop this task",
+				},
+			);
+		}
+
+		it("puts a ghost Stop after each running row's open button, in a pe-xs row", async () =>
+		{
+			const running = [runningTask(1), runningTask(2)];
+			await renderCards(
+				{
+					...withTasks(running, [finishedTask()]),
+					taskStop: liveStop(running),
+				},
+			);
+			expect(
+				stopButtons().map((button) => (
+				{
+					row: button.closest("[data-rail-task-row]")?.className,
+					before: button.closest("[data-rail-task-row]")?.firstElementChild?.getAttribute("aria-label"),
+					ghost: button.className.includes("hover:bg-fill-ghost-hover"),
+				})),
+			).toStrictEqual([
+				{
+					row: "flex min-w-0 items-center pe-xs",
+					before: "Open Task 1 in Background tasks",
+					ghost: true,
+				},
+				{
+					row: "flex min-w-0 items-center pe-xs",
+					before: "Open Task 2 in Background tasks",
+					ghost: true,
+				},
+			]);
+		});
+
+		it("draws no Stop when the session can't take writes", async () =>
+		{
+			await renderCards(
+				{
+					...withTasks([runningTask(1)]),
+					taskStop: null,
+				},
+			);
+			expect(stopButtons()).toStrictEqual([]);
+		});
+
+		it("reads Stopping… in a stopping row's hint, without opening the pane", async () =>
+		{
+			const open = vi.fn<BackgroundTasksOpener["open"]>();
+			const running = [runningTask(1, new Date(Date.now() - 2 * 3_600_000).toISOString()), runningTask(2)];
+			await renderCards(
+				{
+					...withTasks(running),
+					taskStop: liveStop(running),
+				},
+				undefined,
+				{
+					open,
+					running: new Map(),
+				},
+			);
+			act(() =>
+			{
+				stopButtons()[0]?.click();
+			});
+			expect(
+				{
+					rows: rows("Background tasks"),
+					busy: stopButtons()[0]?.getAttribute("aria-busy"),
+					opened: open.mock.calls,
+				},
+			).toStrictEqual(
+				{
+					rows: [
+						["Task 1", "Stopping…"],
+						["Task 2", null],
+					],
+					busy: "true",
+					opened: [],
+				},
+			);
+		});
+
+		it("moves focus to the list before the stopped row leaves, and announces Task stopped", async () =>
+		{
+			const running = [runningTask(1), runningTask(2)];
+			const update = await renderCards(
+				{
+					...withTasks(running),
+					taskStop: liveStop(running, async () => Promise.resolve()),
+				},
+			);
+			const [first] = stopButtons();
+			first?.focus();
+			act(() =>
+			{
+				first?.click();
+			});
+			update(
+				{
+					...withTasks(
+						[runningTask(2)],
+						[
+							{
+								...runningTask(1),
+								status: "stopped",
+							},
+						],
+					),
+					taskStop: liveStop([runningTask(2)]),
+				},
+			);
+			const card = screen.getByRole(
+				"region",
+				{
+					name: /^Background tasks/,
+				},
+			);
+			expect(
+				{
+					focused: document.activeElement === within(card).getByTestId("rail-rows"),
+					announced: within(card).getByRole("status").textContent,
+				},
+			).toStrictEqual(
+				{
+					focused: true,
+					announced: "Task stopped",
+				},
+			);
+		});
 	});
 });
 

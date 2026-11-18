@@ -5,7 +5,7 @@ import {clearAllPendingQuestions, setPendingQuestion} from "../src/lib/pending-q
 import {createTmuxTerminalHost, resolveTerminalHost} from "../src/lib/terminal-host";
 import {createTmuxPaneTable} from "../src/lib/tmux/pane-table";
 import type {TmuxSessionPaneSources} from "../src/lib/tmux/session-panes";
-import {readTmuxScreen, tmuxKeyName, type TmuxWriteIo} from "../src/lib/tmux/writes";
+import {readTmuxScreen, tmuxKeyName, tmuxWriteDependencies, type TmuxWriteIo} from "../src/lib/tmux/writes";
 import type {HerdrPaneIndexData} from "../src/lib/api/herdr";
 
 const SOCKET = "/private/tmp/tmux-501/default";
@@ -494,6 +494,69 @@ describe("tmux host writes", () =>
 				calls: [],
 			})),
 		);
+	});
+
+	it("types a row Stop's /tasks over a working turn, but not while a permission dialog waits", async () =>
+	{
+		const permission =
+		{
+			toolName: "Bash",
+			toolInput:
+			{
+				command: "ls",
+			},
+			agentId: null,
+			suggestions: [],
+			receivedAt: 1,
+		};
+		const results: unknown[] = [];
+		for (const state of [
+			entry(
+				{
+					state: "working",
+				},
+			),
+			entry(
+				{
+					state: "working",
+					pendingPermissionRequests: [permission],
+				},
+			),
+		])
+		{
+			const {sources} = liveSources(state);
+			const {io, calls} = recordingIo();
+			const writes = tmuxWriteDependencies("stop-task", sources, io);
+			await writes.resolveTarget(SESSION_ID);
+			const sent = await writes.request(
+				{
+					id: "ccp:stop-task:test",
+					method: "pane.send_text",
+					params:
+					{
+						target: "%7",
+						text: "/tasks",
+					},
+				},
+			);
+			results.push(
+				{
+					ok: sent.ok,
+					calls,
+				},
+			);
+		}
+
+		expect(results).toStrictEqual([
+			{
+				ok: true,
+				calls: [["-S", SOCKET, "send-keys", "-t", "%7", "-l", "--", "/tasks"]],
+			},
+			{
+				ok: false,
+				calls: [],
+			},
+		]);
 	});
 
 	it("types a mid-turn prompt the usual way once the session is idle", async () =>

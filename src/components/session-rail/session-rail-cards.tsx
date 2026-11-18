@@ -49,10 +49,12 @@ import
 	connectorsSummary,
 } from "../../lib/session-rail-connectors";
 import type {OutputFile} from "../../lib/session-outputs";
+import {type BackgroundTaskStop, useStoppingTaskIds} from "../../hooks/use-background-task-stop";
 import {useEventStreamStatus} from "../../hooks/use-claude-events";
 import {sessionEnvironment, terminalHostLabel} from "../../lib/session-environment";
 import {streamDropHint} from "../../lib/stream-drop";
 import {type BackgroundTasksFocus, useBackgroundTasksOpener} from "../background-tasks-opener-context";
+import {BackgroundTaskStopButton, STOPPING_LABEL} from "../background-task-stop-button";
 import {useCopyToClipboard} from "../files/use-copy-to-clipboard";
 import {ConnectorLetterTile} from "../connector-letter-tile";
 import {FileTypeIcon} from "../file-type-icon";
@@ -101,6 +103,8 @@ export interface SessionRailInputs
 	/** Files the transcript shows the session wrote or sent for the user. */
 	outputFiles: readonly OutputFile[];
 	backgroundTasks: BackgroundTaskGroups;
+	/** Per-row Stop through the session's live CLI; null or absent (no Stop) when it can't take writes. */
+	taskStop?: BackgroundTaskStop | null;
 	pr: SessionDetailData["pr"] | null;
 	prStatus: PrStatus | null;
 }
@@ -901,90 +905,174 @@ function useMinuteClock(ticking: boolean): number
 	return now;
 }
 
+/** Upstream's `GNohze`: what the card's polite live region says once a task it stopped has stopped. */
+const TASK_STOPPED = "Task stopped";
+
+/**
+ * Upstream's rail announcements (`Oi` + `Vi`): a task whose Stop was pressed here is remembered, and once the
+ * transcript shows it stopped the polite region says so.
+ */
+function useStopAnnouncement(tasks: BackgroundTaskGroups)
+{
+	const pressed = useRef(new Set<string>());
+	const [announcement, setAnnouncement] = useState("");
+	useEffect(() =>
+	{
+		for (const id of pressed.current)
+		{
+			if (tasks.running.some((task) => task.id === id)) continue;
+			pressed.current.delete(id);
+			if (tasks.finished.some((task) => task.id === id && task.status === "stopped"))
+				setAnnouncement(TASK_STOPPED);
+		}
+	}, [tasks]);
+	return {
+		announcement,
+		remember: (taskId: string) =>
+		{
+			pressed.current.add(taskId);
+		},
+	};
+}
+
 /**
  * Upstream's Background tasks card: four running tasks with their elapsed
  * time, an in-place Show more, then a finished count; each row opens the
- * Background tasks pane.
+ * Background tasks pane, and a running row has its own Stop while the
+ * session can take writes.
  */
-function BackgroundTasksBody({tasks}: {tasks: BackgroundTaskGroups})
+function BackgroundTasksBody({
+	tasks,
+	sessionId,
+	stop,
+}: {
+	tasks: BackgroundTaskGroups;
+	sessionId: string;
+	stop: BackgroundTaskStop | null;
+})
 {
 	const host = usePaneHost();
 	const opener = useBackgroundTasksOpener();
 	const showMore = useShowMore();
 	const now = useMinuteClock(tasks.running.some((task) => task.startedAt !== null));
+	const stoppingIds = useStoppingTaskIds(sessionId);
+	const listRef = useRef<HTMLDivElement>(null);
+	const {announcement, remember} = useStopAnnouncement(tasks);
 	// Upstream's rail rows call openTask: an agent opens its transcript, a task is focused, "N finished" expands Finished.
 	const open = (focus: BackgroundTasksFocus) =>
 	{
 		if (opener === null) host.openPane("background-tasks");
 		else opener.open(focus);
 	};
+	// Upstream `MI`'s focus rescue: the row and its Stop are about to leave, so focus moves to the list first.
+	const stopTask = (task: BackgroundTask) =>
+	{
+		const list = listRef.current;
+		if (list?.contains(document.activeElement) === true)
+			list.focus(
+				{
+					preventScroll: true,
+				},
+			);
+		remember(task.id);
+		stop?.stop(task);
+	};
 	const shown = showMore.expanded ? tasks.running : tasks.running.slice(0, BACKGROUND_TASKS_SHOWN);
 	return (
-		<Rows>
-			{shown.map((task, index) => (
-				<button
-					key={task.id}
-					ref={index === BACKGROUND_TASKS_SHOWN ? showMore.firstNewRow : undefined}
-					type="button"
-					title={task.command ?? task.description}
-					aria-label={`Open ${task.description} in Background tasks`}
-					className={RAIL_ROW_ACTION_CLASS}
-					onClick={() =>
-					{
-						open(
-							task.kind === "agent"
-								?
-									{
-										agentId: task.id,
-									}
-								:
-									{
-										taskId: task.id,
-									},
-						);
-					}}
-				>
-					<RailRowContent
-						icon={<Icon icon={TASK_ICONS[task.kind]} />}
-						label={task.description}
-						{...(task.startedAt === null
-							? {}
-							:
+		<>
+			<div ref={listRef} data-testid="rail-rows" tabIndex={-1} className="flex flex-col outline-none">
+				{shown.map((task, index) =>
+				{
+					const stopping = stoppingIds.has(task.id);
+					const elapsed =
+						task.startedAt === null ? undefined : formatTaskElapsed(now - Date.parse(task.startedAt));
+					const hint = stopping ? STOPPING_LABEL : elapsed;
+					return (
+						<div
+							key={task.id}
+							data-rail-task-row=""
+							className={`flex min-w-0 items-center${stop === null ? "" : " pe-xs"}`}
+						>
+							<button
+								ref={index === BACKGROUND_TASKS_SHOWN ? showMore.firstNewRow : undefined}
+								type="button"
+								title={task.command ?? task.description}
+								aria-label={`Open ${task.description} in Background tasks`}
+								className={`${RAIL_ROW_ACTION_CLASS} flex-1`}
+								onClick={() =>
 								{
-									hint: formatTaskElapsed(now - Date.parse(task.startedAt)),
-								})}
-					/>
-				</button>
-			))}
-			{tasks.running.length > BACKGROUND_TASKS_SHOWN && <ShowMoreButton state={showMore} />}
-			{tasks.finished.length > 0 && (
-				<button
-					type="button"
-					className={RAIL_ROW_ACTION_CLASS}
-					onClick={() =>
-					{
-						open(
-							{
-								finished: true,
-							},
-						);
-					}}
-				>
-					<RailRowContent icon={<Icon icon={Bot} />} label={`${tasks.finished.length} finished`} />
-				</button>
-			)}
-		</Rows>
+									open(
+										task.kind === "agent"
+											?
+												{
+													agentId: task.id,
+												}
+											:
+												{
+													taskId: task.id,
+												},
+									);
+								}}
+							>
+								<RailRowContent
+									icon={<Icon icon={TASK_ICONS[task.kind]} />}
+									label={task.description}
+									{...(hint === undefined
+										? {}
+										:
+											{
+												hint,
+											})}
+								/>
+							</button>
+							{stop !== null && (
+								<BackgroundTaskStopButton
+									variant="ghost"
+									busy={stopping}
+									tooltipSide="left"
+									onStop={() =>
+									{
+										stopTask(task);
+									}}
+								/>
+							)}
+						</div>
+					);
+				})}
+				{tasks.running.length > BACKGROUND_TASKS_SHOWN && <ShowMoreButton state={showMore} />}
+				{tasks.finished.length > 0 && (
+					<button
+						type="button"
+						className={RAIL_ROW_ACTION_CLASS}
+						onClick={() =>
+						{
+							open(
+								{
+									finished: true,
+								},
+							);
+						}}
+					>
+						<RailRowContent icon={<Icon icon={Bot} />} label={`${tasks.finished.length} finished`} />
+					</button>
+				)}
+			</div>
+			<div role="status" aria-live="polite" className="sr-only">
+				{announcement}
+			</div>
+		</>
 	);
 }
 
 /** Upstream's card leaves once nothing runs, however many tasks finished. */
-function backgroundTasksCard(tasks: BackgroundTaskGroups): RailCard | null
+function backgroundTasksCard(inputs: SessionRailInputs): RailCard | null
 {
+	const tasks = inputs.backgroundTasks;
 	if (tasks.running.length === 0) return null;
 	return {
 		id: "backgroundTasks",
 		summary: `${tasks.running.length} running`,
-		body: <BackgroundTasksBody tasks={tasks} />,
+		body: <BackgroundTasksBody tasks={tasks} sessionId={inputs.sessionId} stop={inputs.taskStop ?? null} />,
 	};
 }
 
@@ -1036,7 +1124,7 @@ export function SessionRailCards({inputs}: {inputs: SessionRailInputs})
 		outputsCard(inputs),
 		changesCard(inputs, diff ?? null),
 		serversCard(devServers ?? []),
-		backgroundTasksCard(inputs.backgroundTasks),
+		backgroundTasksCard(inputs),
 	].filter((card) => card !== null);
 	return <SessionRail sessionId={inputs.sessionId} cards={cards} />;
 }

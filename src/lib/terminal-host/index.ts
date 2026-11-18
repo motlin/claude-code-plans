@@ -31,6 +31,7 @@ import
 } from "../herdr/elicitation";
 import {defaultHerdrInterruptDependencies, handleHerdrInterrupt} from "../herdr/interrupt";
 import {defaultHerdrKillAgentsDependencies, handleHerdrKillAgents} from "../herdr/kill-agents";
+import {defaultHerdrStopTaskDependencies, handleHerdrStopTask} from "../herdr/stop-task";
 import {defaultHerdrLaunchDependencies, handleHerdrLaunch} from "../herdr/launch";
 import {defaultHerdrLiveOptionDependencies, handleHerdrLiveOption} from "../herdr/live-option";
 import {createHerdrPlacementProvider, getHerdrPanes, type HerdrPaneLink} from "../herdr/panes";
@@ -110,6 +111,8 @@ export interface TerminalHost
 	interrupt: (request: Request) => Promise<Response>;
 	/** Stop the session's background agents with the CLI's kill-agents chord, pressed twice after a screen check. */
 	stopBackgroundAgents: (request: Request) => Promise<Response>;
+	/** Stop one background task through the CLI's `/tasks` dialog, checking the screen before every key. */
+	stopBackgroundTask: (request: Request) => Promise<Response>;
 	/** Send keys and text that answer a pending question. */
 	answerQuestion: (request: Request) => Promise<Response>;
 	/** Send the keys that answer a permission prompt. */
@@ -184,6 +187,7 @@ const herdrTerminalHost: TerminalHost =
 	prompt: async (request) => handleHerdrPrompt(request),
 	interrupt: async (request) => handleHerdrInterrupt(request),
 	stopBackgroundAgents: async (request) => handleHerdrKillAgents(request),
+	stopBackgroundTask: async (request) => handleHerdrStopTask(request),
 	answerQuestion: async (request) => handleHerdrQuestion(request),
 	answerPermission: async (request) => handleHerdrPermission(request),
 	readPermissionDialog: async (request) => handleHerdrPermissionDialog(request),
@@ -250,6 +254,7 @@ const noTerminalHost: TerminalHost =
 	prompt: noHostWrite,
 	interrupt: noHostWrite,
 	stopBackgroundAgents: noHostWrite,
+	stopBackgroundTask: noHostWrite,
 	answerQuestion: noHostWrite,
 	answerPermission: noHostWrite,
 	readPermissionDialog: noHostWrite,
@@ -409,6 +414,26 @@ export function createTmuxTerminalHost(
 							},
 						),
 					...tmuxWriteDependencies("kill-agents", sources, io),
+				},
+			),
+		stopBackgroundTask: async (request) =>
+			handleHerdrStopTask(
+				request,
+				{
+					...defaultHerdrStopTaskDependencies,
+					...writes,
+					pause: io.pause,
+					readScreen: async (sessionId: string, paneId: string) =>
+						readTmuxScreen(
+							sessionId,
+							paneId,
+							sources,
+							undefined,
+							{
+								ansi: true,
+							},
+						),
+					...tmuxWriteDependencies("stop-task", sources, io),
 				},
 			),
 		answerQuestion: async (request) =>

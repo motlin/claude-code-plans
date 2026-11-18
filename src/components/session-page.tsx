@@ -176,6 +176,7 @@ import {useRewindRequest} from "../hooks/use-rewind-request";
 import {useRefusalEditRetry} from "../hooks/use-refusal-edit-retry";
 import {useRefusalFallbackDialog} from "../hooks/use-refusal-fallback-dialog";
 import {canStopResponse, useStopResponse} from "../hooks/use-stop-response";
+import {useBackgroundTaskStop} from "../hooks/use-background-task-stop";
 import {useNestedStop} from "../hooks/use-nested-stop";
 import {latestAgentsKilledId, nestedStopCount} from "../lib/nested-stop";
 import {SEND_NOW_FAILED_MESSAGE, useComposerQueue} from "../hooks/use-composer-queue";
@@ -967,7 +968,6 @@ function SessionView({
 		],
 	);
 	const visibleBackgroundTasks = useVisibleBackgroundTasks(sessionId, backgroundTasks);
-	useRegisterBackgroundTasksPane(sessionId, visibleBackgroundTasks, subagents.length, workflowRuns);
 	const runningBackgroundLaunches = useMemo(
 		() =>
 			new Map(
@@ -1238,6 +1238,21 @@ function SessionView({
 			writesEnabled: herdr.writesEnabled,
 			working: workingMarkerState.status !== "idle",
 		},
+	);
+	const backgroundTaskStop = useBackgroundTaskStop(
+		{
+			sessionId,
+			enabled: promptBehavior.hasLivePane && herdr.writesEnabled && !data.archived,
+			running: backgroundTasks.running,
+			toast,
+		},
+	);
+	useRegisterBackgroundTasksPane(
+		sessionId,
+		visibleBackgroundTasks,
+		subagents.length,
+		workflowRuns,
+		backgroundTaskStop,
 	);
 	const agentsKilledMarker = useMemo(() => latestAgentsKilledId(transcript.records), [transcript.records]);
 	const nestedStop = useNestedStop(
@@ -2709,6 +2724,7 @@ function SessionView({
 										artifacts: sessionArtifacts,
 										outputFiles,
 										backgroundTasks: visibleBackgroundTasks,
+										taskStop: backgroundTaskStop,
 										pr: data.pr ?? null,
 										prStatus: data.prStatus ?? null,
 									}}

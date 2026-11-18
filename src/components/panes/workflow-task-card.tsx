@@ -348,8 +348,9 @@ function SummaryRegion({status, summary}: {status: "failed" | "stopped"; summary
  * Upstream `Rhe` (the non-"panels" task card): a workflow in the Background
  * tasks pane -- its name (shimmering while it runs, else muted with its
  * duration), "Workflow" + status, the agent and token counts, its
- * description, a failed or stopped run's summary, and its phases. Local CLI
- * tasks can't be stopped from here, so there is no Stop button.
+ * description, a failed or stopped run's summary, and its phases. Upstream's
+ * card has no Stop of its own: the per-row Stop belongs to the task rows, so a
+ * running workflow is stopped from the rail card's row or the composer.
  */
 export function WorkflowTaskCard({task, run}: {task: BackgroundTask; run?: SessionWorkflowRun | undefined})
 {

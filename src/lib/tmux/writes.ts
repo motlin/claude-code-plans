@@ -43,6 +43,7 @@ export type TmuxWriteKind =
 	| "elicitation"
 	| "refusal-fallback"
 	| "kill-agents"
+	| "stop-task"
 	| "live-option"
 	| "rewind"
 	| "remote-control";
@@ -69,6 +70,8 @@ const READY_STATES =
 	"refusal-fallback": ["waiting", "idle"],
 	// Background agents outlive the turn; the chord goes into the idle prompt.
 	"kill-agents": ["idle"],
+	// `/tasks` is an immediate command: it opens over a working turn too, unless a permission dialog is up.
+	"stop-task": ["idle", "working"],
 	"live-option": ["idle"],
 	rewind: ["idle"],
 	"remote-control": ["idle"],
@@ -140,7 +143,7 @@ function readyCheck(
 		);
 	}
 	const ready: readonly ActivityState[] = READY_STATES[kind];
-	if (kind === "mid-turn-prompt" && entry?.pendingPermissionRequests !== undefined)
+	if ((kind === "mid-turn-prompt" || kind === "stop-task") && entry?.pendingPermissionRequests !== undefined)
 	{
 		return failure("agent_not_ready", "A permission dialog is open; tmux input will not type into it");
 	}

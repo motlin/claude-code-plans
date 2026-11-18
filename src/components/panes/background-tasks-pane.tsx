@@ -3,6 +3,7 @@ import {Link} from "@tanstack/react-router";
 import {ChevronRight} from "lucide-react";
 import {type RefObject, useEffect, useId, useLayoutEffect, useRef, useState} from "react";
 
+import {type BackgroundTaskStop, useStoppingTaskIds} from "../../hooks/use-background-task-stop";
 import {useNow} from "../../hooks/use-now";
 import type {SessionWorkflowRun} from "../../lib/api/session-workflow-runs";
 import {taskOutputQueryOptions} from "../../lib/api/task-output";
@@ -16,8 +17,15 @@ import
 	useFinishedExpanded,
 	useOpenTaskRows,
 } from "../../lib/background-task-focus";
-import {type BackgroundTask, type BackgroundTaskGroups, backgroundTaskStatus} from "../../lib/background-tasks";
+import
+{
+	type BackgroundTask,
+	type BackgroundTaskGroups,
+	type BackgroundTaskStatusText,
+	backgroundTaskStatus,
+} from "../../lib/background-tasks";
 import {requestSubagentFocus} from "../../lib/subagent-focus-requests";
+import {BackgroundTaskStopButton, STOPPING_LABEL} from "../background-task-stop-button";
 import {CommandTokens} from "../tool-renderers/bash-renderer";
 import {AnsiText} from "../tool-renderers/shared";
 import {Icon} from "../ui/icon";
@@ -49,6 +57,8 @@ const LABEL = "flex min-w-0 flex-1 items-center gap-1 text-start";
 const CARET = "flex h-[1lh] w-4 shrink-0 items-center justify-center text-ink-muted";
 /** Upstream `gw`: the trailing status column. */
 const STATUS = "shrink-0 text-end text-footnote text-muted-as-secondary tabular-nums";
+/** Upstream `HC`: the Stop's slot over the row's end. */
+const STOP_SLOT = "absolute inset-y-0 end-0 flex w-10 items-center justify-end pe-3";
 /** Upstream `QC`: content under the row, indented one step past the row's own. */
 const UNDER_ROW = "ps-[calc(var(--task-step,0)*1.25rem+0.75rem)]";
 const DETAIL = `flex flex-col pe-p6 pb-p6 ${UNDER_ROW} select-text comfortable:pe-p8 comfortable:pb-p8 [&>div]:leading-5`;
@@ -290,19 +300,36 @@ function BackgroundTaskRow({
 	inRunning,
 	expanded,
 	onToggle,
+	stop,
+	stopping,
 }: {
 	task: BackgroundTask;
 	sessionId: string | undefined;
 	inRunning: boolean;
 	expanded: boolean;
 	onToggle: () => void;
+	/** Upstream's `onStop`; null when the session can't take writes. */
+	stop: BackgroundTaskStop | null;
+	stopping: boolean;
 })
 {
 	const detailsId = useId();
 	const statusId = useId();
+	const titleId = useId();
 	const {title, artifact} = taskTitle(task);
 	const expandable = isExpandable(task);
-	const status = useTaskStatus(task);
+	const taskStatus = useTaskStatus(task);
+	const stoppable = task.status === "running" && stop !== null;
+	// Upstream: a stopping row's status reads "Stopping…" in place of its elapsed time.
+	const status: BackgroundTaskStatusText | null =
+		stopping && task.status === "running"
+			?
+				{
+					text: STOPPING_LABEL,
+					tone: "plain",
+					hideNarrow: false,
+				}
+			: taskStatus;
 	// Upstream renders a failed or stopped task's summary inline on touch, where there is no tooltip.
 	const inlineSummary = task.status === "failed" || task.status === "stopped" ? nonEmpty(task.summary) : undefined;
 	const label = (
@@ -310,7 +337,7 @@ function BackgroundTaskRow({
 			className={`${LABEL} ${inRunning || task.status === "running" ? "text-body-medium" : "text-body"} text-primary`}
 		>
 			{expandable && <Caret open={expanded} />}
-			<span data-task-title="" className="flex min-w-0">
+			<span id={titleId} data-task-title="" className="flex min-w-0">
 				<span className="min-w-0 truncate">{title}</span>
 			</span>
 			{!expandable && task.kind === "agent" && sessionId !== undefined && (
@@ -346,16 +373,41 @@ function BackgroundTaskRow({
 							aria-controls={detailsId}
 							aria-describedby={describedBy}
 							onClick={onToggle}
-							className={`${OPENER} ${OPENER_ACTION}`}
+							className={`${OPENER}${stoppable ? " pe-9.5" : ""} ${OPENER_ACTION}`}
 						>
 							{label}
 							{statusColumn}
 						</button>
 					) : (
-						<div data-background-task="" aria-describedby={describedBy} className={OPENER}>
+						<div
+							data-background-task=""
+							aria-describedby={describedBy}
+							className={`${OPENER}${stoppable ? " pe-9.5" : ""}`}
+						>
 							{label}
 							{statusColumn}
 						</div>
+					)}
+					{stoppable && (
+						<span
+							{...(expandable
+								?
+									{
+										"data-task-stop": "",
+									}
+								: {})}
+							className={STOP_SLOT}
+						>
+							<BackgroundTaskStopButton
+								variant="secondary"
+								busy={stopping}
+								describedBy={titleId}
+								onStop={() =>
+								{
+									stop.stop(task);
+								}}
+							/>
+						</span>
 					)}
 				</div>
 				{artifact !== undefined && (
@@ -419,6 +471,8 @@ function TaskCards({
 	setRowOpen,
 	workflowRuns,
 	keepIds,
+	stop,
+	stoppingIds,
 }: {
 	tasks: readonly BackgroundTask[];
 	sessionId: string | undefined;
@@ -428,6 +482,8 @@ function TaskCards({
 	workflowRuns: readonly SessionWorkflowRun[];
 	/** Rows kept past the limit besides running and open ones: the focus target and the keyboard-focused row. */
 	keepIds: ReadonlySet<string>;
+	stop: BackgroundTaskStop | null;
+	stoppingIds: ReadonlySet<string>;
 })
 {
 	const listRef = useRef<HTMLDivElement>(null);
@@ -473,6 +529,8 @@ function TaskCards({
 							{
 								setRowOpen(task.id, !expanded);
 							}}
+							stop={stop}
+							stopping={stoppingIds.has(task.id)}
 						/>
 					</div>
 				);
@@ -666,6 +724,7 @@ export function BackgroundTasksList({
 	subagents,
 	sessionId,
 	workflowRuns = NO_WORKFLOW_RUNS,
+	stop = null,
 }: {
 	groups: BackgroundTaskGroups;
 	/** The session's workflow runs, whose progress the workflow cards draw. */
@@ -678,8 +737,12 @@ export function BackgroundTasksList({
 		sessionId: string;
 		count: number;
 	};
+	/** Per-row Stop through the session's live CLI; null (no Stop) when it can't take writes. */
+	stop?: BackgroundTaskStop | null;
 })
 {
+	const stoppingIds = useStoppingTaskIds(sessionId ?? "");
+	const rowStop = sessionId === undefined ? null : stop;
 	const finished = groups.finished;
 	const subagentCount = subagents?.count ?? 0;
 	const {finishedExpanded, setFinished, openRows, setRowOpen} = usePaneViewState(sessionId);
@@ -708,6 +771,8 @@ export function BackgroundTasksList({
 						setRowOpen={setRowOpen}
 						workflowRuns={workflowRuns}
 						keepIds={keepIds}
+						stop={rowStop}
+						stoppingIds={stoppingIds}
 					/>
 				</section>
 			)}
@@ -746,6 +811,8 @@ export function BackgroundTasksList({
 								setRowOpen={setRowOpen}
 								workflowRuns={workflowRuns}
 								keepIds={keepIds}
+								stop={rowStop}
+								stoppingIds={stoppingIds}
 							/>
 						</div>
 					)}
