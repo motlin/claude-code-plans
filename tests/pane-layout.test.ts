@@ -323,6 +323,18 @@ describe("openPane follows upstream placement", () =>
 		);
 	});
 
+	it("collapses a different pane's expansion when re-opening an open pane", () =>
+	{
+		expect(openPane(expandPane(TWO_PANES, "background-tasks"), "changes")).toEqual(
+			{
+				...TWO_PANES,
+				expanded: null,
+				focused: "changes",
+			},
+		);
+		expect(openPane(expandPane(TWO_PANES, "changes"), "changes")).toEqual(expandPane(TWO_PANES, "changes"));
+	});
+
 	it("leaves expanded mode when another pane opens", () =>
 	{
 		const expanded = expandPane(ONE_PANE, "background-tasks");

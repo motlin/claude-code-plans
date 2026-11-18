@@ -773,7 +773,12 @@ export function openPane(
 	options: OpenPaneOptions = {},
 ): PaneLayoutState
 {
-	if (isOpen(state, kind)) return focusPane(state, kind);
+	if (isOpen(state, kind))
+	{
+		// Upstream `Tu` → `G` (c03935b01): re-opening a pane hidden behind another's expansion collapses it first.
+		const shown = state.expanded !== null && state.expanded !== kind ? collapsePane(state) : state;
+		return focusPane(shown, kind);
+	}
 	const overlay = opensAsOverlay(state, options);
 	// Upstream `eu` opens from `Zl`: a drawn overlay's synced flex carries into the next layout.
 	const base = withOverlayFlex(state);
