@@ -1,4 +1,4 @@
-import {codeFolding, foldGutter, foldService} from "@codemirror/language";
+import {codeFolding, foldGutter, foldService, getIndentUnit} from "@codemirror/language";
 import
 {
 	countColumn,
@@ -630,3 +630,310 @@ export const bracketPairColors = ViewPlugin.fromClass(
 		decorations: (plugin) => plugin.decorations,
 	},
 );
+
+/* ---------- Indent guides ---------- */
+
+/** Upstream's `q`: no indent, for blank lines and lines past the document. */
+const NO_INDENT = -1;
+/** Only this many leading characters are scanned for indentation. */
+const MAX_INDENT_SCAN = 1000;
+/** How far a blank line looks up and down for a non-blank neighbour. */
+const MAX_BLANK_SEARCH = 100;
+/** Levels are computed and cached in chunks of this many lines. */
+const LEVEL_CHUNK = 200;
+/** Lines deeper than this keep the plain guides even inside the active block. */
+const MAX_ACTIVE_LEVEL = 64;
+const GUIDE_COLOR = "var(--epitaxy-indent-guide, color-mix(in srgb, currentColor 14%, transparent))";
+const ACTIVE_GUIDE_COLOR = "var(--epitaxy-indent-guide-active, color-mix(in srgb, currentColor 40%, transparent))";
+
+interface IndentedLine
+{
+	number: number;
+	columns: number;
+}
+
+/** The leading indentation in columns, or NO_INDENT for a blank or whitespace-only line. */
+function leadingColumns(text: string, tabSize: number): number
+{
+	let columns = 0;
+	const end = Math.min(text.length, MAX_INDENT_SCAN);
+	for (let index = 0; index < end; index += 1)
+	{
+		const code = text.charCodeAt(index);
+		if (code === 32) columns += 1;
+		else if (code === 9) columns += tabSize - (columns % tabSize);
+		else return columns;
+	}
+	return NO_INDENT;
+}
+
+/** The nearest non-blank line from `start` in `direction`, or the last line looked at with NO_INDENT. */
+function nearestIndented(doc: Text, start: number, direction: 1 | -1, tabSize: number): IndentedLine
+{
+	let number = start;
+	for (let step = 1; step <= MAX_BLANK_SEARCH; step += 1)
+	{
+		const candidate = start + direction * step;
+		if (candidate < 1 || candidate > doc.lines) break;
+		number = candidate;
+		const columns = leadingColumns(doc.line(candidate).text, tabSize);
+		if (columns !== NO_INDENT)
+			return {
+				number,
+				columns,
+			};
+	}
+	return {
+		number,
+		columns: NO_INDENT,
+	};
+}
+
+/** Guide levels for lines `first..last`; blank lines borrow from the non-blank lines around them. */
+function chunkLevels(doc: Text, first: number, last: number, tabSize: number, unit: number): number[]
+{
+	const levels: number[] = [];
+	let above = nearestIndented(doc, first, -1, tabSize);
+	let below: IndentedLine | null = null;
+	for (let number = first; number <= last; number += 1)
+	{
+		const columns = leadingColumns(doc.line(number).text, tabSize);
+		if (columns !== NO_INDENT)
+		{
+			above =
+			{
+				number,
+				columns,
+			};
+			below = null;
+			levels.push(Math.ceil(columns / unit));
+			continue;
+		}
+		below ??=
+			above.columns === NO_INDENT
+				?
+					{
+						number: 0,
+						columns: NO_INDENT,
+					}
+				: nearestIndented(doc, above.number, 1, tabSize);
+		if (below.columns === NO_INDENT) levels.push(0);
+		else if (above.columns === below.columns) levels.push(Math.ceil(above.columns / unit));
+		else levels.push(1 + Math.floor(Math.min(above.columns, below.columns) / unit));
+	}
+	return levels;
+}
+
+type LevelOf = (line: number) => number;
+
+/** A lazy, chunk-cached line number to guide level lookup for `state`. */
+function levelLookup(state: EditorState): LevelOf
+{
+	const {doc, tabSize} = state;
+	const unit = getIndentUnit(state);
+	const chunks = new Map<number, number[]>();
+	return (line) =>
+	{
+		if (line < 1 || line > doc.lines) return NO_INDENT;
+		const start = line - ((line - 1) % LEVEL_CHUNK);
+		let levels = chunks.get(start);
+		if (!levels)
+		{
+			levels = chunkLevels(doc, start, Math.min(doc.lines, start + LEVEL_CHUNK - 1), tabSize, unit);
+			chunks.set(start, levels);
+		}
+		return levels[line - start] ?? NO_INDENT;
+	};
+}
+
+interface ActiveBlock
+{
+	first: number;
+	last: number;
+	level: number;
+}
+
+/**
+ * The block whose guide holds the caret: the caret line's level, one deeper when the caret sits
+ * on a block opener or closer, extended through neighbouring lines at least that deep.
+ */
+function activeBlock(
+	levelOf: LevelOf,
+	caret: number,
+	top: number,
+	bottom: number,
+	previous: ActiveBlock | null,
+): ActiveBlock | null
+{
+	let level = levelOf(caret);
+	let anchor = caret;
+	if (levelOf(caret + 1) === level + 1)
+	{
+		level += 1;
+		anchor = caret + 1;
+	}
+	else if (levelOf(caret - 1) === level + 1)
+	{
+		level += 1;
+		anchor = caret - 1;
+	}
+	if (level <= 0) return null;
+	const reuse = previous?.level === level && anchor >= previous.first && anchor <= previous.last;
+	let first = reuse ? previous.first : anchor;
+	let last = reuse ? previous.last : anchor;
+	while (first > top && levelOf(first - 1) >= level) first -= 1;
+	while (last < bottom && levelOf(last + 1) >= level) last += 1;
+	return {
+		first,
+		last,
+		level,
+	};
+}
+
+function caretLine(state: EditorState): number
+{
+	return state.doc.lineAt(state.selection.main.head).number;
+}
+
+function viewActiveBlock(view: EditorView, levelOf: LevelOf, previous: ActiveBlock | null): ActiveBlock | null
+{
+	const {doc} = view.state;
+	return activeBlock(
+		levelOf,
+		caretLine(view.state),
+		doc.lineAt(view.viewport.from).number,
+		doc.lineAt(view.viewport.to).number,
+		previous,
+	);
+}
+
+/** One 1px stop per level, with the active level's guide in the active color. */
+function activeGuidesImage(level: number, activeLevel: number, unit: number): string
+{
+	const stops: string[] = [];
+	for (let index = 0; index < level; index += 1)
+	{
+		const color = index === activeLevel - 1 ? ACTIVE_GUIDE_COLOR : GUIDE_COLOR;
+		const start = `${index * unit}ch`;
+		const end = `calc(${start} + 1px)`;
+		stops.push(`transparent ${start}`, `${color} ${start} ${end}`, `transparent ${end}`);
+	}
+	return `linear-gradient(to right,${stops.join(",")})`;
+}
+
+function guideDecorations(view: EditorView, levelOf: LevelOf, active: ActiveBlock | null): DecorationSet
+{
+	const {doc} = view.state;
+	const unit = getIndentUnit(view.state);
+	const builder = new RangeSetBuilder<Decoration>();
+	const plain = new Map<number, Decoration>();
+	const highlighted = new Map<number, Decoration>();
+	for (const {from, to} of view.visibleRanges)
+	{
+		const last = doc.lineAt(to).number;
+		for (let number = doc.lineAt(from).number; number <= last; number += 1)
+		{
+			const level = levelOf(number);
+			if (level <= 0) continue;
+			let decoration = plain.get(level);
+			if (!decoration)
+			{
+				decoration = Decoration.line(
+					{
+						class: "cm-epitaxyIndentGuides",
+						attributes:
+						{
+							style: `--epitaxy-indent-unit:${unit}ch;--epitaxy-indent-guides-width:${(level - 1) * unit + 1}ch`,
+						},
+					},
+				);
+				plain.set(level, decoration);
+			}
+			if (active && number >= active.first && number <= active.last && level <= MAX_ACTIVE_LEVEL)
+			{
+				let activeDecoration = highlighted.get(level);
+				if (!activeDecoration)
+				{
+					activeDecoration = Decoration.line(
+						{
+							class: "cm-epitaxyIndentGuides",
+							attributes:
+							{
+								style: `--epitaxy-indent-guides-width:${(level - 1) * unit + 1}ch;background-image:${activeGuidesImage(level, active.level, unit)}`,
+							},
+						},
+					);
+					highlighted.set(level, activeDecoration);
+				}
+				decoration = activeDecoration;
+			}
+			const {from: lineStart} = doc.line(number);
+			builder.add(lineStart, lineStart, decoration);
+		}
+	}
+	return builder.finish();
+}
+
+const indentGuidesPlugin = ViewPlugin.fromClass(
+	class
+	{
+		levelOf: LevelOf;
+		active: ActiveBlock | null;
+		decorations: DecorationSet;
+
+		constructor(view: EditorView)
+		{
+			this.levelOf = levelLookup(view.state);
+			this.active = viewActiveBlock(view, this.levelOf, null);
+			this.decorations = guideDecorations(view, this.levelOf, this.active);
+		}
+
+		update(update: ViewUpdate)
+		{
+			const relevel =
+				update.docChanged ||
+				update.startState.tabSize !== update.state.tabSize ||
+				getIndentUnit(update.startState) !== getIndentUnit(update.state);
+			if (relevel) this.levelOf = levelLookup(update.state);
+			const previous = this.active;
+			if (relevel || update.viewportChanged || caretLine(update.startState) !== caretLine(update.state))
+				this.active = viewActiveBlock(update.view, this.levelOf, relevel ? null : previous);
+			if (
+				relevel ||
+				update.viewportChanged ||
+				this.active?.level !== previous?.level ||
+				this.active?.first !== previous?.first ||
+				this.active?.last !== previous?.last
+			)
+				this.decorations = guideDecorations(update.view, this.levelOf, this.active);
+		}
+	},
+	{
+		decorations: (plugin) => plugin.decorations,
+	},
+);
+
+const indentGuidesTheme = EditorView.baseTheme(
+	{
+		".cm-epitaxyIndentGuides":
+		{
+			backgroundImage: `repeating-linear-gradient(to right, ${GUIDE_COLOR} 0 1px, transparent 1px var(--epitaxy-indent-unit))`,
+			backgroundSize: "var(--epitaxy-indent-guides-width) 100%",
+			backgroundRepeat: "no-repeat",
+			backgroundOrigin: "content-box",
+		},
+		"@supports (height: 1lh)":
+		{
+			".cm-epitaxyIndentGuides":
+			{
+				backgroundSize: "var(--epitaxy-indent-guides-width) 1lh",
+			},
+		},
+	},
+);
+
+/** Upstream's indent guides (`oa()`, chunk cbd02b8f2): 1px guides per indent level, the caret's block at 40%. */
+export function indentGuides(): Extension
+{
+	return [indentGuidesPlugin, indentGuidesTheme];
+}

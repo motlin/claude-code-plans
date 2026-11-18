@@ -686,4 +686,51 @@ describe("SourceEditor brackets and whitespace", () =>
 		rerender(<SourceEditor value="a b" readOnly showWhitespace />);
 		expect([off, container.querySelectorAll(".cm-highlightSpace").length]).toStrictEqual([0, 1]);
 	});
+
+	function indentGuides(container: HTMLElement): [boolean, string][]
+	{
+		return [...container.querySelectorAll<HTMLElement>(".cm-line")].map((line) => [
+			line.classList.contains("cm-epitaxyIndentGuides"),
+			line.style.getPropertyValue("--epitaxy-indent-guides-width"),
+		]);
+	}
+
+	it("draws indent guides per level only when indentGuides is on, carrying blank lines from their neighbours", () =>
+	{
+		const value = "a\n  b\n    c\n\n  d";
+		const {container, rerender} = render(<SourceEditor value={value} readOnly />);
+		const off = indentGuides(container);
+		rerender(<SourceEditor value={value} readOnly indentGuides />);
+		// The blank line sits between indents 4 and 2, so upstream gives it 1 + floor(2 / 2) = level 2.
+		expect([off, indentGuides(container)]).toStrictEqual([
+			[
+				[false, ""],
+				[false, ""],
+				[false, ""],
+				[false, ""],
+				[false, ""],
+			],
+			[
+				[false, ""],
+				[true, "1ch"],
+				[true, "3ch"],
+				[true, "3ch"],
+				[true, "1ch"],
+			],
+		]);
+	});
+
+	it("paints the guide of the block holding the caret in the active color", () =>
+	{
+		const ref = createRef<SourceEditorHandle>();
+		const {container} = render(<SourceEditor ref={ref} value={"a\n  b\n    c\n  d"} readOnly indentGuides />);
+		act(() =>
+		{
+			ref.current!.goTo(3);
+		});
+		const lines = [...container.querySelectorAll<HTMLElement>(".cm-line")];
+		expect(lines.map((line) => line.style.backgroundImage.includes("--epitaxy-indent-guide-active"))).toStrictEqual(
+			[false, false, true, false],
+		);
+	});
 });

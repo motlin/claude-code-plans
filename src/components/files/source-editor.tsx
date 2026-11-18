@@ -26,6 +26,7 @@ import
 	type FindHighlight,
 	findRanges,
 	foldingExtension,
+	indentGuides as indentGuidesExtension,
 	jumpRangeExtension,
 	setFindHighlight,
 	setJumpRange,
@@ -83,6 +84,8 @@ export interface SourceEditorProps
 	showWhitespace?: boolean;
 	/** Files settings "Scroll past end"; upstream defaults it off. */
 	scrollPastEnd?: boolean;
+	/** Files settings "Indent guides"; the editor defaults it off like upstream's `EpitaxyCodeMirrorFile`. */
+	indentGuides?: boolean;
 	/** Shiki tokens for the document's lines, drawn as `cm-shikiColorN` marks. */
 	tokens?: ThemedToken[][] | null | undefined;
 	/** The `data-language` on `.cm-content`; "markdown" also folds by heading. */
@@ -165,6 +168,7 @@ export function SourceEditor(props: SourceEditorProps)
 		tabSize = 4,
 		showWhitespace = false,
 		scrollPastEnd: pastEnd = false,
+		indentGuides = false,
 		tokens,
 		language,
 		line,
@@ -187,6 +191,7 @@ export function SourceEditor(props: SourceEditorProps)
 			pastEnd: new Compartment(),
 			folding: new Compartment(),
 			palette: new Compartment(),
+			indentGuides: new Compartment(),
 		},
 	).current;
 	// The mount effect reads the first render's props; later changes go through the effects below.
@@ -200,6 +205,7 @@ export function SourceEditor(props: SourceEditorProps)
 			language,
 			showWhitespace,
 			pastEnd,
+			indentGuides,
 		},
 	).current;
 	const latest = useRef(props);
@@ -293,6 +299,7 @@ export function SourceEditor(props: SourceEditorProps)
 							findExtension,
 							compartments.whitespace.of(initial.showWhitespace ? highlightWhitespace() : []),
 							compartments.pastEnd.of(initial.pastEnd ? scrollPastEnd() : []),
+							compartments.indentGuides.of(initial.indentGuides ? indentGuidesExtension() : []),
 							compartments.readOnly.of(readOnlyExtension(initial.readOnly)),
 							compartments.wrap.of(wrapExtension(initial.wordWrap)),
 							compartments.tabSize.of(EditorState.tabSize.of(initial.tabSize)),
@@ -605,6 +612,15 @@ export function SourceEditor(props: SourceEditorProps)
 			},
 		);
 	}, [compartments, wordWrap]);
+
+	useEffect(() =>
+	{
+		viewRef.current?.dispatch(
+			{
+				effects: compartments.indentGuides.reconfigure(indentGuides ? indentGuidesExtension() : []),
+			},
+		);
+	}, [compartments, indentGuides]);
 
 	useEffect(() =>
 	{
