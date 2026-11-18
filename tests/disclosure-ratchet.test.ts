@@ -19,8 +19,10 @@ import {describe, expect, it} from "vite-plus/test";
  * button in its header (shared-41 `d3`), with cds Collapsibles only around the options and actions it hides, so it
  * raised the ceiling from 51. The peer message row's Show more / Show less (upstream `qt`, a ghost cds Button with
  * aria-expanded) toggles a 16rem clamp on the body it sits under, not a hidden panel; it raised the ceiling from 52.
+ * A clipped label-only tool row's text toggle (upstream `$W`'s `Gd` with `controls`) unclips the row's own label in
+ * place, with no panel to hide, so it raised the ceiling from 53.
  */
-const DISCLOSURE_CEILING = 53;
+const DISCLOSURE_CEILING = 54;
 
 /** The opening tag around `index`: from the nearest `<Name` before it to the next `<` after it. */
 function enclosingTag(source: string, index: number): string

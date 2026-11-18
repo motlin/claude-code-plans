@@ -28,9 +28,9 @@ const TOGGLE_BASE =
 	"cds-reset -ms-1 inline-flex h-[1lh] shrink-0 items-center self-start border-0 bg-transparent p-0 outline-none focus-visible:outline-hidden";
 
 /** Upstream `Gd` with `stretch`: the toggle's `::after` covers the `relative isolate rounded` row. */
-const TOGGLE_STRETCHED = `${TOGGLE_BASE} static justify-center after:absolute after:inset-0 after:rounded after:content-[''] after:transition-shadow after:duration-[60ms] focus-visible:after:[box-shadow:inset_0_0_0_1px_var(--cds-fill-accent)]`;
+export const TOGGLE_STRETCHED = `${TOGGLE_BASE} static justify-center after:absolute after:inset-0 after:rounded after:content-[''] after:transition-shadow after:duration-[60ms] focus-visible:after:[box-shadow:inset_0_0_0_1px_var(--cds-fill-accent)]`;
 
-const TOGGLE_UNSTRETCHED = `${TOGGLE_BASE} min-w-[1lh] justify-end rounded transition-shadow duration-[60ms] focus-visible:shadow-focus`;
+export const TOGGLE_UNSTRETCHED = `${TOGGLE_BASE} min-w-[1lh] justify-end rounded transition-shadow duration-[60ms] focus-visible:shadow-focus`;
 
 const PANEL_CLASS =
 	"break-words ease-[cubic-bezier(0.165,0.84,0.44,1)] motion-reduce:transition-none data-[starting-style]:[clip-path:inset(-8px_-100vw_0_-100vw)] data-[ending-style]:[clip-path:inset(-8px_-100vw_0_-100vw)] data-[animating]:[clip-path:inset(-8px_-100vw_0_-100vw)] data-[starting-style]:contain-layout data-[ending-style]:contain-layout data-[animating]:contain-layout [--cds-disclosure-panel-height:var(--collapsible-panel-height)] h-auto overflow-visible transition-none duration-0 data-[ending-style]:h-auto data-[starting-style]:h-auto";

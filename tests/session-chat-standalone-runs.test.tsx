@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import {cleanup, render} from "@testing-library/react";
+import {cleanup, fireEvent, render} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {SessionChat} from "../src/components/session-chat";
 import {processTranscript} from "../src/lib/transcript";
@@ -553,5 +553,86 @@ describe("omitted-thinking lines in a tool run", () =>
 			},
 			tool(["Fabricated three"]),
 		]);
+	});
+});
+
+describe("a clipped label-only row", () =>
+{
+	it("grows a text toggle that unclips the label in place", () =>
+	{
+		// Every truncating box reports content wider than itself, so the settled Workflow label clips.
+		vi.spyOn(HTMLElement.prototype, "scrollWidth", "get").mockReturnValue(500);
+		vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(100);
+		const {lines, toolResultMap} = processTranscript([
+			prompt,
+			...call(
+				{
+					id: "flow",
+					name: "Workflow",
+					input:
+					{
+						name: "fabricated-workflow",
+						script: "fabricated",
+					},
+					result: "done",
+				},
+			),
+		]);
+		const {container} = render(
+			<SessionChat
+				sessionId="test-session"
+				lines={lines}
+				toolResultMap={toolResultMap}
+				transcriptMode="normal"
+				showTools
+				showThinking={false}
+				shouldScrollToEnd={false}
+			/>,
+		);
+		const toggle = container.querySelector<HTMLButtonElement>('[data-tool-row] button[data-cds-row-toggle="text"]');
+		const state = () =>
+		{
+			const textId = toggle?.getAttribute("aria-controls");
+			const text = textId == null ? null : document.getElementById(textId);
+			const row = toggle?.closest("[data-cds-row]");
+			return {
+				expanded: toggle?.getAttribute("aria-expanded"),
+				stretched: toggle?.hasAttribute("data-cds-row-toggle-stretched"),
+				rowStart: row?.classList.contains("items-start"),
+				openText: row?.hasAttribute("data-cds-open-text"),
+				textInRow: text !== null && row?.contains(text) === true,
+				wrapped: Array.from(text?.querySelectorAll(".whitespace-normal") ?? [], (el) => (
+				{
+					text: el.textContent,
+					breakAll: el.classList.contains("break-all"),
+				})),
+			};
+		};
+		expect(state()).toStrictEqual(
+			{
+				expanded: "false",
+				stretched: true,
+				rowStart: false,
+				openText: false,
+				textInRow: true,
+				wrapped: [],
+			},
+		);
+		if (toggle !== null) fireEvent.click(toggle);
+		expect(state()).toStrictEqual(
+			{
+				expanded: "true",
+				stretched: false,
+				rowStart: true,
+				openText: true,
+				textInRow: true,
+				wrapped: [
+					{
+						text: "fabricated-workflow",
+						breakAll: true,
+					},
+				],
+			},
+		);
 	});
 });

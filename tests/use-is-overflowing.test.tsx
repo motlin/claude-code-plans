@@ -168,4 +168,45 @@ describe("useIsOverflowing", () =>
 			},
 		);
 	});
+
+	it("keeps its last answer while frozen and measures again once it thaws", () =>
+	{
+		const widths =
+		{
+			scroll: 300,
+			client: 231,
+		};
+		const element = probe(widths);
+		const {result, rerender} = renderHook(
+			({frozen}) => useIsOverflowing(element, "full", 0, frozen),
+			{
+				initialProps:
+				{
+					frozen: false,
+				},
+			},
+		);
+		const seen = [result.current];
+
+		widths.scroll = 100;
+		rerender(
+			{
+				frozen: true,
+			},
+		);
+		act(() =>
+		{
+			callbacks.at(-1)?.([], {} as ResizeObserver);
+		});
+		seen.push(result.current);
+
+		rerender(
+			{
+				frozen: false,
+			},
+		);
+		seen.push(result.current);
+
+		expect(seen).toStrictEqual([true, true, false]);
+	});
 });

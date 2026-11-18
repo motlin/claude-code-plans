@@ -50,7 +50,7 @@ import {formatThinkingQuote, prefillComposer, requestComposerInsert, useHasCompo
 import {hasFindingOutcomes} from "../lib/report-findings";
 import {ExternalTextLink} from "./external-text-link";
 import {ShimmerText} from "./shimmer-text";
-import {OmittedThinkingStep, ThinkingStep} from "./thinking-step";
+import {OmittedThinkingStep, ThinkingStep, TOGGLE_STRETCHED, TOGGLE_UNSTRETCHED} from "./thinking-step";
 import {FileRefTarget, ProseMarkdown} from "./file-refs";
 import {MarkdownArticle} from "./markdown-article";
 import {TruncatedContent} from "./truncated-content";
@@ -181,6 +181,8 @@ import {isEditableTarget} from "../lib/shortcuts/match";
 import {findScrollContainer} from "./scroll-container";
 import {usePromptJump} from "../hooks/use-prompt-jump";
 import {useStepCollapseFocusReturn} from "../hooks/use-step-collapse-focus-return";
+import {useLabelUnclip} from "../hooks/use-label-unclip";
+import {useOpenTextRow} from "../hooks/use-open-text-row";
 import {useTranscriptSelectionAttach} from "../hooks/use-transcript-selection-attach";
 import {CHAT_COLUMN_CLASS} from "../lib/transcript-width";
 import {glideScrollTo} from "../lib/glide-scroll";
@@ -8334,11 +8336,58 @@ function ToolCallRow({
 	const announcement = [label, displayParam, rangeLabel ?? "", status ?? ""].filter((part) => part !== "").join(" ");
 	// Upstream `_C`: one row-cut ref fades both the label and the meta while either overflows.
 	const rowCut = useTypeRowCut(`${label}\n${displayParam}`);
+	// Upstream `$W`: a settled bodiless row whose label or meta clips grows a text toggle that unclips them in place.
+	const unclipMeasured =
+		!expandable && !busy && paneAgentId === undefined && !(members.length === 1 && isArtifactCard(call));
+	const unclip = useLabelUnclip(
+		{
+			measured: unclipMeasured,
+			text: `${label}\n${displayParam}`,
+		},
+	);
+	const unclipped = unclip.rowUnclipped;
+	const {labelRef: unclipLabelRef, metaRef: unclipMetaRef} = unclip;
+	const labelCut = useCallback(
+		(node: HTMLElement | null) =>
+		{
+			rowCut?.(node);
+			unclipLabelRef(node);
+		},
+		[rowCut, unclipLabelRef],
+	);
+	const metaCut = useCallback(
+		(node: HTMLElement | null) =>
+		{
+			rowCut?.(node);
+			unclipMetaRef(node);
+		},
+		[rowCut, unclipMetaRef],
+	);
+	const {rowProps: openTextProps} = useOpenTextRow(
+		{
+			active: unclipped,
+			close: unclip.close,
+		},
+	);
+	const labelClip = unclipped ? "min-w-0 whitespace-normal break-words" : "truncate min-w-0";
+	const metaClip = unclipped ? "min-w-0 whitespace-normal break-all" : "truncate min-w-0";
 	const announcer = isTurnStatus ? (
 		<span className="sr-only" role="status" aria-live="polite">
 			{announcement}
 		</span>
 	) : null;
+	// A measured row holds its label and meta in one text span, the target its text toggle opens.
+	const wrapText = (text: React.ReactElement): React.ReactElement =>
+		unclipMeasured ? (
+			<span
+				id={`${statusId}-text`}
+				className={`flex min-w-0 gap-[inherit] ${unclipped ? "items-start flex-wrap" : "items-center"}`}
+			>
+				{text}
+			</span>
+		) : (
+			text
+		);
 	const rowLabel = (
 		<>
 			{(markedRow || markLeaving) && (
@@ -8352,60 +8401,62 @@ function ToolCallRow({
 					<WorkingMark activity={toolMarkActivity(call.name, call.input)} />
 				</TurnStatusMarkSlot>
 			)}
-			{joinedLabel ? (
-				// Upstream's grouped row: label and parameter in one <bdi>, joined by a plain space.
-				<MorphSlot id={`${statusId}-label`} swapKey={heldSwapKey} className="min-w-0 max-w-full">
-					<bdi ref={rowCut} className="truncate min-w-0 text-body">
-						<InkedLabel className="" ink={labelClass}>
-							{label}
-						</InkedLabel>{" "}
-						<InkedLabel className="" ink={paramInk}>
-							{paramContent}
-						</InkedLabel>
-					</bdi>
-				</MorphSlot>
-			) : (
-				<>
-					{label && (
-						<MorphSlot
-							id={`${statusId}-label`}
-							swapKey={heldSwapKey}
-							className={`min-w-0 max-w-full${displayParam ? " shrink-0" : ""}`}
-						>
-							<InkedLabel
-								{...(isPhraseLabel
-									?
-										{
-											ref: rowCut,
-										}
-									: {})}
-								className={`${isPhraseLabel ? "truncate min-w-0" : "shrink-0"} text-body`}
-								ink={labelClass}
-							>
+			{wrapText(
+				joinedLabel ? (
+					// Upstream's grouped row: label and parameter in one <bdi>, joined by a plain space.
+					<MorphSlot id={`${statusId}-label`} swapKey={heldSwapKey} className="min-w-0 max-w-full">
+						<bdi ref={labelCut} className={`${labelClip} text-body`}>
+							<InkedLabel className="" ink={labelClass}>
 								{label}
-							</InkedLabel>
-						</MorphSlot>
-					)}
-					{displayParam &&
-						(isFileParam ? (
-							<span
-								ref={rowCut}
-								id={`${statusId}-meta`}
-								className="text-body text-primary truncate min-w-0"
-							>
-								{paramContent}
-							</span>
-						) : (
-							<InkedLabel
-								id={`${statusId}-meta`}
-								ref={rowCut}
-								className={`truncate min-w-0 text-body${isCompletedPaneAgent ? ` ${AGENT_META_UNDERLINE}` : ""}`}
-								ink={paramInk}
-							>
+							</InkedLabel>{" "}
+							<InkedLabel className="" ink={paramInk}>
 								{paramContent}
 							</InkedLabel>
-						))}
-				</>
+						</bdi>
+					</MorphSlot>
+				) : (
+					<>
+						{label && (
+							<MorphSlot
+								id={`${statusId}-label`}
+								swapKey={heldSwapKey}
+								className={`min-w-0 max-w-full${displayParam ? " shrink-0" : ""}`}
+							>
+								<InkedLabel
+									{...(isPhraseLabel
+										?
+											{
+												ref: labelCut,
+											}
+										: {})}
+									className={`${isPhraseLabel ? labelClip : "shrink-0"} text-body`}
+									ink={labelClass}
+								>
+									{label}
+								</InkedLabel>
+							</MorphSlot>
+						)}
+						{displayParam &&
+							(isFileParam ? (
+								<span
+									ref={metaCut}
+									id={`${statusId}-meta`}
+									className={`text-body text-primary ${metaClip}`}
+								>
+									{paramContent}
+								</span>
+							) : (
+								<InkedLabel
+									id={`${statusId}-meta`}
+									ref={metaCut}
+									className={`${metaClip} text-body${isCompletedPaneAgent ? ` ${AGENT_META_UNDERLINE}` : ""}`}
+									ink={paramInk}
+								>
+									{paramContent}
+								</InkedLabel>
+							))}
+					</>
+				),
 			)}
 			{rangeLabel &&
 				(labelClass === null ? (
@@ -8647,6 +8698,8 @@ function ToolCallRow({
 
 	if (!expandable)
 	{
+		const rowAlign = unclipped ? "items-start" : "items-center";
+		const rowIsolate = unclip.selfExpands ? " isolate" : "";
 		return withHoistedImages(
 			<div
 				data-tool-row=""
@@ -8657,13 +8710,35 @@ function ToolCallRow({
 				<div
 					data-state={busyAgent ? "busy" : undefined}
 					data-cds-row=""
+					{...openTextProps}
 					className={
 						settledWorkflowRow
-							? "relative flex self-start max-w-full items-center py-0 gap-0.75 text-start rounded-sm"
-							: "relative group/tool flex self-start max-w-full items-center py-0 gap-g5 text-left"
+							? `relative flex self-start max-w-full ${rowAlign} py-0 gap-0.75 text-start rounded-sm${rowIsolate}`
+							: `relative group/tool flex self-start max-w-full ${rowAlign} py-0 gap-g5 text-left${rowIsolate}`
 					}
 				>
 					{rowLabel}
+					{unclip.selfExpands && (
+						// Upstream `Gd` with `controls`: it covers the row while the text clips, then steps aside so the
+						// open text can be selected and its first line clicked closed.
+						<button
+							type="button"
+							data-cds-row-toggle="text"
+							data-cds-row-toggle-stretched={unclipped ? undefined : ""}
+							aria-controls={`${statusId}-text`}
+							aria-expanded={unclipped}
+							aria-labelledby={labelledBy}
+							onClick={unclip.toggle}
+							className={unclipped ? TOGGLE_UNSTRETCHED : TOGGLE_STRETCHED}
+						>
+							<span
+								aria-hidden="true"
+								className={`inline-flex h-[1lh] items-center justify-center ${ink}`}
+							>
+								<ChevronIcon expanded={unclipped} size={12} />
+							</span>
+						</button>
+					)}
 					{media}
 				</div>
 				{body}
