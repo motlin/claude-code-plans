@@ -356,7 +356,7 @@ describe("session live input", () =>
 		});
 	});
 
-	it("reports a POST error and leaves the input out of pending state", async () =>
+	it("keeps a refused POST as a durable Not delivered send and leaves the input out of pending state", async () =>
 	{
 		const postPrompt = vi
 			.fn<(sessionId: string, prompt: string) => Promise<void>>()
@@ -367,18 +367,27 @@ describe("session live input", () =>
 		{
 			await result.current.send("Continue Alice's test");
 		});
+		const failed = result.current.failedSends.map(({prompt}) => prompt);
+		act(() =>
+		{
+			for (const send of result.current.failedSends) result.current.discardFailedSend(send.id);
+		});
 
-		expect(result.current.state).toStrictEqual(
+		expect(
 			{
-				phase: "idle",
-				isPending: false,
-				prompt: "",
-				rejection:
+				state: result.current.state,
+				failed,
+			},
+		).toStrictEqual(
+			{
+				state:
 				{
-					prompt: "Continue Alice's test",
-					message: "Fabricated live prompt failure",
-					nonResendable: false,
+					phase: "idle",
+					isPending: false,
+					prompt: "",
+					rejection: null,
 				},
+				failed: ["Continue Alice's test"],
 			},
 		);
 	});

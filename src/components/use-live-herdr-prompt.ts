@@ -1,5 +1,14 @@
 import {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {markFailedSend, readFailedSend} from "../lib/composer-draft-store";
+import {DURABLE_SENDS} from "../lib/durable-sends";
+import
+{
+	addFailedSend,
+	type FailedSend,
+	readFailedSends,
+	removeFailedSend,
+	useFailedSends,
+} from "../lib/failed-send-store";
 import type {DeliveryResult} from "../hooks/use-composer-queue";
 import {HerdrRequestError, isAgentNotReady, sendHerdrPrompt} from "../lib/api/herdr";
 import {type RejectedRefill, takeBackSend} from "../lib/context-attach";
@@ -88,12 +97,15 @@ export function useLiveHerdrPrompt(
 			prompt: string,
 			{
 				rejection,
+				failed,
 				...options
 			}:
 			{
 				midTurn?: true;
 				/** Upstream `sendWithOutcome`: a refused send throws to the caller and leaves the composer alone. */
 				rejection?: "throw";
+				/** A durable retry: refused again, the row keeps this id and first send time. */
+				failed?: FailedSend;
 			} = {},
 		): Promise<DeliveryResult> =>
 		{
@@ -145,6 +157,21 @@ export function useLiveHerdrPrompt(
 				{
 					setState(EMPTY_LIVE_HERDR_PROMPT_STATE);
 					throw error;
+				}
+				// Upstream's durable send (`markPendingFailed`): the prompt stays as a Not delivered row, with no card or refill.
+				if (DURABLE_SENDS)
+				{
+					addFailedSend(
+						sessionId,
+						failed ??
+						{
+							id: crypto.randomUUID(),
+							prompt,
+							sentAt: new Date().toISOString(),
+						},
+					);
+					setState(EMPTY_LIVE_HERDR_PROMPT_STATE);
+					return "failed";
 				}
 				// Upstream `local_send_rejected`: the bubble goes, the card and the refilled composer take over.
 				// A prompt whose tiles came back can't be resent as is, and its draft carries no failedSend.
@@ -210,6 +237,34 @@ export function useLiveHerdrPrompt(
 		setState(EMPTY_LIVE_HERDR_PROMPT_STATE);
 	}, [sessionId, stored.phase, stored.prompt]);
 
+	const failedSends = useFailedSends(sessionId);
+
+	/** Upstream `retryFailedSend`: the stored text goes again; refused again, the row comes back as it was. */
+	const retryFailedSend = useCallback(
+		async (id: string): Promise<DeliveryResult | null> =>
+		{
+			const failed = readFailedSends(sessionId).find((send) => send.id === id);
+			if (failed === undefined) return null;
+			removeFailedSend(sessionId, id);
+			return sendRef.current(
+				failed.prompt,
+				{
+					failed,
+				},
+			);
+		},
+		[sessionId],
+	);
+
+	/** Upstream `discardFailedSend`: the row goes and nothing is sent. */
+	const discardFailedSend = useCallback(
+		(id: string) =>
+		{
+			removeFailedSend(sessionId, id);
+		},
+		[sessionId],
+	);
+
 	const clearRejection = useCallback(() =>
 	{
 		setState((current) =>
@@ -228,6 +283,9 @@ export function useLiveHerdrPrompt(
 		clearRejection,
 		withdraw,
 		state,
+		failedSends,
+		retryFailedSend,
+		discardFailedSend,
 	};
 }
 

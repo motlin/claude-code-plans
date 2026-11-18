@@ -1,9 +1,10 @@
 import {X} from "lucide-react";
-import {useState, type ReactNode} from "react";
+import {useState, type MouseEvent, type ReactNode} from "react";
 import {CHAT_COLUMN_CLASS} from "../lib/transcript-width";
 import {useRovingToolbar} from "../lib/use-roving-toolbar";
 import {shimmerPhaseDelay} from "../lib/shimmer";
 import {ShimmerText} from "./shimmer-text";
+import {Icon} from "./ui/icon";
 import {USER_MESSAGE_CLASS} from "./user-bubble";
 import {UserBubbleBox} from "./user-bubble-box";
 import {USER_PARAGRAPH_CLASS} from "./user-plain-text";
@@ -91,6 +92,50 @@ export function HeldUserRow({
 	);
 }
 
+/**
+ * A durable send the pane refused, drawn like upstream's `failedSend` user row: the bubble stays with a
+ * danger "Not delivered · {time}" footer and ghost Retry / Discard buttons, and no message toolbar.
+ */
+export function FailedUserRow({
+	prompt,
+	sentAt,
+	onRetry,
+	onDiscard,
+}: {
+	prompt: string;
+	sentAt: string | undefined;
+	onRetry: () => void;
+	onDiscard: () => void;
+})
+{
+	return (
+		<PendingUserRowShell prompt={prompt} rowClass="" deliveryStatus="failed">
+			<div data-testid="epitaxy-failed-send" className="flex items-center gap-1 pt-[4px]">
+				<span className="flex items-center gap-[3px] text-[12px] leading-[15px] text-danger comfortable:text-[13px] comfortable:leading-[17px]">
+					<Icon name="Warning" size="xs" />
+					{sentAt === undefined ? "Not delivered" : `Not delivered · ${sentAt}`}
+				</span>
+				<button type="button" className={FAILED_ACTION_CLASS} onMouseDown={keepFocus} onClick={onRetry}>
+					Retry
+				</button>
+				<button type="button" className={FAILED_ACTION_CLASS} onMouseDown={keepFocus} onClick={onDiscard}>
+					Discard
+				</button>
+			</div>
+		</PendingUserRowShell>
+	);
+}
+
+/** Upstream cds Button `variant="ghost" size="xxs"` (data-step 1: 20px high, 5px radius, 12px/17px, 0 6px). */
+const FAILED_ACTION_CLASS =
+	"relative inline-flex h-5 shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-r4 whitespace-nowrap select-none px-1.5 font-control-regular text-[12px] leading-[17px] text-primary hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
+
+/** Upstream `xi`: the click leaves focus where it was. */
+function keepFocus(event: MouseEvent): void
+{
+	event.preventDefault();
+}
+
 /** Upstream's `$T`: the held text in a muted shimmer that sweeps only while reconnecting, in phase with the rest. */
 function HeldShimmer({sweeps, children}: {sweeps: boolean; children: ReactNode})
 {
@@ -110,7 +155,7 @@ function PendingUserRowShell({
 }: {
 	prompt: string;
 	rowClass: string;
-	deliveryStatus: "sending" | "held";
+	deliveryStatus: "sending" | "held" | "failed";
 	children: ReactNode;
 })
 {

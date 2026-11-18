@@ -113,6 +113,27 @@ export function formatMessageTime(timestamp?: string, nowMs: number = Date.now()
 	);
 }
 
+/**
+ * A failed send's time as upstream's "Not delivered · {time}" prints it (react-intl `formatTime` default,
+ * hour and minute: "3:42 PM"). Undefined for unparseable input, which drops the time from the label.
+ */
+export function formatSendTime(timestamp: string, timeZone?: string): string | undefined
+{
+	const date = parseTimestamp(timestamp);
+	if (!date) return undefined;
+	return date.toLocaleTimeString(
+		"en-US",
+		{
+			hour: "numeric",
+			minute: "2-digit",
+			...(timeZone !== undefined &&
+			{
+				timeZone,
+			}),
+		},
+	);
+}
+
 /** The plans and memories lists' full UTC date and time: "Oct 17, 2026, 09:34 PM". */
 export function formatListDate(iso: string): string
 {

@@ -50,7 +50,8 @@ import {useLimitAutoResume} from "../hooks/use-limit-auto-resume";
 import {ArchivedComposerNote} from "./archived-composer-note";
 import {Composer, type ComposerRewindState} from "./composer";
 import type {UsageRingContext} from "./usage-popover-context";
-import {HeldUserRow, SendingUserRow} from "./pending-user-row";
+import {formatSendTime} from "../lib/timestamp-format";
+import {FailedUserRow, HeldUserRow, SendingUserRow} from "./pending-user-row";
 import {StreamingMessage} from "./streaming-message";
 import {HeldSteerTurns, OptimisticWaitingTurn} from "./waiting-user-turn";
 import {SessionHookContext} from "./session-hook-context";
@@ -1239,10 +1240,11 @@ function SessionView({
 			.join(","),
 	);
 	const herdrReconnecting = useHerdrReconnecting(liveHerdrPrompt.state.phase === "held");
-	const {retryRejection, dismissRejection} = useSendRejectionActions(
+	const {retryRejection, dismissRejection, retryFailedSend, discardFailedSend} = useSendRejectionActions(
 		sessionId,
 		liveHerdrPrompt.state.rejection,
 		liveHerdrPrompt.clearRejection,
+		liveHerdrPrompt,
 	);
 	const stopAvailable = canStopResponse(
 		{
@@ -3311,6 +3313,21 @@ function SessionView({
 											/>
 										)}
 
+										{liveHerdrPrompt.failedSends.map((failed) => (
+											<FailedUserRow
+												key={failed.id}
+												prompt={failed.prompt}
+												sentAt={formatSendTime(failed.sentAt)}
+												onRetry={() =>
+												{
+													retryFailedSend(failed.id);
+												}}
+												onDiscard={() =>
+												{
+													discardFailedSend(failed.id);
+												}}
+											/>
+										))}
 										{liveHerdrPrompt.state.phase === "sending" && (
 											<SendingUserRow prompt={liveHerdrPrompt.state.prompt} />
 										)}

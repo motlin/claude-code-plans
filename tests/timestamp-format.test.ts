@@ -1,5 +1,5 @@
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
-import {formatMessageTime, formatRelativeTimestamp, formatTimestamp} from "../src/lib/timestamp-format";
+import {formatMessageTime, formatRelativeTimestamp, formatSendTime, formatTimestamp} from "../src/lib/timestamp-format";
 
 const NOW_MS = Date.UTC(2026, 8, 30, 12, 0, 0);
 
@@ -200,5 +200,29 @@ describe("formatMessageTime", () =>
 	])("$name", ({timestamp, expected}) =>
 	{
 		expect(formatMessageTime(timestamp, NOW_MS, "UTC")).toBe(expected);
+	});
+});
+
+describe("formatSendTime", () =>
+{
+	it.each([
+		{
+			name: "react-intl formatTime's default: hour and minute",
+			timestamp: "2026-11-17T15:42:00.000Z",
+			expected: "3:42 PM",
+		},
+		{
+			name: "a single-digit minute keeps two digits",
+			timestamp: "2026-11-17T09:05:00.000Z",
+			expected: "9:05 AM",
+		},
+		{
+			name: "unparseable",
+			timestamp: "nope",
+			expected: undefined,
+		},
+	])("$name", ({timestamp, expected}) =>
+	{
+		expect(formatSendTime(timestamp, "UTC")).toBe(expected);
 	});
 });

@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 
 import {act, renderHook} from "@testing-library/react";
-import {afterEach, describe, expect, it, vi} from "vite-plus/test";
+import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {useLiveHerdrPrompt} from "../src/components/use-live-herdr-prompt";
+import {readFailedSends, resetFailedSendCache} from "../src/lib/failed-send-store";
 import {HerdrRequestError} from "../src/lib/api/herdr";
 import
 {
@@ -17,6 +18,36 @@ import
 	type RejectedRefill,
 } from "../src/lib/context-attach";
 import {type SessionLine, processTranscript} from "../src/lib/transcript";
+
+const durableGate = vi.hoisted(() => (
+{
+	override: undefined as boolean | undefined,
+}));
+
+vi.mock("../src/lib/durable-sends", async (importActual) =>
+{
+	const actual = await importActual<typeof import("../src/lib/durable-sends")>();
+	return {
+		get DURABLE_SENDS()
+		{
+			return durableGate.override ?? actual.DURABLE_SENDS;
+		},
+	};
+});
+
+afterEach(() =>
+{
+	durableGate.override = undefined;
+});
+
+/** The send-rejected card + refill path, upstream's behaviour with the durable-send gate off. */
+const withoutDurableSends = () =>
+{
+	beforeEach(() =>
+	{
+		durableGate.override = false;
+	});
+};
 
 const PENDING =
 {
@@ -282,6 +313,8 @@ describe("useLiveHerdrPrompt tracks the send phase", () =>
 
 describe("useLiveHerdrPrompt records a rejected send", () =>
 {
+	withoutDurableSends();
+
 	const rejectingHook = (error: Error, restoredAttachments = false) =>
 	{
 		const postPrompt = vi.fn<(sessionId: string, prompt: string) => Promise<void>>().mockRejectedValue(error);
@@ -476,6 +509,8 @@ describe("useLiveHerdrPrompt records a rejected send", () =>
 
 describe("useLiveHerdrPrompt routes a rejection to the session that sent it", () =>
 {
+	withoutDurableSends();
+
 	afterEach(() =>
 	{
 		localStorage.clear();
@@ -645,6 +680,159 @@ describe("useLiveHerdrPrompt routes a rejection to the session that sent it", ()
 					text: "hi\n\nnewer",
 				},
 			),
+		);
+	});
+});
+
+describe("useLiveHerdrPrompt keeps a refused send as a durable Not delivered row", () =>
+{
+	beforeEach(() =>
+	{
+		localStorage.clear();
+		resetFailedSendCache();
+		vi.useFakeTimers(
+			{
+				now: new Date("2026-11-17T15:42:00Z"),
+				toFake: ["Date"],
+			},
+		);
+	});
+
+	afterEach(() =>
+	{
+		vi.useRealTimers();
+		localStorage.clear();
+		resetFailedSendCache();
+	});
+
+	const durableHook = (post: (sessionId: string, prompt: string) => Promise<void>) =>
+	{
+		const postPrompt = vi.fn<(sessionId: string, prompt: string) => Promise<void>>(post);
+		const onRejected = vi.fn<(sessionId: string, prompt: string) => RejectedRefill>(() => (
+		{
+			restoredAttachments: false,
+		}));
+		const hook = renderHook(() => useLiveHerdrPrompt("s1", 100, [], postPrompt, onRejected));
+		return {
+			hook,
+			postPrompt,
+			onRejected,
+		};
+	};
+
+	it("marks the send failed in the persisted store, with no card and no composer refill", async () =>
+	{
+		const {hook, onRejected} = durableHook(async () => Promise.reject(new HerdrRequestError("boom", 502, "x")));
+		let result: string | undefined;
+		await act(async () =>
+		{
+			result = await hook.result.current.send("hi");
+		});
+		resetFailedSendCache();
+
+		expect(
+			{
+				result,
+				state: hook.result.current.state,
+				failed: hook.result.current.failedSends.map(({prompt, sentAt}) => (
+				{
+					prompt,
+					sentAt,
+				})),
+				persisted: readFailedSends("s1").map(({prompt}) => prompt),
+				refills: onRejected.mock.calls,
+				draft: localStorage.getItem("ccp-composer-draft:s1"),
+			},
+		).toStrictEqual(
+			{
+				result: "failed",
+				state: CLEARED,
+				failed: [
+					{
+						prompt: "hi",
+						sentAt: "2026-11-17T15:42:00.000Z",
+					},
+				],
+				persisted: ["hi"],
+				refills: [],
+				draft: null,
+			},
+		);
+	});
+
+	it("Retry resends the same text and the row goes once the pane takes it", async () =>
+	{
+		let fail = true;
+		const {hook, postPrompt} = durableHook(async () =>
+			fail ? Promise.reject(new HerdrRequestError("boom", 502, "x")) : Promise.resolve(),
+		);
+		await act(async () =>
+		{
+			await hook.result.current.send("hi");
+		});
+		fail = false;
+		const [failed] = hook.result.current.failedSends;
+		await act(async () =>
+		{
+			await hook.result.current.retryFailedSend(failed?.id ?? "");
+		});
+
+		expect(
+			{
+				posts: postPrompt.mock.calls.map(([, prompt]) => prompt),
+				failed: hook.result.current.failedSends,
+				phase: hook.result.current.state.phase,
+			},
+		).toStrictEqual(
+			{
+				posts: ["hi", "hi"],
+				failed: [],
+				phase: "sent",
+			},
+		);
+	});
+
+	it("a Retry the pane refuses again keeps the row's id and first send time", async () =>
+	{
+		const {hook} = durableHook(async () => Promise.reject(new HerdrRequestError("boom", 502, "x")));
+		await act(async () =>
+		{
+			await hook.result.current.send("hi");
+		});
+		const before = hook.result.current.failedSends;
+		vi.setSystemTime(new Date("2026-11-17T15:50:00Z"));
+		await act(async () =>
+		{
+			await hook.result.current.retryFailedSend(before[0]?.id ?? "");
+		});
+
+		expect(hook.result.current.failedSends).toStrictEqual(before);
+	});
+
+	it("Discard drops the row without sending", async () =>
+	{
+		const {hook, postPrompt} = durableHook(async () => Promise.reject(new HerdrRequestError("boom", 502, "x")));
+		await act(async () =>
+		{
+			await hook.result.current.send("hi");
+		});
+		act(() =>
+		{
+			hook.result.current.discardFailedSend(hook.result.current.failedSends[0]?.id ?? "");
+		});
+
+		expect(
+			{
+				posts: postPrompt.mock.calls.length,
+				failed: hook.result.current.failedSends,
+				persisted: localStorage.getItem("ccp-failed-sends:s1"),
+			},
+		).toStrictEqual(
+			{
+				posts: 1,
+				failed: [],
+				persisted: null,
+			},
 		);
 	});
 });

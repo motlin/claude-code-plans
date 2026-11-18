@@ -16,11 +16,13 @@ import
 	takeContextChips,
 	type RejectedRefill,
 } from "../src/lib/context-attach";
+import {resetFailedSendCache} from "../src/lib/failed-send-store";
 
 afterEach(() =>
 {
 	cleanup();
 	localStorage.clear();
+	resetFailedSendCache();
 });
 
 type PostPrompt = (
@@ -93,7 +95,7 @@ describe("useLiveHerdrPrompt held for the terminal", () =>
 		},
 	);
 
-	it("fails a 502 with another code rather than holding it", async () =>
+	it("fails a 502 with another code into a durable Not delivered row rather than holding it", async () =>
 	{
 		const postPrompt = vi
 			.fn<PostPrompt>()
@@ -105,17 +107,21 @@ describe("useLiveHerdrPrompt held for the terminal", () =>
 			await result.current.send("Alice's prompt");
 		});
 
-		expect(result.current.state).toStrictEqual(
+		expect(
 			{
-				phase: "idle",
-				isPending: false,
-				prompt: "",
-				rejection:
+				state: result.current.state,
+				failed: result.current.failedSends.map(({prompt}) => prompt),
+			},
+		).toStrictEqual(
+			{
+				state:
 				{
-					prompt: "Alice's prompt",
-					message: "herdr refused",
-					nonResendable: false,
+					phase: "idle",
+					isPending: false,
+					prompt: "",
+					rejection: null,
 				},
+				failed: ["Alice's prompt"],
 			},
 		);
 	});

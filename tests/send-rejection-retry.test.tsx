@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import {act, cleanup, fireEvent, render, screen, waitFor} from "@testing-library/react";
+import {act, cleanup, fireEvent, render, renderHook, screen, waitFor} from "@testing-library/react";
 import {useCallback} from "react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
@@ -14,6 +14,12 @@ import {HerdrRequestError} from "../src/lib/api/herdr";
 import {clearComposerQueues, dispatchComposerQueue} from "../src/lib/composer-queue";
 import {attachContext, getContextChips, refillRejectedSend, removeContextChip} from "../src/lib/context-attach";
 import {clearDiffComments, getDiffComments, openDiffCommentDraft, saveDiffComment} from "../src/lib/diff-comments";
+
+/* These cover the send-rejected card + refill, upstream's path with the durable-send gate off. */
+vi.mock("../src/lib/durable-sends", () => (
+{
+	DURABLE_SENDS: false,
+}));
 
 afterEach(() =>
 {
@@ -535,5 +541,45 @@ describe("send-rejected card after a reload", () =>
 			expect(textarea().value).toBe("hi edited");
 		});
 		expect(card()).toBeNull();
+	});
+});
+
+describe("Not delivered row Retry / Discard", () =>
+{
+	it("clear the send-rejected card first, so the row and the card never offer two retries", () =>
+	{
+		const calls: string[] = [];
+		const {result} = renderHook(() =>
+			useSendRejectionActions(
+				"s1",
+				{
+					prompt: "hi",
+					message: "boom",
+					nonResendable: false,
+				},
+				() =>
+				{
+					calls.push("clear");
+				},
+				{
+					retryFailedSend: async (id) =>
+					{
+						calls.push(`retry ${id}`);
+						return Promise.resolve("sent");
+					},
+					discardFailedSend: (id) =>
+					{
+						calls.push(`discard ${id}`);
+					},
+				},
+			),
+		);
+		act(() =>
+		{
+			result.current.retryFailedSend("f-1");
+			result.current.discardFailedSend("f-2");
+		});
+
+		expect(calls).toStrictEqual(["clear", "retry f-1", "clear", "discard f-2"]);
 	});
 });

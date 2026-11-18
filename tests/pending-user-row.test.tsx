@@ -3,7 +3,7 @@
 import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
-import {HeldUserRow, SendingUserRow} from "../src/components/pending-user-row";
+import {FailedUserRow, HeldUserRow, SendingUserRow} from "../src/components/pending-user-row";
 
 afterEach(() =>
 {
@@ -185,3 +185,81 @@ describe("HeldUserRow roving", () =>
 		);
 	});
 });
+
+describe("FailedUserRow", () =>
+{
+	it("draws upstream's durable Not delivered footer: danger status with the send time, then ghost Retry and Discard", () =>
+	{
+		const onRetry = vi.fn<() => void>();
+		const onDiscard = vi.fn<() => void>();
+		const {container} = render(
+			<FailedUserRow prompt="Fix Alice's test" sentAt="3:42 PM" onRetry={onRetry} onDiscard={onDiscard} />,
+		);
+		const footer = screen.getByTestId("epitaxy-failed-send");
+		const status = footer.firstElementChild;
+		const retry = screen.getByRole(
+			"button",
+			{
+				name: "Retry",
+			},
+		);
+		const discard = screen.getByRole(
+			"button",
+			{
+				name: "Discard",
+			},
+		);
+		const retryDown = fireEvent.mouseDown(retry);
+		const discardDown = fireEvent.mouseDown(discard);
+		fireEvent.click(retry);
+		fireEvent.click(discard);
+		expect(
+			{
+				delivery: container.querySelector("[data-delivery-status]")?.getAttribute("data-delivery-status"),
+				rowClass: container.querySelector("[data-delivery-status]")?.className,
+				bubble: container.querySelector(".user-message-bubble")?.textContent,
+				footerClass: footer.className,
+				children: [...footer.children].map((child) => child.tagName),
+				statusClass: status?.className,
+				statusText: status?.textContent,
+				icon: status?.querySelector("svg")?.getAttribute("data-cds"),
+				iconSize: (status?.querySelector("svg") as SVGElement | null)?.style.fontSize,
+				buttonClasses: [retry.className, discard.className],
+				buttonTypes: [retry.getAttribute("type"), discard.getAttribute("type")],
+				focusKept: [!retryDown, !discardDown],
+				retries: onRetry.mock.calls.length,
+				discards: onDiscard.mock.calls.length,
+				noToolbar: container.querySelector("[role=toolbar]") === null,
+			},
+		).toStrictEqual(
+			{
+				delivery: "failed",
+				rowClass: "group/msg flex w-full justify-end",
+				bubble: "Fix Alice's test",
+				footerClass: "flex items-center gap-1 pt-[4px]",
+				children: ["SPAN", "BUTTON", "BUTTON"],
+				statusClass:
+					"flex items-center gap-[3px] text-[12px] leading-[15px] text-danger comfortable:text-[13px] comfortable:leading-[17px]",
+				statusText: "Not delivered · 3:42 PM",
+				icon: "Icon",
+				iconSize: "calc(0.75rem * var(--cds-rem-scale, 1))",
+				buttonClasses: [FAILED_ACTION_CLASS, FAILED_ACTION_CLASS],
+				buttonTypes: ["button", "button"],
+				focusKept: [true, true],
+				retries: 1,
+				discards: 1,
+				noToolbar: true,
+			},
+		);
+	});
+
+	it("reads plain Not delivered with no send time", () =>
+	{
+		render(<FailedUserRow prompt="hi" sentAt={undefined} onRetry={() => undefined} onDiscard={() => undefined} />);
+		expect(screen.getByTestId("epitaxy-failed-send").firstElementChild?.textContent).toBe("Not delivered");
+	});
+});
+
+/** Upstream cds Button `variant="ghost" size="xxs"` (data-step 1: 20px high, 5px radius, 12px/17px, 0 6px). */
+const FAILED_ACTION_CLASS =
+	"relative inline-flex h-5 shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-r4 whitespace-nowrap select-none px-1.5 font-control-regular text-[12px] leading-[17px] text-primary hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
