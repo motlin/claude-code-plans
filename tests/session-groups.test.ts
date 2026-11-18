@@ -9,7 +9,6 @@ import
 	customGroupLaunchTarget,
 	isOlderBucket,
 	migrateSessionListPrefs,
-	olderBulkArchivableIds,
 	nextPageCanHoldVisibleRows,
 	pinnedGroup,
 	type SessionGroup,
@@ -988,27 +987,13 @@ describe("buildGroups date mode", () =>
 		]);
 	});
 
-	it("scopes Older's bulk archive to every Older row past the cap, nested forks included, minus pinned, archived and open rows", () =>
+	it("marks only Recents' own Date Older bucket as the Older bucket", () =>
 	{
 		const rows = [
-			...Array.from(
-				{
-					length: 25,
-				},
-				(_, index) =>
-					row(
-						`old-${index}`,
-						{
-							lastActivityAt: NOW - (30 + index) * DAY,
-							archived: index === 22,
-						},
-					),
-			),
 			row(
-				"old-fork",
+				"old",
 				{
-					lastActivityAt: NOW - 60 * DAY,
-					forkedFromSessionId: "old-3",
+					lastActivityAt: NOW - 30 * DAY,
 				},
 			),
 			row("yesterday"),
@@ -1030,24 +1015,15 @@ describe("buildGroups date mode", () =>
 			{
 				key: group.key,
 				older: isOlderBucket(group),
-				ids: olderBulkArchivableIds(
-					group,
-					{
-						pinnedIds: new Set(["old-21"]),
-						openIds: new Set(["old-24"]),
-					},
-				),
 			})),
 		).toStrictEqual([
 			{
 				key: "date-yesterday",
 				older: false,
-				ids: ["yesterday"],
 			},
 			{
 				key: "date-older",
 				older: true,
-				ids: [...ids("old", 4), "old-fork", ...ids("old", 17, 4), "old-23"],
 			},
 		]);
 	});

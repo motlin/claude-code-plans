@@ -1,4 +1,4 @@
-import {keepPreviousData, useInfiniteQuery, useQueryClient} from "@tanstack/react-query";
+import {keepPreviousData, useInfiniteQuery} from "@tanstack/react-query";
 import {useCallback, useEffect, useMemo, useReducer, useRef, useState, type MouseEvent, type ReactNode} from "react";
 
 import {Ungroup} from "lucide-react";
@@ -6,7 +6,6 @@ import {Ungroup} from "lucide-react";
 import {type SidebarDrop, useSidebarDrag} from "../../hooks/use-sidebar-drag";
 import {useAnsweredSessionIds, withAnsweredHold} from "../../lib/answered-sessions";
 import {recentSessionsInfiniteQueryOptions, type SessionListItem} from "../../lib/api/sessions";
-import {drainPages} from "../../lib/drain-pages";
 import {withAwaitingAck} from "../../lib/awaiting-ack-overlay";
 import {ackedAt, useAwaitingAckVersion} from "../../lib/awaiting-ack-store";
 import {withFailedError} from "../../lib/failed-error-overlay";
@@ -72,7 +71,6 @@ import
 	type EmptyListReason,
 	GroupSection,
 	LoadMoreSessionsRow,
-	type OlderBulk,
 	ROW_CLASS,
 	type SectionFetchMore,
 	StaticGroupLabel,
@@ -113,7 +111,6 @@ export function SessionGroups({
 	prefs?: SessionListPrefs;
 })
 {
-	const qc = useQueryClient();
 	const feed = recentSessionsInfiniteQueryOptions(undefined, prefs.statusFilter);
 	const {data, hasNextPage, isFetchingNextPage, fetchNextPage, isError, isPlaceholderData, refetch} =
 		useInfiniteQuery(
@@ -333,41 +330,6 @@ export function SessionGroups({
 		};
 	}, []);
 	const canFetchMore = hasNextPage && nextPageCanHoldVisibleRows(loadedRows, prefs, Date.now());
-	// Upstream `fetchAllCode`: drain the feed for the Older bulk menu, then trim it back to the pages it had.
-	const olderBulk: OlderBulk =
-	{
-		listHasMore: canFetchMore,
-		pinnedIds,
-		onFetchAll: async () =>
-		{
-			const before = qc.getQueryData(feed.queryKey)?.pages.length ?? 0;
-			const {exhausted} = await drainPages(
-				fetchNextPage,
-				(result) =>
-					result.hasNextPage &&
-					nextPageCanHoldVisibleRows(
-						result.data?.pages.flatMap((page) => page.sessions.map(toGroupRow)) ?? [],
-						prefs,
-						Date.now(),
-					),
-			);
-			return {
-				exhausted,
-				release: () =>
-				{
-					qc.setQueryData(feed.queryKey, (current) =>
-						current === undefined
-							? current
-							:
-								{
-									pages: current.pages.slice(0, before),
-									pageParams: current.pageParams.slice(0, before),
-								},
-					);
-				},
-			};
-		},
-	};
 	const collapsedSet = new Set(collapsedGroups);
 	// Upstream `recordSidebarRowCount(…, "code.recents", n)`: a settled list remembers how many Recents rows it shows.
 	const recentsRowCount =
@@ -728,7 +690,6 @@ export function SessionGroups({
 										filterSlot={filterSlot}
 										onReveal={onReveal}
 										fetchMore={index === groups.length - 1 ? sectionFetchMore : undefined}
-										olderBulk={olderBulk}
 										dragRowProps={rowProps}
 										sectionKeys={sectionKeys}
 										projectReorder={reorders.get(group.key) ?? null}

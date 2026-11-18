@@ -361,28 +361,6 @@ export function isOlderBucket(group: Pick<SessionGroup<SessionGroupRow>, "key">)
 	return group.key === OLDER_GROUP_KEY;
 }
 
-/**
- * Upstream `AG`'s archive scope: every row in the bucket, shown or past Show more, with its nested
- * sessions, less the archived, pinned and open ones.
- */
-export function olderBulkArchivableIds(
-	group: SessionGroup<SessionGroupRow>,
-	{
-		pinnedIds,
-		openIds,
-	}:
-	{
-		pinnedIds: ReadonlySet<string>;
-		openIds: ReadonlySet<string>;
-	},
-): string[]
-{
-	return group.sorted
-		.flatMap((row) => [row, ...(group.allNested.get(row.sessionId) ?? [])])
-		.filter((row) => !row.archived && !pinnedIds.has(row.sessionId) && !openIds.has(row.sessionId))
-		.map((row) => row.sessionId);
-}
-
 function startOfLocalDay(time: number): number
 {
 	const date = new Date(time);
