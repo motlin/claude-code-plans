@@ -1,5 +1,5 @@
 import {useUnarchiveSession} from "../hooks/use-session-archive";
-import {ApprovalActionButton} from "./approval-card";
+import {ApprovalActionButton} from "./approval-action-button";
 
 /**
  * Upstream's archived-session stand-in: a neutral `role="note"` band that replaces the composer

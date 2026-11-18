@@ -1,3 +1,5 @@
+import {staleChunkReloadRecent} from "./stale-chunk-reload";
+
 /** Upstream recovery-kit ErrorView states. */
 export type ChunkErrorState = "retry" | "waiting" | "waiting-reload" | "updated" | "reload";
 
@@ -35,4 +37,16 @@ export function chunkErrorState({
 	if (!online) return reloadUsed ? "waiting-reload" : "waiting";
 	if (reloadUsed) return "reload";
 	return retried ? "updated" : "retry";
+}
+
+/** The ErrorView state for a failed download now: offline, after the stale-chunk reload, or after a Retry. */
+export function currentChunkErrorState(retried: boolean): ChunkErrorState
+{
+	return chunkErrorState(
+		{
+			online: navigator.onLine,
+			reloadUsed: staleChunkReloadRecent(),
+			retried,
+		},
+	);
 }

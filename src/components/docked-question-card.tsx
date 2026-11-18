@@ -14,7 +14,8 @@ import {DISMISSED_ANSWER, type QuestionLike} from "../lib/ask-user-question";
 import {hasPreviews, pickDockedOption, type QuestionCardDraft, typeOther} from "../lib/question-card-draft";
 import {maskSecrets} from "../lib/secret-mask";
 import {stripMemoryTags} from "../lib/task-checklist";
-import {ApprovalActionButton, ApprovalDockBackdrop} from "./approval-card";
+import {ApprovalActionButton} from "./approval-action-button";
+import {ApprovalDockBackdrop} from "./approval-card";
 import {ApprovalStackGhosts} from "./approval-stack";
 import
 {

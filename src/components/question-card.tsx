@@ -23,7 +23,7 @@ import
 	subscribePreviewSanitizer,
 } from "../lib/question-option-preview";
 import {chooseOther, pickOption, type QuestionCardDraft, typeOther} from "../lib/question-card-draft";
-import {APPROVAL_ACTION_SHORTCUT_CLASS, ApprovalActionButton} from "./approval-card";
+import {APPROVAL_ACTION_SHORTCUT_CLASS, ApprovalActionButton} from "./approval-action-button";
 import {DockedQuestionCard} from "./docked-question-card";
 import
 {

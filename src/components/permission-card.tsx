@@ -65,13 +65,8 @@ import
 } from "../lib/permission-suggestions";
 import {visibleSingleLine} from "../lib/visible-text";
 import {useBackgroundTasksOpener} from "./background-tasks-opener-context";
-import
-{
-	APPROVAL_ACTION_SHORTCUT_CLASS,
-	APPROVAL_SENDING_LABEL,
-	ApprovalActionButton,
-	ApprovalCardShell,
-} from "./approval-card";
+import {APPROVAL_ACTION_SHORTCUT_CLASS, ApprovalActionButton} from "./approval-action-button";
+import {APPROVAL_SENDING_LABEL, ApprovalCardShell} from "./approval-card";
 import {LinedScript} from "./lined-script";
 import {PermissionFileChangePreview} from "./permission-file-change-body";
 import {PermissionRowsList, PERMISSION_ROWS_LABEL} from "./permission-rows";

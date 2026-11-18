@@ -3,7 +3,7 @@
 import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
-import {ChunkErrorView} from "../src/components/panes/chunk-error-view";
+import {ChunkErrorView} from "../src/components/chunk-error-view";
 import {deferredPane} from "../src/components/panes/deferred-pane";
 import {usePaneHost} from "../src/components/panes/pane-host-context";
 import {registerPane} from "../src/components/panes/pane-registry";

@@ -2,7 +2,7 @@ import {useState} from "react";
 import {Copy} from "lucide-react";
 
 import {sendRejectedCopy} from "../lib/send-rejection";
-import {ApprovalActionButton} from "./approval-card";
+import {ApprovalActionButton} from "./approval-action-button";
 import {ErrorCardShell} from "./error-card-shell";
 import * as Collapsible from "./ui/collapsible";
 import type {SendRejection} from "./use-live-herdr-prompt";

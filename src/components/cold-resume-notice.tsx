@@ -8,7 +8,7 @@ import
 	decideColdResume,
 	idleSince,
 } from "../lib/cold-resume-notice";
-import {ApprovalActionButton} from "./approval-card";
+import {ApprovalActionButton} from "./approval-action-button";
 import {useComposerNotice} from "./composer-notice-context";
 import {NoticeBanner} from "./notice-banner";
 import {Icon} from "./ui/icon";

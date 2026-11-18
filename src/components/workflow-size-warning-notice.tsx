@@ -9,7 +9,7 @@ import
 	setWorkflowSizeStore,
 	subscribeWorkflowSizeStore,
 } from "../lib/workflow-size-store";
-import {ApprovalActionButton} from "./approval-card";
+import {ApprovalActionButton} from "./approval-action-button";
 import {useBackgroundTasksOpener} from "./background-tasks-opener-context";
 import {useComposerNotice} from "./composer-notice-context";
 import {NoticeBanner} from "./notice-banner";

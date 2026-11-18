@@ -3,7 +3,7 @@ import {type ReactNode, useState} from "react";
 import {assertNever} from "../lib/assert-never";
 import type {RecoveryAction} from "../lib/api-error-recovery";
 import type {RetryModelItem, RetryModelItems} from "../lib/retry-model-items";
-import {ApprovalActionButton} from "./approval-card";
+import {ApprovalActionButton} from "./approval-action-button";
 import {MENU_BADGE_CLASS} from "./ui/badge-classes";
 import
 {

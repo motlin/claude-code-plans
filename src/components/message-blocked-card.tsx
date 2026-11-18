@@ -3,7 +3,7 @@ import {type ReactNode, useState} from "react";
 
 import {useFizzyLake} from "../lib/fizzy-lake";
 import {formatModelName} from "../lib/model-name";
-import {ApprovalActionButton} from "./approval-card";
+import {ApprovalActionButton} from "./approval-action-button";
 import {type HardBlockHost, hardBlockOpenMemory} from "./hard-block-host";
 import {NOTICE_SURFACE_CLASS} from "./notice-banner-classes";
 import * as Collapsible from "./ui/collapsible";

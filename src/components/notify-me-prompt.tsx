@@ -1,6 +1,6 @@
 import {NOTIFICATIONS_BLOCKED_COPY, useNotificationPermission} from "../hooks/use-notification-permission";
 import {optInSessionNotifications, useSessionNotifyOptedIn} from "../lib/notify-sessions";
-import {ApprovalActionButton} from "./approval-card";
+import {ApprovalActionButton} from "./approval-action-button";
 import {useSettings} from "./settings-context";
 import {useToast} from "./toast-context";
 

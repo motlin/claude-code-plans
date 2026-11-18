@@ -9,6 +9,7 @@ import {sideChatPanel} from "./side-chat-panel-module";
 import {useToast} from "./toast-context";
 import {ViewportPortal} from "./viewport-portal";
 
+// No upstream lazy counterpart was found in the 11-10 crawl, so a failed download stays fail-open (renders nothing).
 const SideChatPanel = deferredComponent(sideChatPanel, "SideChatPanel");
 
 const ASIDE_CLASS =

@@ -1,7 +1,8 @@
 import {deferredComponent, deferredModule, useLoadedModule} from "./deferred-component";
+import {SlashMenuFrame, SlashMenuSkeleton} from "./slash-command-menu-frame";
 
 // The composer's on-demand surfaces stay off the cold load; the composer warms them on mount, before a first / or @.
-const composerSurfaces = deferredModule(async () =>
+export const composerSurfaces = deferredModule(async () =>
 	import("./composer-surfaces").then(
 		({
 			AttachedContextChips,
@@ -28,6 +29,13 @@ const composerSurfaces = deferredModule(async () =>
 
 export const preloadComposerSurfaces = composerSurfaces.preload;
 
+/*
+ * Upstream gives only the "/" popup body a placeholder (`SlashCommandMenuPopupBody`, `loading: Mh`), so a failed
+ * download shows its inline ErrorView in the popup. The queued and parked bars are silent there
+ * ("placeholder-would-mislead") and the emoji popup is fail-open, so they render nothing on a failure, as do the
+ * surfaces with no upstream counterpart found in the 11-10 crawl (the @ menu, context chips, drop scrim, promote
+ * status).
+ */
 const deferredSurfaces =
 {
 	AttachedContextChips: deferredComponent(composerSurfaces, "AttachedContextChips"),
@@ -37,7 +45,14 @@ const deferredSurfaces =
 	ParkedMessageBar: deferredComponent(composerSurfaces, "ParkedMessageBar"),
 	QueuedMessageBar: deferredComponent(composerSurfaces, "QueuedMessageBar"),
 	QueuedPromoteStatus: deferredComponent(composerSurfaces, "QueuedPromoteStatus"),
-	SlashCommandMenu: deferredComponent(composerSurfaces, "SlashCommandMenu"),
+	SlashCommandMenu: deferredComponent(
+		composerSurfaces,
+		"SlashCommandMenu",
+		{
+			loading: SlashMenuSkeleton,
+			frame: SlashMenuFrame,
+		},
+	),
 };
 
 /**

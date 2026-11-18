@@ -1,7 +1,7 @@
 import {type ReactNode, useCallback, useId, useRef, useState} from "react";
 
 import {isStaleChunkError} from "../lib/stale-chunk-reload";
-import {ApprovalActionButton} from "./approval-card";
+import {ApprovalActionButton} from "./approval-action-button";
 import {NoticeBanner} from "./notice-banner";
 import {RenderErrorBoundary} from "./render-error-boundary";
 import {PART_CRASHED_COPY} from "./tool-card-boundary";

@@ -1,6 +1,7 @@
 import {useSyncExternalStore} from "react";
 import {useShortcut} from "../hooks/use-shortcut";
 import {deferredComponent} from "./deferred-component";
+import {KeyboardShortcutsBodySkeleton, KeyboardShortcutsLoadingFrame} from "./keyboard-shortcuts-dialog-frame";
 import {keyboardShortcutsDialogModule} from "./keyboard-shortcuts-dialog-module";
 import
 {
@@ -10,7 +11,17 @@ import
 	subscribeKeyboardShortcutsOpen,
 } from "./keyboard-shortcuts-open";
 
-const KeyboardShortcutsDialog = deferredComponent(keyboardShortcutsDialogModule, "KeyboardShortcutsDialog");
+// Upstream lazy-loads only the list body (`ShortcutsModalBody`, `loading: OV`) inside an eager modal, so a failed
+// download shows the inline ErrorView in the open dialog; the local chunk holds the whole dialog, so the shell is
+// drawn here around the skeleton and the ErrorView.
+const KeyboardShortcutsDialog = deferredComponent(
+	keyboardShortcutsDialogModule,
+	"KeyboardShortcutsDialog",
+	{
+		loading: KeyboardShortcutsBodySkeleton,
+		frame: KeyboardShortcutsLoadingFrame,
+	},
+);
 
 /**
  * Binds ⌘/ and mounts the Keyboard shortcuts dialog from its first open on; until then a closed dialog renders

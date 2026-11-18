@@ -2,7 +2,7 @@ import {useState} from "react";
 
 import {capDetails} from "../lib/hook-prompt-block";
 import {ErrorDetails, MARKER_ROOT_CLASS, MarkerWarningIcon} from "./api-error-card";
-import {ApprovalActionButton} from "./approval-card";
+import {ApprovalActionButton} from "./approval-action-button";
 import {ErrorCardShell} from "./error-card-shell";
 
 const HINT_FALLBACK = "A UserPromptSubmit hook stopped this prompt before it reached Claude.";

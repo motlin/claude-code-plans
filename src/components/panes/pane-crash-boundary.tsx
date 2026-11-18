@@ -1,7 +1,7 @@
 import type {ReactNode} from "react";
 
 import {isStaleChunkError} from "../../lib/stale-chunk-reload";
-import {ApprovalActionButton} from "../approval-card";
+import {ApprovalActionButton} from "../approval-action-button";
 import {RenderErrorBoundary} from "../render-error-boundary";
 import {PanePlaceholder} from "./pane-placeholder";
 

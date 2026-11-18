@@ -1,7 +1,7 @@
 import {SquareTerminal} from "lucide-react";
 import {useCallback, useState} from "react";
 import {useStartHerdrTerminal} from "../hooks/use-herdr-terminal";
-import {ApprovalActionButton} from "./approval-card";
+import {ApprovalActionButton} from "./approval-action-button";
 
 interface OpenHerdrTerminal
 {

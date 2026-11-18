@@ -15,7 +15,8 @@ import
 	type ElicitationValue,
 } from "../lib/elicitation-form";
 import {asRecord} from "../lib/narrow";
-import {APPROVAL_CARD_TITLE, ApprovalActionButton, ApprovalCardShell} from "./approval-card";
+import {ApprovalActionButton} from "./approval-action-button";
+import {APPROVAL_CARD_TITLE, ApprovalCardShell} from "./approval-card";
 
 /*
  * Upstream's MCP elicitation form card (`rs` in cc32965c2, fields from

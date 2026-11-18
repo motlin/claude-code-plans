@@ -4,7 +4,7 @@ import {useState} from "react";
 import {formatModelName} from "../lib/model-name";
 import type {RefusalFallback} from "../lib/refusal-fallback";
 import {type RefusalOptOutView, useRefusalOptOut} from "../hooks/use-refusal-opt-out";
-import {ApprovalActionButton} from "./approval-card";
+import {ApprovalActionButton} from "./approval-action-button";
 import {useComposerNotice} from "./composer-notice-context";
 import {NoticeBanner} from "./notice-banner";
 import {COLLISION_PADDING, POPUP_CLASS} from "./session-hover-card-classes";

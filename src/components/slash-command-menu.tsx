@@ -11,61 +11,12 @@ import
 } from "../lib/slash-commands";
 import {useLazyShrinkwrap} from "../hooks/use-lazy-shrinkwrap";
 import {slashCommandOptionId, slashSubmenuOptionId} from "./slash-command-option-id";
-import {type Density, useScopeDensity} from "./ui/density-context";
+import {popupClass, POPUP_SURFACE_CLASS, SLASH_DENSITY, type SlashSizing} from "./slash-command-menu-classes";
+import {SlashLoadingBars} from "./slash-command-menu-frame";
+import {useScopeDensity} from "./ui/density-context";
 import {TOOLTIP_CLASS} from "./ui/tooltip-classes";
 import {placeRowTooltip} from "./ui/tooltip-placement";
 import {Icon} from "./ui/icon";
-
-/*
- * Upstream's slash portal copies its opener's density. The epitaxy root is compact unless a
- * coarse pointer, a density override or the fizzy-lake "panels" rollout makes it comfortable.
- * The rows are `h-control` (24px compact, 28px comfortable), not the generic menu's 32px
- * comfortable rows, so this keeps its own map. Heights feed the virtualizer: a section header
- * is `py-1` plus one footnote line per `whitespace-pre-line` line, a separator 1px plus `my-1`
- * (upstream's `mx-2.5` at every density since 2026-11-01), and the gutter is `p-1`/`p-1.5`.
- */
-const SLASH_DENSITY =
-{
-	compact:
-	{
-		popup: "rounded-r7",
-		scroller: "p-1",
-		row: "h-6 items-center gap-1.5 rounded-r5 px-2 py-[2.5px] text-[13px]/[19px]",
-		header: "px-2 py-1 text-[12px]/[15px] font-medium text-ink-muted whitespace-pre-line",
-		separator: "mx-2.5 my-1 h-px bg-border",
-		loading: "flex h-6 items-center gap-1.5 px-2",
-		rowHeight: 24,
-		gutter: 4,
-		headerLineHeight: 15,
-	},
-	comfortable:
-	{
-		popup: "rounded-menu-comfortable",
-		scroller: "p-1.5",
-		row: "h-7 items-center gap-2 rounded-r6 px-2.5 py-1 text-[14px]/[20px]",
-		header: "px-2.5 py-1 text-[13px]/[17px] font-medium text-ink-muted whitespace-pre-line",
-		separator: "mx-2.5 my-1 h-px bg-border",
-		loading: "flex h-7 items-center gap-2 px-2.5",
-		rowHeight: 28,
-		gutter: 6,
-		headerLineHeight: 17,
-	},
-} as const;
-
-type SlashSizing = (typeof SLASH_DENSITY)[Density];
-
-const POPUP_SURFACE_CLASS =
-	"z-[130] flex min-w-60 max-w-[min(32rem,calc(100vw-16px))] flex-col bg-[var(--menu-bg)] text-primary shadow-[var(--menu-shadow)] select-none";
-
-/*
- * Upstream's positioner caps: `maxHeightCap` 384 with the grouped menu's gate off; with it on (`fixedWidth` 260) the
- * grouped empty view has no cap (the available height wins) and a typed query caps at 480.
- */
-function popupClass(compactHost: boolean, grouped: boolean): string
-{
-	const size = compactHost ? (grouped ? "w-[260px]" : "w-[260px] max-h-[480px]") : "w-max max-h-96";
-	return `absolute bottom-full left-0 mb-2 ${size} ${POPUP_SURFACE_CLASS}`;
-}
 
 /* Upstream's nested submenu `re`: the same popup, `right-start` 8px past the trigger and 4px above it, capped at 384. */
 const NESTED_POPUP_CLASS = `absolute w-max max-h-96 ${POPUP_SURFACE_CLASS}`;
@@ -101,8 +52,6 @@ function itemHeight(item: SlashMenuItem, sizing: SlashSizing): number
 	return sizing.rowHeight;
 }
 
-/* Upstream's iconless `loading` row: a cds SkeletonGroup (`Skeleton.Rows` rows:1 icon:false) holding one 120×16 bar (`JO[0]`). */
-const LOADING_BAR_CLASS = "max-w-full rounded bg-[var(--skeleton-base)]";
 /* The popup's `max-h-96`, used until the scroller has a measured height. */
 const FALLBACK_VIEWPORT_HEIGHT = 384;
 
@@ -451,28 +400,7 @@ export function SlashCommandMenu({
 			case "loading":
 				return (
 					<div key={`loading:${index}`} data-testid="slash-loading-row">
-						<div
-							data-skeleton-group=""
-							data-motion="wave"
-							data-hold="none"
-							data-hold-reason="overlay"
-							role="status"
-						>
-							<span className="sr-only">Loading</span>
-							<div aria-hidden="true" className="contents">
-								<div className={sizing.loading}>
-									<div
-										data-skeleton=""
-										className={LOADING_BAR_CLASS}
-										style={
-										{
-											width: "120px",
-											height: "16px",
-										}}
-									/>
-								</div>
-							</div>
-						</div>
+						<SlashLoadingBars sizing={sizing} rows={1} />
 					</div>
 				);
 			case "submenu":

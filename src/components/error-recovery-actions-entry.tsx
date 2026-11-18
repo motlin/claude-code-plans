@@ -9,4 +9,5 @@ const recoveryActions = deferredModule(async () =>
 );
 
 export const preloadErrorRecoveryActions = recoveryActions.preload;
+// No upstream lazy counterpart was found in the 11-10 crawl, so a failed download stays fail-open (renders nothing).
 export const DeferredErrorRecoveryActions = deferredComponent(recoveryActions, "ErrorRecoveryActions");

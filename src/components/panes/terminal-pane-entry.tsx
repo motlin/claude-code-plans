@@ -1,6 +1,6 @@
 import {useEffect, useState} from "react";
 
-import {ApprovalActionButton} from "../approval-card";
+import {ApprovalActionButton} from "../approval-action-button";
 import {deferredPane} from "./deferred-pane";
 import {PanePlaceholder} from "./pane-placeholder";
 import {registerPane} from "./pane-registry";

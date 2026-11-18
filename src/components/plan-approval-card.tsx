@@ -46,7 +46,8 @@ import
 } from "../lib/plan-comments";
 import {clearUnsentPlan, getUnsentPlan, setUnsentPlan} from "../lib/plan-unsent";
 import {usePhoneSheet} from "../lib/use-phone-sheet";
-import {ApprovalActionButton, STACK_ACTIONS} from "./approval-card";
+import {ApprovalActionButton} from "./approval-action-button";
+import {STACK_ACTIONS} from "./approval-card";
 import {useOptionalPaneHost} from "./panes/pane-host-context";
 import type {PlanApprovalContextValue} from "./plan-approval-context";
 import {ReadOnlyAnswerHint} from "./terminal-writes-tip";
