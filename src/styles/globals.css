@@ -128,6 +128,14 @@
 	--animate-question-receipt-enter: approval-inline-enter 200ms ease-out;
 	/* Upstream's ⌘K row-actions card enter: duration-base with --cds-ease-out. */
 	--animate-palette-card-in: palette-card-in 200ms cubic-bezier(0.165, 0.84, 0.44, 1);
+	/* Upstream's thumb-card morph: the card slides from the thumb's spot as its title fades and its items unfold. */
+	--animate-palette-card-morph: palette-card-morph 200ms cubic-bezier(0.165, 0.84, 0.44, 1);
+	--animate-palette-card-title-in: fade-in 200ms cubic-bezier(0.165, 0.84, 0.44, 1);
+	--animate-palette-card-unfold: palette-card-unfold 200ms cubic-bezier(0.165, 0.84, 0.44, 1);
+	/* Upstream's thumb return: the hover thumb card slides back from the closed card's spot over duration-snap. */
+	--animate-palette-thumb-return: palette-thumb-return 120ms cubic-bezier(0.165, 0.84, 0.44, 1);
+	/* Upstream's animate-placeholder-reveal: a loading skeleton shows only after the reveal delay. */
+	--animate-placeholder-reveal: fade-in 150ms ease-out var(--placeholder-reveal-delay, 0.5s) backwards;
 	/* Upstream's animate-fade-in: the turn plan box fades in. */
 	--animate-fade-in: fade-in 0.3s cubic-bezier(0.25, 0.1, 0.35, 1);
 	/* System monospace fallback stack. The features below keep a custom
@@ -535,6 +543,8 @@ html[data-interface-font="dyslexic"]
 	--cds-icon: calc(1.25rem * var(--cds-rem-scale, 1));
 	/* Upstream .cds-root motion tokens: the SegmentedControl thumb FLIP reads both (src/lib/segmented-flip.ts). */
 	--cds-dur-base: 0.2s;
+	/* Upstream's duration-snap: the ⌘K thumb card's row-to-row slide and picture hold. */
+	--cds-dur-snap: 0.12s;
 	--cds-ease-out: cubic-bezier(0.165, 0.84, 0.44, 1);
 	--cds-ease-snap: cubic-bezier(0.32, 0.72, 0, 1);
 	/* Upstream semantic palette */
@@ -3445,6 +3455,37 @@ main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-reg
 	}
 }
 
+/* The ⌘K row-actions card opened from the thumb card starts at the thumb's spot. */
+@keyframes palette-card-morph
+{
+	0%
+	{
+		transform: translate(var(--cp-card-from-x), var(--cp-card-from-y));
+	}
+}
+
+/* The morphing card's items unfold from no height. */
+@keyframes palette-card-unfold
+{
+	0%
+	{
+		grid-template-rows: 0fr;
+	}
+	to
+	{
+		grid-template-rows: 1fr;
+	}
+}
+
+/* The thumb card returns from the closed row-actions card's spot. */
+@keyframes palette-thumb-return
+{
+	0%
+	{
+		transform: translate(var(--cp-thumb-from-x), var(--cp-thumb-from-y));
+	}
+}
+
 /* Upstream cds-reveal-in: Customize unified-search sections rise 4px as they fade in. */
 @keyframes reveal-in
 {
@@ -4978,6 +5019,10 @@ html[data-reduce-motion="true"] .animate-ping,
 html[data-reduce-motion="true"] .animate-approval-inline-enter,
 html[data-reduce-motion="true"] .animate-question-receipt-enter,
 html[data-reduce-motion="true"] .animate-palette-card-in,
+html[data-reduce-motion="true"] .animate-palette-card-morph,
+html[data-reduce-motion="true"] .animate-palette-card-title-in,
+html[data-reduce-motion="true"] .animate-palette-card-unfold,
+html[data-reduce-motion="true"] .animate-palette-thumb-return,
 html[data-reduce-motion="true"] .df-tab-dot-running,
 html[data-reduce-motion="true"] .terminal-caret,
 html[data-reduce-motion="true"] [data-spinner] *

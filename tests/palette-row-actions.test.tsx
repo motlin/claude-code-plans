@@ -18,6 +18,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import type {z} from "zod";
 import {CommandPalette, PALETTE_RECENT_LIMIT} from "../src/components/command-palette";
 import {rowActionsAnchorRect} from "../src/components/palette-row-actions-geometry";
+import {cardFromThumbOffset} from "../src/components/palette-thumb-geometry";
 import {ToastProvider} from "../src/components/toast";
 import {useCommandPalette} from "../src/hooks/use-command-palette";
 import {artifactsQueryOptions, type ArtifactSummary} from "../src/lib/api/artifacts";
@@ -1722,6 +1723,45 @@ describe("palette row actions card", () =>
 		);
 	});
 
+	it("defines upstream's thumb card and morph animations, keyframes and placeholder reveal", () =>
+	{
+		const styles = readFileSync("src/styles/globals.css", "utf8");
+		const animation = (name: string) => new RegExp(`--animate-${name}: [^;]*;`).exec(styles)?.[0];
+		const keyframes = (name: string) =>
+			new RegExp(`@keyframes ${name}\\n\\{(?:\\n\\t[^\\n]*)*\\n\\}`).exec(styles)?.[0];
+		expect(
+			{
+				morph: animation("palette-card-morph"),
+				titleIn: animation("palette-card-title-in"),
+				unfold: animation("palette-card-unfold"),
+				thumbReturn: animation("palette-thumb-return"),
+				placeholderReveal: animation("placeholder-reveal"),
+				morphKeyframes: keyframes("palette-card-morph"),
+				unfoldKeyframes: keyframes("palette-card-unfold"),
+				thumbReturnKeyframes: keyframes("palette-thumb-return"),
+				fadeInKeyframes: keyframes("fade-in"),
+			},
+		).toStrictEqual(
+			{
+				morph: "--animate-palette-card-morph: palette-card-morph 200ms cubic-bezier(0.165, 0.84, 0.44, 1);",
+				titleIn: "--animate-palette-card-title-in: fade-in 200ms cubic-bezier(0.165, 0.84, 0.44, 1);",
+				unfold: "--animate-palette-card-unfold: palette-card-unfold 200ms cubic-bezier(0.165, 0.84, 0.44, 1);",
+				thumbReturn:
+					"--animate-palette-thumb-return: palette-thumb-return 120ms cubic-bezier(0.165, 0.84, 0.44, 1);",
+				placeholderReveal:
+					"--animate-placeholder-reveal: fade-in 150ms ease-out var(--placeholder-reveal-delay, 0.5s) backwards;",
+				morphKeyframes:
+					"@keyframes palette-card-morph\n{\n\t0%\n\t{\n\t\ttransform: translate(var(--cp-card-from-x), var(--cp-card-from-y));\n\t}\n}",
+				unfoldKeyframes:
+					"@keyframes palette-card-unfold\n{\n\t0%\n\t{\n\t\tgrid-template-rows: 0fr;\n\t}\n\tto\n\t{\n\t\tgrid-template-rows: 1fr;\n\t}\n}",
+				thumbReturnKeyframes:
+					"@keyframes palette-thumb-return\n{\n\t0%\n\t{\n\t\ttransform: translate(var(--cp-thumb-from-x), var(--cp-thumb-from-y));\n\t}\n}",
+				fadeInKeyframes:
+					"@keyframes fade-in\n{\n\tfrom\n\t{\n\t\topacity: 0;\n\t}\n\tto\n\t{\n\t\topacity: 1;\n\t}\n}",
+			},
+		);
+	});
+
 	it("freezes the palette selection while the card is open", async () =>
 	{
 		const {dialog} = await openCard();
@@ -2654,6 +2694,440 @@ describe("palette row actions card", () =>
 				location: "/project/-Users-x-proj",
 			},
 		);
+	});
+
+	describe("artifact thumb card", () =>
+	{
+		const DIALOG =
+		{
+			x: 300,
+			y: 83,
+			width: 672,
+			height: 583,
+		};
+		const LIST =
+		{
+			x: 300,
+			y: 160,
+			width: 672,
+			height: 400,
+		};
+		const ROW_HEIGHT = 36;
+		const THUMB = "/api/artifacts/art-thumb/thumbnail?v=1";
+
+		function rect({x, y, width, height}: {x: number; y: number; width: number; height: number})
+		{
+			return {
+				x,
+				y,
+				width,
+				height,
+				top: y,
+				left: x,
+				right: x + width,
+				bottom: y + height,
+				toJSON: () => ({}),
+			};
+		}
+
+		// Upstream's 1272×750 layout: the dialog, its results list, and rows stacked 36px apart from the list top.
+		beforeEach(() =>
+		{
+			vi.spyOn(document.documentElement, "clientWidth", "get").mockReturnValue(1272);
+			vi.spyOn(document.documentElement, "clientHeight", "get").mockReturnValue(750);
+			vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement)
+			{
+				if (this.getAttribute("role") === "dialog" || this.hasAttribute("data-palette-recede-card"))
+					return rect(DIALOG);
+				if (this.hasAttribute("cmdk-list")) return rect(LIST);
+				if (this.hasAttribute("cmdk-item"))
+				{
+					const index = [...(this.closest("[cmdk-list]")?.querySelectorAll("[cmdk-item]") ?? [])].indexOf(
+						this,
+					);
+					return rect(
+						{
+							x: LIST.x,
+							y: LIST.y + index * ROW_HEIGHT,
+							width: LIST.width,
+							height: ROW_HEIGHT,
+						},
+					);
+				}
+				return rect(
+					{
+						x: 0,
+						y: 0,
+						width: 0,
+						height: 0,
+					},
+				);
+			});
+		});
+
+		afterEach(() =>
+		{
+			document.documentElement.removeAttribute("data-reduce-motion");
+		});
+
+		const seedThumbs = seedArtifacts(
+			artifact(
+				"art-thumb",
+				"Blueprint Tag Comparison",
+				{
+					thumbnailUrl: THUMB,
+				},
+			),
+			artifact(
+				"art-docs",
+				"Team docs",
+				{
+					kind: "docs",
+					firstSeenAt: Date.now() - 1000,
+					lastPublishedAt: Date.now() - 1000,
+				},
+			),
+		);
+
+		function thumbCard()
+		{
+			return document.querySelector<HTMLElement>('[data-testid="palette-thumb-card"]');
+		}
+
+		function loadThumb()
+		{
+			fireEvent.load(thumbCard()!.querySelector("img")!);
+		}
+
+		function arrow(input: HTMLElement, key: "ArrowDown" | "ArrowUp")
+		{
+			fireEvent.keyDown(
+				input,
+				{
+					key,
+					code: key,
+				},
+			);
+		}
+
+		function altEnter(input: HTMLElement)
+		{
+			fireEvent.keyDown(
+				input,
+				{
+					key: "Enter",
+					code: "Enter",
+					altKey: true,
+				},
+			);
+		}
+
+		function morphOffset()
+		{
+			return cardFromThumbOffset(
+				{
+					dialog: DIALOG,
+					list: LIST,
+					row:
+					{
+						y: LIST.y,
+						height: ROW_HEIGHT,
+					},
+					viewport:
+					{
+						width: 1272,
+						height: 750,
+					},
+					cardHeight: 204,
+					dir: "ltr",
+					reducedMotion: false,
+				},
+			)!;
+		}
+
+		it("portals upstream's thumb card beside the palette for a selected artifact row with a screenshot", async () =>
+		{
+			const {dialog} = await openTab("Artifacts", seedThumbs);
+			const card = thumbCard()!;
+			const beforeLoad = card.className;
+			loadThumb();
+
+			expect(
+				{
+					slot: card.parentElement === dialog.firstElementChild,
+					slotClass: card.parentElement?.className,
+					hidden: card.getAttribute("aria-hidden"),
+					beforeLoad,
+					className: card.className,
+					style: card.getAttribute("style"),
+					image: card.querySelector("img")?.getAttribute("src"),
+					meta: card.lastElementChild?.textContent,
+					metaClass: card.lastElementChild?.className,
+				},
+			).toStrictEqual(
+				{
+					slot: true,
+					slotClass: "pointer-events-none absolute top-0 left-full z-3",
+					hidden: "true",
+					beforeLoad:
+						"pointer-events-auto absolute p-1.5 bg-[var(--menu-bg)] shadow-[var(--menu-shadow)] rounded-card forced-colors:border forced-colors:border-solid forced-colors:border-[color:CanvasText] invisible",
+					className:
+						"pointer-events-auto absolute p-1.5 bg-[var(--menu-bg)] shadow-[var(--menu-shadow)] rounded-card forced-colors:border forced-colors:border-solid forced-colors:border-[color:CanvasText]",
+					// x = min(972 + 12, 1272 - 16 - 280) = 976: 4px past the dialog; the row's y 160 is 77px below its top.
+					style: "width: 280px; top: 77px; left: 4px;",
+					image: THUMB,
+					meta: "Artifact · Just now",
+					metaClass: "truncate px-1 pt-1.5 pb-0.5 text-caption text-muted-as-secondary",
+				},
+			);
+		});
+
+		it("shows no thumb card for a docs row or in Compose", async () =>
+		{
+			const {input} = await openTab("Artifacts", seedThumbs);
+			loadThumb();
+			arrow(input, "ArrowDown");
+			const onDocs = thumbCard();
+			arrow(input, "ArrowUp");
+			const back = thumbCard() !== null;
+			fireEvent.keyDown(
+				input,
+				{
+					key: "Tab",
+					code: "Tab",
+				},
+			);
+			await screen.findByRole(
+				"combobox",
+				{
+					name: "Write a message…",
+				},
+			);
+			const inCompose = thumbCard();
+
+			expect(
+				{
+					onDocs,
+					back,
+					inCompose,
+				},
+			).toStrictEqual(
+				{
+					onDocs: null,
+					back: true,
+					inCompose: null,
+				},
+			);
+		});
+
+		it("drops the card for good when its screenshot fails to load", async () =>
+		{
+			const failing = "/api/artifacts/art-fail/thumbnail?v=1";
+			const {input} = await openTab(
+				"Artifacts",
+				seedArtifacts(
+					artifact(
+						"art-fail",
+						"Broken shot",
+						{
+							thumbnailUrl: failing,
+						},
+					),
+					artifact(
+						"art-other",
+						"Other",
+						{
+							firstSeenAt: Date.now() - 1000,
+							lastPublishedAt: Date.now() - 1000,
+						},
+					),
+				),
+			);
+			fireEvent.error(thumbCard()!.querySelector("img")!);
+			const afterError = thumbCard();
+			arrow(input, "ArrowDown");
+			arrow(input, "ArrowUp");
+
+			expect(
+				{
+					afterError,
+					afterReturn: thumbCard(),
+				},
+			).toStrictEqual(
+				{
+					afterError: null,
+					afterReturn: null,
+				},
+			);
+		});
+
+		it("keeps the palette input focused on a press and scrolls the results on a wheel", async () =>
+		{
+			const {dialog, input} = await openTab("Artifacts", seedThumbs);
+			loadThumb();
+			const list = dialog.querySelector<HTMLElement>("[cmdk-list]")!;
+			const scrollBy = vi.fn<(options: ScrollToOptions) => void>();
+			list.scrollBy = scrollBy as HTMLElement["scrollBy"];
+			input.focus();
+
+			const pressed = fireEvent.mouseDown(thumbCard()!);
+			fireEvent.wheel(
+				thumbCard()!,
+				{
+					deltaX: 3,
+					deltaY: 40,
+				},
+			);
+
+			expect(
+				{
+					pressed,
+					focused: document.activeElement === input,
+					scrolls: scrollBy.mock.calls,
+				},
+			).toStrictEqual(
+				{
+					pressed: false,
+					focused: true,
+					scrolls: [
+						[
+							{
+								top: 40,
+								left: 3,
+							},
+						],
+					],
+				},
+			);
+		});
+
+		it("⌥⏎ morphs the shown thumb into the artifact card, and ← slides the thumb back out of it", async () =>
+		{
+			const {input} = await openTab("Artifacts", seedThumbs);
+			loadThumb();
+			altEnter(input);
+			const card = await screen.findByRole(
+				"menu",
+				{
+					name: "Actions",
+				},
+			);
+			const offset = morphOffset();
+			const opened =
+			{
+				thumbCard: thumbCard(),
+				fromThumb: card.getAttribute("data-from-thumb-card"),
+				morph: card.classList.contains("animate-palette-card-morph"),
+				enter: card.classList.contains("animate-palette-card-in"),
+				fromX: card.style.getPropertyValue("--cp-card-from-x"),
+				fromY: card.style.getPropertyValue("--cp-card-from-y"),
+				header: card.querySelector('[data-testid="palette-thumb-image"]')?.parentElement?.className,
+				headerSrc: card.querySelector('[data-testid="palette-thumb-image"]')?.getAttribute("src"),
+				titleIn: card.querySelector("[data-palette-card-title]")?.parentElement?.className,
+				unfold: card.querySelector('[role="menuitem"]')?.parentElement?.parentElement?.className,
+				clip: card.querySelector('[role="menuitem"]')?.parentElement?.className,
+			};
+
+			fireEvent.keyDown(
+				card,
+				{
+					key: "ArrowLeft",
+					code: "ArrowLeft",
+				},
+			);
+			await waitFor(() =>
+			{
+				expect(screen.queryByRole("menu")).toBeNull();
+			});
+			const returned = thumbCard()!;
+
+			expect(
+				{
+					opened,
+					returned:
+					{
+						animation: returned.classList.contains("animate-palette-thumb-return"),
+						fromX: returned.style.getPropertyValue("--cp-thumb-from-x"),
+						fromY: returned.style.getPropertyValue("--cp-thumb-from-y"),
+					},
+				},
+			).toStrictEqual(
+				{
+					opened:
+					{
+						thumbCard: null,
+						fromThumb: "true",
+						morph: true,
+						enter: false,
+						fromX: `${offset.x}px`,
+						fromY: `${offset.y}px`,
+						header: "-mx-[var(--cds-menu-gutter,0.25rem)] -mt-[var(--cds-menu-gutter,0.25rem)] px-1.5 pt-1.5 pb-1",
+						headerSrc: THUMB,
+						titleIn:
+							"flex flex-col gap-0.5 px-2.5 pt-1 pb-1 animate-palette-card-title-in motion-reduce:animate-none",
+						unfold: "grid animate-palette-card-unfold motion-reduce:animate-none",
+						clip: "min-h-0 overflow-hidden",
+					},
+					returned:
+					{
+						animation: true,
+						fromX: `${-offset.x}px`,
+						fromY: `${-offset.y}px`,
+					},
+				},
+			);
+		});
+
+		it("opens the plain card under reduced motion, still headed by the screenshot", async () =>
+		{
+			document.documentElement.setAttribute("data-reduce-motion", "true");
+			const {input} = await openTab("Artifacts", seedThumbs);
+			loadThumb();
+			altEnter(input);
+			const card = await screen.findByRole(
+				"menu",
+				{
+					name: "Actions",
+				},
+			);
+
+			expect(
+				{
+					fromThumb: card.getAttribute("data-from-thumb-card"),
+					enter: card.classList.contains("animate-palette-card-in"),
+					fromX: card.style.getPropertyValue("--cp-card-from-x"),
+					header: card.querySelector('[data-testid="palette-thumb-image"]')?.getAttribute("src"),
+					titleIn: card.querySelector("[data-palette-card-title]")?.parentElement?.className,
+				},
+			).toStrictEqual(
+				{
+					fromThumb: null,
+					enter: true,
+					fromX: "",
+					header: THUMB,
+					titleIn: "flex flex-col gap-0.5 px-2.5 pt-1 pb-1",
+				},
+			);
+		});
+
+		it("opens the plain card for an artifact row without a screenshot", async () =>
+		{
+			const {card} = await openTabCard("Artifacts", seedArtifacts(artifact("art-1", "Quarterly report")));
+
+			expect(
+				{
+					fromThumb: card.getAttribute("data-from-thumb-card"),
+					enter: card.classList.contains("animate-palette-card-in"),
+					header: card.querySelector('[data-testid="palette-thumb-image"]'),
+				},
+			).toStrictEqual(
+				{
+					fromThumb: null,
+					enter: true,
+					header: null,
+				},
+			);
+		});
 	});
 });
 

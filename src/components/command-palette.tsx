@@ -219,6 +219,9 @@ import
 } from "./palette-row-actions";
 import {isMotionReduced} from "../lib/reduced-motion";
 import {isAltEnter, rowActionsAnchorRect} from "./palette-row-actions-geometry";
+import {PaletteThumbCard} from "./palette-thumb-card";
+import {cardMorphOffset} from "./palette-thumb-measure";
+import {type PaletteThumb, useUsableThumb} from "../lib/palette-thumb-store";
 import {AttachedContextChips} from "./attached-context-chips";
 import {useFileDropTarget} from "./composer-drop-scrim";
 import {DROP_SCRIM_Z_INDEX, DropOverlay} from "./drop-overlay";
@@ -1485,7 +1488,18 @@ function PalettePopup({
 		key: string;
 		target: PaletteCardTarget;
 		anchorRect: ReturnType<typeof rowActionsAnchorRect>;
+		/** Opened from the shown thumb card: the card morphs from the thumb's spot (upstream's `fromThumbCard`). */
+		morphFrom:
+		{
+			x: number;
+			y: number;
+		} | null;
 	} | null>(null);
+	// Upstream's thumb card slot (`left-full` beside the palette) and whether the card shows a picture.
+	const [thumbSlot, setThumbSlot] = useState<HTMLDivElement | null>(null);
+	const [thumbShown, setThumbShown] = useState(false);
+	// Upstream's `returningId`: the row whose card just closed, so its thumb card slides back out of the card.
+	const [thumbReturningKey, setThumbReturningKey] = useState<string | null>(null);
 	// The row card's Rename dialog, kept mounted through its close animation.
 	const [renaming, setRenaming] = useState<
 	{
@@ -1968,6 +1982,25 @@ function PalettePopup({
 	}, [searchedSessions, serverRows]);
 
 	const artifactsById = useMemo(() => new Map(artifacts.map((artifact) => [artifact.id, artifact])), [artifacts]);
+
+	// Upstream's thumb card shows for a selected artifact row with a screenshot, in Search only.
+	const selectedArtifact = selectedValue.startsWith("artifact:")
+		? artifactsById.get(selectedValue.slice("artifact:".length))
+		: undefined;
+	const selectedThumbnailUrl = selectedArtifact?.thumbnailUrl ?? null;
+	const selectedThumb = useUsableThumb(
+		useMemo(
+			(): PaletteThumb | undefined =>
+				selectedThumbnailUrl === null
+					? undefined
+					:
+						{
+							src: selectedThumbnailUrl,
+						},
+			[selectedThumbnailUrl],
+		),
+	);
+	const thumbRowKey = !compose && selectedThumb !== undefined ? selectedValue : null;
 	const projectsById = useMemo(() => new Map(projects.map((project) => [project.id, project])), [projects]);
 
 	// The listed rows upstream's generic card `yt` covers, by cmdk value.
@@ -2052,15 +2085,16 @@ function PalettePopup({
 		const row = [...popup.querySelectorAll<HTMLElement>("[cmdk-item]")].find(
 			(item) => item.dataset["value"] === key,
 		);
-		const list = popup.querySelector("[cmdk-list]") ?? popup;
+		const list = popup.querySelector<HTMLElement>("[cmdk-list]") ?? popup;
 		const dialog = cardRef.current ?? popup;
+		const reducedMotion = isMotionReduced();
 		// Measured before the recede starts, so the scale is applied once.
 		const anchorRect = rowActionsAnchorRect(
 			{
 				list: list.getBoundingClientRect(),
 				row: (row ?? list).getBoundingClientRect(),
 				dialog: dialog.getBoundingClientRect(),
-				reducedMotion: isMotionReduced(),
+				reducedMotion,
 			},
 		);
 		setRowActions(
@@ -2068,6 +2102,7 @@ function PalettePopup({
 				key,
 				target,
 				anchorRect,
+				morphFrom: thumbShown && key === thumbRowKey && !reducedMotion ? cardMorphOffset(list, key) : null,
 			},
 		);
 	}
@@ -2083,6 +2118,7 @@ function PalettePopup({
 
 	function closeRowActions({refocus, swallowRepeat}: RowActionsCloseOptions)
 	{
+		setThumbReturningKey(rowActions?.key ?? null);
 		setRowActions(null);
 		swallowRepeatRef.current = swallowRepeat ?? null;
 		refocusAfterCardRef.current = refocus;
@@ -2900,9 +2936,19 @@ function PalettePopup({
 
 	// Actions mode lists no rows with actions; checking it too avoids a stale selection flashing the hint.
 	const selectedRowHasActions = !actionsOnly && cardTarget(selectedValue) !== undefined;
+	if (thumbReturningKey !== null && thumbReturningKey !== selectedValue) setThumbReturningKey(null);
 	const footerCollapsed = !compose && query.trim() !== "";
 	const coarsePointer = useCoarsePointer();
-	const [listRef, contentHeight] = useListContentHeight();
+	const [measureListRef, contentHeight] = useListContentHeight();
+	const listElRef = useRef<HTMLDivElement | null>(null);
+	const listRef = useCallback(
+		(list: HTMLDivElement | null) =>
+		{
+			listElRef.current = list;
+			measureListRef(list);
+		},
+		[measureListRef],
+	);
 	const now = Date.now();
 	const canSend = canStart && startStep === "idle";
 	const addFilesKeys = useShortcutKeys("add_files").keys;
@@ -3104,6 +3150,7 @@ function PalettePopup({
 					if (emptyViewPending) enterAheadRef.current = "off";
 				}}
 			>
+				<div ref={setThumbSlot} className="pointer-events-none absolute top-0 left-full z-3" />
 				<Dialog.Title className="sr-only">Search</Dialog.Title>
 				<div
 					ref={cardRef}
@@ -3762,11 +3809,29 @@ function PalettePopup({
 						</FooterCollapse>
 					</Command>
 				</div>
+				{thumbRowKey !== null &&
+					selectedThumb !== undefined &&
+					selectedArtifact !== undefined &&
+					rowActions === null &&
+					thumbSlot !== null && (
+						<PaletteThumbCard
+							thumb={selectedThumb}
+							meta={["Artifact", relativeBucket(artifactTimestamp(selectedArtifact), now)]
+								.filter((part) => part !== null)
+								.join(" · ")}
+							listRef={listElRef}
+							rowKey={thumbRowKey}
+							slot={thumbSlot}
+							initialReturning={thumbReturningKey === thumbRowKey}
+							onShownChange={setThumbShown}
+						/>
+					)}
 				{rowActions !== null && (
 					<PaletteRowActionsCard
 						key={rowActions.key}
 						target={rowActions.target}
 						anchorRect={rowActions.anchorRect}
+						morphFrom={rowActions.morphFrom}
 						onOpen={() =>
 						{
 							const {target} = rowActions;

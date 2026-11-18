@@ -1,6 +1,6 @@
 import {useQueryClient} from "@tanstack/react-query";
 import {Ellipsis} from "lucide-react";
-import {type KeyboardEvent, type RefObject, useEffect, useLayoutEffect, useMemo, useRef} from "react";
+import {type KeyboardEvent, type RefObject, useEffect, useLayoutEffect, useMemo, useRef, useState} from "react";
 
 import {useSessionArchive} from "../hooks/use-session-archive";
 import type {ArtifactSummary} from "../lib/api/artifacts";
@@ -25,6 +25,8 @@ import {ack, ackedAt, useAwaitingAckVersion} from "../lib/awaiting-ack-store";
 import {completedAckAt, isFailedUnacked} from "../lib/failed-row";
 import {markSeen, markUnseen} from "../lib/unread-store";
 import {type Box, CARD_OVERLAP_PX, isAltEnter, virtualAnchor} from "./palette-row-actions-geometry";
+import {type PaletteThumb, useUsableThumb} from "../lib/palette-thumb-store";
+import {PaletteThumbImage} from "./palette-thumb-image";
 import {SessionRenameDialog} from "./session-rename-dialog";
 import {useHasUnseenWork} from "./use-has-unseen-work";
 import {useToast} from "./toast-context";
@@ -140,6 +142,12 @@ interface CardProps
 {
 	/** The anchor box from {@link rowActionsAnchorRect}, measured once as the card opens. */
 	anchorRect: Box;
+	/** Opened from the shown thumb card: its offset from the card's spot, so the card morphs out of it. */
+	morphFrom?:
+	{
+		x: number;
+		y: number;
+	} | null;
 	/** Runs the row as Enter would. */
 	onOpen: () => void;
 	onClose: (options: RowActionsCloseOptions) => void;
@@ -329,13 +337,14 @@ type ArtifactItemId = OpenItemId | "copy-link" | "pin" | "unpin";
 /**
  * Upstream's artifact card `mt`: Open, Open in new tab, Copy link and Pin/Unpin. Local artifacts open at
  * `/artifact/<id>`, copy their claude.ai link (as the Artifacts page does) and pin per browser. Upstream's Open
- * conversation is claude.ai-chat-only, and its screenshot header and thumb morph need a hover thumb card.
+ * conversation is claude.ai-chat-only. A screenshot heads the card, which morphs out of the shown thumb card.
  */
 function ArtifactCard({
 	artifact,
 	onOpen,
 	onClose,
 	anchorRect,
+	morphFrom = null,
 }: CardProps &
 {
 	artifact: ArtifactSummary;
@@ -343,6 +352,17 @@ function ArtifactCard({
 {
 	const toast = useToast();
 	const pinned = useArtifactPins().isPinned(artifact.url);
+	const {thumbnailUrl} = artifact;
+	const thumb = useMemo(
+		(): PaletteThumb | undefined =>
+			thumbnailUrl === null
+				? undefined
+				:
+					{
+						src: thumbnailUrl,
+					},
+		[thumbnailUrl],
+	);
 	const items: CardItem<ArtifactItemId>[] = [
 		...OPEN_ITEMS,
 		{
@@ -394,6 +414,8 @@ function ArtifactCard({
 	return (
 		<RowActionsCardShell
 			anchorRect={anchorRect}
+			thumb={thumb}
+			morphFrom={morphFrom}
 			preview={
 			{
 				title: artifact.title === "" ? "Untitled artifact" : artifact.title,
@@ -527,12 +549,21 @@ function localUrl(route: "artifact" | "project", id: string): string
 /** Upstream's card shell `nt` with header `it`: the menu, its keys, and the numbered items. */
 function RowActionsCardShell<Id extends string>({
 	anchorRect,
+	thumb,
+	morphFrom = null,
 	preview,
 	items,
 	onRun,
 	onClose,
 }: {
 	anchorRect: Box;
+	/** Upstream's header screenshot, shown until it fails. */
+	thumb?: PaletteThumb | undefined;
+	morphFrom?:
+	{
+		x: number;
+		y: number;
+	} | null;
 	preview: CardPreview;
 	items: readonly CardItem<Id>[];
 	onRun: (id: Id) => void;
@@ -540,6 +571,11 @@ function RowActionsCardShell<Id extends string>({
 })
 {
 	const anchor = useMemo(() => virtualAnchor(anchorRect), [anchorRect]);
+	const usableThumb = useUsableThumb(thumb);
+	const [thumbFailed, setThumbFailed] = useState(false);
+	const headerThumb = thumbFailed ? undefined : usableThumb;
+	// Upstream's title-in and unfold run once, with the morph, and drop on the unfold's own animationend.
+	const [unfolding, setUnfolding] = useState(morphFrom !== null);
 
 	// When the live item list last changed after opening; digits are ignored for ROW_ACTIONS_DIGIT_GUARD_MS after it.
 	const itemsKey = items.map((item) => item.id).join(" ");
@@ -646,53 +682,91 @@ function RowActionsCardShell<Id extends string>({
 				collisionAvoidance={SHIFT_COLLISION_AVOIDANCE}
 				anchor={anchor}
 				finalFocus={false}
-				className="w-[280px] animate-palette-card-in motion-reduce:animate-none"
+				className={`w-[280px] ${morphFrom === null ? "animate-palette-card-in" : "animate-palette-card-morph"} motion-reduce:animate-none`}
 				popupProps={
 				{
 					"aria-label": "Actions",
 					"data-palette-row-actions": "",
+					...(morphFrom === null
+						? {}
+						:
+							{
+								"data-from-thumb-card": "true",
+							}),
 					// Upstream's cardSlide: the enter starts 12px back toward the palette (mirrored in RTL).
 					style:
 					{
 						"--cp-card-slide": inlineEndSide() === "left" ? "12px" : "-12px",
+						...(morphFrom === null
+							? {}
+							:
+								{
+									"--cp-card-from-x": `${morphFrom.x}px`,
+									"--cp-card-from-y": `${morphFrom.y}px`,
+								}),
 					},
 					onKeyDownCapture: handleKeyDownCapture,
 				}}
 				header={
-					<div className="flex flex-col gap-0.5 px-2.5 pt-1 pb-1">
-						<div
-							data-palette-card-title=""
-							className="line-clamp-2 break-words text-[13px]/[19px] text-primary"
-						>
-							{preview.title}
-						</div>
-						{meta !== "" && (
-							<div
-								data-palette-card-meta=""
-								className="truncate text-[11px]/[17px] text-[var(--menu-muted)]"
-							>
-								{meta}
+					<>
+						{headerThumb !== undefined && (
+							<div className="-mx-[var(--cds-menu-gutter,0.25rem)] -mt-[var(--cds-menu-gutter,0.25rem)] px-1.5 pt-1.5 pb-1">
+								<PaletteThumbImage
+									thumb={headerThumb}
+									onFailed={() =>
+									{
+										setThumbFailed(true);
+									}}
+								/>
 							</div>
 						)}
-					</div>
+						<div
+							className={`flex flex-col gap-0.5 px-2.5 pt-1 pb-1${unfolding ? " animate-palette-card-title-in motion-reduce:animate-none" : ""}`}
+						>
+							<div
+								data-palette-card-title=""
+								className="line-clamp-2 break-words text-[13px]/[19px] text-primary"
+							>
+								{preview.title}
+							</div>
+							{meta !== "" && (
+								<div
+									data-palette-card-meta=""
+									className="truncate text-[11px]/[17px] text-[var(--menu-muted)]"
+								>
+									{meta}
+								</div>
+							)}
+						</div>
+					</>
 				}
 			>
-				<MenuSeparator />
-				{items.map((item, index) => (
-					<MenuItem
-						key={item.id}
-						accelerator={String(index + 1)}
-						acceleratorVariant="keycap"
-						closeOnClick={false}
-						data-card-item={item.id}
-						onSelect={() =>
-						{
-							onRun(item.id);
-						}}
-					>
-						{item.label}
-					</MenuItem>
-				))}
+				<div
+					className={unfolding ? "grid animate-palette-card-unfold motion-reduce:animate-none" : undefined}
+					onAnimationEnd={(event) =>
+					{
+						if (event.target === event.currentTarget) setUnfolding(false);
+					}}
+				>
+					<div className={unfolding ? "min-h-0 overflow-hidden" : undefined}>
+						<MenuSeparator />
+						{items.map((item, index) => (
+							<MenuItem
+								key={item.id}
+								accelerator={String(index + 1)}
+								acceleratorVariant="keycap"
+								closeOnClick={false}
+								data-card-item={item.id}
+								onSelect={() =>
+								{
+									onRun(item.id);
+								}}
+							>
+								{item.label}
+							</MenuItem>
+						))}
+					</div>
+				</div>
 			</MenuContent>
 		</Menu>
 	);
