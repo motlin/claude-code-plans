@@ -1,9 +1,26 @@
-import {type ComponentProps, Fragment, type RefObject, useEffect, useLayoutEffect, useRef, useState} from "react";
+import
+{
+	type ComponentProps,
+	Fragment,
+	type RefObject,
+	useCallback,
+	useContext,
+	useEffect,
+	useLayoutEffect,
+	useRef,
+	useState,
+} from "react";
 
+import {useIsMac} from "../hooks/use-is-mac";
 import {type TranscriptSelection, useTranscriptSelection} from "../hooks/use-transcript-selection";
-import {attachContext, hasComposer} from "../lib/context-attach";
+import {attachContext, attachReply, focusComposer, formatReply, hasComposer} from "../lib/context-attach";
+import {INLINE_REPLY_ENABLED} from "../lib/inline-reply";
+import {toAriaKeyShortcuts} from "../lib/shortcuts/format";
 import {openSideChatWithContext, useSideChat} from "../lib/side-chat-store";
 import {findScrollContainer} from "./scroll-container";
+import {SelectionCommentCard} from "./selection-comment-card";
+import {ToastContext, type ToastOptions} from "./toast-context";
+import {TurnUndoSendContext} from "./turn-undo-send-context";
 import {FORCED_COLORS_BORDER_CLASS} from "./ui/popover-surface";
 import {ViewportPortal} from "./viewport-portal";
 
@@ -47,7 +64,53 @@ const SEPARATOR_CLASS =
 interface BarAction
 {
 	label: string;
-	run: (text: string) => void;
+	/** Upstream `aE`'s `shortcut`, set on the button as `aria-keyshortcuts`. */
+	shortcut?: string;
+	run: (selection: TranscriptSelection) => void;
+}
+
+/** Upstream's inline reply card state (`P`): the quoted range, its entry and the draft. */
+interface ReplyDraft
+{
+	range: Range;
+	quote: string;
+	entryKey: string;
+	comment: string;
+}
+
+const NO_COMPOSER_MESSAGE = "Can\u2019t add to your prompt until the message box is back.";
+const CHORD_HINT =
+{
+	content: "Send reply",
+	shortcut: "cmd+enter",
+};
+
+/** The transcript entry a node sits in (upstream `Lg`, which reads `data-entry-key`). */
+function entryKeyOf(node: Node): string | null
+{
+	const element = node instanceof Element ? node : node.parentElement;
+	return element?.closest("[data-transcript-entry-index]")?.getAttribute("data-transcript-entry-index") ?? null;
+}
+
+/** The entry both ends of the selection sit in, or null when it spans two (upstream `ie`). */
+function selectionEntryKey(range: Range): string | null
+{
+	const first = entryKeyOf(range.startContainer);
+	return first !== null && first === entryKeyOf(range.endContainer) ? first : null;
+}
+
+/** Upstream `kt`/`Zt`/`$t`: a field, a menu or a dialog keeps its own Enter. */
+function ownsEnter(target: EventTarget | null): boolean
+{
+	if (!(target instanceof Element)) return false;
+	if (target instanceof HTMLElement && target.isContentEditable) return true;
+	return target.closest('input, textarea, select, [role="menu"], [role="dialog"], [role="alertdialog"]') !== null;
+}
+
+/** Upstream `Ot(doc, null, {skipIdleToasts})`: an open menu or dialog anywhere. */
+function overlayOpen(doc: Document): boolean
+{
+	return doc.querySelector('[role="menu"], [role="dialog"], [role="alertdialog"]') !== null;
 }
 
 function truncateExcerpt(text: string): string
@@ -152,15 +215,36 @@ export function TranscriptSelectionBar({
 	sessionId,
 	containerRef,
 	sideChatAvailable,
+	inlineReply = INLINE_REPLY_ENABLED,
 }: {
 	sessionId: string;
 	containerRef: RefObject<Element | null>;
 	sideChatAvailable: boolean;
+	/** Upstream's `inlineReplyEnabled` (defaults to `INLINE_REPLY_ENABLED`): Reply opens the reply card. */
+	inlineReply?: boolean;
 })
 {
 	const {selection: shown, hide} = useTranscriptSelection(containerRef);
 	const sideChat = useSideChat(sessionId);
-	const menuOpen = useAnyMenuOpen(shown !== null);
+	const [reply, setReply] = useState<ReplyDraft | null>(null);
+	const barShown = shown !== null && reply === null;
+	const menuOpen = useAnyMenuOpen(barShown);
+	const toast = useContext(ToastContext);
+	const send = useContext(TurnUndoSendContext);
+
+	const openReply = useCallback((selection: TranscriptSelection) =>
+	{
+		const entryKey = selectionEntryKey(selection.range);
+		if (entryKey === null) return;
+		setReply(
+			{
+				range: selection.range,
+				quote: truncateExcerpt(selection.text),
+				entryKey,
+				comment: "",
+			},
+		);
+	}, []);
 
 	const actions: BarAction[] = [];
 	const sideChatBusy = sideChat.entries.some((entry) => entry.status === "pending");
@@ -168,28 +252,141 @@ export function TranscriptSelectionBar({
 		actions.push(
 			{
 				label: sideChat.open ? "Send to side chat" : "Start a side chat",
-				run: (text) =>
+				run: ({text}) =>
 				{
 					openSideChatWithContext(sessionId, truncateExcerpt(text));
 				},
 			},
 		);
-	if (hasComposer(sessionId))
+	const canReply =
+		hasComposer(sessionId) && (!inlineReply || (shown !== null && selectionEntryKey(shown.range) !== null));
+	if (canReply)
 		actions.push(
-			{
-				label: "Reply",
-				run: (text) =>
-					attachContext(
-						sessionId,
-						{
-							kind: "excerpt",
-							text: truncateExcerpt(text),
-						},
-					),
-			},
+			inlineReply
+				?
+					{
+						label: "Reply",
+						shortcut: "enter",
+						run: openReply,
+					}
+				:
+					{
+						label: "Reply",
+						run: ({text}) =>
+							attachContext(
+								sessionId,
+								{
+									kind: "excerpt",
+									text: truncateExcerpt(text),
+								},
+							),
+					},
 		);
 
-	if (shown === null || actions.length === 0) return null;
+	// Upstream `sl`: a plain Enter anywhere but a field, menu or dialog replies while the bar shows.
+	const enterReplies = barShown && canReply && inlineReply;
+	useEffect(() =>
+	{
+		if (!enterReplies) return undefined;
+		const onKeyDown = (event: KeyboardEvent) =>
+		{
+			if (
+				event.key !== "Enter" ||
+				event.metaKey ||
+				event.ctrlKey ||
+				event.altKey ||
+				event.shiftKey ||
+				event.repeat ||
+				event.isComposing ||
+				event.defaultPrevented ||
+				ownsEnter(event.target) ||
+				overlayOpen(document)
+			)
+				return;
+			const container = containerRef.current;
+			if (container === null || !container.contains(shown.range.commonAncestorContainer)) return;
+			event.preventDefault();
+			openReply(shown);
+			document.getSelection()?.removeAllRanges();
+		};
+		document.addEventListener("keydown", onKeyDown);
+		return () =>
+		{
+			document.removeEventListener("keydown", onKeyDown);
+		};
+	}, [enterReplies, shown, containerRef, openReply]);
+
+	const notify = (options: ToastOptions) =>
+	{
+		toast?.(options);
+	};
+
+	const boundary = containerRef.current;
+	const card =
+		reply === null || !(boundary instanceof HTMLElement) ? null : (
+			<SelectionCommentCard
+				range={reply.range}
+				selectedText={reply.quote}
+				boundary={boundary}
+				value={reply.comment}
+				onChange={(comment) =>
+				{
+					setReply(
+						{
+							...reply,
+							comment,
+						},
+					);
+				}}
+				side="above"
+				highlightName="reply-selection"
+				quote={reply.quote}
+				inputLabel="Reply"
+				placeholder="Reply to Claude"
+				saveLabel="Add to prompt"
+				submitWhenEmpty
+				restoreFocus
+				focusAfterSubmit={() =>
+				{
+					focusComposer(sessionId);
+				}}
+				// Upstream `xe` (Add to prompt): a blank comment attaches a plain Excerpt, else a reply chip.
+				onSave={(comment) =>
+				{
+					if (!hasComposer(sessionId))
+					{
+						notify(
+							{
+								kind: "error",
+								message: NO_COMPOSER_MESSAGE,
+							},
+						);
+						return false;
+					}
+					if (!attachReply(sessionId, reply.quote, comment, notify)) return false;
+					setReply(null);
+					return true;
+				}}
+				// Upstream `me` (Send reply, ⌘⏎): the reply prompt goes out now, steering a running turn.
+				{...(send === null
+					? {}
+					:
+						{
+							onChordSubmit: (comment: string) =>
+							{
+								send(formatReply(reply.quote, comment));
+								setReply(null);
+							},
+							chordHint: CHORD_HINT,
+						})}
+				onClose={() =>
+				{
+					setReply(null);
+				}}
+			/>
+		);
+
+	if (!barShown || actions.length === 0) return card;
 	return (
 		<ViewportPortal>
 			<SelectionBarHost
@@ -264,9 +461,10 @@ function SelectionBarHost({
 		};
 	}, [selection, containerRef]);
 
+	const isMac = useIsMac();
 	const run = (action: BarAction) =>
 	{
-		action.run(selection.text);
+		action.run(selection);
 		clearSelection(selection.range.startContainer.ownerDocument ?? document);
 		onHide();
 	};
@@ -306,6 +504,9 @@ function SelectionBarHost({
 					<Fragment key={action.label}>
 						{index > 0 && <span aria-hidden="true" className={SEPARATOR_CLASS} />}
 						<SelectionBarButton
+							aria-keyshortcuts={
+								action.shortcut === undefined ? undefined : toAriaKeyShortcuts(action.shortcut, isMac)
+							}
 							onMouseDown={(event) =>
 							{
 								event.preventDefault();

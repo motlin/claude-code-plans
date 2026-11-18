@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import {cleanup, fireEvent, render, screen, waitFor} from "@testing-library/react";
+import {act, cleanup, fireEvent, render, screen, waitFor} from "@testing-library/react";
 import {useState} from "react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
@@ -479,6 +479,40 @@ describe("CommentEditor", () =>
 				blocked: null,
 			},
 		);
+	});
+
+	it("stacks saveSecondaryHint under the save tooltip row, as upstream's reply card chord hint", () =>
+	{
+		vi.useFakeTimers();
+		render(
+			<Controlled
+				isEditing
+				initial="abc"
+				saveLabel="Add to prompt"
+				saveShortcut="enter"
+				saveSecondaryHint={
+				{
+					content: "Send reply",
+					shortcut: "cmd+enter",
+				}}
+			/>,
+		);
+		fireEvent.pointerEnter(
+			screen.getByRole(
+				"button",
+				{
+					name: "Add to prompt",
+				},
+			),
+		);
+		act(() =>
+		{
+			vi.advanceTimersByTime(300);
+		});
+		const rows = [...screen.getByRole("tooltip").children].map((row) => row.textContent);
+		vi.useRealTimers();
+
+		expect(rows).toStrictEqual(["Add to promptEnter", "Send replyCtrl+Enter"]);
 	});
 
 	it("renders the floating variant without border or wrapper, capped at 8lh", () =>

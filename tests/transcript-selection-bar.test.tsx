@@ -1,13 +1,25 @@
 // @vitest-environment jsdom
 // @vitest-isolate: its fake timers and synchronous requestAnimationFrame stub leave state behind that stops a later file's Changes pane from showing a file whole.
 
-import {act, cleanup, fireEvent, render, renderHook} from "@testing-library/react";
+import {act, cleanup, fireEvent, render, renderHook, screen} from "@testing-library/react";
 import {useRef} from "react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {TranscriptSelectionBar} from "../src/components/transcript-selection-bar";
 import {useTranscriptSelection} from "../src/hooks/use-transcript-selection";
-import {type ComposerHandle, getContextChips, registerComposer, takeContextChips} from "../src/lib/context-attach";
+import {type ToastOptions, ToastContext} from "../src/components/toast-context";
+import {TurnUndoSendContext} from "../src/components/turn-undo-send-context";
+import
+{
+	attachContext,
+	type ComposerHandle,
+	getContextChips,
+	MAX_STAGED_REPLIES,
+	REPLY_CAP_MESSAGE,
+	registerComposer,
+	takeContextChips,
+} from "../src/lib/context-attach";
+import {INLINE_REPLY_ENABLED} from "../src/lib/inline-reply";
 import {getSideChat, openSideChat, resetSideChatStore} from "../src/lib/side-chat-store";
 
 const SESSION = "bar-session";
@@ -58,6 +70,8 @@ let rangeRect: Rect =
 };
 
 let focus: ReturnType<typeof vi.fn<ComposerHandle["focus"]>>;
+let toast: ReturnType<typeof vi.fn<(options: ToastOptions) => void>>;
+let send: ReturnType<typeof vi.fn<(text: string) => void>>;
 let unregister: () => void = () =>
 {
 };
@@ -108,6 +122,8 @@ beforeEach(() =>
 		);
 	});
 	focus = vi.fn<ComposerHandle["focus"]>();
+	toast = vi.fn<(options: ToastOptions) => void>();
+	send = vi.fn<(text: string) => void>();
 	unregister = registerComposer(
 		SESSION,
 		{
@@ -131,33 +147,53 @@ afterEach(() =>
 	Reflect.deleteProperty(Range.prototype, "getBoundingClientRect");
 });
 
-function Harness({sideChatAvailable}: {sideChatAvailable: boolean})
+function Harness({sideChatAvailable, inlineReply}: {sideChatAvailable: boolean; inlineReply?: boolean})
 {
 	const containerRef = useRef<HTMLDivElement>(null);
 	return (
-		<div
-			data-testid="scroller"
-			style={
-			{
-				overflowY: "auto",
-			}}
-		>
-			<div ref={containerRef}>
-				<p>Hermit crabs live in tide pools.</p>
-				<p>Tide pools form in rocky hollows.</p>
-			</div>
-			<TranscriptSelectionBar
-				sessionId={SESSION}
-				containerRef={containerRef}
-				sideChatAvailable={sideChatAvailable}
-			/>
-		</div>
+		<ToastContext.Provider value={toast}>
+			<TurnUndoSendContext.Provider value={send}>
+				<div
+					data-testid="scroller"
+					style={
+					{
+						overflowY: "auto",
+					}}
+				>
+					<div ref={containerRef}>
+						<p data-transcript-entry-index="3">Hermit crabs live in tide pools.</p>
+						<p data-transcript-entry-index="4">Tide pools form in rocky hollows.</p>
+					</div>
+					<TranscriptSelectionBar
+						sessionId={SESSION}
+						containerRef={containerRef}
+						sideChatAvailable={sideChatAvailable}
+						{...(inlineReply === undefined
+							? {}
+							:
+								{
+									inlineReply,
+								})}
+					/>
+				</div>
+			</TurnUndoSendContext.Provider>
+		</ToastContext.Provider>
 	);
 }
 
-function renderBar(sideChatAvailable = true): void
+function renderBar(sideChatAvailable = true, inlineReply?: boolean): void
 {
-	render(<Harness sideChatAvailable={sideChatAvailable} />);
+	render(
+		<Harness
+			sideChatAvailable={sideChatAvailable}
+			{...(inlineReply === undefined
+				? {}
+				:
+					{
+						inlineReply,
+					})}
+		/>,
+	);
 }
 
 function textNodeContaining(text: string): Text
@@ -662,9 +698,9 @@ describe("transcript selection bar", () =>
 		expect(labels()).toStrictEqual(["Start a side chat"]);
 	});
 
-	it("Reply attaches the trimmed selection as an Excerpt, focuses the composer and clears the selection", () =>
+	it("with inline reply off, Reply attaches the trimmed selection as an Excerpt, focuses the composer and clears the selection", () =>
 	{
-		renderBar();
+		renderBar(true, false);
 		select("Hermit crabs ");
 		advance(250);
 
@@ -700,6 +736,14 @@ describe("transcript selection bar", () =>
 		advance(250);
 
 		fireEvent.click(button("Reply"));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Add to prompt",
+				},
+			),
+		);
 
 		expect(getContextChips(SESSION).map(({text}) => text)).toStrictEqual([`${"x".repeat(1500)}…`]);
 	});
@@ -822,9 +866,355 @@ function HarnessWithText({text}: {text: string})
 			}}
 		>
 			<div ref={containerRef}>
-				<p>{text}</p>
+				<p data-transcript-entry-index="0">{text}</p>
 			</div>
 			<TranscriptSelectionBar sessionId={SESSION} containerRef={containerRef} sideChatAvailable={false} />
 		</div>
 	);
 }
+
+function selectAcross(fromText: string, toText: string): void
+{
+	const from = textNodeContaining(fromText);
+	const to = textNodeContaining(toText);
+	const range = document.createRange();
+	range.setStart(from, from.data.indexOf(fromText));
+	range.setEnd(to, to.data.indexOf(toText) + toText.length);
+	const selection = window.getSelection();
+	selection?.removeAllRanges();
+	selection?.addRange(range);
+	act(() =>
+	{
+		document.dispatchEvent(new Event("selectionchange"));
+	});
+}
+
+function card(): HTMLElement | null
+{
+	return document.querySelector<HTMLElement>('[role="dialog"][aria-label="Comment on selection"]');
+}
+
+function replyBox(): HTMLTextAreaElement
+{
+	return screen.getByRole<HTMLTextAreaElement>(
+		"textbox",
+		{
+			name: "Reply",
+		},
+	);
+}
+
+function pressEnter(target: EventTarget, init: KeyboardEventInit = {}): KeyboardEvent
+{
+	const event = new KeyboardEvent(
+		"keydown",
+		{
+			key: "Enter",
+			bubbles: true,
+			cancelable: true,
+			...init,
+		},
+	);
+	act(() =>
+	{
+		target.dispatchEvent(event);
+	});
+	return event;
+}
+
+function openCard(text = "Hermit crabs"): void
+{
+	renderBar();
+	select(text);
+	advance(250);
+	fireEvent.click(button("Reply"));
+}
+
+describe("transcript selection bar, inline reply (__gb__554343014)", () =>
+{
+	it("is on locally", () =>
+	{
+		expect(INLINE_REPLY_ENABLED).toBe(true);
+	});
+
+	it("gives Reply aria-keyshortcuts=Enter only with inline reply on", () =>
+	{
+		renderBar();
+		select("Hermit crabs");
+		advance(250);
+		const on = button("Reply").getAttribute("aria-keyshortcuts");
+		cleanup();
+		renderBar(true, false);
+		select("Hermit crabs");
+		advance(250);
+
+		expect(
+			{
+				on,
+				off: button("Reply").getAttribute("aria-keyshortcuts"),
+			},
+		).toStrictEqual(
+			{
+				on: "Enter",
+				off: null,
+			},
+		);
+	});
+
+	it("hides Reply when the selection spans two entries", () =>
+	{
+		renderBar();
+		selectAcross("tide pools.", "Tide pools");
+		advance(250);
+
+		expect(labels()).toStrictEqual(["Start a side chat"]);
+	});
+
+	it("opens the reply card on a plain Enter while the bar shows, hiding the bar and clearing the selection", () =>
+	{
+		renderBar();
+		select("Hermit crabs");
+		advance(250);
+		const event = pressEnter(document.body);
+
+		expect(
+			{
+				prevented: event.defaultPrevented,
+				quote: card()?.querySelector("blockquote")?.textContent,
+				placeholder: replyBox().placeholder,
+				save: screen
+					.getByRole(
+						"button",
+						{
+							name: "Add to prompt",
+						},
+					)
+					.getAttribute("aria-keyshortcuts"),
+				bar: host(),
+				ranges: window.getSelection()?.rangeCount,
+			},
+		).toStrictEqual(
+			{
+				prevented: true,
+				quote: "Hermit crabs",
+				placeholder: "Reply to Claude",
+				save: "Enter",
+				bar: null,
+				ranges: 0,
+			},
+		);
+	});
+
+	it("ignores Enter with a modifier, on repeat, or typed in a field", () =>
+	{
+		renderBar();
+		select("Hermit crabs");
+		advance(250);
+		const field = document.createElement("textarea");
+		document.body.append(field);
+		const events = [
+			pressEnter(
+				document.body,
+				{
+					metaKey: true,
+				},
+			),
+			pressEnter(
+				document.body,
+				{
+					shiftKey: true,
+				},
+			),
+			pressEnter(
+				document.body,
+				{
+					repeat: true,
+				},
+			),
+			pressEnter(field),
+		];
+		field.remove();
+
+		expect(
+			{
+				prevented: events.map((event) => event.defaultPrevented),
+				card: card(),
+			},
+		).toStrictEqual(
+			{
+				prevented: [false, false, false, false],
+				card: null,
+			},
+		);
+	});
+
+	it("Add to prompt with a blank comment attaches a plain Excerpt, closes the card and focuses the composer", () =>
+	{
+		openCard();
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Add to prompt",
+				},
+			),
+		);
+
+		expect(
+			{
+				chips: getContextChips(SESSION).map(({id: _id, ...chip}) => chip),
+				card: card(),
+				focused: focus.mock.calls.length > 0,
+			},
+		).toStrictEqual(
+			{
+				chips: [
+					{
+						kind: "excerpt",
+						text: "Hermit crabs",
+					},
+				],
+				card: null,
+				focused: true,
+			},
+		);
+	});
+
+	it("Enter with a comment stages a reply chip", () =>
+	{
+		openCard();
+		fireEvent.change(
+			replyBox(),
+			{
+				target:
+				{
+					value: "Why tide pools?",
+				},
+			},
+		);
+		pressEnter(replyBox());
+
+		expect(
+			{
+				chips: getContextChips(SESSION).map(({id: _id, ...chip}) => chip),
+				card: card(),
+			},
+		).toStrictEqual(
+			{
+				chips: [
+					{
+						kind: "excerpt",
+						text: "Hermit crabs",
+						comment: "Why tide pools?",
+					},
+				],
+				card: null,
+			},
+		);
+	});
+
+	it("refuses the 100th staged reply with upstream's cap toast and keeps the card", () =>
+	{
+		for (let index = 0; index < MAX_STAGED_REPLIES; index++)
+			attachContext(
+				SESSION,
+				{
+					kind: "excerpt",
+					text: `q${index}`,
+					comment: "c",
+				},
+			);
+		openCard();
+		fireEvent.change(
+			replyBox(),
+			{
+				target:
+				{
+					value: "one more",
+				},
+			},
+		);
+		pressEnter(replyBox());
+
+		expect(
+			{
+				toasts: toast.mock.calls.map(([options]) => options.message),
+				open: card() !== null,
+			},
+		).toStrictEqual(
+			{
+				toasts: [REPLY_CAP_MESSAGE],
+				open: true,
+			},
+		);
+	});
+
+	it("⌘⏎ with a comment sends the reply prompt and closes the card; a blank ⌘⏎ does nothing", () =>
+	{
+		openCard();
+		pressEnter(
+			replyBox(),
+			{
+				metaKey: true,
+			},
+		);
+		const blankSends = send.mock.calls.length;
+		fireEvent.change(
+			replyBox(),
+			{
+				target:
+				{
+					value: " Why? ",
+				},
+			},
+		);
+		pressEnter(
+			replyBox(),
+			{
+				metaKey: true,
+			},
+		);
+
+		expect(
+			{
+				blankSends,
+				sends: send.mock.calls,
+				card: card(),
+				chips: getContextChips(SESSION),
+			},
+		).toStrictEqual(
+			{
+				blankSends: 0,
+				sends: [["<!-- reply -->\n> Hermit crabs\n\nWhy?"]],
+				card: null,
+				chips: [],
+			},
+		);
+	});
+
+	it("toasts instead of adding when the composer went away", () =>
+	{
+		openCard();
+		unregister();
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Add to prompt",
+				},
+			),
+		);
+
+		expect(
+			{
+				toasts: toast.mock.calls.map(([options]) => options.message),
+				open: card() !== null,
+			},
+		).toStrictEqual(
+			{
+				toasts: ["Can\u2019t add to your prompt until the message box is back."],
+				open: true,
+			},
+		);
+	});
+});

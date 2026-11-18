@@ -34,6 +34,14 @@ export type CommentEditorProps =
 	inputLabel?: string;
 	saveLabel?: string;
 	saveShortcut?: string;
+	/** A second action row under Save's tooltip (upstream `saveSecondaryHint`), e.g. Send reply ⌘⏎ on the reply card. */
+	saveSecondaryHint?:
+		|
+		  {
+				content: string;
+				shortcut: string;
+		  }
+		| undefined;
 	saveIcon?: ReactNode;
 	placeholder?: string;
 	/** Disables Save, becomes its tooltip and shows as a status line under the editor. */
@@ -108,6 +116,7 @@ export function CommentEditor({
 	inputLabel = "Comment",
 	saveLabel = "Save comment",
 	saveShortcut,
+	saveSecondaryHint,
 	saveIcon,
 	placeholder = "Add a comment",
 	saveDisabledReason,
@@ -284,6 +293,12 @@ export function CommentEditor({
 						:
 							{
 								shortcut: saveShortcut,
+							})}
+					{...(blocked || saveSecondaryHint === undefined
+						? {}
+						:
+							{
+								secondary: saveSecondaryHint,
 							})}
 				>
 					<span className="inline-flex">

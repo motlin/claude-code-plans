@@ -6363,9 +6363,17 @@ html[data-reduce-motion="true"] [data-cds="SkeletonGroup"][data-hold="delayed"]
 	background-color: rgb(249 115 22 / 0.65);
 }
 
-/* The Plan pane selection a comment popover is open for, kept painted after the window selection is cleared
-   (upstream's epitaxy-plan-selection highlight). */
+/* The Plan pane selection a comment popover is open for, or the transcript selection a reply card is open for,
+   kept painted after the window selection is cleared (upstream's epitaxy-plan-selection and
+   epitaxy-reply-selection highlights, cdb02e30b). */
 ::highlight(plan-selection)
+{
+	background-color: highlight;
+	color: highlighttext;
+}
+
+/* Its own rule: the optimize pass drops all but the last ::highlight() of a grouped selector list. */
+::highlight(reply-selection)
 {
 	background-color: highlight;
 	color: highlighttext;

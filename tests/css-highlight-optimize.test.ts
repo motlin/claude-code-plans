@@ -28,7 +28,7 @@ describe("CSS Custom Highlight rules through Tailwind's optimize pass", () =>
 			},
 		).toStrictEqual(
 			{
-				code: "::highlight(find-in-page){color:var(--cds-black,#000);background-color:#ffd500}::highlight(find-in-page-active){color:var(--cds-black,#000);background-color:#ff9632}::highlight(file-find){background-color:#facc1559}::highlight(file-find-active){background-color:#f97316a6}::highlight(plan-selection){color:highlighttext;background-color:highlight}",
+				code: "::highlight(find-in-page){color:var(--cds-black,#000);background-color:#ffd500}::highlight(find-in-page-active){color:var(--cds-black,#000);background-color:#ff9632}::highlight(file-find){background-color:#facc1559}::highlight(file-find-active){background-color:#f97316a6}::highlight(plan-selection){color:highlighttext;background-color:highlight}::highlight(reply-selection){color:highlighttext;background-color:highlight}",
 				warnings: [],
 			},
 		);
