@@ -428,6 +428,55 @@ describe("SettingsSection and SettingsRow", () =>
 			},
 		);
 	});
+	it("lets the control give way with upstream's controlGivesWay column classes, and keeps the defaults without it", () =>
+	{
+		render(
+			<>
+				<SettingsRow slug="gives" title="Gives" controlGivesWay>
+					<i />
+				</SettingsRow>
+				<SettingsRow slug="keeps" title="Keeps">
+					<i />
+				</SettingsRow>
+			</>,
+		);
+		const classesOf = (name: string) =>
+		{
+			const row = screen.getByRole(
+				"group",
+				{
+					name,
+				},
+			);
+			return {
+				text: row.querySelector("[data-settings-text]")?.className,
+				title: row.querySelector('[id$="-title"]')?.className,
+				control: row.querySelector("[data-settings-control]")?.className,
+			};
+		};
+
+		expect(
+			{
+				gives: classesOf("Gives"),
+				keeps: classesOf("Keeps"),
+			},
+		).toStrictEqual(
+			{
+				gives:
+				{
+					text: "flex min-w-min flex-1 flex-col justify-center gap-1",
+					title: "text-body text-primary [&:is(:lang(zh),:lang(ja),:lang(ko))]:min-w-15",
+					control: "flex min-w-0 items-center",
+				},
+				keeps:
+				{
+					text: "flex min-w-0 flex-1 flex-col justify-center gap-1",
+					title: "text-body text-primary",
+					control: "flex shrink-0 items-center",
+				},
+			},
+		);
+	});
 });
 
 describe("Switch", () =>

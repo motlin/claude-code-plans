@@ -13,7 +13,9 @@ import {POPUP_LIST_GUTTER_CLASS, POPUP_LIST_SCROLL_CLASS, POPUP_LISTBOX_CLASS} f
  * to bubble so, as upstream, it also closes the surrounding Settings dialog. A short list (Code font size) drops
  * the filter (`filterable={false}`): the listbox itself takes focus and the arrow keys. The `ghost` variant is
  * upstream's borderless fizzy `type` trigger (cebb16f99 `U` over `E8`), whose popup is w-56 and aligned to the
- * trigger's end edge; its Escape closes only the popup and refocuses the trigger.
+ * trigger's end edge; its Escape closes only the popup and refocuses the trigger. A ghost `className` replaces the
+ * root's default `shrink-0` (Response font passes upstream Gt's `min-w-0 shrink`), and `popupClassName` replaces
+ * the ghost popup's `w-56`.
  */
 
 interface ComboboxOption<T extends string>
@@ -39,6 +41,10 @@ interface ThemedComboboxProps<T extends string>
 	variant?: "field" | "ghost";
 	/** Trigger text in place of the current option's label ("Default · 13 px"). */
 	triggerLabel?: string;
+	/** Ghost popup width classes in place of `w-56` (upstream's per-row `popupClassName`). */
+	popupClassName?: string;
+	/** Sets the trigger's label in the current option's `labelStyle` (upstream Response font `renderTriggerValue`). */
+	triggerInOwnFace?: boolean;
 }
 
 export function ThemedCombobox<T extends string>({
@@ -51,6 +57,8 @@ export function ThemedCombobox<T extends string>({
 	filterable = true,
 	variant = "field",
 	triggerLabel,
+	popupClassName = "w-56",
+	triggerInOwnFace = false,
 }: ThemedComboboxProps<T>)
 {
 	const row = useSettingsRowIds();
@@ -143,7 +151,7 @@ export function ThemedCombobox<T extends string>({
 			data-cds="Combobox"
 			className={
 				ghost
-					? `group/cbx relative inline-flex items-center gap-1.5 h-8 rounded-r6 bg-transparent hover:bg-fill-ghost-hover aria-expanded:bg-fill-ghost-hover has-[[aria-expanded=true]]:bg-fill-ghost-hover ps-0 pe-2 has-[:focus-visible]:shadow-focus shrink-0${className === undefined ? "" : ` ${className}`}`
+					? `group/cbx relative inline-flex items-center gap-1.5 h-8 rounded-r6 bg-transparent hover:bg-fill-ghost-hover aria-expanded:bg-fill-ghost-hover has-[[aria-expanded=true]]:bg-fill-ghost-hover ps-0 pe-2 has-[:focus-visible]:shadow-focus ${className ?? "shrink-0"}`
 					: `relative ${className ?? "w-56"}`
 			}
 		>
@@ -178,7 +186,13 @@ export function ThemedCombobox<T extends string>({
 				}
 			>
 				<span className={ghost ? "min-w-0 flex-1 truncate" : "min-w-0 truncate"}>
-					{triggerLabel ?? current?.label ?? value}
+					{triggerInOwnFace ? (
+						<span className="block truncate" style={current?.labelStyle}>
+							{triggerLabel ?? current?.label ?? value}
+						</span>
+					) : (
+						(triggerLabel ?? current?.label ?? value)
+					)}
 				</span>
 				<ChevronDown
 					aria-hidden="true"
@@ -191,7 +205,7 @@ export function ThemedCombobox<T extends string>({
 			</button>
 			{open ? (
 				<div
-					className={`absolute top-full z-[140] mt-1 flex max-h-72 flex-col rounded-card bg-[var(--menu-bg)] shadow-[var(--menu-shadow)] ${ghost ? "end-0 w-56" : "left-0 w-full min-w-[12rem]"}`}
+					className={`absolute top-full z-[140] mt-1 flex max-h-72 flex-col rounded-card bg-[var(--menu-bg)] shadow-[var(--menu-shadow)] ${ghost ? `end-0 ${popupClassName}` : "left-0 w-full min-w-[12rem]"}`}
 				>
 					{filterable ? (
 						<div className="border-b border-subtle p-1">

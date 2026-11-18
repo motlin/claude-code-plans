@@ -30,6 +30,11 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
 	},
 	{
 		tab: "general",
+		rowSlug: "response-font",
+		title: "Response font",
+	},
+	{
+		tab: "general",
 		rowSlug: "transcript-text-size",
 		title: "Transcript text size",
 		searchPhrases: ["font size"],

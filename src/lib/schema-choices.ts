@@ -1483,7 +1483,7 @@ export const interfaceFontLabels =
 } satisfies Record<InterfaceFont, string>;
 
 /** Settings ▸ General ▸ Appearance ▸ Response font (src/lib/appearance.ts). */
-const responseFontLabels =
+export const responseFontLabels =
 {
 	sans: "Sans",
 	serif: "Serif",

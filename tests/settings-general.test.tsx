@@ -6,6 +6,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {SettingsProvider} from "../src/components/settings-provider";
 import {GeneralSettings, NotificationsSettings} from "../src/components/settings/settings-sections";
 import {ThemeProvider} from "../src/components/theme-provider";
+import {INTERFACE_FONT_FAMILIES} from "../src/lib/appearance";
 import {installLocalStorage} from "./fake-storage";
 
 function stubNotification(permission: NotificationPermission)
@@ -83,6 +84,14 @@ function comboboxOptions(name: string)
 	}));
 }
 
+/** A font-family as jsdom serializes it from an inline style (it drops the quotes). */
+function styledFamily(family: string)
+{
+	const probe = document.createElement("span");
+	probe.style.fontFamily = family;
+	return probe.style.fontFamily;
+}
+
 function choose(name: string, option: string)
 {
 	fireEvent.click(
@@ -145,7 +154,7 @@ afterEach(() =>
 
 describe("General settings ▸ Appearance", () =>
 {
-	it("renders Theme, Interface font, Transcript text size, Transcript width, then Motion with the upstream width description", async () =>
+	it("renders Theme, Interface font, Response font, Transcript text size, Transcript width, then Motion with the upstream width description", async () =>
 	{
 		stubNotification("granted");
 		await renderGeneral();
@@ -168,7 +177,15 @@ describe("General settings ▸ Appearance", () =>
 			},
 		).toStrictEqual(
 			{
-				order: ["theme", "interface-font", "transcript-text-size", "transcript-width", "motion", "hide-chrome"],
+				order: [
+					"theme",
+					"interface-font",
+					"response-font",
+					"transcript-text-size",
+					"transcript-width",
+					"motion",
+					"hide-chrome",
+				],
 				description: "Maximum width of the transcript and composer columns.",
 				width: [
 					{
@@ -188,7 +205,7 @@ describe("General settings ▸ Appearance", () =>
 		);
 	});
 
-	it("leaves out upstream's not-applicable rows and keeps exactly the six Appearance rows in order", async () =>
+	it("leaves out upstream's not-applicable rows and keeps exactly the seven Appearance rows in order", async () =>
 	{
 		stubNotification("granted");
 		await renderGeneral();
@@ -211,7 +228,7 @@ describe("General settings ▸ Appearance", () =>
 		expect(
 			{
 				appearance: appearance === null ? null : titles(appearance),
-				notApplicable: ["Chat font", "Preferred browser", "Language", "Style", "Speed"].filter((title) =>
+				notApplicable: ["Preferred browser", "Language", "Style", "Speed"].filter((title) =>
 					allTitles.includes(title),
 				),
 			},
@@ -220,12 +237,104 @@ describe("General settings ▸ Appearance", () =>
 				appearance: [
 					"Theme",
 					"Interface font",
+					"Response font",
 					"Transcript text size",
 					"Transcript width",
 					"Motion",
 					"Hide chrome",
 				],
 				notApplicable: [],
+			},
+		);
+	});
+
+	it("renders Response font as a description-less controlGivesWay row with a ghost Sans/Serif combobox in each face", async () =>
+	{
+		stubNotification("granted");
+		await renderGeneral();
+
+		const row = document.querySelector('[data-settings-row="response-font"]');
+		const root = row?.querySelector('[data-cds="Combobox"]');
+		const trigger = screen.getByRole(
+			"combobox",
+			{
+				name: "Response font",
+			},
+		);
+		const rest =
+		{
+			desc: row?.querySelector("[data-settings-desc]") ?? null,
+			text: row?.querySelector("[data-settings-text]")?.className,
+			control: row?.querySelector("[data-settings-control]")?.className,
+			rootShrinks: root?.className.split(" ").filter((name) => ["min-w-0", "shrink", "shrink-0"].includes(name)),
+			trigger: trigger.textContent,
+			triggerFont: trigger.querySelector<HTMLElement>("span span")?.style.fontFamily,
+		};
+		fireEvent.click(trigger);
+		const popup = screen.getByRole("listbox").closest(".absolute");
+		const open =
+		{
+			popupWidth: ["w-max", "max-w-[min(32rem,calc(100vw-2rem))]", "min-w-56", "w-56"].filter((name) =>
+				popup?.className.split(" ").includes(name),
+			),
+			options: screen.getAllByRole("option").map((option) => (
+			{
+				name: option.textContent,
+				selected: option.getAttribute("aria-selected"),
+				font: option.querySelector<HTMLElement>("span")?.style.fontFamily,
+			})),
+		};
+		fireEvent.click(
+			screen.getByRole(
+				"option",
+				{
+					name: "Sans",
+				},
+			),
+		);
+		const sameStored = localStorage.getItem("ccp-response-font");
+		choose("Response font", "Serif");
+
+		expect(
+			{
+				rest,
+				open,
+				sameStored,
+				stored: localStorage.getItem("ccp-response-font"),
+				trigger: trigger.textContent,
+				replyFace: document.documentElement.dataset["replyFace"],
+			},
+		).toStrictEqual(
+			{
+				rest:
+				{
+					desc: null,
+					text: "flex min-w-min flex-1 flex-col justify-center gap-1",
+					control: "flex min-w-0 items-center",
+					rootShrinks: ["min-w-0", "shrink"],
+					trigger: "Sans",
+					triggerFont: styledFamily(INTERFACE_FONT_FAMILIES.sans),
+				},
+				open:
+				{
+					popupWidth: ["w-max", "max-w-[min(32rem,calc(100vw-2rem))]", "min-w-56"],
+					options: [
+						{
+							name: "Sans",
+							selected: "true",
+							font: styledFamily(INTERFACE_FONT_FAMILIES.sans),
+						},
+						{
+							name: "Serif",
+							selected: "false",
+							font: "var(--font-voice)",
+						},
+					],
+				},
+				sameStored: null,
+				stored: "serif",
+				trigger: "Serif",
+				replyFace: "serif",
 			},
 		);
 	});

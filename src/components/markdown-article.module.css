@@ -1093,6 +1093,16 @@
 	font-variation-settings: normal;
 }
 
+/* Settings ▸ Response font = Serif sets transcript prose in the local serif voice. Upstream's Code transcript passes
+   `font: tx(chatFont)` (shared-80: sans/default stay "sans", else `var(--font-claude-response, var(--cds-font-voice))`)
+   to Prose, which writes it as `--_prose-font-body`; `.prose` reads `font-family: var(--_prose-font-body)` and its
+   headings follow (c6a992d55). Local ships no Anthropic Serif, so the face is `--font-voice`. Headings inherit;
+   code and pre keep their own mono rules. Plans and memories have no [data-transcript-prose] and stay sans. */
+:global(html[data-reply-face="serif"]) :global([data-transcript-prose]) .markdown
+{
+	font-family: var(--font-voice);
+}
+
 /* Upstream's serif reply heading reset (shared-styles BM0lMNTW, c6a992d55):
    `html[data-cds-fizzy-lake~=type]:not([data-atkinson-font],[data-dyslexic-font]):not([data-reply-face=interface])
    .prose:not([data-prose-font]) { --cds-font-weight-header: initial; --cds-font-axis-wght-header: initial }`.

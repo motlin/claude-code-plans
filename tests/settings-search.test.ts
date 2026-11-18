@@ -44,6 +44,7 @@ describe("rankSettingsSections grouping", () =>
 					tab: "general",
 					rows: [
 						["interface-font", "Interface font"],
+						["response-font", "Response font"],
 						["code-font", "Code font"],
 						["code-font-size", "Code font size"],
 						["transcript-text-size", "Transcript text size"],
@@ -487,19 +488,19 @@ describe("buildSettingsResultRows", () =>
 				{
 					kind: "child",
 					tab: "general",
-					rowSlug: "code-font",
-					title: "Code font",
+					rowSlug: "response-font",
+					title: "Response font",
 				},
 				{
 					kind: "child",
 					tab: "general",
-					rowSlug: "code-font-size",
-					title: "Code font size",
+					rowSlug: "code-font",
+					title: "Code font",
 				},
 				{
 					kind: "more",
 					tab: "general",
-					count: 1,
+					count: 2,
 				},
 			],
 		],

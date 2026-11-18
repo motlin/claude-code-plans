@@ -27,6 +27,8 @@ import
 	INTERFACE_FONT_FAMILIES,
 	type InterfaceFont,
 	InterfaceFontSchema,
+	type ResponseFont,
+	ResponseFontSchema,
 	type TranscriptTextSize,
 } from "../../lib/appearance";
 import {useFizzyLake} from "../../lib/fizzy-lake";
@@ -46,6 +48,7 @@ import
 	codeThemeDarkLabels,
 	codeThemeLightLabels,
 	interfaceFontLabels,
+	responseFontLabels,
 	terminalAppearanceLabels,
 	terminalHostSettingLabels,
 } from "../../lib/schema-choices";
@@ -549,6 +552,49 @@ function InterfaceFontRow()
 					}}
 				/>
 			)}
+		</SettingsRow>
+	);
+}
+
+/** Each Response font's face: Sans follows the Interface font, Serif is the local `--font-voice` stack. */
+function responseFontFamily(font: ResponseFont, interfaceFont: InterfaceFont): string
+{
+	return font === "sans" ? INTERFACE_FONT_FAMILIES[interfaceFont] : "var(--font-voice)";
+}
+
+/*
+ * General ▸ Appearance ▸ Response font (upstream c0db37792 `mn`): no description, `controlGivesWay`, and a ghost
+ * Combobox (`Gt`: `className:"min-w-0 shrink"`, `popupClassName:"w-max max-w-[min(32rem,calc(100vw-2rem))]
+ * min-w-56"`) whose trigger and options each read in their own face. Upstream's System/Atkinson/OpenDyslexic
+ * options appear only for legacy account values, so local lists Sans and Serif. The value stays per browser.
+ */
+function ResponseFontRow()
+{
+	const {settings, setSetting} = useSettings();
+	return (
+		<SettingsRow slug="response-font" title="Response font" controlGivesWay>
+			<ThemedCombobox
+				aria-label="Response font"
+				variant="ghost"
+				filterable={false}
+				className="min-w-0 shrink"
+				popupClassName="w-max max-w-[min(32rem,calc(100vw-2rem))] min-w-56"
+				triggerInOwnFace
+				value={settings.responseFont}
+				options={ResponseFontSchema.options.map((value) => (
+				{
+					value,
+					label: responseFontLabels[value],
+					labelStyle:
+					{
+						fontFamily: responseFontFamily(value, settings.interfaceFont),
+					},
+				}))}
+				onValueChange={(next) =>
+				{
+					setSetting("responseFont", next);
+				}}
+			/>
 		</SettingsRow>
 	);
 }
@@ -1217,7 +1263,7 @@ function ResetAllSettings()
 	);
 }
 
-// Upstream also shows Chat font (claude.ai chat only, no effect on Code transcripts), Tasks › Preferred browser (Cowork) and Voice; not applicable locally.
+// Upstream also shows Tasks › Preferred browser (Cowork) and Voice; not applicable locally.
 export function GeneralSettings()
 {
 	return (
@@ -1225,6 +1271,7 @@ export function GeneralSettings()
 			<SettingsSection title="General">
 				<ThemeRow />
 				<InterfaceFontRow />
+				<ResponseFontRow />
 				<TranscriptTextSizeRow />
 				<TranscriptWidthRow />
 				<MotionRow />

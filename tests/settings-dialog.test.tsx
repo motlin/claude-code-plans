@@ -1400,7 +1400,7 @@ describe("SettingsDialog at phone width", () =>
 		).toBe("true");
 	});
 
-	it("keeps every settings row's control column from shrinking", async () =>
+	it("keeps every settings row's control column from shrinking except upstream's controlGivesWay rows", async () =>
 	{
 		await renderAt("/#settings/general");
 		const dialog = await screen.findByRole(
@@ -1414,12 +1414,23 @@ describe("SettingsDialog at phone width", () =>
 		expect(
 			{
 				any: controls.length > 0,
-				unshrinkable: controls.every((control) => control.classList.contains("shrink-0")),
+				givesWay: controls
+					.filter((control) => !control.classList.contains("shrink-0"))
+					.map((control) => (
+					{
+						row: control.closest("[data-settings-row]")?.getAttribute("data-settings-row"),
+						className: control.className,
+					})),
 			},
 		).toStrictEqual(
 			{
 				any: true,
-				unshrinkable: true,
+				givesWay: [
+					{
+						row: "response-font",
+						className: "flex min-w-0 items-center",
+					},
+				],
 			},
 		);
 	});

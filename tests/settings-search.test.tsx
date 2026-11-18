@@ -1344,9 +1344,9 @@ describe("settings search", () =>
 	const FONT_ROWS = [
 		"hit: Appearance",
 		"Interface font in Appearance",
+		"Response font in Appearance",
 		"Code font in Appearance",
-		"Code font size in Appearance",
-		"1 more match in Appearance",
+		"2 more matches in Appearance",
 	];
 	const marked = (index: number) => FONT_ROWS.map((row, i) => (i === index ? `> ${row}` : row));
 
@@ -1415,7 +1415,7 @@ describe("settings search", () =>
 		]);
 		expect(highlightScrolls.at(-1)).toStrictEqual(
 			{
-				row: "1 more match in Appearance",
+				row: "2 more matches in Appearance",
 				options:
 				{
 					block: "nearest",
@@ -1577,7 +1577,7 @@ describe("settings search", () =>
 		{
 			expect(router.state.location.hash).toBe("settings/general");
 		});
-		expect(scrolled).toStrictEqual(["code-font-size"]);
+		expect(scrolled).toStrictEqual(["code-font"]);
 	});
 
 	it("moves the single highlight with the pointer and keeps focus in the input on mousedown", async () =>
@@ -1615,7 +1615,7 @@ describe("settings search", () =>
 		const second = within(popover).getByRole(
 			"button",
 			{
-				name: "Code font size in Appearance",
+				name: "Code font in Appearance",
 			},
 		);
 		fireEvent.mouseMove(second);

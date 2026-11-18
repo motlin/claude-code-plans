@@ -76,6 +76,11 @@ interface SettingsRowProps
 	descriptionHidden?: boolean;
 	/** Content after the title (upstream's `labelAdornment`: the modified dot, scope badge and Reset). */
 	labelAdornment?: ReactNode;
+	/**
+	 * Upstream shared-1 `cR` `controlGivesWay`: the title column keeps its min-content width and the control
+	 * column may shrink, so a long control value truncates inside its trigger instead of squeezing the title.
+	 */
+	controlGivesWay?: boolean;
 }
 
 export function SettingsRow({
@@ -88,6 +93,7 @@ export function SettingsRow({
 	className,
 	descriptionHidden = false,
 	labelAdornment,
+	controlGivesWay = false,
 }: SettingsRowProps)
 {
 	const baseId = useId();
@@ -119,7 +125,14 @@ export function SettingsRow({
 	}, [flash, flashing]);
 
 	const titleDiv = (
-		<div id={titleId} className="text-body text-primary">
+		<div
+			id={titleId}
+			className={
+				controlGivesWay
+					? "text-body text-primary [&:is(:lang(zh),:lang(ja),:lang(ko))]:min-w-15"
+					: "text-body text-primary"
+			}
+		>
 			<span className={`settings-row-title inline-block align-top ${lit ? "feature-anchor-highlight" : ""}`}>
 				{title}
 			</span>
@@ -128,7 +141,10 @@ export function SettingsRow({
 
 	const inner = (
 		<>
-			<div data-settings-text="" className="flex min-w-0 flex-1 flex-col justify-center gap-1">
+			<div
+				data-settings-text=""
+				className={`flex ${controlGivesWay ? "min-w-min" : "min-w-0"} flex-1 flex-col justify-center gap-1`}
+			>
 				{labelAdornment === undefined || labelAdornment === null ? (
 					titleDiv
 				) : (
@@ -149,7 +165,10 @@ export function SettingsRow({
 				{footnote}
 			</div>
 			{children === undefined ? null : (
-				<div data-settings-control="" className="flex shrink-0 items-center">
+				<div
+					data-settings-control=""
+					className={controlGivesWay ? "flex min-w-0 items-center" : "flex shrink-0 items-center"}
+				>
 					{children}
 				</div>
 			)}
