@@ -70,6 +70,7 @@ import {UsagePopoverLimitRow} from "./usage-limit-row";
 import type {UsageRingContext, UsagePopoverContextSection} from "./usage-popover-context";
 import {loadedUsagePopoverContext, preloadUsagePopoverContext} from "./usage-popover-context-loader";
 import {useRenameAfterMenuClose} from "./use-rename-after-menu-close";
+import {UsageBars} from "./usage-bars";
 
 const LazyTryAutoCoachMark = lazy(async () =>
 	import("./try-auto-coach-mark").then((module) => (
@@ -143,39 +144,43 @@ function UsagePopoverBody({
 				{usage !== null && usageRingMode(usage) === "context" ? (
 					<ContextSection usage={usage} {...context} />
 				) : (
-					<div className="flex flex-col gap-1.5">
-						<div
-							data-usage-popover-header
-							className="flex min-h-5 items-center justify-between gap-2 px-3 py-1"
-						>
-							<span className="text-[12px]/[15px] text-muted-as-secondary">
-								{planDetail === undefined ? "Plan usage limits" : `Plan usage limits · ${planDetail}`}
-							</span>
-							{/* Upstream's `DT`: a ghost xxs "See all" button, flush end with a pad-sm outset. */}
-							<a
-								href={`#${settingsHash("usage")}`}
-								aria-label="See all usage in Settings"
-								onClick={onNavigate}
-								className="-me-1 inline-flex h-5 items-center gap-1 rounded-r4 px-1.5 text-[12px]/[15px] text-primary outline-none hover:bg-alpha-1 focus-visible:bg-alpha-1"
+					<UsageBars surface="popover">
+						<div className="flex flex-col gap-1.5">
+							<div
+								data-usage-popover-header
+								className="flex min-h-5 items-center justify-between gap-2 px-3 py-1"
 							>
-								See all
-								<ArrowRight aria-hidden="true" className="-me-1 size-3 rtl:-scale-x-100" />
-							</a>
-						</div>
-						{limits.length > 0 && (
-							<div role="group" aria-label="Usage limits" className="flex flex-col gap-1.5">
-								<div className="flex flex-col gap-2 px-3 pb-1">
-									{limits.map((limit) => (
-										<UsagePopoverLimitRow
-											key={limit.label}
-											label={limit.label}
-											window={limit.window}
-										/>
-									))}
-								</div>
+								<span className="text-[12px]/[15px] text-muted-as-secondary">
+									{planDetail === undefined
+										? "Plan usage limits"
+										: `Plan usage limits · ${planDetail}`}
+								</span>
+								{/* Upstream's `DT`: a ghost xxs "See all" button, flush end with a pad-sm outset. */}
+								<a
+									href={`#${settingsHash("usage")}`}
+									aria-label="See all usage in Settings"
+									onClick={onNavigate}
+									className="-me-1 inline-flex h-5 items-center gap-1 rounded-r4 px-1.5 text-[12px]/[15px] text-primary outline-none hover:bg-alpha-1 focus-visible:bg-alpha-1"
+								>
+									See all
+									<ArrowRight aria-hidden="true" className="-me-1 size-3 rtl:-scale-x-100" />
+								</a>
 							</div>
-						)}
-					</div>
+							{limits.length > 0 && (
+								<div role="group" aria-label="Usage limits" className="flex flex-col gap-1.5">
+									<div className="flex flex-col gap-2 px-3 pb-1">
+										{limits.map((limit) => (
+											<UsagePopoverLimitRow
+												key={limit.label}
+												label={limit.label}
+												window={limit.window}
+											/>
+										))}
+									</div>
+								</div>
+							)}
+						</div>
+					</UsageBars>
 				)}
 			</div>
 		</>

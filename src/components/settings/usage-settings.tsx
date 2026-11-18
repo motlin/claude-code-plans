@@ -15,6 +15,7 @@ import
 	type UsageWindow,
 } from "../../lib/usage";
 import {ExternalTextLink} from "../external-text-link";
+import {UsageBars} from "../usage-bars";
 import {Skeleton} from "../ui/skeleton";
 import {Tooltip} from "../ui/tooltip";
 import {SettingsSection} from "./settings-row";
@@ -143,59 +144,71 @@ export function UsagePanel({usage, planDetail, nowMs, timeZone, refreshing, onRe
 
 	return (
 		<div className="flex flex-col">
-			<div data-testid="usage-page-pace" className="flex flex-col pb-6">
-				<div className="mb-3 flex items-baseline gap-2">
-					<h2 data-settings-group-title="" className="text-[15px] leading-[20px] font-[580] text-primary">
-						Your usage
-					</h2>
-					{planDetail === undefined ? null : (
-						<span className="whitespace-nowrap text-footnote text-secondary">{planDetail}</span>
-					)}
-				</div>
-				<SettingsSection>
-					{headline === null ? null : (
-						<div data-settings-item="" className="flex flex-col items-start gap-3 py-3">
-							<h3
-								data-settings-group-title=""
-								className="text-[15px] leading-[20px] font-[580] text-primary"
-							>
-								{headline}
-							</h3>
-						</div>
-					)}
-					{usage.fiveHour === null && usage.sevenDay === null ? (
-						<div data-settings-item="" className="py-3">
-							<p className="text-body text-secondary">
-								Usage appears after a Claude Code session reports its status line
-							</p>
-						</div>
-					) : (
-						<div data-settings-item="" className="flex flex-col gap-5 py-3">
-							<div className="flex flex-col gap-5">
-								{usage.fiveHour === null ? null : (
-									<UsageMeterRow
-										label="Current session"
-										caption={
-											sessionPaused
-												? "Paused until your week resets"
-												: formatLimitCaption(usage.fiveHour.resetsAt, nowMs, "short", timeZone)
-										}
-										window={usage.fiveHour}
-										dimmed={sessionPaused}
-									/>
-								)}
-								{usage.sevenDay === null ? null : (
-									<UsageMeterRow
-										label="This week"
-										caption={formatLimitCaption(usage.sevenDay.resetsAt, nowMs, "long", timeZone)}
-										window={usage.sevenDay}
-									/>
-								)}
+			<UsageBars surface="usage_page">
+				<div data-testid="usage-page-pace" className="flex flex-col pb-6">
+					<div className="mb-3 flex items-baseline gap-2">
+						<h2 data-settings-group-title="" className="text-[15px] leading-[20px] font-[580] text-primary">
+							Your usage
+						</h2>
+						{planDetail === undefined ? null : (
+							<span className="whitespace-nowrap text-footnote text-secondary">{planDetail}</span>
+						)}
+					</div>
+					<SettingsSection>
+						{headline === null ? null : (
+							<div data-settings-item="" className="flex flex-col items-start gap-3 py-3">
+								<h3
+									data-settings-group-title=""
+									className="text-[15px] leading-[20px] font-[580] text-primary"
+								>
+									{headline}
+								</h3>
 							</div>
-						</div>
-					)}
-				</SettingsSection>
-			</div>
+						)}
+						{usage.fiveHour === null && usage.sevenDay === null ? (
+							<div data-settings-item="" className="py-3">
+								<p className="text-body text-secondary">
+									Usage appears after a Claude Code session reports its status line
+								</p>
+							</div>
+						) : (
+							<div data-settings-item="" className="flex flex-col gap-5 py-3">
+								<div className="flex flex-col gap-5">
+									{usage.fiveHour === null ? null : (
+										<UsageMeterRow
+											label="Current session"
+											caption={
+												sessionPaused
+													? "Paused until your week resets"
+													: formatLimitCaption(
+															usage.fiveHour.resetsAt,
+															nowMs,
+															"short",
+															timeZone,
+														)
+											}
+											window={usage.fiveHour}
+											dimmed={sessionPaused}
+										/>
+									)}
+									{usage.sevenDay === null ? null : (
+										<UsageMeterRow
+											label="This week"
+											caption={formatLimitCaption(
+												usage.sevenDay.resetsAt,
+												nowMs,
+												"long",
+												timeZone,
+											)}
+											window={usage.sevenDay}
+										/>
+									)}
+								</div>
+							</div>
+						)}
+					</SettingsSection>
+				</div>
+			</UsageBars>
 
 			{usage.updatedAt === null ? null : (
 				<section className="mt-2">

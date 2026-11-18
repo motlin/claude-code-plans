@@ -412,6 +412,19 @@ function rows(section: string): Array<[string, string | null]>
 		const changesStat = row.querySelector("[data-rail-changes-row] button[aria-label^='Open changes']");
 		if (changesStat !== null)
 			return [changesStat.getAttribute("aria-label") ?? "", hintText(changesStat.querySelector("[dir='ltr']"))];
+		// Upstream's stacked PR row: its title link, then the sub-line's "#N" and stat.
+		const prTitle = row.querySelector("a[target='_blank']");
+		const subLine = row.querySelector(".text-footnote.text-muted-as-secondary");
+		if (prTitle !== null && subLine !== null)
+		{
+			const stat = subLine.querySelector("[dir='ltr']");
+			return [
+				prTitle.textContent,
+				[subLine.querySelector(".shrink-0")?.textContent, hintText(stat)]
+					.filter((part) => part != null)
+					.join(" "),
+			];
+		}
 		return [
 			row.querySelector("[data-rail-row-label]")?.textContent ?? "",
 			hintText(row.querySelector("[data-rail-row-hint]")),
@@ -1460,10 +1473,7 @@ describe("cards from local data", () =>
 				],
 				progress: null,
 				outputs: [["Rail report", null]],
-				changes: [
-					["#42 Sync fork with upstream", "Open"],
-					["Open changes, 120 added, 8 removed", "+120−8"],
-				],
+				changes: [["Sync fork with upstream", "#42 +120−8"]],
 				servers: [["localhost:7611", null]],
 				backgroundTasks: [
 					["Run the dev server", null],
@@ -1478,11 +1488,18 @@ describe("cards from local data", () =>
 	describe("Changes row", () =>
 	{
 		const DIFF_KEY = sessionDiffQueryOptions(SESSION_ID, "uncommitted").queryKey;
+		const NO_PR: SessionRailInputs =
+		{
+			...FULL,
+			pr: null,
+			prStatus: null,
+		};
 
-		async function renderChanges(): Promise<QueryClient>
+		/** Upstream draws the row form only when no PR is linked. */
+		async function renderChanges(inputs: SessionRailInputs = NO_PR): Promise<QueryClient>
 		{
 			let captured: QueryClient | undefined;
-			await renderCards(FULL, (client) =>
+			await renderCards(inputs, (client) =>
 			{
 				seed(client);
 				captured = client;
@@ -1819,6 +1836,149 @@ describe("cards from local data", () =>
 						"More options for alice/sync-upstream",
 					],
 					triggerName: "More options for alice/sync-upstream",
+				},
+			);
+		});
+
+		function stackedRow(): HTMLElement
+		{
+			const link = screen.getByRole(
+				"link",
+				{
+					name: "Sync fork with upstream",
+				},
+			);
+			const row = link.closest<HTMLElement>("[data-testid='rail-rows'] > *");
+			if (row === null) throw new Error("no stacked Changes row");
+			return row;
+		}
+
+		it("draws upstream's stacked form for a linked PR: one row with the PR glyph, title link, menu and a #N footnote with the stat", async () =>
+		{
+			stubReducedMotion(true);
+			await renderChanges(FULL);
+			const row = stackedRow();
+			const link = screen.getByRole(
+				"link",
+				{
+					name: "Sync fork with upstream",
+				},
+			);
+			const stat = changesRow();
+			const trigger = screen.getByRole(
+				"button",
+				{
+					name: "More options for Sync fork with upstream",
+				},
+			);
+			const subLine = stat.closest(".text-footnote.text-muted-as-secondary");
+			expect(
+				{
+					rowCount: within(row.parentElement ?? row).queryAllByRole("link").length,
+					row: [row.tagName, row.getAttribute("role"), row.getAttribute("aria-labelledby"), row.className],
+					glyphSlot: row.firstElementChild?.className,
+					glyph: [
+						row.firstElementChild?.firstElementChild?.getAttribute("role"),
+						row.firstElementChild?.firstElementChild?.getAttribute("aria-label"),
+						row.firstElementChild?.firstElementChild?.className,
+					],
+					column: row.children[1]?.className,
+					titleBlock: row.children[1]?.firstElementChild?.className,
+					titleLine: link.parentElement?.parentElement?.className,
+					titleSlot: [link.parentElement?.tagName, link.parentElement?.id, link.parentElement?.className],
+					link: [
+						link.getAttribute("href"),
+						link.getAttribute("target"),
+						link.getAttribute("rel"),
+						link.className,
+					],
+					triggerClass: trigger.className.split(" ").includes("-my-0.5"),
+					subLine: subLine?.className,
+					wrap: subLine?.firstElementChild?.className,
+					number: [
+						subLine?.firstElementChild?.firstElementChild?.tagName,
+						subLine?.firstElementChild?.firstElementChild?.id,
+						subLine?.firstElementChild?.firstElementChild?.className,
+						subLine?.firstElementChild?.firstElementChild?.innerHTML,
+					],
+					statWrapper: subLine?.firstElementChild?.children[1]?.className,
+					statClass: stat.querySelector("[dir='ltr']")?.className,
+					statName: stat.getAttribute("aria-label"),
+					rowForm: document.querySelector("[data-rail-changes-row]"),
+					uncommitted: screen.queryByText("Uncommitted changes"),
+				},
+			).toStrictEqual(
+				{
+					rowCount: 1,
+					row: ["DIV", null, null, "flex min-w-0 gap-sm px-xs py-1"],
+					glyphSlot: "flex size-5 shrink-0 items-center justify-center",
+					glyph: ["img", "Open", "inline-flex shrink-0 text-git-opened"],
+					column: "flex min-w-0 flex-1 flex-col gap-sm",
+					titleBlock: "flex min-w-0 flex-col gap-0.5",
+					titleLine: "flex h-5 min-w-0 items-center gap-sm",
+					titleSlot: ["SPAN", "", "flex min-w-0 flex-1"],
+					link: [
+						"https://github.com/alice/avalonlogs/pull/42",
+						"_blank",
+						"noopener noreferrer",
+						"min-w-0 text-primary hover:underline focus-visible:underline focus-visible:outline-hidden",
+					],
+					triggerClass: true,
+					subLine: "flex min-h-4 min-w-0 items-center gap-1.5 text-footnote text-muted-as-secondary",
+					wrap: "-my-0.5 flex h-5 min-w-0 flex-wrap content-start items-center gap-x-1.5 gap-y-1 overflow-y-clip focus-within:flex-nowrap focus-within:overflow-y-visible",
+					number: ["SPAN", "", "flex h-5 min-w-0 items-center gap-1", '<span class="shrink-0">#42</span>'],
+					statWrapper: "-my-0.5 flex shrink-0",
+					statClass: "tabular-nums inline-flex shrink-0 gap-1 text-footnote",
+					statName: "Open changes, 120 added, 8 removed",
+					rowForm: null,
+					uncommitted: null,
+				},
+			);
+		});
+
+		it("opens the stacked row's PR menu from its trigger and from a right-click", async () =>
+		{
+			stubReducedMotion(true);
+			registerChangesPane();
+			await renderChanges(FULL);
+			fireEvent.click(
+				screen.getByRole(
+					"button",
+					{
+						name: "More options for Sync fork with upstream",
+					},
+				),
+			);
+			const fromTrigger = (await screen.findAllByRole("menuitem")).map((item) => item.textContent);
+			fireEvent.keyDown(
+				document.activeElement ?? document.body,
+				{
+					key: "Escape",
+				},
+			);
+			await flush();
+			fireEvent.contextMenu(stackedRow());
+			const fromRightClick = (await screen.findAllByRole("menuitem")).map((item) => item.textContent);
+			fireEvent.click(
+				screen.getByRole(
+					"menuitem",
+					{
+						name: "View changes",
+					},
+				),
+			);
+			await flush();
+			expect(
+				{
+					fromTrigger,
+					fromRightClick,
+					pane: screen.queryAllByText("changes pane body").map((body) => body.tagName),
+				},
+			).toStrictEqual(
+				{
+					fromTrigger: ["Open on GitHub", "Copy link", "View changes"],
+					fromRightClick: ["Open on GitHub", "Copy link", "View changes"],
+					pane: ["P"],
 				},
 			);
 		});

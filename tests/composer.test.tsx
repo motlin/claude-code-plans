@@ -1290,6 +1290,15 @@ describe("Composer", () =>
 						fill: (meter.firstElementChild as HTMLElement | null)?.style.transform,
 					})),
 					popup: [...dialog.classList].filter((name) => /^(?:w-|p-|text-\[)/.test(name)),
+					usageBars: [...dialog.querySelectorAll<HTMLElement>("[data-usage-bars]")].map((bars) => (
+					{
+						surface: bars.dataset["usageBars"],
+						className: bars.className,
+						parent: bars.parentElement?.className,
+						crossfade: bars.hasAttribute("data-usage-bars-crossfade"),
+						header: bars.querySelector("[data-usage-popover-header]") !== null,
+						group: bars.contains(group),
+					})),
 				},
 			).toStrictEqual(
 				{
@@ -1322,6 +1331,16 @@ describe("Composer", () =>
 						},
 					],
 					popup: ["w-[360px]", "p-0", "text-[13px]/[19px]"],
+					usageBars: [
+						{
+							surface: "popover",
+							className: "contents",
+							parent: "flex flex-col py-1.5",
+							crossfade: false,
+							header: true,
+							group: true,
+						},
+					],
 				},
 			);
 		});

@@ -169,6 +169,22 @@ describe("UsagePanel", () =>
 		expect(screen.getByTestId("usage-page-pace").textContent).toContain(
 			"On track. You should reach tomorrow’s reset with room to spare.",
 		);
+		const usageBars = screen.getByTestId("usage-page-pace").parentElement;
+		expect(
+			{
+				surface: usageBars?.dataset["usageBars"],
+				className: usageBars?.className,
+				crossfade: usageBars?.hasAttribute("data-usage-bars-crossfade"),
+				firstChild: usageBars?.firstElementChild?.getAttribute("data-testid"),
+			},
+		).toStrictEqual(
+			{
+				surface: "usage_page",
+				className: "contents",
+				crossfade: false,
+				firstChild: "usage-page-pace",
+			},
+		);
 
 		const meters = screen.getAllByRole("meter");
 		expect(

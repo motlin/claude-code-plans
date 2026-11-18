@@ -8,7 +8,6 @@ import
 	Cpu,
 	Gauge,
 	GitBranch,
-	GitPullRequest,
 	Laptop,
 	ListChecks,
 	Plug,
@@ -36,7 +35,7 @@ import {toConnectorSlug} from "../../lib/customize/mcp-tool-permissions";
 import {autoCompactHint, type CompactActionState} from "../../lib/compact-action";
 import {buildContextLegend, contextRefreshHint, type ContextBreakdown} from "../../lib/context-breakdown";
 import {formatContextSummary, formatUpdatedAgo, type ComposerUsage} from "../../lib/composer-state";
-import type {PrStatus} from "../../lib/pr-status";
+import {prGlyph, type PrStatus} from "../../lib/pr-status";
 import {requestFileOpen} from "../../lib/file-open-requests";
 import {formatCount} from "../../lib/pluralize";
 import {useRailNoConnectors} from "../../lib/rail-no-connectors";
@@ -63,7 +62,7 @@ import {ContextBreakdownBody} from "./context-breakdown";
 import {useToast} from "../toast-context";
 import {Menu, MenuContent, MenuItem, MenuTrigger} from "../ui/menu";
 import {Skeleton} from "../ui/skeleton";
-import {RailChangesRow} from "./rail-changes-row";
+import {RailChangesPrRow, RailChangesRow} from "./rail-changes-row";
 import {ENVIRONMENT_MENU_BUTTON_CLASS, RAIL_ROW_ACTION_CLASS, RailRow, RailRowContent} from "./rail-row";
 import {RemoteControlRow, RemoteControlRowPending, RemoteControlToggleRow} from "./remote-control-row";
 import {SessionRail, type RailCard} from "./session-rail";
@@ -744,31 +743,38 @@ function ChangesBody({
 	const host = usePaneHost();
 	const prUrl = prStatus?.url ?? pr?.url;
 	const prNumber = prStatus?.number ?? pr?.number;
+	const openChanges = () =>
+	{
+		host.openPane("changes");
+	};
 	return (
 		<Rows>
-			{prUrl !== undefined && prNumber !== undefined && (
-				<a href={prUrl} target="_blank" rel="noopener noreferrer" className={RAIL_ROW_ACTION_CLASS}>
-					<RailRowContent
-						icon={<Icon icon={GitPullRequest} />}
-						label={prStatus?.title === undefined ? `#${prNumber}` : `#${prNumber} ${prStatus.title}`}
-						hint={
-							prStatus === null
-								? "Open"
-								: prStatus.state.charAt(0).toUpperCase() + prStatus.state.slice(1)
-						}
-					/>
-				</a>
-			)}
-			{diff !== null && (
-				<RailChangesRow
-					added={diff.additions}
-					removed={diff.deletions}
-					branch={branch}
-					onOpen={() =>
-					{
-						host.openPane("changes");
-					}}
+			{prUrl !== undefined && prNumber !== undefined ? (
+				<RailChangesPrRow
+					url={prUrl}
+					number={prNumber}
+					title={prStatus?.title ?? branch ?? `#${prNumber}`}
+					state={prStatus === null ? "opened" : prGlyph(prStatus).state}
+					diff={
+						diff === null
+							? null
+							:
+								{
+									added: diff.additions,
+									removed: diff.deletions,
+								}
+					}
+					onOpen={openChanges}
 				/>
+			) : (
+				diff !== null && (
+					<RailChangesRow
+						added={diff.additions}
+						removed={diff.deletions}
+						branch={branch}
+						onOpen={openChanges}
+					/>
+				)
 			)}
 		</Rows>
 	);
