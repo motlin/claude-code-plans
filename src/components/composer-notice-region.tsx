@@ -10,6 +10,7 @@ import
 	type ReactNode,
 	type RefObject,
 } from "react";
+import {COMPOSER_NOTICE_REGION} from "../lib/composer-notice-region-gate";
 import {NOTICE_ORDER, orderNotices, type NoticeSlot, type OrderedNotice} from "../lib/composer-notices";
 import
 {
@@ -31,7 +32,8 @@ const EXIT_HOLD_MS = 300;
 
 /**
  * Upstream's notice provider (`hn`): bands under it register descriptors by slot instead of
- * rendering inline, and the region stacks them.
+ * rendering inline, and the region stacks them. With COMPOSER_NOTICE_REGION off it provides no
+ * registry, so every band draws inline in its own slot.
  */
 export function ComposerNoticeProvider({children}: {children?: ReactNode})
 {
@@ -76,7 +78,7 @@ export function ComposerNoticeProvider({children}: {children?: ReactNode})
 		[],
 	);
 	return (
-		<RegistryContext.Provider value={registry}>
+		<RegistryContext.Provider value={COMPOSER_NOTICE_REGION ? registry : null}>
 			<EntriesContext.Provider value={entries}>{children}</EntriesContext.Provider>
 		</RegistryContext.Provider>
 	);
@@ -159,6 +161,8 @@ export function ComposerNoticeRegion()
 	{
 		setLeaving((previous) => previous.filter((item) => item.key !== key));
 	};
+
+	if (registry === null) return null;
 
 	return (
 		<div data-cds-dock-group="" data-code-column-notices="" className="-mb-1.5 compact:-mb-1.5 comfortable:-mb-2">

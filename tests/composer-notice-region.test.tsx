@@ -14,10 +14,27 @@ import {useComposerNotice} from "../src/components/composer-notice-context";
 import type {NoticeSlot} from "../src/lib/composer-notices";
 import {UsagePaceBand} from "../src/components/usage-pace-banner";
 
+const regionGate = vi.hoisted(() => (
+{
+	override: undefined as boolean | undefined,
+}));
+
+vi.mock("../src/lib/composer-notice-region-gate", async (importActual) =>
+{
+	const actual = await importActual<typeof import("../src/lib/composer-notice-region-gate")>();
+	return {
+		get COMPOSER_NOTICE_REGION()
+		{
+			return regionGate.override ?? actual.COMPOSER_NOTICE_REGION;
+		},
+	};
+});
+
 afterEach(() =>
 {
 	cleanup();
 	vi.useRealTimers();
+	regionGate.override = undefined;
 });
 
 function Band({slot, id, text}: {slot: NoticeSlot; id: string; text: string})
@@ -237,6 +254,22 @@ describe("ComposerNoticeRegion", () =>
 		const {container} = render(<Band slot="limit" id="code_usage_limit" text="Limit" />);
 
 		expect(container.innerHTML).toBe('<span data-inline-band="true">Limit</span>');
+	});
+
+	it("renders no region and leaves every band inline in its own slot while the gate is off", () =>
+	{
+		regionGate.override = false;
+		const {container} = render(
+			<ComposerNoticeProvider>
+				<Band slot="sleep" id="sleep" text="Sleeping" />
+				<Band slot="limit" id="code_usage_limit" text="Limit" />
+				<ComposerNoticeRegion />
+			</ComposerNoticeProvider>,
+		);
+
+		expect(container.innerHTML).toBe(
+			'<span data-inline-band="true">Sleeping</span><span data-inline-band="true">Limit</span>',
+		);
 	});
 
 	it("draws the usage band as a cds Banner card inside the region and keeps the animated shell inline", () =>
