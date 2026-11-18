@@ -25,7 +25,13 @@ import
 	sessionQueryKeys,
 } from "../src/lib/api/sessions";
 import {pin, readPinState} from "../src/lib/pin-store";
-import {getSideChat, resetSideChatStore} from "../src/lib/side-chat-store";
+import
+{
+	clearPanePaletteState,
+	type PanePaletteState,
+	publishPanePaletteState,
+} from "../src/lib/palette-pane-commands-store";
+import {resetSideChatStore} from "../src/lib/side-chat-store";
 import {publishFamilyHeads, resetFamilyHeadsStore} from "../src/lib/sidebar-family-heads-store";
 import {readSidebarState, setFamiliesCollapsed} from "../src/lib/sidebar-store";
 import {installLocalStorage} from "./fake-storage";
@@ -570,51 +576,171 @@ describe("palette contextual session commands", () =>
 		expect(optionLabels(dialog).filter((label) => label.includes("Copy"))).toStrictEqual([]);
 	});
 
-	it("offers Show side chat with its ⌘; keycaps on a session page and opens it", async () =>
+	describe("pane commands", () =>
 	{
-		resetSideChatStore();
-		const {dialog, input} = await openPalette("/session/sess-1");
-		// Upstream's empty state lists only New session; the action answers a typed query.
-		fireEvent.change(
-			input,
-			{
-				target:
-				{
-					value: "side chat",
-				},
-			},
-		);
+		const PANE_LABELS = new Set([
+			"Show terminal",
+			"Hide terminal",
+			"Show changes",
+			"Hide changes",
+			"Show files",
+			"Hide files",
+			"Show side chat",
+			"Hide side chat",
+			"New terminal",
+			"Close pane",
+			"Expand pane",
+			"Collapse pane",
+		]);
+		const run = vi.fn<PanePaletteState["run"]>();
 
-		const option = await within(dialog).findByRole("option", byLabel(/Show side chat/));
-		expect([
-			option.querySelector("[data-palette-label]")?.textContent,
-			option.getAttribute("aria-keyshortcuts"),
-		]).toStrictEqual(["Show side chat", "Meta+;"]);
-
-		fireEvent.click(option);
-
-		expect(getSideChat("sess-1").open).toBe(true);
-	});
-
-	it("does not offer Show side chat off a session page", async () =>
-	{
-		const {dialog, input} = await openPalette("/plans");
-		fireEvent.change(
-			input,
-			{
-				target:
-				{
-					value: "side chat",
-				},
-			},
-		);
-
-		// The search never settles here, so the settling skeleton marks the typed query as rendered.
-		await waitFor(() =>
+		function publish(overrides: Partial<PanePaletteState> = {})
 		{
-			expect(dialog.querySelector("[data-palette-skeleton]")).not.toBeNull();
+			const hidden =
+			{
+				enabled: true,
+				shown: false,
+			};
+			publishPanePaletteState(
+				{
+					sessionId: "sess-1",
+					terminal: hidden,
+					changes: hidden,
+					files: hidden,
+					sideChat: hidden,
+					newTerminalEnabled: true,
+					closePaneEnabled: false,
+					paneExpanded: false,
+					run,
+					...overrides,
+				},
+			);
+		}
+
+		/** The listed pane commands as [label, aria-keyshortcuts]. */
+		function paneRows(dialog: HTMLElement): [string, string | null][]
+		{
+			return [...dialog.querySelectorAll("[cmdk-item]")].flatMap((item): [string, string | null][] =>
+			{
+				const label = item.querySelector("[data-palette-label]")?.textContent ?? "";
+				return PANE_LABELS.has(label) ? [[label, item.getAttribute("aria-keyshortcuts")]] : [];
+			});
+		}
+
+		async function paneRowsFor(query: string, path = "/session/sess-1"): Promise<[string, string | null][]>
+		{
+			const {dialog, input} = await openPalette(path);
+			await typeQuery(dialog, input, query);
+			return paneRows(dialog);
+		}
+
+		afterEach(() =>
+		{
+			clearPanePaletteState("sess-1");
+			resetSideChatStore();
+			run.mockReset();
+			vi.useRealTimers();
 		});
-		expect(optionLabels(dialog).filter((label) => label === "Show side chat")).toStrictEqual([]);
+
+		it("lists Show terminal with ⌃` and New terminal without keycaps for 'terminal'", async () =>
+		{
+			publish();
+			expect(await paneRowsFor("terminal")).toStrictEqual([
+				["Show terminal", "Control+Backquote"],
+				["New terminal", null],
+			]);
+		});
+
+		it("says Hide terminal while the terminal is shown", async () =>
+		{
+			publish(
+				{
+					terminal:
+					{
+						enabled: true,
+						shown: true,
+					},
+				},
+			);
+			expect(await paneRowsFor("terminal")).toStrictEqual([
+				["Hide terminal", "Control+Backquote"],
+				["New terminal", null],
+			]);
+		});
+
+		it("matches both terminal rows through their 'console' hint", async () =>
+		{
+			publish();
+			expect(await paneRowsFor("console")).toStrictEqual([
+				["Show terminal", "Control+Backquote"],
+				["New terminal", null],
+			]);
+		});
+
+		it("matches Show files through 'explorer'", async () =>
+		{
+			publish();
+			expect(await paneRowsFor("explorer")).toStrictEqual([["Show files", "Shift+Meta+f"]]);
+		});
+
+		it("matches Show side chat through 'btw'", async () =>
+		{
+			publish();
+			expect(await paneRowsFor("btw")).toStrictEqual([["Show side chat", "Meta+;"]]);
+		});
+
+		it("lists Close and Expand pane for 'panel' while a pane is open", async () =>
+		{
+			publish(
+				{
+					closePaneEnabled: true,
+				},
+			);
+			expect(await paneRowsFor("panel")).toStrictEqual([
+				["Close pane", "Meta+\\"],
+				["Expand pane", "Shift+Meta+\\"],
+			]);
+		});
+
+		it("lists none off a session page", async () =>
+		{
+			expect(await paneRowsFor("terminal", "/plans")).toStrictEqual([]);
+		});
+
+		it("closes the palette and runs Hide side chat 100ms later", async () =>
+		{
+			publish(
+				{
+					sideChat:
+					{
+						enabled: true,
+						shown: true,
+					},
+				},
+			);
+			const {dialog, input} = await openPalette("/session/sess-1");
+			await typeQuery(dialog, input, "side chat");
+			const option = await within(dialog).findByRole("option", byLabel(/Hide side chat/));
+
+			vi.useFakeTimers();
+			fireEvent.click(option);
+			const before = run.mock.calls.length;
+			vi.advanceTimersByTime(100);
+
+			expect(
+				{
+					dialogOpen: dialog.isConnected,
+					before,
+					after: run.mock.calls,
+				},
+			).toStrictEqual(
+				{
+					dialogOpen: false,
+					before: 0,
+					after: [["toggle_side_chat"]],
+				},
+			);
+		});
 	});
 
 	it("does not offer the commands on other routes", async () =>

@@ -1,3 +1,5 @@
+import type {PaneHostApi} from "./pane-host-context";
+
 /** Set by ⌃` when it opens the pane, consumed on mount so the new pane takes focus. */
 let pendingTerminalFocus = false;
 
@@ -20,7 +22,7 @@ let pendingNewTerminal = false;
 const newTerminalListeners = new Set<() => void>();
 
 /** Asks the Terminal pane to start a Shell tab and focus it, now if it is open, else once it mounts. */
-export function requestNewTerminal(): void
+function requestNewTerminal(): void
 {
 	pendingNewTerminal = true;
 	for (const listener of newTerminalListeners) listener();
@@ -38,4 +40,12 @@ export function subscribeNewTerminal(listener: () => void): () => void
 {
 	newTerminalListeners.add(listener);
 	return () => newTerminalListeners.delete(listener);
+}
+
+/** Upstream's New terminal opener (⌃⇧` and the palette): a focused Shell tab, opening the pane if needed. */
+export function openNewTerminal(host: PaneHostApi): void
+{
+	if (!host.isOpen("terminal")) requestTerminalFocus();
+	requestNewTerminal();
+	host.openPane("terminal");
 }

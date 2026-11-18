@@ -87,6 +87,7 @@ import {PANE_HEADER_ICON_BUTTON_CLASS} from "./pane-classes";
 import
 {
 	ChatGutterContext,
+	PaneExpandToggleContext,
 	PaneHostContext,
 	chatGutterAttributes,
 	type ChatGutterAttributes,
@@ -2159,7 +2160,8 @@ export function TileHost({
 		return true;
 	});
 
-	useShortcut("expand_collapse_pane", () =>
+	// ⇧⌘\ and the palette's Expand/Collapse pane: collapse, else expand the focused pane, else the last open one.
+	const toggleExpand = useCallback((): boolean =>
 	{
 		if (layout.expanded !== null)
 		{
@@ -2167,11 +2169,14 @@ export function TileHost({
 			return true;
 		}
 		const target = isPaneKind(layout.focused) ? layout.focused : openKinds.at(-1);
-		if (target !== undefined)
-		{
-			update((state) => expandPane(state, target));
-			return true;
-		}
+		if (target === undefined) return false;
+		update((state) => expandPane(state, target));
+		return true;
+	}, [layout.expanded, layout.focused, openKinds, collapse, update]);
+
+	useShortcut("expand_collapse_pane", () =>
+	{
+		if (toggleExpand()) return true;
 		if (onExpandWithoutPane === undefined) return false;
 		onExpandWithoutPane();
 		return true;
@@ -2179,16 +2184,18 @@ export function TileHost({
 
 	return (
 		<PaneHostContext.Provider value={api}>
-			<ScrollFreezer
-				contentHosts={contentHosts}
-				structureKey={structureKey(layout.root)}
-				liveTileIds={liveTileIds}
-			/>
-			<StackView stack={layout.root} path={[]} orderKey="" aheadKey="" host={internal} />
-			<MoveStatus host={internal} />
-			{mountedTiles.map((tileId) => (
-				<TileContent key={tileId} tileId={tileId} host={internal} chat={children} />
-			))}
+			<PaneExpandToggleContext.Provider value={toggleExpand}>
+				<ScrollFreezer
+					contentHosts={contentHosts}
+					structureKey={structureKey(layout.root)}
+					liveTileIds={liveTileIds}
+				/>
+				<StackView stack={layout.root} path={[]} orderKey="" aheadKey="" host={internal} />
+				<MoveStatus host={internal} />
+				{mountedTiles.map((tileId) => (
+					<TileContent key={tileId} tileId={tileId} host={internal} chat={children} />
+				))}
+			</PaneExpandToggleContext.Provider>
 		</PaneHostContext.Provider>
 	);
 }

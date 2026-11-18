@@ -1,7 +1,7 @@
 import {useShortcut} from "../../hooks/use-shortcut";
 import {assertNever} from "../../lib/assert-never";
 import {usePaneHost} from "./pane-host-context";
-import {requestNewTerminal, requestTerminalFocus} from "./pending-terminal-focus";
+import {openNewTerminal, requestTerminalFocus} from "./pending-terminal-focus";
 import {terminalShortcutAction} from "./terminal-shortcut-action";
 
 const TERMINAL_FOCUS_SELECTOR = '[data-pane-kind="terminal"] [data-terminal-focus]';
@@ -29,9 +29,7 @@ export function TerminalPaneShortcut({available, shells}: {available: boolean; s
 		() =>
 		{
 			if (isFocusInTerminal()) return false;
-			if (!host.isOpen("terminal")) requestTerminalFocus();
-			requestNewTerminal();
-			host.openPane("terminal");
+			openNewTerminal(host);
 			return true;
 		},
 		{

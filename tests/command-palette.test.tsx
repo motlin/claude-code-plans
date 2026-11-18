@@ -14,6 +14,7 @@ import {readFileSync} from "node:fs";
 import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {CommandPalette, PALETTE_RECENT_LIMIT} from "../src/components/command-palette";
+import {clearPanePaletteState, publishPanePaletteState} from "../src/lib/palette-pane-commands-store";
 import {useFileDropTarget} from "../src/components/composer-drop-scrim";
 import {ComposerDropScrim} from "../src/components/composer-drop-scrim-overlay";
 import {loadSettingsDialog} from "../src/components/settings/settings-dialog-loader";
@@ -7735,6 +7736,57 @@ describe("CommandPalette filter values", () =>
 				],
 			},
 		);
+	});
+
+	it("lists the pane commands in Actions mode after the session commands and before the jumps", async () =>
+	{
+		const hidden =
+		{
+			enabled: true,
+			shown: false,
+		};
+		publishPanePaletteState(
+			{
+				sessionId: "sess-1",
+				terminal: hidden,
+				changes: hidden,
+				files: hidden,
+				sideChat: hidden,
+				newTerminalEnabled: true,
+				closePaneEnabled: true,
+				paneExpanded: false,
+				run: () =>
+				{
+				},
+			},
+		);
+		try
+		{
+			const dialog = await openPalette([], "/session/sess-1");
+			typeQuery(dialog, "actions:true");
+
+			expect(resultLabels(dialog)).toStrictEqual([
+				"Search sessions",
+				"Keyboard shortcuts",
+				"Toggle sidebar",
+				"Mark all sessions seen",
+				"Show terminal",
+				"Show changes",
+				"Show files",
+				"Show side chat",
+				"New terminal",
+				"Close pane",
+				"Expand pane",
+				"Jump to navigation",
+				"Jump to main content",
+				"Jump to input",
+				...SETTINGS_COMMAND_LABELS,
+			]);
+		}
+		finally
+		{
+			clearPanePaletteState("sess-1");
+		}
 	});
 
 	it("draws upstream's per-filter hint icons and neutral badge beside the Filter by label", async () =>

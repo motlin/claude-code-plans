@@ -24,6 +24,17 @@ export function usePaneHost(): PaneHostApi
 	return host;
 }
 
+/**
+ * Provided by `<TileHost>`: ⇧⌘\'s toggle, which collapses the expanded pane or
+ * expands the focused (else last open) one. Returns false when no pane is open.
+ */
+export const PaneExpandToggleContext = createContext<() => boolean>(() => false);
+
+export function usePaneExpandToggle(): () => boolean
+{
+	return useContext(PaneExpandToggleContext);
+}
+
 /** The pane host, or null outside a `<TileHost>` (e.g. a transcript shown on its own). */
 export function useOptionalPaneHost(): PaneHostApi | null
 {

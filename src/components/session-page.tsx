@@ -91,6 +91,7 @@ import {ChangesPaneShortcut} from "./changes/changes-pane-shortcut";
 import {preloadFilesPane, useRegisterFilesPane} from "./panes/files-pane-entry";
 import {FilesPaneShortcut} from "./panes/files-pane-shortcut";
 import {useExtractedSessionFiles} from "./panes/session-file-sources";
+import {PalettePaneCommandsPublisher} from "./panes/palette-pane-commands-publisher";
 import {TerminalPaneShortcut} from "./panes/terminal-pane-shortcut";
 import {preloadTerminalPane, useRegisterTerminalPane} from "./panes/terminal-pane-entry";
 import {useStartHerdrTerminal} from "../hooks/use-herdr-terminal";
@@ -2606,6 +2607,11 @@ function SessionView({
 								/>
 								<FilesPaneShortcut />
 								<ChangesPaneShortcut />
+								<PalettePaneCommandsPublisher
+									sessionId={sessionId}
+									terminalAvailable={promptBehavior.hasLivePane || shellsEnabled}
+									shells={shellsEnabled}
+								/>
 								{rewindPicker.used && (
 									<Suspense fallback={null}>
 										<RewindPicker

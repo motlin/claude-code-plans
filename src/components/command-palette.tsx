@@ -62,6 +62,9 @@ import
 	TextCursorInput,
 	Maximize2,
 	Minimize2,
+	SquareTerminal,
+	FileDiff,
+	Folder,
 } from "lucide-react";
 import {useActiveSessionsIfAvailable} from "../hooks/use-claude-events";
 import {focusRegionByName, isAvailable, type JumpRegionName} from "../lib/focus-regions";
@@ -186,7 +189,8 @@ import
 } from "../lib/palette-rank";
 import {phraseMatches, relativeBucket, titleMatches, type Snippet, type TextMatch} from "../lib/search-text";
 import {createSessionCommands} from "../lib/session-commands";
-import {openSideChat} from "../lib/side-chat-store";
+import {PANE_PALETTE_COMMANDS, type PanePaletteCommandId, panePaletteActions} from "../lib/palette-pane-commands";
+import {usePanePaletteState} from "../lib/palette-pane-commands-store";
 import {getSessionMenuItems, type SessionMenuCapability} from "../lib/session-menu-items";
 import {copySessionLink} from "../lib/session-open-in";
 import {requestSessionRename} from "../lib/session-rename-request";
@@ -1113,6 +1117,22 @@ function startProjectValue(project: StartProject): string
 /** The "New session" flow: the typed text, then a project picker, then the herdr launch. */
 type StartStep = "idle" | "picker" | "launching";
 
+/** Upstream `m7`'s delay between the palette closing and a pane command running. */
+const PANE_COMMAND_DELAY_MS = 100;
+
+/** Lucide stand-ins for upstream's Anthropicons on the pane rows. */
+const PANE_COMMAND_ICONS: Record<PanePaletteCommandId, ReactNode> =
+{
+	toggle_terminal_pane: <SquareTerminal />,
+	toggle_diff_pane: <FileDiff />,
+	toggle_files_pane: <Folder />,
+	toggle_side_chat: <MessagesSquare />,
+	new_terminal: <SquareTerminal />,
+	close_side_pane: <X />,
+	expand_side_pane: <Maximize2 />,
+	collapse_side_pane: <Minimize2 />,
+};
+
 interface PaletteAction
 {
 	label: string;
@@ -1553,6 +1573,7 @@ function PalettePopup({
 		},
 	);
 	const currentDetail = currentSessionId === undefined ? null : (detailQuery.data ?? null);
+	const paneState = usePanePaletteState();
 	const pins = usePins();
 	const familyHeads = useFamilyHeads();
 	const {collapsedFamilies} = useSidebarState();
@@ -2709,19 +2730,29 @@ function PalettePopup({
 						} satisfies PaletteAction,
 					]
 				: []),
-			...(currentSessionId !== undefined && currentDetail !== null
-				? [
+			// Upstream `Lh`'s pane commands in catalog order, between the session commands and the jumps.
+			...panePaletteActions(paneState?.sessionId === currentSessionId ? paneState : null).map(
+				({id, label}): PaletteAction =>
+				{
+					const {searchHints, ...command} = PANE_PALETTE_COMMANDS[id];
+					const action: PaletteAction =
+					{
+						label,
+						icon: PANE_COMMAND_ICONS[id],
+						keywords: searchHints,
+						// Upstream `m7`: run 100ms after the palette closes, so its focus restore lands first.
+						run: () =>
 						{
-							label: "Show side chat",
-							icon: <MessagesSquare />,
-							run: () =>
+							setTimeout(() =>
 							{
-								openSideChat(currentSessionId);
-							},
-							shortcut: "toggle_side_chat",
-						} satisfies PaletteAction,
-					]
-				: []),
+								paneState?.run(id);
+							}, PANE_COMMAND_DELAY_MS);
+						},
+					};
+					if ("shortcut" in command) action.shortcut = command.shortcut;
+					return action;
+				},
+			),
 			regionJumpAction("jump_to_navigation", <PanelLeft />, "navigation"),
 			regionJumpAction("jump_to_main_content", <BookText />, "main"),
 			// Upstream lists an unavailable jump action nowhere, so it needs a card seen at open.
