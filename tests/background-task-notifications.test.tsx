@@ -349,6 +349,31 @@ describe("parseTaskNotification", () =>
 		);
 	});
 
+	it("decodes &lt; &gt; &amp; in the summary before reading the description, &amp; last", () =>
+	{
+		expect([
+			parseTaskNotification(
+				notification("completed", 'Background command "make 2&gt;&amp;1 | tail" completed (exit code 0)'),
+			),
+			parseTaskNotification(
+				notification("completed", 'Background command "echo &amp;gt;" completed (exit code 0)'),
+			)?.description,
+		]).toStrictEqual([
+			{
+				taskId: "b1x2y3",
+				toolUseId: "toolu_bash",
+				status: "completed",
+				command: true,
+				agent: false,
+				taskType: "local_bash",
+				description: "make 2>&1 | tail",
+				summary: 'Background command "make 2>&1 | tail" completed (exit code 0)',
+				durationMs: null,
+			},
+			"echo &gt;",
+		]);
+	});
+
 	it("treats a killed agent as stopped and as a task, not a command", () =>
 	{
 		expect(parseTaskNotification(notification("killed", 'Agent "Fetch reminders" was stopped'))).toStrictEqual(

@@ -1,4 +1,5 @@
 import {isRecord} from "./narrow";
+import {decodeXmlEntities} from "./xml-entities";
 
 /**
  * The facts upstream's `Ks` (c1128a44c) reads from a peer record's `origin`: the CLI stamps a
@@ -184,10 +185,7 @@ export function parsePeerMessage(text: string, origin: PeerOrigin | undefined): 
 		};
 	if (tag === "cross-session-message")
 	{
-		const body =
-			attrs.get("encoded") === "1"
-				? trimmed.replaceAll("&lt;", "<").replaceAll("&gt;", ">").replaceAll("&amp;", "&")
-				: trimmed;
+		const body = attrs.get("encoded") === "1" ? decodeXmlEntities(trimmed) : trimmed;
 		return {
 			kind: "peer",
 			from: attrs.get("from") ?? "unknown",

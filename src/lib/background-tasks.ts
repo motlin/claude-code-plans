@@ -5,6 +5,7 @@ import {isRunningBackgroundTask} from "./session-state";
 import type {ActiveSubagent} from "./subagents";
 import {workflowCallName} from "./workflow-name";
 import {formatPaddedElapsed} from "./elapsed-format";
+import {decodeXmlEntities} from "./xml-entities";
 
 export type BackgroundTaskKind = "bash" | "agent" | "monitor" | "workflow" | "task";
 export type BackgroundTaskStatus = "running" | "completed" | "failed" | "stopped";
@@ -222,6 +223,13 @@ function tag(text: string, name: string): string | null
 	return match?.[1] === undefined ? null : match[1].trim();
 }
 
+/** A tag's text with the CLI's XML escaping undone, as upstream reads summaries, results and output files. */
+function decodedTag(text: string, name: string): string | null
+{
+	const value = tag(text, name);
+	return value === null ? null : decodeXmlEntities(value);
+}
+
 function allTags(text: string, name: string): string[]
 {
 	return [...text.matchAll(new RegExp(`<${name}>([\\s\\S]*?)</${name}>`, "g"))].map((match) =>
@@ -309,7 +317,7 @@ export interface TaskNotification
 	/** The `<task-type>` tag, else the type the summary's leading noun implies, as upstream reads it. */
 	taskType: string | null;
 	description: string;
-	/** The `<summary>` as written, e.g. `Workflow "x" failed: why`. */
+	/** The `<summary>` with its XML escaping undone, e.g. `Workflow "x" failed: why`. */
 	summary: string;
 	/** How long the task ran, from the notification's `<usage><duration_ms>`. */
 	durationMs: number | null;
@@ -344,7 +352,7 @@ export function parseTaskNotification(text: string): TaskNotification | null
 	if (!trimmed.startsWith("<task-notification>")) return null;
 	const status = notificationStatus(tag(trimmed, "status"));
 	if (status === null) return null;
-	const summary = tag(trimmed, "summary") ?? "";
+	const summary = decodedTag(trimmed, "summary") ?? "";
 	return {
 		taskId: tag(trimmed, "task-id"),
 		toolUseId: tag(trimmed, "tool-use-id"),
@@ -478,20 +486,20 @@ export function extractBackgroundTasks(
 		{
 			const toolUseId = tag(content, "tool-use-id");
 			const status = notificationStatus(tag(content, "status"));
-			const summary = tag(content, "summary");
+			const summary = decodedTag(content, "summary");
 			for (const taskId of allTags(content, "task-id"))
 			{
 				const tracked = find(taskId, toolUseId);
 				if (tracked === undefined) continue;
 				if (summary !== null) tracked.task.summary = summary;
-				const outputFile = tag(content, "output-file");
+				const outputFile = decodedTag(content, "output-file");
 				if (outputFile !== null && tracked.task.kind !== "agent") tracked.task.outputFile = outputFile;
 				const event = tag(content, "event");
 				if (event !== null)
 				{
 					tracked.task.output = tracked.task.output === null ? event : `${tracked.task.output}\n${event}`;
 				}
-				const result = tag(content, "result");
+				const result = decodedTag(content, "result");
 				if (result !== null) tracked.task.output = result;
 				if (status !== null) settle(tracked, status, timestamp, durationOf(tag(content, "duration_ms")));
 				// A monitor ends with an expiry event that carries no status.

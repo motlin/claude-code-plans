@@ -450,7 +450,17 @@ describe("extractBackgroundTasks", () =>
 				},
 				"2026-09-28T10:00:01.000Z",
 			),
-			BASH_RECORDS[4]!,
+			notification(
+				[
+					"<task-id>bfab1build</task-id>",
+					"<tool-use-id>toolu_bash_build</tool-use-id>",
+					"<output-file>/tmp/fab/a&gt;b&amp;c.output</output-file>",
+					"<status>completed</status>",
+					'<summary>Background command "pnpm build 2&gt;&amp;1 | tail" completed (exit code 0)</summary>',
+					"<result>&lt;built&gt; &amp;amp;gt;</result>",
+				].join("\n"),
+				"2026-09-28T10:00:32.000Z",
+			),
 		];
 		expect(
 			extractBackgroundTasks(
@@ -465,7 +475,9 @@ describe("extractBackgroundTasks", () =>
 				finished: [
 					{
 						...BUILD_TASK,
-						output: null,
+						output: "<built> &amp;gt;",
+						summary: 'Background command "pnpm build 2>&1 | tail" completed (exit code 0)',
+						outputFile: "/tmp/fab/a>b&c.output",
 					},
 				],
 			},
