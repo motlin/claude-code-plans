@@ -1,5 +1,7 @@
-import {settingsTabLabels} from "./schema-choices";
-import {type SettingsTab, SettingsTabSchema} from "./settings-hash";
+import type {CustomizeTarget} from "../components/customize/customize-navigation";
+import {assertNever} from "./assert-never";
+import {customizeSectionLabels, settingsTabLabels} from "./schema-choices";
+import {type CustomizeSection, type SettingsTab, SettingsTabSchema} from "./settings-hash";
 import {type SettingsNavMemberKey, type SettingsSearchName, settingsSearchNames} from "./settings-nav";
 
 export interface SettingsIndexEntry
@@ -264,15 +266,68 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
 	},
 ];
 
+/** A Customize section as a search section (upstream's `customize-*` section ids). */
+export type CustomizeSearchSection = `customize-${CustomizeSection}`;
+
+/** Every section the Settings search lists: the settings tabs, then Skills, Connectors and Plugins. */
+export type SettingsSearchSection = SettingsTab | CustomizeSearchSection;
+
+/** The Customize search sections in nav order. */
+const CUSTOMIZE_SEARCH_SECTIONS = [
+	"customize-skills",
+	"customize-connectors",
+	"customize-plugins",
+] as const satisfies readonly CustomizeSearchSection[];
+
+export function isCustomizeSearchSection(section: SettingsSearchSection): section is CustomizeSearchSection
+{
+	return section.startsWith("customize-");
+}
+
+/** The Customize section a `customize-*` search section opens. */
+export function customizeSectionOf(section: CustomizeSearchSection): CustomizeSection
+{
+	switch (section)
+	{
+		case "customize-skills":
+			return "skills";
+		case "customize-connectors":
+			return "connectors";
+		case "customize-plugins":
+			return "plugins";
+		default:
+			return assertNever(section);
+	}
+}
+
+/** One searchable Customize row: a skill, custom command, connector, plugin or plugin skill. */
+export interface CustomizeIndexEntry
+{
+	/** The row's target as a stable key; upstream's `subpathId`. */
+	rowSlug: string;
+	/** What the row shows ("fix · build" for a plugin skill). */
+	title: string;
+	/** What the query ranks against when it differs from the title ("fix build"). */
+	searchText?: string;
+	target: CustomizeTarget;
+	/** Rows sharing this key show once per section (upstream `collapseKey`). */
+	collapseKey?: string;
+}
+
+export type CustomizeSearchIndex = Readonly<Record<CustomizeSearchSection, readonly CustomizeIndexEntry[]>>;
+
 /**
- * Extra words that find a whole section (upstream's per-section keyword map). A keyword-only hit
+ * Extra words that find a whole section (upstream's per-section keyword map `vn`). A keyword-only hit
  * scores 10, after every name and row hit.
  */
-export const SETTINGS_SECTION_KEYWORDS: Partial<Record<SettingsTab, readonly string[]>> =
+export const SETTINGS_SECTION_KEYWORDS: Partial<Record<SettingsSearchSection, readonly string[]>> =
 {
 	usage: ["overage", "extra usage", "spend limit", "usage credits"],
 	"claude-config": ["settings.json"],
 	application: ["herdr", "tmux"],
+	"customize-connectors": ["mcp", "integrations", "tools"],
+	"customize-skills": ["custom instructions", "agent skills"],
+	"customize-plugins": ["marketplace", "extensions"],
 };
 
 /**
@@ -293,8 +348,8 @@ export function normalizeSettingsQuery(query: string): string
 
 /**
  * How well `query` matches `label`: 0 equal ignoring spaces, 1 prefix ignoring spaces, 2 every
- * query word starts some word-suffix of the label (order-free), 3 every query word is a substring,
- * -1 no match.
+ * query word starts some word-suffix of the label (order-free), 3 every query word is a substring
+ * of the label without its spaces, -1 no match.
  */
 export function rankSettingsLabel(query: string, label: string): number
 {
@@ -309,8 +364,15 @@ export function rankSettingsLabel(query: string, label: string): number
 	if (compactLabel.startsWith(compactNeedle)) return 1;
 	const suffixes = labelWords.map((_, index) => labelWords.slice(index).join(""));
 	if (needleWords.every((word) => suffixes.some((suffix) => suffix.startsWith(word)))) return 2;
-	if (needleWords.every((word) => haystack.includes(word))) return 3;
+	if (needleWords.every((word) => compactLabel.includes(word))) return 3;
 	return -1;
+}
+
+/** Upstream's keyword test: the keyword without spaces contains the query without spaces. */
+function keywordMatches(query: string, keyword: string): boolean
+{
+	const needle = normalizeSettingsQuery(query).replaceAll(" ", "");
+	return needle !== "" && normalizeSettingsQuery(keyword).replaceAll(" ", "").includes(needle);
 }
 
 const PHRASE_RANK = 4;
@@ -328,15 +390,18 @@ function rankEntry(query: string, entry: SettingsIndexEntry): number
 	return phraseHit ? PHRASE_RANK : -1;
 }
 
+/** A settings row or a Customize row. */
+export type SettingsSearchEntry = SettingsIndexEntry | CustomizeIndexEntry;
+
 export interface RankedSettingsRow
 {
-	entry: SettingsIndexEntry;
+	entry: SettingsSearchEntry;
 	rank: number;
 }
 
 export interface RankedSettingsSection
 {
-	tab: SettingsTab;
+	tab: SettingsSearchSection;
 	/** Name rank (0-3), else 5 + best row rank, else 10 for a keyword-only hit. */
 	score: number;
 	/** The keyword that found a keyword-only section. */
@@ -358,9 +423,13 @@ type SettingsSearchNames = Partial<Record<SettingsNavMemberKey, SettingsSearchNa
 /** The nav table's renames and aliases (upstream `searchNames`). */
 const NAV_SEARCH_NAMES: SettingsSearchNames = settingsSearchNames();
 
-/** The section's name in search results: its nav row's new name (Appearance, Code), else its tab label. */
-export function settingsSectionName(tab: SettingsTab): string
+/**
+ * The section's name in search results: its nav row's new name (Appearance, Code), else its tab label;
+ * a Customize section by its nav label.
+ */
+export function settingsSectionName(tab: SettingsSearchSection): string
 {
+	if (isCustomizeSearchSection(tab)) return customizeSectionLabels[customizeSectionOf(tab)];
 	return NAV_SEARCH_NAMES[tab]?.name ?? settingsTabLabels[tab];
 }
 
@@ -388,78 +457,110 @@ function matchAlias(
 	return undefined;
 }
 
+/** Upstream's section scoring: name rank, else alias rank, else 5 + best row rank, else 10 for a keyword. */
+function scoreSection(
+	query: string,
+	tab: SettingsSearchSection,
+	name: string,
+	aliases: readonly string[],
+	rows: RankedSettingsRow[],
+): RankedSettingsSection[]
+{
+	const nameRank = rankSettingsLabel(query, name);
+	if (nameRank !== -1)
+		return [
+			{
+				tab,
+				score: nameRank,
+				rows,
+			},
+		];
+	const aliasesApply = normalizeSettingsQuery(query).length >= MIN_ALIAS_QUERY_LENGTH;
+	const aliasMatch = aliasesApply ? matchAlias(query, aliases) : undefined;
+	if (aliasMatch !== undefined)
+		return [
+			{
+				tab,
+				score: aliasMatch.rank,
+				alias: aliasMatch.alias,
+				rows,
+			},
+		];
+	const [best] = rows;
+	if (best !== undefined)
+		return [
+			{
+				tab,
+				score: ROW_SCORE_BASE + best.rank,
+				rows,
+			},
+		];
+	const keyword = SETTINGS_SECTION_KEYWORDS[tab]?.find((candidate) => keywordMatches(query, candidate));
+	return keyword === undefined
+		? []
+		: [
+				{
+					tab,
+					score: KEYWORD_SCORE,
+					keyword,
+					rows,
+				},
+			];
+}
+
+/** Matching rows, best rank first, ties in index order. */
+function rankRows<T extends SettingsSearchEntry>(
+	entries: readonly T[],
+	rankOf: (entry: T) => number,
+): RankedSettingsRow[]
+{
+	return entries
+		.map((entry) => (
+		{
+			entry,
+			rank: rankOf(entry),
+		}))
+		.filter((row) => row.rank !== -1)
+		.toSorted((a, b) => a.rank - b.rank);
+}
+
 /**
- * Every section that matches `query`, by score then nav order. A section renamed by its nav row ranks by
- * the new name, then (for 2+ character queries) by its aliases; a row titled like the new name is dropped.
+ * Every section that matches `query`, by score then nav order: the settings tabs, then (given their index)
+ * Skills, Connectors and Plugins. A section renamed by its nav row ranks by the new name, then (for 2+
+ * character queries) by its aliases; a row titled like the new name is dropped.
  */
 export function rankSettingsSections(
 	query: string,
 	searchNames: SettingsSearchNames = NAV_SEARCH_NAMES,
+	customize?: CustomizeSearchIndex,
 ): RankedSettingsSection[]
 {
-	const normalized = normalizeSettingsQuery(query);
-	if (normalized === "") return [];
-	const aliasesApply = normalized.length >= MIN_ALIAS_QUERY_LENGTH;
-	return SettingsTabSchema.options
-		.flatMap((tab): RankedSettingsSection[] =>
-		{
-			const searchName = searchNames[tab];
-			const name = searchName?.name ?? settingsTabLabels[tab];
-			const rows = SETTINGS_INDEX.filter(
-				(entry) =>
-					entry.tab === tab &&
-					(searchName?.name === undefined || entry.title.toLowerCase() !== name.toLowerCase()),
-			)
-				.map((entry) => (
-				{
-					entry,
-					rank: rankEntry(query, entry),
-				}))
-				.filter((row) => row.rank !== -1)
-				.toSorted((a, b) => a.rank - b.rank);
-			const nameRank = rankSettingsLabel(query, name);
-			if (nameRank !== -1)
-				return [
-					{
+	if (normalizeSettingsQuery(query) === "") return [];
+	const settings = SettingsTabSchema.options.flatMap((tab): RankedSettingsSection[] =>
+	{
+		const searchName = searchNames[tab];
+		const name = searchName?.name ?? settingsTabLabels[tab];
+		const entries = SETTINGS_INDEX.filter(
+			(entry) =>
+				entry.tab === tab &&
+				(searchName?.name === undefined || entry.title.toLowerCase() !== name.toLowerCase()),
+		);
+		const rows = rankRows(entries, (entry) => rankEntry(query, entry));
+		return scoreSection(query, tab, name, searchName?.alsoFoundBy ?? [], rows);
+	});
+	const customizeSections =
+		customize === undefined
+			? []
+			: CUSTOMIZE_SEARCH_SECTIONS.flatMap((tab) =>
+					scoreSection(
+						query,
 						tab,
-						score: nameRank,
-						rows,
-					},
-				];
-			const aliasMatch = aliasesApply ? matchAlias(query, searchName?.alsoFoundBy ?? []) : undefined;
-			if (aliasMatch !== undefined)
-				return [
-					{
-						tab,
-						score: aliasMatch.rank,
-						alias: aliasMatch.alias,
-						rows,
-					},
-				];
-			const [best] = rows;
-			if (best !== undefined)
-				return [
-					{
-						tab,
-						score: ROW_SCORE_BASE + best.rank,
-						rows,
-					},
-				];
-			const keyword = SETTINGS_SECTION_KEYWORDS[tab]?.find(
-				(candidate) => rankSettingsLabel(query, candidate) !== -1,
-			);
-			return keyword === undefined
-				? []
-				: [
-						{
-							tab,
-							score: KEYWORD_SCORE,
-							keyword,
-							rows,
-						},
-					];
-		})
-		.toSorted((a, b) => a.score - b.score);
+						settingsSectionName(tab),
+						[],
+						rankRows(customize[tab], (entry) => rankSettingsLabel(query, entry.searchText ?? entry.title)),
+					),
+				);
+	return [...settings, ...customizeSections].toSorted((a, b) => a.score - b.score);
 }
 
 /** True when the character before `start` is not a letter or digit. */
@@ -489,27 +590,29 @@ export function settingsMatchStart(label: string, query: string): number
 
 /**
  * One popover row: a section `hit` (optionally with a via line naming the matched row or keyword),
- * a `child` row indented under its section, or a "+N more" row.
+ * a `child` row indented under its section, or a "+N more" row. Customize rows carry the `target` they open.
  */
 export type SettingsResultRow =
 	|
 	  {
 			kind: "hit";
-			tab: SettingsTab;
+			tab: SettingsSearchSection;
 			via?: string;
 			rowSlug?: string;
+			target?: CustomizeTarget;
 	  }
 	|
 	  {
 			kind: "child";
-			tab: SettingsTab;
+			tab: SettingsSearchSection;
 			rowSlug: string;
 			title: string;
+			target?: CustomizeTarget;
 	  }
 	|
 	  {
 			kind: "more";
-			tab: SettingsTab;
+			tab: SettingsSearchSection;
 			count: number;
 	  };
 
@@ -518,115 +621,189 @@ const MAX_CHILDREN = 3;
 /** Upstream's `nn`: shorter queries show one via-hit per section. */
 const MIN_CHILD_QUERY_LENGTH = 2;
 
-function viaHit(tab: SettingsTab, entry: SettingsIndexEntry): SettingsResultRow
+/** A Customize entry's target as a row field; settings rows have none. */
+function targetOf(entry: SettingsSearchEntry):
+{
+	target?: CustomizeTarget;
+}
+{
+	return "target" in entry
+		?
+			{
+				target: entry.target,
+			}
+		: {};
+}
+
+function viaHit(tab: SettingsSearchSection, entry: SettingsSearchEntry): SettingsResultRow
 {
 	return {
 		kind: "hit",
 		tab,
 		via: entry.title,
 		rowSlug: entry.rowSlug,
+		...targetOf(entry),
 	};
 }
 
+/** Upstream's `mn` dedupe key: the collapse key, else the label and target. */
+function dedupeKey(entry: SettingsSearchEntry): string
+{
+	const collapseKey = "collapseKey" in entry ? entry.collapseKey : undefined;
+	return collapseKey ?? `${entry.title}\0${entry.rowSlug}`;
+}
+
+/** The first entry of each dedupe key, which is the best-ranked. */
+function uniqueEntries(entries: readonly SettingsSearchEntry[]): SettingsSearchEntry[]
+{
+	const seen = new Set<string>();
+	return entries.filter((entry) =>
+	{
+		const key = dedupeKey(entry);
+		if (seen.has(key)) return false;
+		seen.add(key);
+		return true;
+	});
+}
+
 /**
- * Upstream's `fn` over ranked sections. A 1-character query gives one hit per section with its
- * first matching row (or keyword) on a via line. Longer queries give a section-name match, or a
- * section with several matching rows, a hit then up to three children and "+N more" (all children
- * when the section is in `expanded`); a single matching row becomes a via-hit, and a keyword-only
- * match a hit with the keyword as via. A section found by an alias (2+ characters only) is a hit with the
- * alias as via, then its rows as children like a name match. Row labels already shown under an earlier section are
- * dropped.
+ * One section's rows. Settings sections skip row labels already in `shown` and add theirs; Customize
+ * sections neither skip nor add (upstream's `r` flag for `customize-*` sections).
  */
-export function layoutSettingsResultRows(
-	sections: readonly RankedSettingsSection[],
-	query: string,
-	expanded: ReadonlySet<SettingsTab>,
+function layoutSection(
+	{tab, score, keyword, alias, rows}: RankedSettingsSection,
+	short: boolean,
+	expanded: ReadonlySet<SettingsSearchSection>,
+	shown: Set<string>,
 ): SettingsResultRow[]
 {
-	const short = normalizeSettingsQuery(query).length < MIN_CHILD_QUERY_LENGTH;
-	const shown = new Set<string>();
-	return sections.flatMap(({tab, score, keyword, alias, rows}): SettingsResultRow[] =>
+	const customize = isCustomizeSearchSection(tab);
+	const entries = uniqueEntries(rows.map((row) => row.entry)).filter((entry) => customize || !shown.has(entry.title));
+	const show = (entry: SettingsSearchEntry) =>
 	{
-		const entries = rows.map((row) => row.entry).filter((entry) => !shown.has(entry.title));
-		const [first] = entries;
-		if (short || (score >= ROW_SCORE_BASE && entries.length === 1))
+		if (!customize) shown.add(entry.title);
+	};
+	const keywordHit: SettingsResultRow =
+		keyword === undefined
+			?
+				{
+					kind: "hit",
+					tab,
+				}
+			:
+				{
+					kind: "hit",
+					tab,
+					via: keyword,
+				};
+	const [first] = entries;
+	if (short || (score >= ROW_SCORE_BASE && entries.length === 1))
+	{
+		if (first === undefined) return [keywordHit];
+		show(first);
+		return [viaHit(tab, first)];
+	}
+	// A section found by its alias (upstream `shownSectionName`) names the alias on its via line.
+	const hit: SettingsResultRow =
+		alias === undefined
+			?
+				{
+					kind: "hit",
+					tab,
+				}
+			:
+				{
+					kind: "hit",
+					tab,
+					via: alias,
+				};
+	if (first === undefined) return [keyword === undefined ? hit : keywordHit];
+	const visible = expanded.has(tab) ? entries : entries.slice(0, MAX_CHILDREN);
+	for (const entry of visible) show(entry);
+	const hidden = entries.length - visible.length;
+	return [
+		hit,
+		...visible.map((entry): SettingsResultRow => (
 		{
-			if (first !== undefined)
-			{
-				shown.add(first.title);
-				return [viaHit(tab, first)];
-			}
-			return [
-				keyword === undefined
-					?
-						{
-							kind: "hit",
-							tab,
-						}
-					:
-						{
-							kind: "hit",
-							tab,
-							via: keyword,
-						},
-			];
-		}
-		// A section found by its alias (upstream `shownSectionName`) names the alias on its via line.
-		const hit: SettingsResultRow =
-			alias === undefined
-				?
+			kind: "child",
+			tab,
+			rowSlug: entry.rowSlug,
+			title: entry.title,
+			...targetOf(entry),
+		})),
+		...(hidden > 0
+			? [
 					{
-						kind: "hit",
+						kind: "more" as const,
 						tab,
-					}
-				:
-					{
-						kind: "hit",
-						tab,
-						via: alias,
-					};
-		if (first === undefined)
-		{
-			return [
-				keyword === undefined
-					? hit
-					:
-						{
-							kind: "hit",
-							tab,
-							via: keyword,
-						},
-			];
-		}
-		const visible = expanded.has(tab) ? entries : entries.slice(0, MAX_CHILDREN);
-		for (const entry of visible) shown.add(entry.title);
-		const hidden = entries.length - visible.length;
+						count: hidden,
+					},
+				]
+			: []),
+	];
+}
+
+/**
+ * Upstream's Skills → Plugins dedupe: lay out Skills alone, then drop from Plugins every row whose target
+ * Skills shows. Plugins, when found only by those rows, drops out.
+ */
+function withoutSkillsShownInPlugins(
+	sections: readonly RankedSettingsSection[],
+	short: boolean,
+	expanded: ReadonlySet<SettingsSearchSection>,
+): readonly RankedSettingsSection[]
+{
+	const skills = sections.find((section) => section.tab === "customize-skills");
+	if (skills === undefined) return sections;
+	const shownTargets = new Set(
+		layoutSection(skills, short, expanded, new Set()).flatMap((row) =>
+			row.kind !== "more" && row.target !== undefined && row.rowSlug !== undefined ? [row.rowSlug] : [],
+		),
+	);
+	return sections.flatMap((section) =>
+	{
+		if (section.tab !== "customize-plugins") return [section];
+		const rows = section.rows.filter((row) => !shownTargets.has(row.entry.rowSlug));
+		if (rows.length === 0 && section.score >= ROW_SCORE_BASE && section.score < KEYWORD_SCORE) return [];
 		return [
-			hit,
-			...visible.map((entry): SettingsResultRow => (
 			{
-				kind: "child",
-				tab,
-				rowSlug: entry.rowSlug,
-				title: entry.title,
-			})),
-			...(hidden > 0
-				? [
-						{
-							kind: "more" as const,
-							tab,
-							count: hidden,
-						},
-					]
-				: []),
+				...section,
+				rows,
+			},
 		];
 	});
 }
 
-/** The popover rows for `query`, with the tabs in `expanded` showing every child. */
-export function buildSettingsResultRows(query: string, expanded: ReadonlySet<SettingsTab>): SettingsResultRow[]
+/**
+ * Upstream's `gn` over ranked sections. A 1-character query gives one hit per section with its
+ * first matching row (or keyword) on a via line. Longer queries give a section-name match, or a
+ * section with several matching rows, a hit then up to three children and "+N more" (all children
+ * when the section is in `expanded`); a single matching row becomes a via-hit, and a keyword-only
+ * match a hit with the keyword as via. A section found by an alias (2+ characters only) is a hit with the
+ * alias as via, then its rows as children like a name match. Settings row labels already shown under an
+ * earlier section are dropped; Customize rows are always kept, and rows sharing a dedupe key show once.
+ */
+export function layoutSettingsResultRows(
+	sections: readonly RankedSettingsSection[],
+	query: string,
+	expanded: ReadonlySet<SettingsSearchSection>,
+): SettingsResultRow[]
 {
-	return layoutSettingsResultRows(rankSettingsSections(query), query, expanded);
+	const short = normalizeSettingsQuery(query).length < MIN_CHILD_QUERY_LENGTH;
+	const shown = new Set<string>();
+	return withoutSkillsShownInPlugins(sections, short, expanded).flatMap((section) =>
+		layoutSection(section, short, expanded, shown),
+	);
+}
+
+/** The popover rows for `query`, with the sections in `expanded` showing every child. */
+export function buildSettingsResultRows(
+	query: string,
+	expanded: ReadonlySet<SettingsSearchSection>,
+	customize?: CustomizeSearchIndex,
+): SettingsResultRow[]
+{
+	return layoutSettingsResultRows(rankSettingsSections(query, NAV_SEARCH_NAMES, customize), query, expanded);
 }
 
 /** Split `title` into the text before, inside and after a match of `length` at `start`. */

@@ -1,20 +1,33 @@
 // Base UI Popover, not ui/popover: structurally anchored to its input.
 import {Popover} from "@base-ui/react/popover";
+import {useQuery} from "@tanstack/react-query";
 import {type MouseEvent, type RefObject, useEffect, useId, useMemo, useRef, useState} from "react";
 import {useShortcut} from "../../hooks/use-shortcut";
-import type {SettingsTab} from "../../lib/settings-hash";
+import
+{
+	customizeClaudeAiConnectorsQueryOptions,
+	customizeMcpServersQueryOptions,
+	customizeSkillsQueryOptions,
+} from "../../lib/api/customize";
+import {pluginsQueryOptions, userCommandsQueryOptions} from "../../lib/api/plugins";
+import type {CustomizeSection, SettingsTab} from "../../lib/settings-hash";
 import
 {
 	buildSettingsResultRows,
+	customizeSectionOf,
+	isCustomizeSearchSection,
 	normalizeSettingsQuery,
 	type SettingsResultRow,
+	type SettingsSearchSection,
 	settingsMatchStart,
 	settingsSectionName,
 	splitMatch,
 } from "../../lib/settings-search";
+import {buildCustomizeIndex} from "../../lib/settings-search-customize";
+import type {CustomizeTarget} from "../customize/customize-navigation";
 import {Icon} from "../ui/icon";
 import {SHEET_BODY_CLASS} from "../ui/popover-sheet";
-import {SETTINGS_TAB_ICONS} from "./settings-tab-icons";
+import {CUSTOMIZE_SECTION_ICONS, SETTINGS_TAB_ICONS} from "./settings-tab-icons";
 import {overlayAttrs} from "../../lib/overlay";
 
 /**
@@ -50,9 +63,34 @@ function keepInputFocus(event: MouseEvent)
 	event.preventDefault();
 }
 
+/** What choosing a result opens: a settings tab (and row), or a Customize section, detail or seeded search. */
+export type SettingsSearchChoice =
+	|
+	  {
+			kind: "tab";
+			tab: SettingsTab;
+			row?: string;
+	  }
+	|
+	  {
+			kind: "customize";
+			section: CustomizeSection;
+			target?: CustomizeTarget;
+			/** A Customize "+N more": open the section's Yours list with its header search set to this query. */
+			seed?: string;
+	  };
+
+/** The section's nav glyph. */
+function sectionIcon(section: SettingsSearchSection)
+{
+	return isCustomizeSearchSection(section)
+		? CUSTOMIZE_SECTION_ICONS[customizeSectionOf(section)]
+		: SETTINGS_TAB_ICONS[section];
+}
+
 function rowKey(row: SettingsResultRow): string
 {
-	return row.kind === "child" ? `child/${row.tab}/${row.rowSlug}` : `${row.kind}/${row.tab}`;
+	return row.kind === "child" ? `child/${row.tab}/${row.rowSlug}/${row.title}` : `${row.kind}/${row.tab}`;
 }
 
 /** "3 more matches in Claude Code": the "+N more" row's label and, after "Showing ", its announcement. */
@@ -91,7 +129,7 @@ function ResultRow({
 	} as const;
 	if (row.kind === "hit")
 	{
-		const TabIcon = SETTINGS_TAB_ICONS[row.tab];
+		const TabIcon = sectionIcon(row.tab);
 		return (
 			<button {...rowProps}>
 				<span className="flex min-w-0 flex-1 flex-col">
@@ -131,20 +169,21 @@ function ResultRow({
 /**
  * The Settings nav search field. Typing opens upstream's 280px results popover (padding 4) of
  * section hits, indented child rows and "+N more" rows (see `buildSettingsResultRows`), with the
- * match in the accent color. Choosing a hit or child hands its tab (and row, when it names one) to
- * `onSelect`; "+N more" lists the rest of that section in place.
+ * match in the accent color. Like upstream, the index also holds the Customize Skills, Connectors and Plugins
+ * rows, loaded on mount. Choosing a hit or child hands its tab (and row) or Customize target to `onSelect`;
+ * "+N more" lists the rest of a settings tab in place, and opens a Customize section with its search seeded.
  */
 export function SettingsSearch({
 	onSelect,
 	inputRef: givenInputRef,
 }: {
-	onSelect: (tab: SettingsTab, row?: string) => void;
+	onSelect: (choice: SettingsSearchChoice) => void;
 	/** The dialog's handle on the input, for its initial focus. */
 	inputRef?: RefObject<HTMLInputElement | null>;
 })
 {
 	const [query, setQuery] = useState("");
-	const [expanded, setExpanded] = useState<ReadonlySet<SettingsTab>>(() => new Set());
+	const [expanded, setExpanded] = useState<ReadonlySet<SettingsSearchSection>>(() => new Set());
 	const [announcement, setAnnouncement] = useState("");
 	const [active, setActive] = useState(0);
 	const anchorRef = useRef<HTMLDivElement>(null);
@@ -152,7 +191,31 @@ export function SettingsSearch({
 	const inputRef = givenInputRef ?? ownInputRef;
 	const scrollerRef = useRef<HTMLDivElement>(null);
 	const listId = useId();
-	const rows = useMemo(() => buildSettingsResultRows(query, expanded), [query, expanded]);
+	// Upstream's xn loads the Customize data with the dialog and folds it into the index as it lands.
+	const skills = useQuery(customizeSkillsQueryOptions);
+	const commands = useQuery(userCommandsQueryOptions);
+	const servers = useQuery(customizeMcpServersQueryOptions);
+	const claudeAi = useQuery(customizeClaudeAiConnectorsQueryOptions);
+	const plugins = useQuery(pluginsQueryOptions);
+	const customizeIndex = useMemo(
+		() =>
+			buildCustomizeIndex(
+				{
+					skills: skills.data ?? [],
+					commands: commands.data ?? [],
+					servers: servers.data ?? [],
+					claudeAi: claudeAi.data ?? [],
+					plugins: plugins.data ?? [],
+				},
+			),
+		[skills.data, commands.data, servers.data, claudeAi.data, plugins.data],
+	);
+	// Upstream gates the no-match announcement on the skills and plugins hooks only.
+	const customizeLoading = skills.isPending || plugins.isPending;
+	const rows = useMemo(
+		() => buildSettingsResultRows(query, expanded, customizeIndex),
+		[query, expanded, customizeIndex],
+	);
 	const hasQuery = query.trim().length > 0;
 	const open = hasQuery;
 
@@ -207,14 +270,57 @@ export function SettingsSearch({
 
 	const choose = (row: SettingsResultRow) =>
 	{
-		if (row.kind === "more")
+		const section = row.tab;
+		if (row.kind === "more" && !isCustomizeSearchSection(section))
 		{
-			setExpanded((previous) => new Set([...previous, row.tab]));
-			setAnnouncement(`Showing ${moreMatches(row.count, settingsSectionName(row.tab))}`);
+			setExpanded((previous) => new Set([...previous, section]));
+			setAnnouncement(`Showing ${moreMatches(row.count, settingsSectionName(section))}`);
 			return;
 		}
+		const seed = query.trim();
 		reset();
-		onSelect(row.tab, row.rowSlug);
+		if (!isCustomizeSearchSection(section))
+		{
+			onSelect(
+				row.kind !== "more" && row.rowSlug !== undefined
+					?
+						{
+							kind: "tab",
+							tab: section,
+							row: row.rowSlug,
+						}
+					:
+						{
+							kind: "tab",
+							tab: section,
+						},
+			);
+			return;
+		}
+		const customize = customizeSectionOf(section);
+		if (row.kind === "more")
+			onSelect(
+				{
+					kind: "customize",
+					section: customize,
+					seed,
+				},
+			);
+		else
+			onSelect(
+				row.target === undefined
+					?
+						{
+							kind: "customize",
+							section: customize,
+						}
+					:
+						{
+							kind: "customize",
+							section: customize,
+							target: row.target,
+						},
+			);
 	};
 
 	return (
@@ -307,7 +413,7 @@ export function SettingsSearch({
 							className={POPOVER_BODY_CLASS}
 						>
 							<p role="status" className="sr-only">
-								{announcement}
+								{rows.length === 0 ? (customizeLoading ? "" : "No matching settings") : announcement}
 							</p>
 							<div
 								ref={scrollerRef}

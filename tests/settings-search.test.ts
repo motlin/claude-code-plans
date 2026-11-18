@@ -8,9 +8,11 @@ import
 	rankSettingsSections,
 	SETTINGS_INDEX,
 	SETTINGS_SECTION_KEYWORDS,
+	type SettingsSearchSection,
 	settingsMatchStart,
 	splitMatch,
 } from "../src/lib/settings-search";
+import {buildCustomizeIndex} from "../src/lib/settings-search-customize";
 
 describe("SETTINGS_INDEX", () =>
 {
@@ -333,6 +335,9 @@ describe("SETTINGS_SECTION_KEYWORDS", () =>
 				usage: ["overage", "extra usage", "spend limit", "usage credits"],
 				"claude-config": ["settings.json"],
 				application: ["herdr", "tmux"],
+				"customize-connectors": ["mcp", "integrations", "tools"],
+				"customize-skills": ["custom instructions", "agent skills"],
+				"customize-plugins": ["marketplace", "extensions"],
 			},
 		);
 	});
@@ -989,6 +994,391 @@ describe("rankSettingsSections search names (upstream bc() + gn alsoFoundBy)", (
 			{
 				tab: "general",
 				score: 0,
+			},
+		]);
+	});
+});
+
+describe("Customize rows in settings search (upstream xn/gn Customize index)", () =>
+{
+	const skill = (id: string, name: string, source: "personal" | "project" | "plugin", sourceLabel: string) => (
+	{
+		id,
+		name,
+		description: "",
+		source,
+		sourceLabel,
+		dir: `/skills/${name}`,
+		mtime: 0,
+		enabled: true,
+	});
+	const pluginSkill = (name: string) => (
+	{
+		dirname: name,
+		name,
+		description: "",
+		skillFile:
+		{
+			filename: "SKILL.md",
+			name,
+			description: "",
+			type: "skill" as const,
+			frontmatter: {},
+		},
+		references: [],
+		examples: [],
+	});
+	const plugin = (name: string, skills: string[]) => (
+	{
+		id: `${name}@market`,
+		name,
+		version: "1.0.0",
+		versionKind: "release" as const,
+		description: "",
+		author: "",
+		marketplace: "market",
+		installPath: `/plugins/${name}`,
+		agents: [],
+		commands: [],
+		skills: skills.map(pluginSkill),
+	});
+	const sources =
+	{
+		skills: [
+			skill("personal:deep-research", "deep-research", "personal", "Personal"),
+			skill("project:p1:review", "review", "project", "proj"),
+			skill("project:p1:Theme", "Theme", "project", "proj"),
+			skill("plugin:build@market:fix", "fix", "plugin", "build"),
+		],
+		commands: [
+			{
+				source: "global",
+				sourceName: "Personal",
+				commands: [
+					{
+						filename: "deploy.md",
+						name: "deploy",
+						description: "",
+						type: "command" as const,
+						frontmatter: {},
+					},
+				],
+			},
+		],
+		servers: [
+			{
+				id: "user:cloudflare",
+				name: "cloudflare",
+				scope: "user" as const,
+				transport: "http",
+				urlOrCommand: "https://example.com/mcp",
+				enabled: true,
+				envKeys: [],
+				headerKeys: [],
+				needsAuth: false,
+				offIn: [],
+			},
+		],
+		claudeAi: [
+			{
+				key: "gmail",
+				name: "Gmail",
+				tools: [],
+			},
+		],
+		plugins: [plugin("build", ["fix"]), plugin("ops", ["fix"])],
+	};
+	const index = buildCustomizeIndex(sources);
+	const customizeRows = (query: string, expanded: ReadonlySet<SettingsSearchSection> = new Set()) =>
+		buildSettingsResultRows(query, expanded, index).filter((row) => row.tab.startsWith("customize-"));
+	const skillTarget = (id: string) => (
+	{
+		kind: "skill" as const,
+		id,
+		tab: "overview" as const,
+	});
+
+	it("indexes skills, commands, connectors and plugins under the three sections", () =>
+	{
+		expect(index).toStrictEqual(
+			{
+				"customize-skills": [
+					{
+						rowSlug: "skill:personal:deep-research",
+						title: "deep-research",
+						target: skillTarget("personal:deep-research"),
+					},
+					{
+						rowSlug: "skill:project:p1:review",
+						title: "review",
+						target: skillTarget("project:p1:review"),
+					},
+					{
+						rowSlug: "skill:project:p1:Theme",
+						title: "Theme",
+						target: skillTarget("project:p1:Theme"),
+					},
+					{
+						rowSlug: "skill:plugin:build@market:fix",
+						title: "fix · build",
+						searchText: "fix build",
+						target: skillTarget("plugin:build@market:fix"),
+					},
+					{
+						rowSlug: "command:global:deploy.md",
+						title: "/deploy",
+						target:
+						{
+							kind: "command",
+							source: "global",
+							filename: "deploy.md",
+						},
+					},
+				],
+				"customize-connectors": [
+					{
+						rowSlug: "connector:dXNlcjpjbG91ZGZsYXJl",
+						title: "cloudflare",
+						target:
+						{
+							kind: "connector",
+							slug: "dXNlcjpjbG91ZGZsYXJl",
+						},
+					},
+					{
+						rowSlug: "list:connectors",
+						title: "Gmail",
+						target:
+						{
+							kind: "list",
+							section: "connectors",
+						},
+					},
+				],
+				"customize-plugins": [
+					{
+						rowSlug: "plugin:build@market",
+						title: "build",
+						target:
+						{
+							kind: "plugin",
+							id: "build@market",
+							tab: "overview",
+						},
+					},
+					{
+						rowSlug: "plugin:ops@market",
+						title: "ops",
+						target:
+						{
+							kind: "plugin",
+							id: "ops@market",
+							tab: "overview",
+						},
+					},
+					{
+						rowSlug: "skill:plugin:build@market:fix",
+						title: "fix · build",
+						searchText: "fix build",
+						target: skillTarget("plugin:build@market:fix"),
+						collapseKey: "plugin-skill\0fix",
+					},
+					{
+						rowSlug: "skill:plugin:ops@market:fix",
+						title: "fix · ops",
+						searchText: "fix ops",
+						target: skillTarget("plugin:ops@market:fix"),
+						collapseKey: "plugin-skill\0fix",
+					},
+				],
+			},
+		);
+	});
+
+	it("lists a name-matched Customize section with only its matching rows", () =>
+	{
+		expect(customizeRows("skills")).toStrictEqual([
+			{
+				kind: "hit",
+				tab: "customize-skills",
+			},
+		]);
+	});
+
+	it("caps several matching skills at three children and a more row, ties in index order", () =>
+	{
+		const many = buildCustomizeIndex(
+			{
+				...sources,
+				skills: ["rebase", "refactor", "release", "review"].map((name) =>
+					skill(`personal:${name}`, name, "personal", "Personal"),
+				),
+				commands: [],
+			},
+		);
+		const child = (name: string) => (
+		{
+			kind: "child",
+			tab: "customize-skills",
+			rowSlug: `skill:personal:${name}`,
+			title: name,
+			target: skillTarget(`personal:${name}`),
+		});
+		expect(
+			buildSettingsResultRows("re", new Set(), many).filter((row) => row.tab === "customize-skills"),
+		).toStrictEqual([
+			{
+				kind: "hit",
+				tab: "customize-skills",
+			},
+			child("rebase"),
+			child("refactor"),
+			child("release"),
+			{
+				kind: "more",
+				tab: "customize-skills",
+				count: 1,
+			},
+		]);
+	});
+
+	it("drops a plugin skill shown under Skills from Plugins and collapses same-named plugin skills", () =>
+	{
+		expect(customizeRows("fix")).toStrictEqual([
+			{
+				kind: "hit",
+				tab: "customize-skills",
+				via: "fix · build",
+				rowSlug: "skill:plugin:build@market:fix",
+				target: skillTarget("plugin:build@market:fix"),
+			},
+			{
+				kind: "hit",
+				tab: "customize-plugins",
+				via: "fix · ops",
+				rowSlug: "skill:plugin:ops@market:fix",
+				target: skillTarget("plugin:ops@market:fix"),
+			},
+		]);
+	});
+
+	it("finds a plugin and a connector by name", () =>
+	{
+		// The exact plugin name (score 5) sorts before the word-start skill match (score 7).
+		expect(customizeRows("build")).toStrictEqual([
+			{
+				kind: "hit",
+				tab: "customize-plugins",
+				via: "build",
+				rowSlug: "plugin:build@market",
+				target:
+				{
+					kind: "plugin",
+					id: "build@market",
+					tab: "overview",
+				},
+			},
+			{
+				kind: "hit",
+				tab: "customize-skills",
+				via: "fix · build",
+				rowSlug: "skill:plugin:build@market:fix",
+				target: skillTarget("plugin:build@market:fix"),
+			},
+		]);
+		expect(customizeRows("cloud")).toStrictEqual([
+			{
+				kind: "hit",
+				tab: "customize-connectors",
+				via: "cloudflare",
+				rowSlug: "connector:dXNlcjpjbG91ZGZsYXJl",
+				target:
+				{
+					kind: "connector",
+					slug: "dXNlcjpjbG91ZGZsYXJl",
+				},
+			},
+		]);
+	});
+
+	it("keeps a label shown in a settings tab under Skills too", () =>
+	{
+		expect(buildSettingsResultRows("theme", new Set(), index)).toStrictEqual([
+			{
+				kind: "hit",
+				tab: "general",
+				via: "Theme",
+				rowSlug: "theme",
+			},
+			{
+				kind: "hit",
+				tab: "customize-skills",
+				via: "Theme",
+				rowSlug: "skill:project:p1:Theme",
+				target: skillTarget("project:p1:Theme"),
+			},
+		]);
+	});
+
+	it("gives a 1-character query one via-hit per Customize section", () =>
+	{
+		expect(customizeRows("f").map((row) => [row.kind, row.tab, "via" in row ? row.via : undefined])).toStrictEqual([
+			["hit", "customize-skills", "fix · build"],
+			["hit", "customize-plugins", "fix · ops"],
+			// cloudflare matches mid-word (rank 3), so Connectors sorts after the prefix matches.
+			["hit", "customize-connectors", "cloudflare"],
+		]);
+	});
+
+	it("finds Customize sections by upstream's keywords", () =>
+	{
+		expect(buildSettingsResultRows("marketplace", new Set(), index)).toStrictEqual([
+			{
+				kind: "hit",
+				tab: "customize-plugins",
+				via: "marketplace",
+			},
+		]);
+		expect(buildSettingsResultRows("mcp", new Set(), index)).toStrictEqual([
+			{
+				kind: "hit",
+				tab: "ai-features",
+				via: "Read-only MCP server",
+				rowSlug: "read-only-mcp-server",
+			},
+			{
+				kind: "hit",
+				tab: "customize-connectors",
+				via: "mcp",
+			},
+		]);
+	});
+});
+
+describe("compact matching (upstream pn)", () =>
+{
+	it.each<[string, string, number]>([
+		["tsi", "Font size", 3],
+		["zz", "Font size", -1],
+	])("ranks %j against %j as %d", (query, label, expected) =>
+	{
+		expect(rankSettingsLabel(query, label)).toBe(expected);
+	});
+
+	it("matches a keyword across its spaces", () =>
+	{
+		expect(
+			rankSettingsSections("extrausage").map(({tab, score, keyword}) => (
+			{
+				tab,
+				score,
+				keyword,
+			})),
+		).toStrictEqual([
+			{
+				tab: "usage",
+				score: 10,
+				keyword: "extra usage",
 			},
 		]);
 	});

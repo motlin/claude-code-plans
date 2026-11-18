@@ -1,9 +1,9 @@
-import {useCallback, useMemo, useState} from "react";
+import {useCallback, useEffect, useMemo, useState} from "react";
 import {customizePluginFileQueryOptions, customizeSkillFileQueryOptions} from "../../lib/api/customize";
 import {type CustomizeLocation, type CustomizeSection, customizeHash} from "../../lib/settings-hash";
 import {ContentsViewer} from "./contents-viewer";
 import {CustomizeHeader} from "./customize-header";
-import {CustomizeNavContext, type CustomizeNavigator, type CustomizeTarget} from "./customize-navigation";
+import {CustomizeNavContext, type CustomizeNavigator, type CustomizeTarget, targetHash} from "./customize-navigation";
 import {CommandDetailFrame, ConnectorDetailFrame, PluginDetailFrame, SkillDetailFrame} from "./detail-frames";
 import {PluginConnectors, PluginFiles, PluginHooks, PluginOverview, PluginSkills} from "./plugin-detail";
 import {ConnectorsSection, PluginsSection, SkillsSection} from "./section-views";
@@ -14,54 +14,6 @@ import {CustomizeUnifiedSearch} from "./customize-unified-search";
 import type {UnifiedHit} from "./unified-search";
 import type {UnifiedSectionId} from "./unified-search-results";
 import {assertNever} from "../../lib/assert-never";
-
-/** The hash (without `#`) a Customize target opens inside the Settings dialog. */
-function targetHash(target: CustomizeTarget, withFile = true): string
-{
-	switch (target.kind)
-	{
-		case "list":
-			return customizeHash(
-				{
-					section: target.section,
-					view: target.search?.view === "discover" ? "discover" : "yours",
-				},
-			);
-		case "skill":
-			return customizeHash(
-				{
-					section: "skills",
-					id: target.id,
-					tab: target.tab === "contents" ? "contents" : null,
-				},
-			);
-		case "plugin":
-			return customizeHash(
-				{
-					section: "plugins",
-					id: target.id,
-					tab: target.tab === "overview" ? null : target.tab,
-					file: withFile ? (target.file ?? null) : null,
-				},
-			);
-		case "connector":
-			return customizeHash(
-				{
-					section: "connectors",
-					id: target.slug,
-				},
-			);
-		case "command":
-			return customizeHash(
-				{
-					section: "skills",
-					id: commandDetailId(target.source, target.filename),
-				},
-			);
-		default:
-			return assertNever(target);
-	}
-}
 
 const NO_SECTIONS: UnifiedSectionId[] = [];
 
@@ -117,6 +69,14 @@ interface CustomizeDialogPanelProps
 	location: CustomizeLocation;
 	/** Moves the dialog to `hash` (without `#`), replacing the history entry when asked. */
 	onNavigate: (hash: string, replace: boolean) => void;
+	/** A query for `section`'s header search, from a Settings search "+N more" (upstream panelSearchSeed). */
+	searchSeed?:
+	{
+		section: CustomizeSection;
+		query: string;
+	} | null;
+	/** Called once the panel has taken the seed. */
+	onSeedConsumed?: () => void;
 }
 
 /**
@@ -128,7 +88,12 @@ interface CustomizeDialogPanelProps
  * upstream, moving to another section clears it; the query belongs to the
  * section it was typed in, so a "Search" back link restores it there.
  */
-export default function CustomizeDialogPanel({location, onNavigate}: CustomizeDialogPanelProps)
+export default function CustomizeDialogPanel({
+	location,
+	onNavigate,
+	searchSeed = null,
+	onSeedConsumed,
+}: CustomizeDialogPanelProps)
 {
 	const [searches, setSearches] = useState<Partial<Record<CustomizeSection, CustomizeSearch>>>({});
 	const [typed, setTyped] = useState<
@@ -154,6 +119,18 @@ export default function CustomizeDialogPanel({location, onNavigate}: CustomizeDi
 				},
 			);
 	}
+	// Upstream's header consumes a pending seed once its section shows: the query lands in the field.
+	const seedReady = searchSeed !== null && searchSeed.section === location.section;
+	const [takenSeed, setTakenSeed] = useState<typeof searchSeed>(null);
+	if (seedReady && takenSeed !== searchSeed)
+	{
+		setTakenSeed(searchSeed);
+		setTyped(searchSeed);
+	}
+	useEffect(() =>
+	{
+		if (seedReady) onSeedConsumed?.();
+	}, [seedReady, onSeedConsumed]);
 	const query = typed.section === location.section ? typed.query : "";
 	// Show all state belongs to the query it was expanded for, so it survives opening a hit and coming back.
 	const [expanded, setExpanded] = useState<

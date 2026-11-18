@@ -308,11 +308,13 @@ describe("anchored-upstream popovers under a coarse pointer at 420px", () =>
 	{
 		stubCoarseAtWidth(420);
 		render(
-			<SettingsSearch
-				onSelect={() =>
-				{
-				}}
-			/>,
+			withQueryClient(
+				<SettingsSearch
+					onSelect={() =>
+					{
+					}}
+				/>,
+			),
 		);
 		fireEvent.change(
 			screen.getByRole(

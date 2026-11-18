@@ -16,8 +16,18 @@ import {SettingsDialog} from "../src/components/settings/settings-dialog";
 import {SettingsProvider} from "../src/components/settings-provider";
 import {ToolbarSearch} from "../src/components/toolbar-search";
 import {ThemeProvider} from "../src/components/theme-provider";
+import {ToastProvider} from "../src/components/toast";
 import {SettingsTabSchema} from "../src/lib/settings-hash";
 import {SETTINGS_INDEX} from "../src/lib/settings-search";
+import
+{
+	customizeClaudeAiConnectorsQueryOptions,
+	customizeMcpServersQueryOptions,
+	customizeSkillsQueryOptions,
+	type SkillSummary,
+} from "../src/lib/api/customize";
+import {pluginsQueryOptions, userCommandsQueryOptions} from "../src/lib/api/plugins";
+import {SETTINGS_WIDE_QUERY} from "../src/lib/use-phone-sheet";
 import {installLocalStorage} from "./fake-storage";
 
 const APPLICATION_SETTINGS =
@@ -29,12 +39,12 @@ const APPLICATION_SETTINGS =
 	ignoredDirs: ["node_modules"],
 };
 
-function stubBrowser()
+function stubBrowser(matching: readonly string[] = [])
 {
 	installLocalStorage();
 	vi.stubGlobal("matchMedia", (query: string) => (
 	{
-		matches: false,
+		matches: matching.includes(query),
 		media: query,
 		onchange: null,
 		addEventListener: () =>
@@ -62,7 +72,12 @@ function stubBrowser()
 	);
 }
 
-function buildRouter(initialEntry: string)
+function buildRouter(
+	initialEntry: string,
+	seed: (queryClient: QueryClient) => void = () =>
+	{
+	},
+)
 {
 	const queryClient = new QueryClient(
 		{
@@ -75,6 +90,7 @@ function buildRouter(initialEntry: string)
 			},
 		},
 	);
+	seed(queryClient);
 	const rootRoute = createRootRoute(
 		{
 			component: () => (
@@ -90,7 +106,9 @@ function buildRouter(initialEntry: string)
 								{
 								}}
 							/>
-							<SettingsDialog />
+							<ToastProvider>
+								<SettingsDialog />
+							</ToastProvider>
 						</SettingsProvider>
 					</ThemeProvider>
 				</QueryClientProvider>
@@ -116,9 +134,14 @@ function buildRouter(initialEntry: string)
 	);
 }
 
-async function renderAt(initialEntry: string)
+async function renderAt(
+	initialEntry: string,
+	seed: (queryClient: QueryClient) => void = () =>
+	{
+	},
+)
 {
-	const router = buildRouter(initialEntry);
+	const router = buildRouter(initialEntry, seed);
 	await router.load();
 	render(<RouterProvider router={router} />);
 	return router;
@@ -2144,5 +2167,244 @@ describe("settings search", () =>
 				pageSearch: true,
 			},
 		);
+	});
+});
+
+describe("settings search Customize rows", () =>
+{
+	const personalSkill = (name: string): SkillSummary => (
+	{
+		id: `personal:${name}`,
+		name,
+		description: "",
+		source: "personal",
+		sourceLabel: "Personal",
+		dir: `/skills/${name}`,
+		mtime: 0,
+		enabled: true,
+	});
+
+	/** Every Customize source the search reads, resolved. */
+	const seedCustomize = (skills: SkillSummary[]) => (queryClient: QueryClient) =>
+	{
+		queryClient.setQueryData(customizeSkillsQueryOptions.queryKey, skills);
+		queryClient.setQueryData(userCommandsQueryOptions.queryKey, []);
+		queryClient.setQueryData(customizeMcpServersQueryOptions.queryKey, [
+			{
+				id: "user:cloudflare",
+				name: "cloudflare",
+				scope: "user",
+				transport: "http",
+				urlOrCommand: "https://example.com/mcp",
+				enabled: true,
+				envKeys: [],
+				headerKeys: [],
+				needsAuth: false,
+				offIn: [],
+			},
+		]);
+		queryClient.setQueryData(customizeClaudeAiConnectorsQueryOptions.queryKey, [
+			{
+				key: "gmail",
+				name: "Gmail",
+				tools: [],
+			},
+		]);
+		queryClient.setQueryData(pluginsQueryOptions.queryKey, []);
+	};
+
+	beforeEach(() =>
+	{
+		stubBrowser([SETTINGS_WIDE_QUERY]);
+	});
+
+	afterEach(() =>
+	{
+		cleanup();
+		vi.unstubAllGlobals();
+	});
+
+	async function typeQuery(value: string): Promise<HTMLInputElement>
+	{
+		await screen.findByRole(
+			"dialog",
+			{
+				name: "Settings",
+			},
+		);
+		const input = screen.getByRole<HTMLInputElement>(
+			"textbox",
+			{
+				name: "Search settings",
+			},
+		);
+		fireEvent.change(
+			input,
+			{
+				target:
+				{
+					value,
+				},
+			},
+		);
+		return input;
+	}
+
+	it.each<[string, string, string]>([
+		["deep", "enter", "customize/skills/yours/id/personal%3Adeep-research"],
+		["cloud", "hit: Connectorscloudflare", "customize/connectors/yours/id/dXNlcjpjbG91ZGZsYXJl"],
+		["Gmail", "enter", "customize/connectors/yours"],
+		["skills", "hit: Skills", "customize/skills"],
+	])("opens %j's Customize row (%s) at #%s", async (query, how, hash) =>
+	{
+		const router = await renderAt("/#settings/general", seedCustomize([personalSkill("deep-research")]));
+		const input = await typeQuery(query);
+		const popover = await screen.findByRole(
+			"dialog",
+			{
+				name: "Search results",
+			},
+		);
+		if (how === "enter")
+		{
+			fireEvent.keyDown(
+				input,
+				{
+					key: "Enter",
+				},
+			);
+		}
+		else
+		{
+			const row = within(popover)
+				.getAllByRole("button")
+				.find((button) => (button.getAttribute("aria-label") ?? `hit: ${button.textContent}`) === how);
+			if (row === undefined) throw new Error(`no row ${how}`);
+			fireEvent.click(row);
+		}
+
+		await waitFor(() =>
+		{
+			expect(router.state.location.hash).toBe(hash);
+		});
+	});
+
+	it("names a Customize child by its section", async () =>
+	{
+		await renderAt(
+			"/#settings/general",
+			seedCustomize(["deep-dive", "deep-research"].map((name) => personalSkill(name))),
+		);
+		await typeQuery("deep");
+		const popover = await screen.findByRole(
+			"dialog",
+			{
+				name: "Search results",
+			},
+		);
+
+		expect(
+			within(popover)
+				.getAllByRole("button")
+				.map((button) => button.getAttribute("aria-label") ?? `hit: ${button.textContent}`),
+		).toStrictEqual(["hit: Skills", "deep-dive in Skills", "deep-research in Skills"]);
+	});
+
+	it("opens Skills on Yours with the header search seeded from a Customize more row, once", async () =>
+	{
+		const router = await renderAt(
+			"/#settings/general",
+			seedCustomize(["rebase", "refactor", "release", "review", "revert"].map((name) => personalSkill(name))),
+		);
+		const input = await typeQuery("re");
+		const popover = await screen.findByRole(
+			"dialog",
+			{
+				name: "Search results",
+			},
+		);
+		fireEvent.click(
+			within(popover).getByRole(
+				"button",
+				{
+					name: "2 more matches in Skills",
+				},
+			),
+		);
+
+		const header = await screen.findByTestId<HTMLInputElement>("customize-header-search");
+		expect(
+			{
+				hash: router.state.location.hash,
+				header: header.value,
+				unified: screen.queryByTestId("customize-unified-search-results") !== null,
+				settingsField: input.value,
+			},
+		).toStrictEqual(
+			{
+				hash: "customize/skills/yours",
+				header: "re",
+				unified: true,
+				settingsField: "",
+			},
+		);
+
+		await act(async () =>
+		{
+			await router.navigate(
+				{
+					to: "/",
+					hash: "settings/general",
+				},
+			);
+		});
+		await act(async () =>
+		{
+			await router.navigate(
+				{
+					to: "/",
+					hash: "customize/skills/yours",
+				},
+			);
+		});
+		expect((await screen.findByTestId<HTMLInputElement>("customize-header-search")).value).toBe("");
+	});
+
+	it("withholds the sr-only no-match status while skills and plugins load", async () =>
+	{
+		await renderAt("/#settings/general");
+		await typeQuery("rezzq");
+		const popover = await screen.findByRole(
+			"dialog",
+			{
+				name: "Search results",
+			},
+		);
+
+		expect(
+			{
+				status: within(popover).getByRole("status").textContent,
+				visual: within(popover).getAllByText("No matching settings").length,
+			},
+		).toStrictEqual(
+			{
+				status: "",
+				visual: 1,
+			},
+		);
+	});
+
+	it("announces no match once the Customize data has loaded", async () =>
+	{
+		await renderAt("/#settings/general", seedCustomize([]));
+		await typeQuery("rezzq");
+		const popover = await screen.findByRole(
+			"dialog",
+			{
+				name: "Search results",
+			},
+		);
+
+		expect(within(popover).getByRole("status").textContent).toBe("No matching settings");
 	});
 });

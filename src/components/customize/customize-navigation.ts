@@ -4,6 +4,8 @@ import type {PluginTabId} from "./plugin-view";
 import type {CustomizeSearch, CustomizeSectionId} from "./sections";
 import {assertNever} from "../../lib/assert-never";
 import {toMdSlug} from "../../lib/md-slug";
+import {customizeHash} from "../../lib/settings-hash";
+import {commandDetailId} from "./skills-view";
 
 /** A place inside Customize: a section list, or a skill, plugin, connector or custom command detail. */
 export type CustomizeTarget =
@@ -162,4 +164,52 @@ export function useCustomizeGo(): (target: CustomizeTarget) => void
 	const navigate = useNavigate();
 	if (navigator !== null) return navigator.go;
 	return (target) => void navigate(routeOptions(target));
+}
+
+/** The hash (without `#`) a Customize target opens inside the Settings dialog. */
+export function targetHash(target: CustomizeTarget, withFile = true): string
+{
+	switch (target.kind)
+	{
+		case "list":
+			return customizeHash(
+				{
+					section: target.section,
+					view: target.search?.view === "discover" ? "discover" : "yours",
+				},
+			);
+		case "skill":
+			return customizeHash(
+				{
+					section: "skills",
+					id: target.id,
+					tab: target.tab === "contents" ? "contents" : null,
+				},
+			);
+		case "plugin":
+			return customizeHash(
+				{
+					section: "plugins",
+					id: target.id,
+					tab: target.tab === "overview" ? null : target.tab,
+					file: withFile ? (target.file ?? null) : null,
+				},
+			);
+		case "connector":
+			return customizeHash(
+				{
+					section: "connectors",
+					id: target.slug,
+				},
+			);
+		case "command":
+			return customizeHash(
+				{
+					section: "skills",
+					id: commandDetailId(target.source, target.filename),
+				},
+			);
+		default:
+			return assertNever(target);
+	}
 }

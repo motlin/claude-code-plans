@@ -19,6 +19,7 @@ import {DialogPopup} from "../ui/dialog-popup";
 import {customizeSectionLabels} from "../../lib/schema-choices";
 import
 {
+	type CustomizeSection,
 	customizeHash,
 	parseCustomizeHash,
 	parseSettingsHash,
@@ -40,7 +41,8 @@ import
 import {CustomizePanelSkeleton} from "../customize/customize-panel-skeleton";
 import {preloadCustomizeDialogPanel} from "./customize-dialog-panel-loader";
 import {SettingsFlashContext, type SettingsFlash, SettingsTabContext} from "./settings-row-context";
-import {SettingsSearch} from "./settings-search";
+import {type SettingsSearchChoice, SettingsSearch} from "./settings-search";
+import {targetHash} from "../customize/customize-navigation";
 import {CUSTOMIZE_SECTION_ICONS, SETTINGS_TAB_ICONS} from "./settings-tab-icons";
 import {UsageSettings} from "./usage-settings";
 import {SETTINGS_PHONE_QUERY, useMediaQuery} from "../../lib/use-phone-sheet";
@@ -350,6 +352,17 @@ export function SettingsDialog()
 		[navigate],
 	);
 
+	// A Customize "+N more" from Settings search: the section's header search starts on this query (upstream panelSearchSeed).
+	const [customizeSeed, setCustomizeSeed] = useState<
+	{
+		section: CustomizeSection;
+		query: string;
+	} | null>(null);
+	const consumeCustomizeSeed = useCallback(() =>
+	{
+		setCustomizeSeed(null);
+	}, []);
+
 	const finalFocus = useCallback(() =>
 	{
 		const target = returnFocusRef.current;
@@ -462,6 +475,47 @@ export function SettingsDialog()
 			);
 	};
 
+	// Upstream's search select: a settings row opens its tab and flashes the row; a Customize row opens its
+	// detail (or its section, like a nav click); a Customize "+N more" opens the section's Yours list seeded.
+	const selectSearchResult = (choice: SettingsSearchChoice) =>
+	{
+		if (choice.kind === "tab")
+		{
+			selectTab(choice.tab, choice.row);
+			return;
+		}
+		if (choice.seed !== undefined)
+		{
+			setCustomizeSeed(
+				{
+					section: choice.section,
+					query: choice.seed,
+				},
+			);
+			navigateHash(
+				customizeHash(
+					{
+						section: choice.section,
+						view: "yours",
+					},
+				),
+				customize === null,
+			);
+			return;
+		}
+		navigateHash(
+			choice.target === undefined
+				? customizeHash(
+						{
+							section: choice.section,
+							view: "discover",
+						},
+					)
+				: targetHash(choice.target),
+			customize === null,
+		);
+	};
+
 	const closeButton = (
 		<Dialog.Close
 			aria-label="Close"
@@ -497,7 +551,12 @@ export function SettingsDialog()
 					</SettingsFlashContext.Provider>
 				</SettingsTabContext.Provider>
 			) : (
-				<CustomizeDialogPanel location={shownCustomize} onNavigate={navigateHash} />
+				<CustomizeDialogPanel
+					location={shownCustomize}
+					onNavigate={navigateHash}
+					searchSeed={customizeSeed}
+					onSeedConsumed={consumeCustomizeSeed}
+				/>
 			)}
 		</Suspense>
 	);
@@ -556,7 +615,7 @@ export function SettingsDialog()
 										Settings
 									</h2>
 									<div className="shrink-0 px-4 pt-4">
-										<SettingsSearch inputRef={searchInputRef} onSelect={selectTab} />
+										<SettingsSearch inputRef={searchInputRef} onSelect={selectSearchResult} />
 									</div>
 									<div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto scroll-fade-y scroll-fade-hide-top scroll-fade-size-6 scroll-pt-2 px-4 pt-3 pb-4">
 										{NAV_ROW_GROUPS.map((group, index) => (
