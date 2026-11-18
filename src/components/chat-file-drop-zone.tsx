@@ -1,6 +1,7 @@
 import {useEffect, useRef, useState, type DragEvent, type ReactNode} from "react";
 import {splitDroppedItems} from "../lib/drop-items";
 import type {ChatFileDropHandler} from "./chat-file-drop-context";
+import {useWideTitleRowOverChat} from "./panes/wide-title-row-context";
 
 /**
  * Upstream shared-41 `dZ` plus the badge's own classes (`c4c113f6f` `_`), verbatim. The tile vars and data attributes
@@ -10,13 +11,17 @@ import type {ChatFileDropHandler} from "./chat-file-drop-context";
 const CHAT_DROP_OVERLAY_CLASS =
 	"dframe-drop-overlay-badge inset-0 motion-safe:animate-[cds-fade-in_0.2s_cubic-bezier(0.165,0.84,0.44,1)] start-[calc(8px-var(--tiles-padding,0px))] [[data-chat-gutter-start=shave]_&]:start-2 end-[calc(8px-var(--tiles-padding,0px))] [[data-chat-gutter-end]:not([data-pane-overlay])_&]:end-2 [[data-pane-overlay]_&]:end-[calc(8px-var(--epitaxy-overlay-rail-titlebar-shift,0px))] -bottom-[var(--tiles-padding,0px)] my-2 rounded-[var(--df-radius-card,8px)] [[data-tile-overflow-anchor=left]_&]:mr-[max(0px,var(--tile-overflow-min,0px)_-_100cqw)] [[data-tile-overflow-anchor=right]_&]:ml-[max(0px,var(--tile-overflow-min,0px)_-_100cqw)]";
 
+/** Upstream `uV`'s `overlayClassName` while the chat sits under the wide title row: the badge starts below the row. */
+const CHAT_DROP_OVERLAY_BELOW_ROW_CLASS = `${CHAT_DROP_OVERLAY_CLASS} top-[var(--wide-title-row-h,0px)]`;
+
 /** Upstream's cds FileDropZone file-hint badge: a blurred, accent-ringed cover with a "Drop files here" pill. */
 export function ChatDropOverlayBadge()
 {
+	const overChat = useWideTitleRowOverChat();
 	return (
 		<div
 			aria-hidden="true"
-			className={CHAT_DROP_OVERLAY_CLASS}
+			className={overChat ? CHAT_DROP_OVERLAY_BELOW_ROW_CLASS : CHAT_DROP_OVERLAY_CLASS}
 			style={
 			{
 				zIndex: 40,

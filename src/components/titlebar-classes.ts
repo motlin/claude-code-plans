@@ -10,3 +10,6 @@ export const TITLEBAR_ICON_BUTTON_CLASS =
 /** Session chrome sits above its scrollport; sidebar clearance is relative to the tile inset. */
 export const SESSION_STICKY_HEADER_CLASS =
 	"relative z-10 shrink-0 bg-surface-2 pe-4 ps-[var(--tile-title-start,0px)] sm:pe-3";
+
+/** The session titlebar lifted into the wide title row keeps the sticky header's inline insets. */
+export const SESSION_LIFTED_HEADER_CLASS = "pe-4 ps-[var(--tile-title-start,0px)] sm:pe-3";

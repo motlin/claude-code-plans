@@ -7,10 +7,12 @@ import {useEffect, useState} from "react";
 import {act, cleanup, fireEvent, render, screen, within} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
+import {ChatFileDropZone} from "../src/components/chat-file-drop-zone";
 import {registerPane} from "../src/components/panes/pane-registry";
 import {useChatGutterAttributes, usePaneHost} from "../src/components/panes/pane-host-context";
 import {TileHost} from "../src/components/panes/tile-host";
 import {useTileRowEnd} from "../src/components/panes/tile-row-end-context";
+import {LiftedHeader} from "../src/components/panes/wide-title-row";
 import {TileContentHosts} from "../src/lib/tile-content-hosts";
 import {PHONE_SHEET_QUERY} from "../src/lib/use-phone-sheet";
 import {longhandStyle} from "./helpers/longhand-style";
@@ -4563,5 +4565,349 @@ describe("TileHost unprompted pane overlay (upstream cc43287c9 VPe / vFe, ca67f2
 				separators: 1,
 			},
 		);
+	});
+});
+
+describe("TileHost wide title row (upstream shared-20 pv7 / xk Fp, cc43287c9 tFe z3)", () =>
+{
+	const chatTile =
+	{
+		kind: "tile",
+		tileId: "chat",
+		flex: 1,
+	};
+	const planTile =
+	{
+		kind: "tile",
+		tileId: "plan",
+		flex: 1,
+	};
+	const filesTile =
+	{
+		kind: "tile",
+		tileId: "files",
+		flex: 1,
+	};
+
+	function seed(children: unknown[])
+	{
+		localStorage.setItem(
+			"ccb.paneLayout.v1",
+			JSON.stringify(
+				{
+					"session-wide":
+					{
+						root:
+						{
+							kind: "stack",
+							direction: "row",
+							flex: 1,
+							children,
+						},
+						expanded: null,
+						focused: "chat",
+					},
+				},
+			),
+		);
+	}
+
+	function registerFiles()
+	{
+		return registerPane(
+			"files",
+			{
+				title: "Files",
+				render: () => <p>Files body</p>,
+			},
+		);
+	}
+
+	function LiftedChat({onDrop}: {onDrop: (files: readonly File[]) => void})
+	{
+		return (
+			<ChatFileDropZone onDrop={onDrop} disabled={false} className="flex flex-col">
+				<div data-testid="sticky-header">
+					<LiftedHeader>
+						<h2>Session title</h2>
+					</LiftedHeader>
+				</div>
+				<ChatContent />
+			</ChatFileDropZone>
+		);
+	}
+
+	function renderWide(variant: "tall" | "short" | null, onDrop = vi.fn<(files: readonly File[]) => void>())
+	{
+		render(
+			<TileHost sessionId="session-wide" wideTitleRow={variant}>
+				<LiftedChat onDrop={onDrop} />
+			</TileHost>,
+		);
+		return onDrop;
+	}
+
+	function shellPaddingTop(tileId: string): string | undefined
+	{
+		return document.querySelector<HTMLElement>(`[data-tile-slot=${tileId}] > .tiles-shell`)?.style.paddingTop;
+	}
+
+	function wideState()
+	{
+		const title = screen.getByRole(
+			"heading",
+			{
+				name: "Session title",
+			},
+		);
+		const row = document.querySelector("[data-wide-title-row]");
+		return {
+			under:
+				document.querySelector("[data-under-wide-title-row]")?.getAttribute("data-under-wide-title-row") ??
+				null,
+			inRow: row?.contains(title) ?? false,
+			spacer:
+				screen.getByTestId("sticky-header").querySelector<HTMLElement>(":scope > [data-wide-title-row-spacer]")
+					?.style.height ?? null,
+			chat: shellPaddingTop("chat"),
+			plan: shellPaddingTop("plan"),
+			files: shellPaddingTop("files"),
+		};
+	}
+
+	it("lifts the header into a row over every top tile, pads the top pane and leaves a spacer in the chat", () =>
+	{
+		renderWide("tall");
+		openTestPane();
+
+		expect(
+			{
+				...wideState(),
+				rowClass: document.querySelector<HTMLElement>("[data-wide-title-row]")?.className,
+				rowZ: document.querySelector<HTMLElement>("[data-wide-title-row]")?.style.zIndex,
+			},
+		).toStrictEqual(
+			{
+				under: "tall",
+				inRow: true,
+				spacer: "var(--wide-title-row-h)",
+				chat: "0px",
+				plan: "var(--wide-title-row-h)",
+				files: undefined,
+				rowClass: "absolute inset-x-0 top-0 px-2",
+				rowZ: "2",
+			},
+		);
+	});
+
+	it("pads only the top pane of a column beside the chat", () =>
+	{
+		const unregisterFiles = registerFiles();
+		seed([
+			chatTile,
+			{
+				kind: "stack",
+				direction: "column",
+				flex: 1,
+				children: [filesTile, planTile],
+			},
+		]);
+		renderWide("short");
+
+		expect(wideState()).toStrictEqual(
+			{
+				under: "short",
+				inRow: true,
+				spacer: "var(--wide-title-row-h)",
+				chat: "0px",
+				plan: "",
+				files: "var(--wide-title-row-h)",
+			},
+		);
+		unregisterFiles();
+	});
+
+	it("lifts the header without a chat spacer when a pane sits above the chat", () =>
+	{
+		const unregisterFiles = registerFiles();
+		seed([
+			{
+				kind: "stack",
+				direction: "column",
+				flex: 1,
+				children: [planTile, chatTile],
+			},
+			filesTile,
+		]);
+		renderWide("tall");
+
+		expect(wideState()).toStrictEqual(
+			{
+				under: "tall",
+				inRow: true,
+				spacer: null,
+				chat: "0px",
+				plan: "var(--wide-title-row-h)",
+				files: "var(--wide-title-row-h)",
+			},
+		);
+		unregisterFiles();
+	});
+
+	it("renders the row but lifts nothing until a header mounts in the chat", () =>
+	{
+		render(
+			<TileHost sessionId="session-wide" wideTitleRow="tall">
+				<ChatContent />
+			</TileHost>,
+		);
+		openTestPane();
+
+		expect(
+			{
+				row: document.querySelectorAll("[data-wide-title-row]").length,
+				under: document.querySelector("[data-under-wide-title-row]"),
+				plan: shellPaddingTop("plan"),
+			},
+		).toStrictEqual(
+			{
+				row: 1,
+				under: null,
+				plan: "",
+			},
+		);
+	});
+
+	it("keeps the header in the chat with no row, attribute, spacer or padding while switched off", () =>
+	{
+		renderWide(null);
+		openTestPane();
+
+		expect(
+			{
+				...wideState(),
+				row: document.querySelectorAll("[data-wide-title-row]").length,
+				inHeader: screen.getByTestId("sticky-header").contains(
+					screen.getByRole(
+						"heading",
+						{
+							name: "Session title",
+						},
+					),
+				),
+			},
+		).toStrictEqual(
+			{
+				under: null,
+				inRow: false,
+				spacer: null,
+				chat: "0px",
+				plan: "",
+				files: undefined,
+				row: 0,
+				inHeader: true,
+			},
+		);
+	});
+
+	it("refuses a file drop on the lifted header so it never reaches the chat's drop zone", () =>
+	{
+		const onDrop = renderWide("tall");
+		const title = screen.getByRole(
+			"heading",
+			{
+				name: "Session title",
+			},
+		);
+		const dataTransfer =
+		{
+			types: ["Files"],
+			files: [new File(["x"], "a.txt")],
+			items: [],
+			dropEffect: "copy",
+		};
+
+		const notPrevented = fireEvent.drop(
+			title,
+			{
+				dataTransfer,
+			},
+		);
+
+		expect(
+			{
+				notPrevented,
+				dropEffect: dataTransfer.dropEffect,
+				calls: onDrop.mock.calls.length,
+			},
+		).toStrictEqual(
+			{
+				notPrevented: false,
+				dropEffect: "none",
+				calls: 0,
+			},
+		);
+	});
+
+	it("sizes the row, insets the vertical hairlines and shortens short-variant pane headers in upstream's CSS", () =>
+	{
+		// The formatter wraps long calc() arguments, so whitespace inside parentheses is dropped too.
+		const styles = readFileSync("src/styles/globals.css", "utf8")
+			.replaceAll(/\s+/g, " ")
+			.replaceAll("( ", "(")
+			.replaceAll(" )", ")");
+		const scope = '[data-cds-fizzy-lake~="panels"] [data-under-wide-title-row]';
+		const divider = `${scope} [data-tile-divider][aria-orientation="vertical"]:not([data-starts-at-divider])`;
+		expect(
+			[
+				`${scope} { --wide-title-row-h: calc(var(--cds-h-control) + 2 * var(--cds-toolbar-pad-block, 0.5rem) + var(--cds-toolbar-strip, 0px)); }`,
+				`[data-cds-fizzy-lake~="panels"] [data-under-wide-title-row="short"] [data-pane-corner-row] > [role="toolbar"] { --cds-toolbar-pad-block: calc(0.25rem * var(--cds-rem-scale, 1)); --cds-panel-header-pad-block: calc(0.25rem * var(--cds-rem-scale, 1)); }`,
+				`${divider} { background: linear-gradient(var(--color-seam), var(--color-seam)) 0 var(--wide-title-row-h) / 100% calc(100% - var(--wide-title-row-h)) no-repeat; }`,
+				`${divider}::before, ${divider} [data-tile-divider-line] { inset-block-start: var(--wide-title-row-h) !important; }`,
+			].filter((rule) => !styles.includes(rule)),
+		).toStrictEqual([]);
+	});
+
+	it("marks the root divider between the chat and a pane as a vertical hairline the inset rules reach", () =>
+	{
+		renderWide("tall");
+		openTestPane();
+
+		const divider = screen.getByRole("separator");
+		expect(
+			{
+				orientation: divider.getAttribute("aria-orientation"),
+				startsAtDivider: divider.hasAttribute("data-starts-at-divider"),
+				underRow: divider.closest("[data-under-wide-title-row]") !== null,
+				line: divider.querySelectorAll("[data-tile-divider-line]").length,
+			},
+		).toStrictEqual(
+			{
+				orientation: "vertical",
+				startsAtDivider: false,
+				underRow: true,
+				line: 1,
+			},
+		);
+	});
+
+	it("starts the chat's drop badge below the row while the chat is on the top edge", () =>
+	{
+		renderWide("tall");
+		fireEvent.dragEnter(
+			prompt(),
+			{
+				dataTransfer:
+				{
+					types: ["Files"],
+				},
+			},
+		);
+
+		expect(
+			document
+				.querySelector(".dframe-drop-overlay-badge")
+				?.classList.contains("top-[var(--wide-title-row-h,0px)]"),
+		).toBe(true);
 	});
 });

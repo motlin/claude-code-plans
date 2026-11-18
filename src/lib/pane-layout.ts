@@ -2,6 +2,7 @@ import {z} from "zod";
 
 import {parseDiffScope} from "./api/session-diff";
 import {EMPTY_FILE_TABS, type FileTabsState, FileTabsStateSchema} from "./file-tabs";
+import type {WideTitleRowVariant} from "./wide-title-row";
 
 /**
  * Pure layout engine for the session tiling pane host, modelled on
@@ -262,6 +263,39 @@ export function rowEndOnlyTileIds(root: StackNode): Set<TileId>
 {
 	const start = edgeTiles(root, "start");
 	return new Set([...edgeTiles(root, "end")].filter((tileId) => !start.has(tileId)));
+}
+
+/** Upstream cf53e1812 `ae`: the tiles on the layout's top edge (row → every child, column → first child). */
+export function topEdgeTiles(root: StackNode): Set<TileId>
+{
+	const into = new Set<TileId>();
+	const walk = (node: LayoutNode) =>
+	{
+		if (node.kind === "tile")
+		{
+			into.add(node.tileId);
+			return;
+		}
+		const children = node.direction === "row" ? node.children : node.children.slice(0, 1);
+		for (const child of children) walk(child);
+	};
+	walk(root);
+	return into;
+}
+
+/**
+ * Upstream shared-20 `it`'s `top`: while the header is lifted into the wide title row, every pane on the top edge is
+ * padded down by the row's height; the chat keeps its own spacer instead.
+ */
+export function wideRowTopPadding(
+	tileId: TileId,
+	root: StackNode,
+	under: WideTitleRowVariant | null,
+): string | undefined
+{
+	return under !== null && tileId !== "chat" && topEdgeTiles(root).has(tileId)
+		? "var(--wide-title-row-h)"
+		: undefined;
 }
 
 /**

@@ -43,7 +43,9 @@ import
 	savePaneLayout,
 	saveSubagentPaneAgent,
 	togglePane,
+	topEdgeTiles,
 	updatePhoneView,
+	wideRowTopPadding,
 } from "../src/lib/pane-layout";
 
 function tile(tileId: TileId, flex: number): LayoutNode
@@ -2057,4 +2059,53 @@ describe("chatGutters and chatShellPadding (upstream cf53e1812 ne/Q/Z, shared-20
 			"0px 8px 8px 0px",
 		);
 	});
+});
+
+describe("topEdgeTiles and wideRowTopPadding (upstream cf53e1812 ae, shared-20 it's top)", () =>
+{
+	it.each([
+		["the lone chat", stack("row", 1, [tile("chat", 1)]), ["chat"]],
+		["every child of a row", stack("row", 1, [tile("chat", 1), tile("files", 1)]), ["chat", "files"]],
+		[
+			"only a column's first child",
+			stack("row", 1, [tile("files", 1), stack("column", 1, [tile("chat", 1), tile("changes", 1)])]),
+			["files", "chat"],
+		],
+		[
+			"a pane above the chat",
+			stack("row", 1, [stack("column", 1, [tile("files", 1), tile("chat", 1)]), tile("changes", 1)]),
+			["files", "changes"],
+		],
+		[
+			"a row nested at a column's top",
+			stack("row", 1, [
+				tile("files", 1),
+				stack("column", 1, [stack("row", 1, [tile("chat", 1), tile("plan", 1)]), tile("terminal", 1)]),
+			]),
+			["files", "chat", "plan"],
+		],
+	] satisfies Array<[string, StackNode, TileId[]]>)("holds %s", (_name, root, expected) =>
+	{
+		expect(topEdgeTiles(root)).toStrictEqual(new Set(expected));
+	});
+
+	const chatAndFiles = stack("row", 1, [tile("chat", 1), tile("files", 1)]);
+	const filesOverChanges = stack("row", 1, [
+		tile("chat", 1),
+		stack("column", 1, [tile("files", 1), tile("changes", 1)]),
+	]);
+
+	it.each([
+		["the chat", "chat", chatAndFiles, "tall", undefined],
+		["a top pane while nothing is lifted", "files", chatAndFiles, null, undefined],
+		["a pane under another in a column", "changes", filesOverChanges, "tall", undefined],
+		["a top pane under the tall row", "files", chatAndFiles, "tall", "var(--wide-title-row-h)"],
+		["a column's top pane under the short row", "files", filesOverChanges, "short", "var(--wide-title-row-h)"],
+	] satisfies Array<[string, TileId, StackNode, "tall" | "short" | null, string | undefined]>)(
+		"pads %s with %s",
+		(_name, tileId, root, under, expected) =>
+		{
+			expect(wideRowTopPadding(tileId, root, under)).toBe(expected);
+		},
+	);
 });

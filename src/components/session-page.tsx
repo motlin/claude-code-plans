@@ -61,7 +61,8 @@ import {sessionHasThinking} from "../lib/transcript-mode";
 import {SessionTitlebar} from "./session-titlebar";
 import {sessionTitlePending} from "../lib/session-stand-in-title";
 import {SessionAiTitleLine} from "./session-ai-title-line";
-import {SESSION_STICKY_HEADER_CLASS} from "./titlebar-classes";
+import {SESSION_LIFTED_HEADER_CLASS, SESSION_STICKY_HEADER_CLASS} from "./titlebar-classes";
+import {LiftedHeader} from "./panes/wide-title-row";
 import {syncUnseenFromSummaries} from "../lib/unread-store";
 import
 {
@@ -2819,45 +2820,48 @@ function SessionView({
 													data-transcript-sticky-header
 													className={SESSION_STICKY_HEADER_CLASS}
 												>
-													<SessionTitlebar
-														sessionId={sessionId}
-														data={data}
-														isActive={isActive}
-														local={
-														{
-															resumeCommand: sessionCommands.resume,
-															forkCommand: sessionCommands.fork,
-															onGenerateSummary:
-																aiSummary === null && settings.showSummaryButton
-																	? () => void handleGenerateSummary()
-																	: undefined,
-															generatingSummary: generating,
-														}}
-														summary={aiSummary}
-														transcriptView={transcriptView}
-														railToggleFoldable
-														titlePending={sessionTitlePending(data, isActive)}
-														paneToggles={
-															<SessionPaneControls
-																railAvailable
-																facts={
-																{
-																	artifactCount: sessionArtifacts.length,
-																	hasPlan: sessionHasPlan,
-																	hasUnloadedHistory,
-																	backgroundTasks: backgroundTasksFacts(
-																		backgroundTasks,
-																		subagents.length,
-																	),
-																	subagentCount: subagents.length,
-																}}
-																onExpandChat={() =>
-																{
-																	setChromeHidden(true);
-																}}
-															/>
-														}
-													/>
+													{/* Upstream `xk`: under the wide title row the titlebar lifts over every top tile. */}
+													<LiftedHeader rowClassName={SESSION_LIFTED_HEADER_CLASS}>
+														<SessionTitlebar
+															sessionId={sessionId}
+															data={data}
+															isActive={isActive}
+															local={
+															{
+																resumeCommand: sessionCommands.resume,
+																forkCommand: sessionCommands.fork,
+																onGenerateSummary:
+																	aiSummary === null && settings.showSummaryButton
+																		? () => void handleGenerateSummary()
+																		: undefined,
+																generatingSummary: generating,
+															}}
+															summary={aiSummary}
+															transcriptView={transcriptView}
+															railToggleFoldable
+															titlePending={sessionTitlePending(data, isActive)}
+															paneToggles={
+																<SessionPaneControls
+																	railAvailable
+																	facts={
+																	{
+																		artifactCount: sessionArtifacts.length,
+																		hasPlan: sessionHasPlan,
+																		hasUnloadedHistory,
+																		backgroundTasks: backgroundTasksFacts(
+																			backgroundTasks,
+																			subagents.length,
+																		),
+																		subagentCount: subagents.length,
+																	}}
+																	onExpandChat={() =>
+																	{
+																		setChromeHidden(true);
+																	}}
+																/>
+															}
+														/>
+													</LiftedHeader>
 													<SessionAiTitleLine title={data.title} aiTitle={data.aiTitle} />
 
 													{hookContext && (

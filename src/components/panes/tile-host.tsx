@@ -55,7 +55,9 @@ import
 	rowEndOnlyTileIds,
 	tileShellEdges,
 	togglePane,
+	topEdgeTiles,
 	updatePhoneView,
+	wideRowTopPadding,
 	type Direction,
 	type LayoutNode,
 	type OpenPaneOptions,
@@ -82,6 +84,7 @@ import
 	type TileDropTarget,
 } from "../../lib/tile-drop";
 import {usePhoneSheet} from "../../lib/use-phone-sheet";
+import {WIDE_TITLE_ROW, type WideTitleRowVariant} from "../../lib/wide-title-row";
 import {Tooltip} from "../ui/tooltip";
 import {PANE_HEADER_ICON_BUTTON_CLASS} from "./pane-classes";
 import
@@ -96,6 +99,7 @@ import
 import {type PaneDefinition, usePaneDefinitions} from "./pane-registry";
 import {TileRowEndContext} from "./tile-row-end-context";
 import {TILE_DRAG_LIFT_PX, useTileDrag} from "./use-tile-drag";
+import {WideTitleRowContext, type WideTitleRowSlot} from "./wide-title-row-context";
 
 /** Upstream `--tiles-gap`, mirrored by the reducer's gap maths. */
 const TILE_GAP_PX = 12;
@@ -214,6 +218,10 @@ interface InternalHost
 	overlay: HostOverlay | null;
 	/** The tiles in the flow: the layout without an overlaid pane, which the chat's gutters and grip follow. */
 	flowRoot: StackNode;
+	/** Upstream `tFe`'s `under`: the wide title row's variant while the header is lifted into it, else null. */
+	under: WideTitleRowVariant | null;
+	/** Upstream's `hQ` slot for the chat tile while the wide title row is on, else null. */
+	wideRow: WideTitleRowSlot | null;
 	phone: boolean;
 	/** The root row, measured when a pane opens so Changes can be sized to its minimum. */
 	rootRef: RefObject<HTMLDivElement | null>;
@@ -1428,6 +1436,29 @@ function NodeView({
 	const definition = host.definitions.get(node.tileId);
 	if (definition === undefined) return null;
 	const overlay = host.overlay?.tileId === node.tileId ? host.overlay : null;
+	// Upstream shared-20 `it`'s `top`: while the header is lifted, a pane on the top edge starts below the wide row.
+	// An expanded pane covers the row, so it keeps its full height.
+	const paddingTop = expanded ? undefined : wideRowTopPadding(node.tileId, host.layout.root, host.under);
+	const shellStyle: CSSProperties | undefined = overlay?.drawn
+		?
+			{
+				"--tile-overlay-reserve": `${overlay.drawn.reservePx}px`,
+				padding: 0,
+				"--tiles-padding": "8px",
+				"--tile-shell-ground": "var(--color-page)",
+				...(paddingTop === undefined
+					? {}
+					:
+						{
+							paddingTop,
+						}),
+			}
+		: paddingTop === undefined
+			? undefined
+			:
+				{
+					paddingTop,
+				};
 	return (
 		<TileSlot
 			tileId={node.tileId}
@@ -1436,18 +1467,7 @@ function NodeView({
 			orderKey={orderKey}
 			aheadKey={aheadKey}
 			shellClassName={overlay?.drawn ? "h-full tiles-overlay-shell" : "h-full"}
-			{...(overlay?.drawn
-				?
-					{
-						shellStyle:
-						{
-							"--tile-overlay-reserve": `${overlay.drawn.reservePx}px`,
-							padding: 0,
-							"--tiles-padding": "8px",
-							"--tile-shell-ground": "var(--color-page)",
-						},
-					}
-				: {})}
+			shellStyle={shellStyle}
 			className={
 				expanded
 					? `min-h-0 min-w-0 ${host.phone ? PHONE_EXPANDED_SLOT_CLASSES : EXPANDED_SLOT_CLASSES}`
@@ -1693,6 +1713,16 @@ const CONTENTS_STYLE =
 	display: "contents",
 } as const satisfies CSSProperties;
 
+const WIDE_ROW_STYLE =
+{
+	zIndex: 2,
+} as const satisfies CSSProperties;
+
+const BELOW_WIDE_ROW_STYLE =
+{
+	top: "var(--wide-title-row-h)",
+} as const satisfies CSSProperties;
+
 /** The chat tile's content: its Move grip (once a pane shares the row) above the transcript. */
 function ChatTileContent({host, chat}: {host: InternalHost; chat: ReactNode})
 {
@@ -1700,15 +1730,19 @@ function ChatTileContent({host, chat}: {host: InternalHost; chat: ReactNode})
 	const layered = !host.phone && tileIdsOf(host.layout.root).length > 1;
 	const root = host.flowRoot;
 	const attributes = useMemo(() => chatGutterAttributes(layered ? chatGutters(root) : null), [layered, root]);
+	// Upstream `Fp` keeps the chat's drag handle in the chat, below the spacer the lifted header leaves.
+	const belowRow = host.under !== null && host.wideRow?.overChat === true;
 	return (
 		<>
 			{!host.hidden.has("chat") && tiles > 1 && (
 				// Keep the chat's Move grip above its titlebar while the transcript scrolls.
-				<div className="sticky top-0 z-20 h-0">
+				<div className="sticky top-0 z-20 h-0" style={belowRow ? BELOW_WIDE_ROW_STYLE : undefined}>
 					<MoveHandle tileId="chat" host={host} />
 				</div>
 			)}
-			<ChatGutterContext.Provider value={attributes}>{chat}</ChatGutterContext.Provider>
+			<WideTitleRowContext.Provider value={host.wideRow}>
+				<ChatGutterContext.Provider value={attributes}>{chat}</ChatGutterContext.Provider>
+			</WideTitleRowContext.Provider>
 		</>
 	);
 }
@@ -1786,12 +1820,15 @@ export function TileHost({
 	onExpandWithoutPane,
 	requestedPane,
 	onRequestedPaneHandled,
+	wideTitleRow = WIDE_TITLE_ROW,
 	children,
 }: {
 	sessionId: string;
 	onExpandWithoutPane?: () => void;
 	requestedPane?: PaneKind | undefined;
 	onRequestedPaneHandled?: (() => void) | undefined;
+	/** The wide title row variant (upstream `__gb__2285377532`); defaults to the local switch. */
+	wideTitleRow?: WideTitleRowVariant | null;
 	children: ReactNode;
 })
 {
@@ -1962,6 +1999,25 @@ export function TileHost({
 		[flowRoot, layout.expanded],
 	);
 	const rowEnd = useMemo(() => rowEndOnlyTileIds(layout.root), [layout.root]);
+	// Upstream `tFe`: `Pe = wd(eligible)`, the row element, and the lift the header reports. The phone sheet stands in
+	// for upstream's ineligible layouts (tabbed side panel, pop-out).
+	const wideVariant = phone ? null : wideTitleRow;
+	const [rowEl, setRowEl] = useState<HTMLDivElement | null>(null);
+	const [rowLifted, setRowLifted] = useState(false);
+	const under = rowLifted ? wideVariant : null;
+	const overChat = wideVariant !== null && topEdgeTiles(layout.root).has("chat");
+	const wideRow = useMemo<WideTitleRowSlot | null>(
+		() =>
+			wideVariant === null
+				? null
+				:
+					{
+						el: rowEl,
+						overChat,
+						onRowLifted: setRowLifted,
+					},
+		[wideVariant, rowEl, overChat],
+	);
 	// Upstream `setInteractHandler(onTileInteract)`: focus entering a tile, or a press in it, makes it the focused tile.
 	useLayoutEffect(() =>
 	{
@@ -2095,6 +2151,8 @@ export function TileHost({
 			rowEnd,
 			overlay,
 			flowRoot,
+			under,
+			wideRow,
 			phone,
 			rootRef,
 			rootSize,
@@ -2121,6 +2179,8 @@ export function TileHost({
 			rowEnd,
 			overlay,
 			flowRoot,
+			under,
+			wideRow,
 			phone,
 			rootSize,
 			resolved,
@@ -2190,7 +2250,27 @@ export function TileHost({
 					structureKey={structureKey(layout.root)}
 					liveTileIds={liveTileIds}
 				/>
-				<StackView stack={layout.root} path={[]} orderKey="" aheadKey="" host={internal} />
+				{/* Upstream `tFe`'s tiles root, marked while the header is lifted, holding the wide row (`z3`) after the tiles. */}
+				<div
+					{...(under === null
+						? {}
+						:
+							{
+								"data-under-wide-title-row": under,
+							})}
+					className="relative h-full w-full"
+				>
+					<StackView stack={layout.root} path={[]} orderKey="" aheadKey="" host={internal} />
+					{wideVariant !== null && (
+						<div
+							ref={setRowEl}
+							data-wide-title-row=""
+							className="absolute inset-x-0 top-0 px-2"
+							style={WIDE_ROW_STYLE}
+							inert={hidden.has("chat")}
+						/>
+					)}
+				</div>
 				<MoveStatus host={internal} />
 				{mountedTiles.map((tileId) => (
 					<TileContent key={tileId} tileId={tileId} host={internal} chat={children} />

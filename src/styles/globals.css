@@ -5334,6 +5334,44 @@ html[data-reduce-motion="true"] [data-cds="SkeletonGroup"][data-hold="delayed"]
 	box-shadow: none;
 }
 
+/* Upstream's wide title row (shared-styles, under fizzy-lake panels; gate in src/lib/wide-title-row.ts): the row is a
+   pane toolbar tall (33px at the default density, 45px comfortable on a fine pointer). While the header is lifted
+   into it, the vertical dividers' hairline, hit area and accent line start below the row; local draws the hairline
+   as the divider's background, so the background is cut down instead. The short variant drops the pane header rows
+   to a .25rem block pad (upstream's `[data-pane-corner-row] > .cds-root[data-density]` is local's toolbar). Unlayered
+   so it beats the divider's bg-seam and inset utilities. */
+[data-cds-fizzy-lake~="panels"] [data-under-wide-title-row]
+{
+	--wide-title-row-h: calc(
+		var(--cds-h-control) + 2 * var(--cds-toolbar-pad-block, 0.5rem) + var(--cds-toolbar-strip, 0px)
+	);
+}
+
+[data-cds-fizzy-lake~="panels"] [data-under-wide-title-row="short"] [data-pane-corner-row] > [role="toolbar"]
+{
+	--cds-toolbar-pad-block: calc(0.25rem * var(--cds-rem-scale, 1));
+	--cds-panel-header-pad-block: calc(0.25rem * var(--cds-rem-scale, 1));
+}
+
+[data-cds-fizzy-lake~="panels"]
+	[data-under-wide-title-row]
+	[data-tile-divider][aria-orientation="vertical"]:not([data-starts-at-divider])
+{
+	background: linear-gradient(var(--color-seam), var(--color-seam)) 0 var(--wide-title-row-h) / 100%
+		calc(100% - var(--wide-title-row-h)) no-repeat;
+}
+
+[data-cds-fizzy-lake~="panels"]
+	[data-under-wide-title-row]
+	[data-tile-divider][aria-orientation="vertical"]:not([data-starts-at-divider])::before,
+[data-cds-fizzy-lake~="panels"]
+	[data-under-wide-title-row]
+	[data-tile-divider][aria-orientation="vertical"]:not([data-starts-at-divider])
+	[data-tile-divider-line]
+{
+	inset-block-start: var(--wide-title-row-h) !important;
+}
+
 /* Upstream's unprompted pane overlay (shared-41 `oU`/`iT`/`FG`, shared-18 `Z8`): while a pane is drawn over the lone
    chat, the chat's columns glide left by half its reserve and a docked rail by all of it, so the pane covers neither.
    The tile host sets the --epitaxy-overlay-* shifts on the chat slot. */
