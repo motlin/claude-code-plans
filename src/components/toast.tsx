@@ -12,7 +12,13 @@ import
 	useState,
 } from "react";
 
+import {useIsMac} from "../hooks/use-is-mac";
 import {useFizzyLake} from "../lib/fizzy-lake";
+import {SESSION_UNDO} from "../lib/session-undo";
+import {toAriaKeyShortcuts} from "../lib/shortcuts/format";
+import {isEditableTarget} from "../lib/shortcuts/match";
+import {SessionUndoHost} from "./session-undo-host";
+import {Shortcut} from "./ui/shortcut";
 import {ToastContext, type ToastKind, type ToastOptions} from "./toast-context";
 
 interface ToastEntry extends ToastOptions
@@ -101,6 +107,28 @@ const VIEWPORT_CLASS =
 
 /** Base UI `Toast.Viewport` as upstream styles it. */
 const REGION_CLASS = "pointer-events-auto relative outline-none focus-visible:outline-hidden";
+
+/** Upstream `Ut` behind `Zt`: focus sits in an editable, where a toast action hides its shortcut. */
+function useFocusInEditable(): boolean
+{
+	const [typing, setTyping] = useState(false);
+	useEffect(() =>
+	{
+		const update = () =>
+		{
+			setTyping(isEditableTarget(document.activeElement));
+		};
+		update();
+		document.addEventListener("focusin", update);
+		document.addEventListener("focusout", update);
+		return () =>
+		{
+			document.removeEventListener("focusin", update);
+			document.removeEventListener("focusout", update);
+		};
+	}, []);
+	return typing;
+}
 
 /** Tracks the front toast's height, as Base UI sizes its viewport to the frontmost toast. */
 function useFrontHeight(region: RefObject<HTMLElement | null>, frontId: number | undefined): number
@@ -272,6 +300,7 @@ export function ToastProvider({
 	return (
 		<ToastContext.Provider value={toast}>
 			{children}
+			{SESSION_UNDO && <SessionUndoHost />}
 			<div
 				data-cds="Toast"
 				data-position="bottom-right"
@@ -457,7 +486,9 @@ function ToastItem({
 	onClose: (id: number, root: HTMLElement) => void;
 })
 {
-	const {id, message, description, kind, action, count, repeat} = entry;
+	const {id, message, description, kind, action, count, repeat, onClose: onCloseOption} = entry;
+	const isMac = useIsMac();
+	const typing = useFocusInEditable();
 	const titleId = useId();
 	const descriptionId = useId();
 	const rootRef = useRef<HTMLDivElement>(null);
@@ -479,17 +510,24 @@ function ToastItem({
 		const timer = setTimeout(() =>
 		{
 			onDismiss(id);
+			onCloseOption?.();
 		}, remaining.current);
 		return () =>
 		{
 			clearTimeout(timer);
 			if (remaining.current !== null) remaining.current -= Date.now() - startedAt;
 		};
-	}, [paused, id, onDismiss, repeat]);
+	}, [paused, id, onDismiss, repeat, onCloseOption]);
 
 	const close = () =>
 	{
 		if (rootRef.current !== null) onClose(id, rootRef.current);
+	};
+	/** A user close (Escape, Dismiss), which tells the opener; the action closes without it. */
+	const userClose = () =>
+	{
+		close();
+		onCloseOption?.();
 	};
 	const behind = depth > 0;
 	const variant = VARIANT_OF[kind];
@@ -516,7 +554,7 @@ function ToastItem({
 			className={`${CARD_CLASS} ${fizzyColor ? STACKS_CARD : PRE_FIZZY_CARD[variant]}`}
 			onKeyDown={(event) =>
 			{
-				if (event.key === "Escape" && event.currentTarget.contains(document.activeElement)) close();
+				if (event.key === "Escape" && event.currentTarget.contains(document.activeElement)) userClose();
 			}}
 		>
 			<div className={`flex min-w-0 flex-1 items-start gap-2 ${behind ? "invisible opacity-0" : ""}`}>
@@ -541,6 +579,11 @@ function ToastItem({
 								type="button"
 								data-cds="Button"
 								data-size="sm"
+								aria-keyshortcuts={
+									action.shortcut === undefined
+										? undefined
+										: toAriaKeyShortcuts(action.shortcut, isMac)
+								}
 								className="inline-flex h-7 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg bg-fill-secondary px-[9px] text-body font-normal text-primary shadow-field-drop hover:bg-fill-secondary-hover focus-visible:shadow-focus focus-visible:outline-hidden"
 								onClick={() =>
 								{
@@ -548,7 +591,12 @@ function ToastItem({
 									action.onAction();
 								}}
 							>
-								<span className="inline-flex min-w-0 items-center gap-1">{action.label}</span>
+								<span className="inline-flex min-w-0 items-center gap-1">
+									<span data-toast-action-label="">{action.label}</span>
+									{action.shortcut !== undefined && !typing && (
+										<Shortcut keys={action.shortcut} hidden />
+									)}
+								</span>
 							</button>
 						)}
 					</div>
@@ -567,7 +615,7 @@ function ToastItem({
 					{
 						setCloseFocused(false);
 					}}
-					onClick={close}
+					onClick={userClose}
 				>
 					<svg aria-hidden="true" width="12" height="12" viewBox="0 0 16 16" fill="none">
 						<path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />

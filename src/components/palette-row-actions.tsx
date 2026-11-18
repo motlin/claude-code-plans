@@ -21,7 +21,8 @@ import
 	sessionMenuReadState,
 } from "../lib/session-menu-items";
 import type {SessionBucket} from "../lib/session-state";
-import {ack, ackedAt, useAwaitingAckVersion} from "../lib/awaiting-ack-store";
+import {ackedAt, useAwaitingAckVersion} from "../lib/awaiting-ack-store";
+import {markCompleted} from "../lib/mark-completed";
 import {completedAckAt, isFailedUnacked} from "../lib/failed-row";
 import {markSeen, markUnseen} from "../lib/unread-store";
 import {type Box, CARD_OVERLAP_PX, isAltEnter, virtualAnchor} from "./palette-row-actions-geometry";
@@ -278,8 +279,7 @@ function SessionCard({
 				markSeen(session.id);
 				return;
 			case "mark-completed":
-				markSeen(session.id);
-				ack(session.id, completedAckAt(session.mtime, session.failedAt));
+				markCompleted(session.id, completedAckAt(session.mtime, session.failedAt));
 				return;
 			case "mark-unread":
 				markUnseen(

@@ -2,6 +2,7 @@ import {afterAll, afterEach, beforeAll, vi} from "vite-plus/test";
 import {resetAnsweredApprovals} from "../src/lib/answered-approvals";
 import {resetAnsweredSessions} from "../src/lib/answered-sessions";
 import {resetQuestionCardStore} from "../src/lib/question-card-store";
+import {resetSessionUndo} from "../src/lib/session-undo";
 import {captureDomGlobals, restoreDomGlobals} from "./dom-globals";
 import {isolateGitEnvironment} from "./git-fixture";
 import {captureStorageGlobals, restoreStorageGlobals} from "./storage-globals";
@@ -60,6 +61,7 @@ afterEach(() =>
 	resetAnsweredSessions();
 	resetAnsweredApprovals();
 	resetQuestionCardStore();
+	resetSessionUndo();
 });
 
 declare global

@@ -411,6 +411,192 @@ describe("read state in the row menu", () =>
 	});
 });
 
+describe("Mark as completed undo (SESSION_UNDO, __gb__3095207653)", () =>
+{
+	const OTHER_ID = "8f0c2c7e-1111-4222-8333-944445555777";
+
+	function undoToast():
+	{
+		title: string;
+		button: string;
+		keyShortcuts: string | null;
+	} | null
+	{
+		const card = document.querySelector("[data-toast]");
+		if (card === null) return null;
+		const button = card.querySelector("[data-cds=Button]");
+		return {
+			title: card.querySelector("[data-toast-message]")?.textContent ?? "",
+			button: button?.querySelector("[data-toast-action-label]")?.textContent ?? "",
+			keyShortcuts: button?.getAttribute("aria-keyshortcuts") ?? null,
+		};
+	}
+
+	async function renderRows(sessions: SessionListItem[])
+	{
+		await renderWithProviders(
+			<>
+				{sessions.map((session) => (
+					<SessionActionsMenu key={session.id} session={session}>
+						<a href={`/session/${session.id}`}>{`Row ${session.id}`}</a>
+					</SessionActionsMenu>
+				))}
+			</>,
+		);
+	}
+
+	async function complete(id: string)
+	{
+		fireEvent.contextMenu(
+			screen.getByText(`Row ${id}`),
+			{
+				clientX: 40,
+				clientY: 50,
+			},
+		);
+		await flush();
+		fireEvent.click(
+			screen.getByRole(
+				"menuitem",
+				{
+					name: /^Mark as completed/,
+				},
+			),
+		);
+		await flush();
+	}
+
+	function waitingRow(id: string): SessionListItem
+	{
+		return listItem(
+			"blocked",
+			{
+				id,
+				state: "waiting",
+				unseen: true,
+				mtime: "2026-11-04T10:00:00.000Z",
+			},
+		);
+	}
+
+	beforeEach(() =>
+	{
+		syncUnseenFromSummaries([
+			{
+				id: SESSION_ID,
+				unseen: true,
+			},
+			{
+				id: OTHER_ID,
+				unseen: true,
+			},
+		]);
+	});
+
+	it("offers Undo, which marks the row unseen again and drops its ack", async () =>
+	{
+		await renderRows([waitingRow(SESSION_ID)]);
+		await complete(SESSION_ID);
+		const toast = undoToast();
+
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: /^Undo/,
+				},
+			),
+		);
+		await flush();
+
+		expect(
+			{
+				toast,
+				unseen: hasUnseenWork(SESSION_ID),
+				ackedAt: ackedAt(SESSION_ID),
+				after: undoToast(),
+			},
+		).toStrictEqual(
+			{
+				toast:
+				{
+					title: "Marked 1 session as completed",
+					button: "Undo",
+					keyShortcuts: "Meta+z",
+				},
+				unseen: true,
+				ackedAt: undefined,
+				after: null,
+			},
+		);
+	});
+
+	it("folds two completions into one toast that ⌘Z undoes together", async () =>
+	{
+		await renderRows([waitingRow(SESSION_ID), waitingRow(OTHER_ID)]);
+		await complete(SESSION_ID);
+		await complete(OTHER_ID);
+		const toast = undoToast();
+
+		fireEvent.keyDown(
+			document.body,
+			{
+				key: "z",
+				code: "KeyZ",
+				metaKey: true,
+			},
+		);
+		await flush();
+
+		expect(
+			{
+				title: toast?.title,
+				unseen: [hasUnseenWork(SESSION_ID), hasUnseenWork(OTHER_ID)],
+				acked: [ackedAt(SESSION_ID), ackedAt(OTHER_ID)],
+				after: undoToast(),
+			},
+		).toStrictEqual(
+			{
+				title: "Marked 2 sessions as completed",
+				unseen: [true, true],
+				acked: [undefined, undefined],
+				after: null,
+			},
+		);
+	});
+
+	it("offers nothing for Mark as read", async () =>
+	{
+		await renderRows([
+			listItem(
+				"done",
+				{
+					unseen: true,
+				},
+			),
+		]);
+		fireEvent.contextMenu(
+			screen.getByText(`Row ${SESSION_ID}`),
+			{
+				clientX: 40,
+				clientY: 50,
+			},
+		);
+		await flush();
+		fireEvent.click(
+			screen.getByRole(
+				"menuitem",
+				{
+					name: /^Mark as read/,
+				},
+			),
+		);
+		await flush();
+
+		expect(undoToast()).toBeNull();
+	});
+});
+
 describe("status dot toggle", () =>
 {
 	function dot():

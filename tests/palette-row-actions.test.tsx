@@ -693,15 +693,19 @@ describe("palette row actions card", () =>
 			),
 		);
 
+		const undoTitle = document.querySelector("[data-toast] [data-toast-message]")?.textContent;
+
 		expect(
 			{
 				unseen: hasUnseenWork("sess-1"),
 				ackedAt: ackedAt("sess-1"),
+				undoTitle,
 			},
 		).toStrictEqual(
 			{
 				unseen: false,
 				ackedAt: Date.parse(mtime),
+				undoTitle: "Marked 1 session as completed",
 			},
 		);
 	});

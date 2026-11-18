@@ -10,6 +10,8 @@ export interface ToastAction
 {
 	label: string;
 	onAction: () => void;
+	/** Upstream cds Button `shortcut`: keycaps after the label and `aria-keyshortcuts`, hidden while typing. */
+	shortcut?: string;
 }
 
 export interface ToastOptions
@@ -24,6 +26,8 @@ export interface ToastOptions
 	signal?: AbortSignal;
 	/** Upstream's uniqueKey: a toast with the same key closes the open one and enters fresh (never folds as "(×N)"). */
 	uniqueKey?: string;
+	/** Upstream `onClose`: runs when the timer or the user (Dismiss, Escape) closes it, not on its action. */
+	onClose?: () => void;
 }
 
 export const ToastContext = createContext<((options: ToastOptions) => void) | null>(null);

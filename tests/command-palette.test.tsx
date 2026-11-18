@@ -4839,9 +4839,10 @@ describe("CommandPalette shell", () =>
 						metaKey: true,
 					},
 				);
+				// The Mark as completed undo toast is a dialog too, so wait on the palette's own node.
 				await waitFor(() =>
 				{
-					expect(screen.queryByRole("dialog")).toBeNull();
+					expect(dialog.isConnected).toBe(false);
 				});
 				act(() =>
 				{

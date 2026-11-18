@@ -24,8 +24,8 @@ import
 	TranscriptModeSchema,
 } from "../lib/transcript-mode";
 import {assign} from "../lib/session-group-store";
-import {ack} from "../lib/awaiting-ack-store";
 import {completedAckAt} from "../lib/failed-row";
+import {markCompleted} from "../lib/mark-completed";
 import {markSeen, markUnseen} from "../lib/unread-store";
 import {useToast} from "./toast-context";
 import type {TranscriptViewActions} from "./session-actions-menu";
@@ -131,8 +131,8 @@ export function useSessionMenuRunner({
 				markSeen(sessionId);
 				return;
 			case "mark-completed":
-				markSeen(sessionId);
-				if (mtime !== undefined) ack(sessionId, completedAckAt(mtime, failedAt));
+				if (mtime === undefined) markSeen(sessionId);
+				else markCompleted(sessionId, completedAckAt(mtime, failedAt));
 				return;
 			case "mark-unread":
 				markUnseen(
