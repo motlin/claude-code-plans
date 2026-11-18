@@ -172,10 +172,14 @@ export function SessionRailSlot({sessionId, render}: {sessionId?: string; render
 	}
 	if (phone) return <PhoneRailOverlay render={render} />;
 	return (
+		// Upstream `uw` (shared-20): the docked column is the flat pane band, bleeding through the tile's padding to
+		// its bottom edge, with a seam border and the pane ground (`cds-pane-ground` is bg-surface-2, which the
+		// session tile collapses to surface-1).
 		<div
 			data-epitaxy-rail-column=""
+			data-session-rail-flat=""
 			style={firstCardStyle}
-			className="absolute inset-y-0 end-[var(--session-rail-end)] flex w-[var(--session-rail-w,17.5rem)] flex-col pt-3 pb-0.75"
+			className="absolute top-0 -bottom-[var(--tiles-padding,0px)] md:-bottom-[calc(var(--tiles-padding,0px)-var(--spacing)*0.75)] flex w-[var(--session-rail-w,17.5rem)] flex-col end-[var(--session-rail-end)] border-s border-seam bg-surface-2 [&>*]:w-full"
 		>
 			<Suspense fallback={<SessionRailSkeleton hold="delayed" />}>{render()}</Suspense>
 		</div>

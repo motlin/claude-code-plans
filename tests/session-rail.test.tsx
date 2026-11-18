@@ -945,7 +945,13 @@ describe("session rail fit by chat-panel width", () =>
 		tileWidth = 1200;
 		const {unmount} = renderFitSession(() => <Pending />);
 		await settle();
-		const docked = document.querySelector<HTMLElement>("[data-epitaxy-rail-column]")?.style.cssText;
+		const column = document.querySelector<HTMLElement>("[data-epitaxy-rail-column]");
+		const docked =
+		{
+			style: column?.style.cssText,
+			flat: column?.hasAttribute("data-session-rail-flat"),
+			className: column?.className,
+		};
 		unmount();
 		setSessionRailShown(false);
 		tileWidth = 600;
@@ -960,7 +966,13 @@ describe("session rail fit by chat-panel width", () =>
 			},
 		).toStrictEqual(
 			{
-				docked: "--session-rail-first-card-h: 80px; --session-rail-first-card-rows: none;",
+				docked:
+				{
+					style: "--session-rail-first-card-h: 80px; --session-rail-first-card-rows: none;",
+					flat: true,
+					className:
+						"absolute top-0 -bottom-[var(--tiles-padding,0px)] md:-bottom-[calc(var(--tiles-padding,0px)-var(--spacing)*0.75)] flex w-[var(--session-rail-w,17.5rem)] flex-col end-[var(--session-rail-end)] border-s border-seam bg-surface-2 [&>*]:w-full",
+				},
 				raised: "bottom: 0px;",
 			},
 		);
