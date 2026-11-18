@@ -34,6 +34,7 @@ import {installFakeEventSource} from "./harness/fake-event-source";
 import {installFixedResizeObserver} from "./harness/fixed-resize-observer";
 import {type InteractionMeasurement, measureInteraction} from "./harness/measure-interaction";
 import {metricIds} from "./perf-ids";
+import {readSidebarState, writeSidebarState} from "../../src/lib/sidebar-store";
 import {ratchet} from "./ratchet";
 import {preloadComposerSurfaces} from "../../src/components/composer-surfaces-entry";
 import {preloadSideChatPanel} from "../../src/components/side-chat-panel-module";
@@ -110,6 +111,8 @@ const FIXTURE_CWD = "/repo";
 const FIXED_NOW = Date.parse("2026-09-30T12:00:00.000Z");
 const FIXTURE_MTIME = new Date(FIXED_NOW - 24 * 60 * 60 * 1000);
 const ROW_HEIGHT = ESTIMATED_TURN_HEIGHT_PIXELS;
+/** The sidebar's Recents list shows one row per fixture session. */
+const SIDEBAR_RECENTS_ROWS = SHAPES.length;
 
 type ApiHandler = (context: {params: Record<string, string>; request: Request}) => Response | Promise<Response>;
 
@@ -566,6 +569,14 @@ async function measureApp(
 ): Promise<InteractionMeasurement>
 {
 	installBrowserStubs();
+	// The sidebar writes a changed Recents row count 2s after its list settles (upstream `Fg`), a real timer the
+	// mount starts. Stored up front, the count never changes, so that write cannot land inside a slow measurement.
+	writeSidebarState(
+		{
+			...readSidebarState(),
+			recentsRowCount: SIDEBAR_RECENTS_ROWS,
+		},
+	);
 	const queryClient = new QueryClient(
 		{
 			defaultOptions:
@@ -578,7 +589,7 @@ async function measureApp(
 		},
 	);
 	const router = createAppRouter(queryClient, initialPath);
-	return measureInteraction(
+	const measurement = await measureInteraction(
 		() => <RouterProvider router={router} />,
 		async () =>
 		{
@@ -589,6 +600,11 @@ async function measureApp(
 			queryClient,
 		},
 	);
+	// A list of another length would start the deferred write again.
+	expect(document.querySelectorAll('nav a[data-row-main-button][href^="/session/"]')).toHaveLength(
+		SIDEBAR_RECENTS_ROWS,
+	);
+	return measurement;
 }
 
 const COMMIT_SUBTREES = ["SessionPage", "SessionChat"] as const;
