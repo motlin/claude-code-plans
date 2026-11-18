@@ -1,11 +1,17 @@
 // @vitest-environment jsdom
 
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
-import {act, cleanup, render, screen} from "@testing-library/react";
+import {act, cleanup, render, renderHook, screen} from "@testing-library/react";
 import type {ReactNode} from "react";
 import {afterEach, beforeEach, describe, expect, it, onTestFinished} from "vite-plus/test";
 
-import {HOME_RECENT_LIMIT, type HomeWorktree, useHomeWorktree} from "../src/components/home/launch-folder";
+import
+{
+	HOME_RECENT_LIMIT,
+	type HomeWorktree,
+	useHomeDraftUsed,
+	useHomeWorktree,
+} from "../src/components/home/launch-folder";
 import {HomeLaunchFolderProvider} from "../src/components/home/launch-folder-provider";
 import {projectsQueryOptions} from "../src/lib/api/projects";
 import {recentSessionsQueryOptions} from "../src/lib/api/sessions";
@@ -342,6 +348,57 @@ describe("useHomeWorktree", () =>
 					enabled: true,
 					supported: true,
 					useWorktree: true,
+				},
+			},
+		);
+	});
+
+	it("starts a new opening, with its used rows cleared, when the draft ends", () =>
+	{
+		const {result} = renderHook(
+			() => (
+			{
+				used: useHomeDraftUsed(),
+				worktree: useHomeWorktree(),
+			}),
+			{
+				wrapper: ({children}) => withQueries(<HomeLaunchFolderProvider>{children}</HomeLaunchFolderProvider>),
+			},
+		);
+		act(() =>
+		{
+			result.current.used.markUsed("next-step:continue-branch:x");
+		});
+		const before =
+		{
+			opening: result.current.used.opening,
+			used: [...result.current.used.used],
+		};
+		act(() =>
+		{
+			result.current.worktree.endDraft();
+		});
+
+		expect(
+			{
+				before,
+				after:
+				{
+					opening: result.current.used.opening,
+					used: [...result.current.used.used],
+				},
+			},
+		).toStrictEqual(
+			{
+				before:
+				{
+					opening: 0,
+					used: ["next-step:continue-branch:x"],
+				},
+				after:
+				{
+					opening: 1,
+					used: [],
 				},
 			},
 		);

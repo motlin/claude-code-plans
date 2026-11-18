@@ -956,8 +956,6 @@ describe("NextStepsList", () =>
 				title: "Turn on auto mode",
 				detail: null,
 				dismissLabel: "Dismiss auto mode",
-				icon: "lightning",
-				noTooltip: true,
 			};
 			const {container} = render(
 				<>
@@ -998,6 +996,7 @@ describe("NextStepsList", () =>
 				iconClass: icon?.getAttribute("class"),
 				iconHidden: icon?.getAttribute("aria-hidden"),
 				iconMarked: icon?.hasAttribute("data-next-step-icon"),
+				iconStroke: icon?.getAttribute("stroke-width"),
 				title: [...button.querySelectorAll("span")].find(
 					(span) => span.textContent === "Turn on auto mode" && span.children.length === 0,
 				)?.className,
@@ -1039,6 +1038,7 @@ describe("NextStepsList", () =>
 						iconClass: "lucide lucide-zap size-4 shrink-0 text-secondary-control",
 						iconHidden: "true",
 						iconMarked: true,
+						iconStroke: "1.25",
 						title: "min-w-0 max-w-full truncate text-secondary-control",
 						text: "Turn on auto mode",
 						describedBy: 0,
@@ -1085,6 +1085,7 @@ function listOf(
 	onDismiss: (candidates: NextStepCandidate[]) => void = () =>
 	{
 	},
+	openingKey = 0,
 )
 {
 	return (
@@ -1095,6 +1096,7 @@ function listOf(
 					dismissed: {},
 				},
 			)}
+			openingKey={openingKey}
 			onOpen={() =>
 			{
 			}}
@@ -1438,5 +1440,273 @@ describe("NextStepsList row keys and test ids", () =>
 				tag: "BUTTON",
 			},
 		]);
+	});
+});
+
+const prCiFailed: NextStepCandidate =
+{
+	id: "pr-ci-failed",
+	kind: "prefill",
+	subject: "o/r#1\0stamp",
+	stamp: 0,
+	title: "Fix the failing checks",
+	detail: null,
+	tooltipText: "Checks are failing on feat.",
+	prefill: "Fix the failing CI checks on feat.",
+};
+
+const resumeR: NextStepCandidate =
+{
+	id: "resume-session",
+	kind: "open",
+	subject: "R",
+	stamp: 100,
+	title: "Resume R",
+	detail: "Hit an error",
+	tooltip: "Hit an error",
+};
+
+function waitingX(): NextStepCandidate
+{
+	return {
+		id: "waiting-session",
+		subject: "X",
+		stamp: 100,
+		title: "Task X",
+		detail: "Asked a question",
+	};
+}
+
+function rowKeys(): (string | undefined)[]
+{
+	return [...document.querySelectorAll<HTMLElement>("[aria-label='Next steps'] > li")].map(
+		(li) => li.dataset["rowKey"],
+	);
+}
+
+describe("NextStepsList icon slot and tooltip gate", () =>
+{
+	it("draws upstream's icon only for icon rows, first in the button, and none for a blocking row", () =>
+	{
+		const cliImport: NextStepCandidate =
+		{
+			id: "cli-import",
+			subject: "",
+			stamp: 0,
+			title: "Import CLI sessions",
+			detail: null,
+		};
+		const blockingGithub: NextStepCandidate =
+		{
+			id: "connect-github",
+			subject: "",
+			stamp: 0,
+			title: "Connect GitHub",
+			detail: "Needed to start",
+			blocksSend: true,
+		};
+		const firstChild = (candidates: NextStepCandidate[]) =>
+		{
+			const {container, unmount} = render(listOf(candidates));
+			const button = container.querySelector("[data-next-step-open]");
+			const shape =
+			{
+				first: button?.firstElementChild?.getAttribute("class"),
+				icons: container.querySelectorAll("[data-next-step-icon]").length,
+			};
+			unmount();
+			return shape;
+		};
+
+		expect([firstChild(blocked(1)), firstChild([cliImport]), firstChild([blockingGithub])]).toStrictEqual([
+			{
+				first: "flex min-w-0 flex-1 items-center gap-1",
+				icons: 0,
+			},
+			{
+				first: "lucide lucide-square-terminal lucide-terminal-square size-4 shrink-0 text-secondary-control",
+				icons: 1,
+			},
+			{
+				first: "flex min-w-0 flex-1 items-center gap-1",
+				icons: 0,
+			},
+		]);
+	});
+
+	it("renders no tooltip, describing span or aria-describedby for a row without tooltip copy", () =>
+	{
+		vi.useFakeTimers();
+		try
+		{
+			const review: NextStepCandidate =
+			{
+				id: "pr-review-comments",
+				kind: "prefill",
+				subject: "o/r#1\0c1",
+				stamp: 0,
+				title: "Answer 2 review comments",
+				detail: null,
+				prefill: "x",
+			};
+			const {container} = render(listOf([review]));
+			const button = container.querySelector<HTMLButtonElement>("[data-next-step-open]")!;
+			const li = container.querySelector("li")!;
+			fireEvent.pointerEnter(button.parentElement!);
+			act(() =>
+			{
+				button.focus();
+				vi.advanceTimersByTime(300);
+			});
+			const row =
+			{
+				describedBy: button.getAttribute("aria-describedby"),
+				hiddenSpans: li.querySelectorAll("span[hidden]").length,
+				tooltips: screen.queryAllByRole("tooltip").map((t) => t.textContent),
+			};
+			fireEvent.pointerLeave(button.parentElement!);
+			act(() =>
+			{
+				button.blur();
+				vi.advanceTimersByTime(300);
+			});
+			const dismiss = container.querySelector<HTMLButtonElement>("[data-next-step-dismiss]")!;
+			fireEvent.pointerEnter(dismiss);
+			act(() =>
+			{
+				vi.advanceTimersByTime(300);
+			});
+
+			expect(
+				{
+					row,
+					dismissTooltips: screen.queryAllByRole("tooltip").map((t) => t.textContent),
+				},
+			).toStrictEqual(
+				{
+					row:
+					{
+						describedBy: null,
+						hiddenSpans: 0,
+						tooltips: [],
+					},
+					dismissTooltips: ["Dismiss"],
+				},
+			);
+		}
+		finally
+		{
+			vi.useRealTimers();
+		}
+	});
+});
+
+describe("NextStepsList slot latch", () =>
+{
+	it("keeps the drawn slots and appends a newcomer, until a new opening ranks afresh", () =>
+	{
+		const {rerender} = render(listOf([prCiFailed, continueBranch(3)]));
+		rerender(listOf([waitingX(), prCiFailed, continueBranch(3)]));
+		const latched = rowKeys();
+		rerender(listOf([waitingX(), prCiFailed, continueBranch(3)], undefined, 1));
+
+		expect(
+			{
+				latched,
+				reopened: rowKeys(),
+			},
+		).toStrictEqual(
+			{
+				latched: ["pr-ci-failed", "continue-branch", "waiting-session:X"],
+				reopened: ["waiting-session:X", "pr-ci-failed", "continue-branch"],
+			},
+		);
+	});
+
+	it("starts a remount and a list that emptied in ranked order", () =>
+	{
+		const first = render(listOf([prCiFailed]));
+		first.unmount();
+		render(listOf([waitingX(), prCiFailed]));
+		const remounted = rowKeys();
+		cleanup();
+
+		const {rerender} = render(listOf([prCiFailed]));
+		rerender(listOf([]));
+		rerender(listOf([waitingX(), prCiFailed]));
+
+		expect(
+			{
+				remounted,
+				afterEmpty: rowKeys(),
+			},
+		).toStrictEqual(
+			{
+				remounted: ["waiting-session:X", "pr-ci-failed"],
+				afterEmpty: ["waiting-session:X", "pr-ci-failed"],
+			},
+		);
+	});
+
+	it("closes a dismissed row's slot, while a vanished row's slot takes the newcomer in place", () =>
+	{
+		const before = [worktreeApart, prCiFailed, continueBranch(3)];
+		const after = [resumeR, prCiFailed, continueBranch(3)];
+
+		const dismissed = render(listOf(before));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Dismiss the Worktree suggestion",
+				},
+			),
+		);
+		dismissed.rerender(listOf(after));
+		const closed = rowKeys();
+		dismissed.unmount();
+
+		const vanished = render(listOf(before));
+		vanished.rerender(listOf(after));
+
+		expect(
+			{
+				closed,
+				filled: rowKeys(),
+			},
+		).toStrictEqual(
+			{
+				closed: ["pr-ci-failed", "continue-branch", "resume-session:R"],
+				filled: ["resume-session:R", "pr-ci-failed", "continue-branch"],
+			},
+		);
+	});
+
+	it("appends a row held out during a hover after the latched rows on release", () =>
+	{
+		const {rerender} = render(listOf([prCiFailed, continueBranch(3)]));
+		const list = screen.getByRole(
+			"list",
+			{
+				name: "Next steps",
+			},
+		);
+
+		fireEvent.pointerEnter(list);
+		rerender(listOf([waitingX(), prCiFailed, continueBranch(3)]));
+		const held = rowKeys();
+		fireEvent.pointerLeave(list);
+
+		expect(
+			{
+				held,
+				released: rowKeys(),
+			},
+		).toStrictEqual(
+			{
+				held: ["pr-ci-failed", "continue-branch"],
+				released: ["pr-ci-failed", "continue-branch", "waiting-session:X"],
+			},
+		);
 	});
 });

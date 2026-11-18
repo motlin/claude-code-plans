@@ -1,4 +1,4 @@
-import {Check, ChevronDown, Folder, X, Zap} from "lucide-react";
+import {Check, ChevronDown, Folder, SquareTerminal, X, Zap, type LucideIcon} from "lucide-react";
 import {useId, useLayoutEffect, useRef, useState, type ReactNode, type RefObject} from "react";
 
 import {useFolderModeMemory} from "../../hooks/use-folder-mode-memory";
@@ -7,9 +7,14 @@ import {folderName, folderParent, inferHome, shortenCwd, type FolderRowName} fro
 import {requestHomeComposerFocus, requestHomeComposerPrefill} from "../../lib/home-composer-focus";
 import
 {
+	nextStepCandidateKey,
+	nextStepIcon,
 	nextStepKey,
+	nextStepRowKey,
+	nextStepTooltip,
 	selectNextSteps,
 	type NextStepCandidate,
+	type NextStepIconName,
 	type NextStepId,
 	type NextStepRow,
 } from "../../lib/home-next-steps";
@@ -23,6 +28,7 @@ import {ProjectPicker} from "./project-picker";
 import {ClawdMascot} from "./clawd-mascot";
 import {START_CARD_ENVIRONMENTS, START_CARD_SETUP_HIDE_CLASS} from "./start-card-placement";
 import {useNextStepsHold} from "./use-next-steps-hold";
+import {useNextStepsSlots} from "./use-next-steps-slots";
 
 /** Upstream shows at most three recent environments. */
 const ROW_LIMIT = 3;
@@ -238,6 +244,8 @@ function FolderRow({
 export interface NextStepsListProps
 {
 	rows: readonly NextStepRow<NextStepCandidate>[];
+	/** The home draft's opening (upstream's composer `mountKey`); a new one drops the latched slot order. */
+	openingKey?: number | undefined;
 	/** Opens the row's session (its subject). */
 	onOpen: (subject: string) => void;
 	onDismiss: (candidates: NextStepCandidate[]) => void;
@@ -272,22 +280,38 @@ const DISMISS_SLOT_CLASS = `pointer-events-none absolute inset-y-0 end-1 flex it
 /** Rows that carry upstream's "Waiting" status before their title. */
 const WAITING_IDS: ReadonlySet<NextStepId> = new Set(["waiting-session", "resume-session"]);
 
-/** Rows keyed by their subject (upstream's `f5`); every other row's key is its bare id. */
-const SUBJECT_KEYED_IDS: ReadonlySet<NextStepId> = new Set(["waiting-session", "resume-session", "suggested-task"]);
+/** Upstream's row icon (cds `Icon` size sm): 16px in the row's gap flow, control ink, static on hover. */
+const NEXT_STEP_ICON_CLASS = "size-4 shrink-0 text-secondary-control";
+
+const NEXT_STEP_GLYPHS: Readonly<Record<NextStepIconName, LucideIcon | null>> =
+{
+	Lightning: Zap,
+	CommandLinePrompt: SquareTerminal,
+	Folder,
+	Github: null,
+};
 
 /**
- * Upstream's row key (`f5`), used for the React key, `data-row-key` and the hold. It differs from the dismissal key
- * (`nextStepKey`): a folder row keeps its key while its subject changes (e.g. continue-branch's file count), so its
- * `li` stays mounted and keeps hover, tooltip and focus.
+ * Upstream's cds row icons drawn with lucide at the sm stroke (1.25px) until the glyph icons land. `Github` draws
+ * nothing until a local GitHub mark exists (Primer Octicons `mark-github`).
  */
-function candidateKey(candidate: NextStepCandidate): string
+function NextStepGlyph({
+	name,
+}: Readonly<
 {
-	return SUBJECT_KEYED_IDS.has(candidate.id) ? `${candidate.id}:${candidate.subject}` : candidate.id;
-}
-
-function nextStepRowKey(row: NextStepRow<NextStepCandidate>): string
+	name: NextStepIconName;
+}>)
 {
-	return row.type === "row" ? candidateKey(row.candidate) : "blocked-sessions";
+	const props =
+	{
+		"aria-hidden": true,
+		"data-next-step-icon": "",
+		strokeWidth: 1.25,
+		absoluteStrokeWidth: true,
+		className: NEXT_STEP_ICON_CLASS,
+	} as const;
+	const Glyph = NEXT_STEP_GLYPHS[name];
+	return Glyph === null ? null : <Glyph {...props} />;
 }
 
 function rowCandidates(row: NextStepRow<NextStepCandidate>): NextStepCandidate[]
@@ -364,6 +388,7 @@ function StepLine({
  */
 export function NextStepsList({
 	rows: incoming,
+	openingKey = 0,
 	onOpen,
 	onDismiss,
 	onEmptyFocus = requestHomeComposerFocus,
@@ -376,31 +401,40 @@ export function NextStepsList({
 	const candidates = incoming.flatMap(rowCandidates);
 	const hold = useNextStepsHold(
 		{
-			keys: candidates.map(candidateKey),
+			keys: candidates.map(nextStepCandidateKey),
 			pinned: openRest !== null,
 		},
 	);
 	const {held} = hold;
-	const rows =
-		held === null || candidates.every((c) => held.has(candidateKey(c)))
+	const ranked =
+		held === null || candidates.every((c) => held.has(nextStepCandidateKey(c)))
 			? incoming
 			: selectNextSteps(
 					{
-						candidates: candidates.filter((c) => held.has(candidateKey(c))),
+						candidates: candidates.filter((c) => held.has(nextStepCandidateKey(c))),
 						dismissed: {},
 					},
 				);
-	if (
+	// Upstream's order: hold, rank, then the per-opening slot latch.
+	const latch = useNextStepsSlots(
+		{
+			openingKey,
+			ranked,
+		},
+	);
+	const rows = latch.slots;
+	const focusGone =
 		hold.focus !== null &&
 		!rows.some(
 			(row) =>
-				nextStepRowKey(row) === hold.focus || rowCandidates(row).some((c) => candidateKey(c) === hold.focus),
-		)
-	)
-	{
-		hold.dropFocus();
-	}
-	if (openRest !== null && !rows.some((row) => nextStepRowKey(row) === openRest)) setOpenRest(null);
+				nextStepRowKey(row) === hold.focus ||
+				rowCandidates(row).some((c) => nextStepCandidateKey(c) === hold.focus),
+		);
+	if (focusGone) hold.dropFocus();
+	const pinGone = openRest !== null && !rows.some((row) => nextStepRowKey(row) === openRest);
+	if (pinGone) setOpenRest(null);
+	// Like upstream, the drawn slots are recorded a pass after a held focus or open rest row lets go.
+	if (rows.length === 0 || !(focusGone || pinGone)) latch.note();
 	const closeRest = () =>
 	{
 		setOpenRest(null);
@@ -448,6 +482,7 @@ export function NextStepsList({
 	{
 		const keyboard = button.matches(":focus-visible");
 		pendingFocusKeys.current = keyboard ? new Set([key]) : null;
+		latch.forget(key);
 		onDismiss(candidates);
 		if (!keyboard) requestHomeComposerFocus();
 	};
@@ -573,9 +608,9 @@ function WorktreeTakenRow()
 }
 
 /**
- * A next-step row: upstream's title-over-detail tooltip (or a row's text-only one) lined up with the row's start
- * edge, and a hidden span holding the title (or that text) that describes the button. A row whose upstream card copy
- * has no tooltip (`noTooltip`) gets neither, like upstream's `Q8`.
+ * A next-step row (upstream's `X8`): its icon first when the card copy has one, and upstream's title-over-detail
+ * tooltip (or a row's text-only one) lined up with the row's start edge, with a hidden span holding its text that
+ * describes the button. A row whose card copy has no tooltip gets neither.
  */
 function StepRowButton({
 	candidate,
@@ -595,13 +630,14 @@ function StepRowButton({
 }>)
 {
 	const titleId = useId();
-	const described = candidate.noTooltip !== true;
+	const tooltip = nextStepTooltip(candidate);
+	const icon = nextStepIcon(candidate);
 	const button = (
 		<button
 			type="button"
 			data-testid={`start-card-${candidate.id}`}
 			data-next-step-open
-			aria-describedby={described ? titleId : undefined}
+			aria-describedby={tooltip === undefined ? undefined : titleId}
 			onClick={() =>
 			{
 				if (candidate.kind === "worktree")
@@ -627,24 +663,17 @@ function StepRowButton({
 			}}
 			className={STEP_BUTTON_CLASS}
 		>
-			{/* Upstream's cds `Lightning` icon (sm, 16px); lucide's Zap stands in until the glyph icons land. */}
-			{candidate.icon === "lightning" && (
-				<Zap aria-hidden="true" data-next-step-icon="" className="size-4 shrink-0 text-secondary-control" />
-			)}
+			{icon !== undefined && <NextStepGlyph name={icon} />}
 			<StepLine candidate={candidate} listed={listed} />
 			{!listed && <StepSpacer />}
 		</button>
 	);
-	if (!described) return button;
+	if (tooltip === undefined) return button;
 	return (
 		<>
 			<Tooltip
-				content={candidate.tooltipText ?? candidate.title}
-				detail={
-					candidate.tooltipText === undefined
-						? (candidate.tooltip ?? candidate.detail ?? undefined)
-						: undefined
-				}
+				content={tooltip.content}
+				detail={tooltip.detail}
 				side="top"
 				align="start"
 				stacked
@@ -653,7 +682,7 @@ function StepRowButton({
 				{button}
 			</Tooltip>
 			<span id={titleId} hidden>
-				{candidate.tooltipText ?? candidate.title}
+				{tooltip.text}
 			</span>
 		</>
 	);
@@ -710,7 +739,7 @@ function RestRow({
 					<ul role="list" className="flex flex-col gap-0.5 p-1">
 						{rest.map((candidate) =>
 						{
-							const key = candidateKey(candidate);
+							const key = nextStepCandidateKey(candidate);
 							return (
 								<li key={key} data-row-key={key} className="group/row relative">
 									<StepRowButton candidate={candidate} onOpen={openListed} listed />

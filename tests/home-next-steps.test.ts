@@ -11,6 +11,10 @@ import
 	folderNextStepCandidates,
 	folderPrBranch,
 	folderPrNextStepCandidates,
+	latchNextStepSlots,
+	nextStepIcon,
+	nextStepRowKey,
+	nextStepTooltip,
 	type FolderNextStepSource,
 	type FolderPrNextStepSource,
 	nextStepKey,
@@ -962,8 +966,6 @@ describe("auto-mode next step", () =>
 		title: "Turn on auto mode",
 		detail: null,
 		dismissLabel: "Dismiss auto mode",
-		icon: "lightning",
-		noTooltip: true,
 	};
 	const QUALIFIES: AutoModeNextStepSource =
 	{
@@ -1063,6 +1065,202 @@ describe("auto-mode next step", () =>
 			],
 			[],
 			"next-step:auto-mode:",
+		]);
+	});
+});
+
+describe("nextStepIcon", () =>
+{
+	it("gives upstream's icon to non-blocking auto-mode, cli-import and connect-github rows only", () =>
+	{
+		const ids: NextStepId[] = [
+			"auto-mode",
+			"cli-import",
+			"connect-github",
+			"waiting-session",
+			"resume-session",
+			"worktree-apart",
+			"pr-ci-failed",
+			"pr-review-comments",
+			"suggested-task",
+			"continue-branch",
+		];
+		expect([
+			...ids.map((id) => [
+				id,
+				nextStepIcon(
+					{
+						id,
+					},
+				),
+			]),
+			[
+				"connect-github blocking",
+				nextStepIcon(
+					{
+						id: "connect-github",
+						blocksSend: true,
+					},
+				),
+			],
+		]).toStrictEqual([
+			["auto-mode", "Lightning"],
+			["cli-import", "CommandLinePrompt"],
+			["connect-github", "Github"],
+			["waiting-session", undefined],
+			["resume-session", undefined],
+			["worktree-apart", undefined],
+			["pr-ci-failed", undefined],
+			["pr-review-comments", undefined],
+			["suggested-task", undefined],
+			["continue-branch", undefined],
+			["connect-github blocking", undefined],
+		]);
+	});
+});
+
+describe("nextStepTooltip", () =>
+{
+	it("follows upstream's card copy: waiting rows stack title over detail, others need their own text", () =>
+	{
+		const base =
+		{
+			stamp: 0,
+			subject: "s",
+		};
+		expect([
+			nextStepTooltip(
+				{
+					...base,
+					id: "waiting-session",
+					title: "Task 1",
+					detail: "Asked a question",
+				},
+			),
+			nextStepTooltip(
+				{
+					...base,
+					id: "resume-session",
+					title: "Task 2",
+					detail: "Hit an error",
+					tooltip: "Hit an error",
+				},
+			),
+			nextStepTooltip(
+				{
+					...base,
+					id: "waiting-session",
+					title: "Task 3",
+					detail: null,
+				},
+			),
+			nextStepTooltip(
+				{
+					...base,
+					id: "worktree-apart",
+					title: "Turn on Worktree",
+					detail: "Session running here",
+					tooltipText: "Another session is running in this folder.",
+				},
+			),
+			nextStepTooltip(
+				{
+					...base,
+					id: "pr-review-comments",
+					title: "Answer 2 review comments",
+					detail: null,
+				},
+			),
+			nextStepTooltip(
+				{
+					...base,
+					id: "connect-github",
+					title: "Connect GitHub",
+					detail: null,
+				},
+			),
+			nextStepTooltip(
+				{
+					...base,
+					id: "cli-import",
+					title: "Import CLI sessions",
+					detail: null,
+				},
+			),
+			nextStepTooltip(
+				{
+					...base,
+					id: "auto-mode",
+					title: "Turn on auto mode",
+					detail: null,
+				},
+			),
+		]).toStrictEqual([
+			{
+				content: "Task 1",
+				text: "Task 1",
+				detail: "Asked a question",
+			},
+			{
+				content: "Task 2",
+				text: "Task 2",
+				detail: "Hit an error",
+			},
+			{
+				content: "Task 3",
+				text: "Task 3",
+			},
+			{
+				content: "Another session is running in this folder.",
+				text: "Another session is running in this folder.",
+			},
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+		]);
+	});
+});
+
+describe("latchNextStepSlots", () =>
+{
+	const waiting = (subject: string) => candidate("waiting-session", subject);
+	const ranked = (...candidates: NextStepCandidate[]) =>
+		selectNextSteps(
+			{
+				candidates,
+				dismissed: {},
+			},
+		);
+	const slots = (keys: string[], ...candidates: NextStepCandidate[]) =>
+		latchNextStepSlots(ranked(...candidates), keys).map(nextStepRowKey);
+
+	it("keeps the latched slots and gives newcomers the freed or trailing slots, like upstream's Ube", () =>
+	{
+		const prCi = candidate("pr-ci-failed", "pr");
+		const cont = candidate("continue-branch", "c");
+		const worktree = candidate("worktree-apart", "/p");
+		expect([
+			slots([], waiting("X"), prCi, cont),
+			slots(["pr-ci-failed", "continue-branch"], waiting("X"), prCi, cont),
+			slots(["worktree-apart", "pr-ci-failed", "continue-branch"], waiting("X"), worktree, prCi, cont),
+			slots(
+				["waiting-session:A", "waiting-session:B", "blocked-sessions"],
+				waiting("Z"),
+				waiting("A"),
+				waiting("B"),
+				waiting("C"),
+				waiting("D"),
+			),
+			slots(["waiting-session:A", "pr-ci-failed", "continue-branch"], waiting("Z"), prCi, cont),
+			slots(["worktree-apart", "pr-ci-failed", "continue-branch"], prCi, cont),
+		]).toStrictEqual([
+			["waiting-session:X", "pr-ci-failed", "continue-branch"],
+			["pr-ci-failed", "continue-branch", "waiting-session:X"],
+			["worktree-apart", "pr-ci-failed", "waiting-session:X"],
+			["waiting-session:A", "waiting-session:Z", "blocked-sessions"],
+			["waiting-session:Z", "pr-ci-failed", "continue-branch"],
+			["pr-ci-failed", "continue-branch"],
 		]);
 	});
 });

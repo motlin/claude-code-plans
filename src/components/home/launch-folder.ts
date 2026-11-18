@@ -34,6 +34,8 @@ export interface WorktreeState
 	taken: ReadonlySet<string>;
 	/** Keys of the Next steps rows whose press prefilled this draft (upstream's per-opening `used`). */
 	used: ReadonlySet<string>;
+	/** Counts this provider's openings of the draft (upstream's composer `mountKey`); a launch starts the next. */
+	opening: number;
 	set: (enabled: boolean) => void;
 	markUsed: (key: string) => void;
 	setForDraft: (enabled: boolean | null) => void;
@@ -76,6 +78,7 @@ export function useWorktreeState(): WorktreeState
 	const [draft, setDraft] = useState<boolean | null>(null);
 	const [taken, setTaken] = useState<ReadonlySet<string>>(() => new Set());
 	const [used, setUsed] = useState<ReadonlySet<string>>(() => new Set());
+	const [opening, setOpening] = useState(0);
 	useEffect(() =>
 	{
 		setPref(readHomeWorktreePref());
@@ -96,6 +99,7 @@ export function useWorktreeState(): WorktreeState
 			draft,
 			taken,
 			used,
+			opening,
 			set,
 			markUsed: (key: string) =>
 			{
@@ -113,9 +117,10 @@ export function useWorktreeState(): WorktreeState
 				setDraft(null);
 				setTaken(new Set());
 				setUsed(new Set());
+				setOpening((previous) => previous + 1);
 			},
 		};
-	}, [pref, draft, taken, used]);
+	}, [pref, draft, taken, used, opening]);
 }
 
 export const LaunchFolderContext = createContext<SharedLaunchFolder | null>(null);
@@ -211,6 +216,8 @@ export interface HomeDraftUsed
 	/** Keys of the Next steps rows whose press prefilled this draft; they stay hidden until it ends. */
 	used: ReadonlySet<string>;
 	markUsed: (key: string) => void;
+	/** The draft's opening, which a launch moves on; Next steps latches its slot order per opening. */
+	opening: number;
 }
 
 /** The home draft's used Next steps rows, shared under `HomeLaunchFolderProvider` (local outside one). */
@@ -218,10 +225,11 @@ export function useHomeDraftUsed(): HomeDraftUsed
 {
 	const shared = useContext(LaunchFolderContext);
 	const local = useWorktreeState();
-	const {used, markUsed} = shared?.worktree ?? local;
+	const {used, markUsed, opening} = shared?.worktree ?? local;
 	return {
 		used,
 		markUsed,
+		opening,
 	};
 }
 

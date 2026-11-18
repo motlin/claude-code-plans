@@ -1,3 +1,4 @@
+import {assertNever} from "./assert-never";
 import type {FolderGitStatus} from "./api/home-folder-status";
 import type {FolderPr} from "./api/home-folder-pr";
 
@@ -49,10 +50,8 @@ export interface NextStepCandidate
 	 * draft's mode to Auto.
 	 */
 	kind?: "open" | "worktree" | "prefill" | "auto-mode";
-	/** Upstream's leading row icon (`Lightning` for auto-mode). */
-	icon?: "lightning";
-	/** Upstream's card copy has no tooltip: the row gets none and no `aria-describedby`. */
-	noTooltip?: true;
+	/** The row must be acted on before the draft can send (upstream's `blocksSend`); such a row gets no icon. */
+	blocksSend?: true;
 	/** A pressed Worktree row, shown as the static "Worktree is on" row. */
 	taken?: true;
 	/** The composer text a `prefill` press fills in. */
@@ -72,6 +71,134 @@ export type NextStepRow<C extends NextStepCandidate> =
 			dismissLabel: string;
 			rest: C[];
 	  };
+
+/** Upstream's cds icon names for the rows whose card copy (`p5`) has one. */
+export type NextStepIconName = "Lightning" | "CommandLinePrompt" | "Folder" | "Github";
+
+/**
+ * Upstream's leading row icon (`a5` gate over `p5` card copy): none for a row that blocks sending, else `Lightning`
+ * for auto-mode, `CommandLinePrompt` for cli-import and `Github` for connect-github. Upstream's non-blocking
+ * `choose-folder` gets `Folder` once a local producer exists.
+ */
+export function nextStepIcon(candidate: Pick<NextStepCandidate, "id" | "blocksSend">): NextStepIconName | undefined
+{
+	if (candidate.blocksSend === true) return undefined;
+	switch (candidate.id)
+	{
+		case "auto-mode":
+			return "Lightning";
+		case "cli-import":
+			return "CommandLinePrompt";
+		case "connect-github":
+			return "Github";
+		case "waiting-session":
+		case "resume-session":
+		case "worktree-apart":
+		case "pr-ci-failed":
+		case "pr-review-comments":
+		case "suggested-task":
+		case "continue-branch":
+			return undefined;
+		default:
+			return assertNever(candidate.id);
+	}
+}
+
+/** A row's hover tooltip and the hidden text that describes its button. */
+export interface NextStepTooltip
+{
+	content: string;
+	detail?: string;
+	text: string;
+}
+
+/**
+ * Upstream's row tooltip (`p5` card copy, drawn by `X8`/`Y8`): a waiting row's title over its status, else the row's
+ * own text-only tooltip. Rows without one (`choose-folder`, `add-repository`, `connect-github`, `cli-import`,
+ * `auto-mode`, and `pr-review-comments` without a PR title) render no tooltip and no `aria-describedby`.
+ */
+export function nextStepTooltip(candidate: NextStepCandidate): NextStepTooltip | undefined
+{
+	if (candidate.id === "waiting-session" || candidate.id === "resume-session")
+	{
+		const detail = candidate.tooltip ?? candidate.detail ?? undefined;
+		return detail === undefined
+			?
+				{
+					content: candidate.title,
+					text: candidate.title,
+				}
+			:
+				{
+					content: candidate.title,
+					text: candidate.title,
+					detail,
+				};
+	}
+	const text = candidate.tooltipText;
+	return text === undefined
+		? undefined
+		:
+			{
+				content: text,
+				text,
+			};
+}
+
+/** Rows keyed by their subject (upstream's `f5`); every other row's key is its bare id. */
+const SUBJECT_KEYED_IDS: ReadonlySet<NextStepId> = new Set(["waiting-session", "resume-session", "suggested-task"]);
+
+/**
+ * Upstream's row key (`f5`), used for the React key, `data-row-key`, the hold and the slot latch. It differs from the
+ * dismissal key (`nextStepKey`): a folder row keeps its key while its subject changes (e.g. continue-branch's file
+ * count), so its `li` stays mounted and keeps hover, tooltip and focus.
+ */
+export function nextStepCandidateKey(candidate: Pick<NextStepCandidate, "id" | "subject">): string
+{
+	return SUBJECT_KEYED_IDS.has(candidate.id) ? `${candidate.id}:${candidate.subject}` : candidate.id;
+}
+
+/** A row's key: its candidate's, or the rest row's family. */
+export function nextStepRowKey<C extends NextStepCandidate>(row: NextStepRow<C>): string
+{
+	return row.type === "row" ? nextStepCandidateKey(row.candidate) : "blocked-sessions";
+}
+
+function rowFamily<C extends NextStepCandidate>(row: NextStepRow<C>): string
+{
+	return row.type === "rest" ? "blocked-sessions" : (FAMILY[row.candidate.id] ?? row.candidate.id);
+}
+
+/**
+ * Upstream's slot reorder (`Ube`) for a list already drawn in this opening: each latched key takes its row back in
+ * place, a slot whose row is gone is filled by the next new ranked row, and the other new rows go after. Families
+ * then regroup at their first position, the rest row last within its family. Upstream's `blocksSend` rows lead; no
+ * local row blocks sending.
+ */
+export function latchNextStepSlots<C extends NextStepCandidate>(
+	ranked: readonly NextStepRow<C>[],
+	keys: readonly string[],
+): NextStepRow<C>[]
+{
+	const remaining = [...ranked];
+	const latched = keys.map((key) =>
+	{
+		const index = remaining.findIndex((row) => nextStepRowKey(row) === key);
+		return index === -1 ? undefined : remaining.splice(index, 1)[0];
+	});
+	const sequence = [...latched.map((row) => row ?? remaining.shift()), ...remaining].filter(
+		(row): row is NextStepRow<C> => row !== undefined,
+	);
+	const families = new Map<string, NextStepRow<C>[]>();
+	for (const row of sequence)
+	{
+		const family = rowFamily(row);
+		families.set(family, [...(families.get(family) ?? []), row]);
+	}
+	return [...families.values()].flatMap((rows) =>
+		rows.toSorted((a, b) => Number(a.type === "rest") - Number(b.type === "rest")),
+	);
+}
 
 /** The dismissal store key for a candidate's {row, subject}; its stamp is compared at read time. */
 export function nextStepKey(candidate: Pick<NextStepCandidate, "id" | "subject">): string
@@ -406,8 +533,6 @@ export function autoModeNextStepCandidates({
 			title: "Turn on auto mode",
 			detail: null,
 			dismissLabel: "Dismiss auto mode",
-			icon: "lightning",
-			noTooltip: true,
 		},
 	];
 }

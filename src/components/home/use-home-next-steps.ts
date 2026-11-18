@@ -117,7 +117,7 @@ export function useHomeNextSteps(): NextStepsListProps | undefined
 	const worktree = useHomeWorktree(git?.isGitRepo);
 	// Upstream's `yce` runs only for a git folder on a non-default branch with Worktree off.
 	const {data: folderPr} = useQuery(homeFolderPrQueryOptions(folder, folderPrBranch(git, worktree.enabled)));
-	const {used} = useHomeDraftUsed();
+	const {used, opening} = useHomeDraftUsed();
 	// The auto-mode row reads the mode the chin shows: its pick, else the folder memory or settings default.
 	const {draftMode, settled: modeSettled} = useHomeDraftMode(folder);
 	const {options: launchOptions} = useHomeLaunchOptions(folder);
@@ -173,6 +173,7 @@ export function useHomeNextSteps(): NextStepsListProps | undefined
 
 	latched.current =
 	{
+		openingKey: opening,
 		rows: selectNextSteps(
 			{
 				candidates: [
