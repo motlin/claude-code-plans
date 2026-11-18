@@ -1,6 +1,6 @@
 import {useQuery} from "@tanstack/react-query";
 import {Link} from "@tanstack/react-router";
-import {useEffect, useRef, useState} from "react";
+import {useEffect, useMemo, useRef, useState} from "react";
 import
 {
 	AppWindow,
@@ -11,6 +11,7 @@ import
 	GitPullRequest,
 	Laptop,
 	ListChecks,
+	Plug,
 	Server,
 	SquareTerminal,
 	Workflow,
@@ -38,6 +39,8 @@ import {formatContextSummary, formatUpdatedAgo, type ComposerUsage} from "../../
 import type {PrStatus} from "../../lib/pr-status";
 import {requestFileOpen} from "../../lib/file-open-requests";
 import {formatCount} from "../../lib/pluralize";
+import {useRailNoConnectors} from "../../lib/rail-no-connectors";
+import {useHoldNonzero} from "../../lib/use-hold-nonzero";
 import
 {
 	type ConnectorRow,
@@ -59,6 +62,7 @@ import {CompactActionRow} from "./compact-action-row";
 import {ContextBreakdownBody} from "./context-breakdown";
 import {useToast} from "../toast-context";
 import {Menu, MenuContent, MenuItem, MenuTrigger} from "../ui/menu";
+import {Skeleton} from "../ui/skeleton";
 import {RailChangesRow} from "./rail-changes-row";
 import {ENVIRONMENT_MENU_BUTTON_CLASS, RAIL_ROW_ACTION_CLASS, RailRow, RailRowContent} from "./rail-row";
 import {RemoteControlRow, RemoteControlRowPending, RemoteControlToggleRow} from "./remote-control-row";
@@ -519,9 +523,35 @@ function ConnectorsBody({rows}: {rows: readonly ConnectorRow[]})
 	);
 }
 
-/** Upstream's Connectors card (`uN`): mounted while any server is listed, even when every one is off. */
-function connectorsCard(rows: readonly ConnectorRow[]): RailCard | null
+/**
+ * Upstream's Connectors card (`uN`): mounted while any server is listed, even when every one is off. While the list
+ * loads (`rows === null`) it shows at once with no summary and one "Manage connectors" row over an 84×12 skeleton,
+ * unless the session (or the last one) is remembered to have none.
+ */
+function connectorsCard(rows: readonly ConnectorRow[] | null, rememberedNone: boolean): RailCard | null
 {
+	if (rows === null)
+	{
+		if (rememberedNone) return null;
+		return {
+			id: "connectors",
+			body: (
+				<div data-testid="rail-rows" tabIndex={-1} className="flex flex-col outline-none">
+					<Link to="/customize/connectors" aria-label="Manage connectors" className={RAIL_ROW_ACTION_CLASS}>
+						<span className="flex size-5 shrink-0 items-center justify-center text-secondary [&_svg]:size-4">
+							<Icon icon={Plug} />
+						</span>
+						<span className="min-w-0 flex-1 truncate text-start text-primary">
+							{/* Upstream `ON`: a decorative Text span around a standalone 84×12 Skeleton. */}
+							<span className="flex min-w-0 items-center">
+								<Skeleton as="span" silent className="h-3 w-[84px] rounded" />
+							</span>
+						</span>
+					</Link>
+				</div>
+			),
+		};
+	}
 	const counts = connectorCounts(rows);
 	if (counts.count === 0) return null;
 	return {
@@ -959,8 +989,21 @@ function backgroundTasksCard(tasks: BackgroundTaskGroups): RailCard | null
  */
 export function SessionRailCards({inputs}: {inputs: SessionRailInputs})
 {
-	const mcpServers = useQuery(customizeMcpServersQueryOptions).data;
+	const mcpQuery = useQuery(customizeMcpServersQueryOptions);
+	const mcpServers = mcpQuery.data;
 	const failedMcpServers = useQuery(sessionMcpStatusQueryOptions(inputs.sessionId, inputs.cwd !== null)).data?.failed;
+	const loadedConnectorRows = useMemo(
+		() => (mcpServers === undefined ? null : connectorRows(mcpServers, inputs.cwd, failedMcpServers ?? [])),
+		[mcpServers, inputs.cwd, failedMcpServers],
+	);
+	// Local deviation: upstream's desktop branch keeps loading forever on an error; here an error counts as none.
+	const connectorCount = loadedConnectorRows?.length ?? (mcpQuery.isError ? 0 : null);
+	const rememberedNoConnectors = useRailNoConnectors(
+		inputs.sessionId,
+		connectorCount,
+		mcpQuery.isSuccess && !mcpQuery.isPlaceholderData,
+	);
+	const shownConnectorRows = useHoldNonzero(loadedConnectorRows, connectorCount, true);
 	const devServers = useQuery(sessionDevServersQueryOptions(inputs.sessionId, inputs.cwd !== null)).data?.servers;
 	const diff = useQuery(
 		{
@@ -981,7 +1024,9 @@ export function SessionRailCards({inputs}: {inputs: SessionRailInputs})
 			body: <EnvironmentBody inputs={inputs} />,
 		} satisfies RailCard,
 		contextCard(inputs, connectors),
-		connectorsCard(connectorRows(mcpServers ?? [], inputs.cwd, failedMcpServers ?? [])),
+		connectorCount === 0 && shownConnectorRows === null
+			? null
+			: connectorsCard(shownConnectorRows, rememberedNoConnectors),
 		outputsCard(inputs),
 		changesCard(inputs, diff ?? null),
 		serversCard(devServers ?? []),

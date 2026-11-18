@@ -34,6 +34,7 @@ import type {BackgroundTask} from "../src/lib/background-tasks";
 import type {CompactActionState} from "../src/lib/compact-action";
 import type {ContextBreakdown} from "../src/lib/context-breakdown";
 import {toConnectorSlug} from "../src/lib/customize/mcp-tool-permissions";
+import {RAIL_NO_CONNECTORS_KEY} from "../src/lib/rail-no-connectors";
 import {DEFAULT_RAIL_SECTIONS_STATE, RAIL_SECTIONS_STORAGE_KEY} from "../src/lib/session-rail-store";
 import {installLocalStorage} from "./fake-storage";
 import {installFrameQueue, stubReducedMotion} from "./helpers/frame-queue";
@@ -367,6 +368,26 @@ function openContextByDefault()
 			},
 		),
 	);
+}
+
+/** Seeds upstream's `epitaxy.railNoConnectors.v1` memory. */
+function rememberConnectors(
+	map: Record<
+		string,
+		{
+			none: boolean;
+			at: number;
+		}
+	>,
+)
+{
+	localStorage.setItem(RAIL_NO_CONNECTORS_KEY, JSON.stringify(map));
+}
+
+function rememberedConnectors(): unknown
+{
+	const raw = localStorage.getItem(RAIL_NO_CONNECTORS_KEY);
+	return raw === null ? null : JSON.parse(raw);
 }
 
 function cards(): Array<[string, string | null]>
@@ -1339,6 +1360,15 @@ describe("cards from local data", () =>
 	it("shows only Environment and Context's placeholder when the session has nothing else", async () =>
 	{
 		openContextByDefault();
+		rememberConnectors(
+			{
+				[SESSION_ID]:
+				{
+					none: true,
+					at: 1,
+				},
+			},
+		);
 		await renderCards(BASE);
 
 		expect(
@@ -4099,6 +4129,224 @@ describe("Connectors card", () =>
 					],
 				},
 			);
+		});
+	});
+
+	describe("while the list loads", () =>
+	{
+		const BASE_CARDS = [
+			["environment", "alice/sync-upstream"],
+			["context", null],
+		];
+
+		afterEach(() =>
+		{
+			vi.useRealTimers();
+		});
+
+		/** Renders BASE, handing back its query client so a test can land the list later. */
+		async function renderLoading(): Promise<QueryClient>
+		{
+			const clients: QueryClient[] = [];
+			await renderCards(BASE, (client) =>
+			{
+				clients.push(client);
+			});
+			const [client] = clients;
+			if (client === undefined) throw new Error("no query client");
+			return client;
+		}
+
+		/** Lands the list, then runs Query's setTimeout(0) notify so the rail re-renders. */
+		async function land(client: QueryClient, servers: McpServerSummary[])
+		{
+			await act(async () =>
+			{
+				client.setQueryData(customizeMcpServersQueryOptions.queryKey, servers);
+				await vi.advanceTimersByTimeAsync(0);
+			});
+		}
+
+		it("shows the card at once with no summary and one Manage connectors row over an 84×12 skeleton", async () =>
+		{
+			await renderLoading();
+			openConnectors();
+			const link = within(card()).getByRole(
+				"link",
+				{
+					name: "Manage connectors",
+				},
+			);
+
+			expect(
+				{
+					cards: cards(),
+					links: within(card()).getAllByRole("link").length,
+					href: link.getAttribute("href"),
+					label: link.querySelector(":scope > span:last-child")?.className,
+					skeleton: link
+						.querySelector("[data-cds='Skeleton']")
+						?.className.split(" ")
+						.filter((each) => ["h-3", "w-[84px]"].includes(each)),
+				},
+			).toStrictEqual(
+				{
+					cards: [...BASE_CARDS, ["connectors", null]],
+					links: 1,
+					href: "/customize/connectors",
+					label: "min-w-0 flex-1 truncate text-start text-primary",
+					skeleton: ["h-3", "w-[84px]"],
+				},
+			);
+		});
+
+		it.each([
+			["the session", SESSION_ID],
+			["the last session, for an unseen one", "last:"],
+		])("skips the card when %s is remembered to have none", async (_, key) =>
+		{
+			rememberConnectors(
+				{
+					[key]:
+					{
+						none: true,
+						at: 1,
+					},
+				},
+			);
+			await renderLoading();
+
+			expect(cards()).toStrictEqual(BASE_CARDS);
+		});
+
+		it("drops the card and remembers none when the list lands empty", async () =>
+		{
+			const client = await renderLoading();
+			vi.spyOn(Date, "now").mockReturnValue(7);
+			vi.useFakeTimers(
+				{
+					toFake: ["setTimeout", "clearTimeout"],
+				},
+			);
+			await land(client, []);
+
+			expect(
+				{
+					cards: cards(),
+					stored: rememberedConnectors(),
+				},
+			).toStrictEqual(
+				{
+					cards: BASE_CARDS,
+					stored:
+					{
+						[SESSION_ID]:
+						{
+							none: true,
+							at: 7,
+						},
+						"last:":
+						{
+							none: true,
+							at: 7,
+						},
+					},
+				},
+			);
+		});
+
+		it("fills the card and remembers some when servers land", async () =>
+		{
+			const client = await renderLoading();
+			vi.spyOn(Date, "now").mockReturnValue(7);
+			vi.useFakeTimers(
+				{
+					toFake: ["setTimeout", "clearTimeout"],
+				},
+			);
+			await land(client, [
+				mcp(
+					"linear",
+					{
+						needsAuth: true,
+					},
+				),
+				mcp("github"),
+			]);
+
+			expect(
+				{
+					summary: cards().find(([id]) => id === "connectors"),
+					stored: rememberedConnectors(),
+				},
+			).toStrictEqual(
+				{
+					summary: ["connectors", "1 to reconnect"],
+					stored:
+					{
+						[SESSION_ID]:
+						{
+							none: false,
+							at: 7,
+						},
+						"last:":
+						{
+							none: false,
+							at: 7,
+						},
+					},
+				},
+			);
+		});
+
+		it("drops the card without remembering anything when the list fails to load", async () =>
+		{
+			vi.stubGlobal("fetch", async () => Promise.reject(new Error("offline")));
+			await renderLoading();
+			await act(async () =>
+			{
+				await new Promise((resolve) =>
+				{
+					setTimeout(resolve, 0);
+				});
+			});
+
+			expect(
+				{
+					cards: cards(),
+					stored: rememberedConnectors(),
+				},
+			).toStrictEqual(
+				{
+					cards: BASE_CARDS,
+					stored: null,
+				},
+			);
+		});
+
+		it("holds the last servers for 3s after the list drops to empty", async () =>
+		{
+			const client = await renderLoading();
+			vi.useFakeTimers(
+				{
+					toFake: ["setTimeout", "clearTimeout"],
+				},
+			);
+			await land(client, [mcp("github")]);
+			await land(client, []);
+			const summary = () => cards().find(([id]) => id === "connectors")?.[1] ?? null;
+			const dropped = summary();
+			act(() =>
+			{
+				vi.advanceTimersByTime(2999);
+			});
+			const late = summary();
+			act(() =>
+			{
+				vi.advanceTimersByTime(1);
+			});
+
+			expect([dropped, late, summary()]).toStrictEqual(["1 connected", "1 connected", null]);
 		});
 	});
 });
