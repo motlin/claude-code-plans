@@ -310,6 +310,14 @@ function attachmentDetailSections(
 				: []),
 		];
 	}
+	if (attachment.type === "hook_success")
+	{
+		return linesSection("Hook run", [
+			labeled("Command", attachment.command),
+			labeled("Exit code", attachment.exitCode?.toString()),
+			labeled("Account-memory batch", yesNo(attachment.accountMemoryBatch)),
+		]);
+	}
 	if (attachment.type === "fork_briefing") return textSection("Briefing", attachment.text);
 	if (attachment.type === "session_context")
 	{

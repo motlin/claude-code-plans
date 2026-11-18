@@ -637,7 +637,10 @@ const pullRequestStateLabels =
 	closed: "Closed",
 } satisfies Record<z.infer<typeof PullRequestStateSchema>, string>;
 
-/** `thinkingDisplay` on assistant JSONL records; `omitted` draws the Thinking hidden placeholder (transcript.ts `thinkingOmitted`). */
+/**
+ * `thinkingDisplay` on assistant JSONL records; `omitted` draws the Thinking hidden placeholder (transcript.ts
+ * `thinkingOmitted`). `summarized` thinking carries real (summarized) text, and upstream draws it like `updates`.
+ */
 const thinkingDisplayChoices =
 {
 	updates: true,

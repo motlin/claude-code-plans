@@ -68,7 +68,7 @@ interface RenderOptions
 	showDebug?: boolean;
 	thinkingDurationMs?: number;
 	thinking?: string;
-	thinkingDisplay?: "omitted" | "updates";
+	thinkingDisplay?: "omitted" | "updates" | "summarized";
 	showThinking?: boolean;
 	transcriptMode?: TranscriptMode;
 	turnInProgress?: boolean;
@@ -220,24 +220,35 @@ const CLOSED_STATE =
 
 describe("thinking step, closed", () =>
 {
-	it("is a closed TurnStatusStep whose row is labelled with the thinking's summary line", () =>
-	{
-		renderThinking();
+	// A `thinkingDisplay: "summarized"` turn carries summarized thinking text; upstream draws it like any thinking.
+	it.each([undefined, "summarized" as const])(
+		"is a closed TurnStatusStep whose row is labelled with the thinking's summary line (thinkingDisplay %s)",
+		(thinkingDisplay) =>
+		{
+			renderThinking(
+				thinkingDisplay === undefined
+					? {}
+					:
+						{
+							thinkingDisplay,
+						},
+			);
 
-		expect(
-			{
-				cds: step().getAttribute("data-cds"),
-				state: step().getAttribute("data-state"),
-				...closedState(),
-			},
-		).toStrictEqual(
-			{
-				cds: "TurnStatusStep",
-				state: "done",
-				...CLOSED_STATE,
-			},
-		);
-	});
+			expect(
+				{
+					cds: step().getAttribute("data-cds"),
+					state: step().getAttribute("data-state"),
+					...closedState(),
+				},
+			).toStrictEqual(
+				{
+					cds: "TurnStatusStep",
+					state: "done",
+					...CLOSED_STATE,
+				},
+			);
+		},
+	);
 
 	it("draws the label in rest ink that turns secondary on row hover or focus, clipped to one line", () =>
 	{

@@ -1190,6 +1190,32 @@ describe("AttachmentBanner", () =>
 			]);
 		});
 
+		it("details a passed hook's command, exit code and account-memory batch flag", () =>
+		{
+			expect([
+				detailSections(
+					{
+						type: "hook_success",
+						hookName: "PostToolBatch",
+						hookEvent: "PostToolBatch",
+						command: "just hook-post-batch",
+						exitCode: 0,
+						accountMemoryBatch: false,
+					},
+				),
+				detailSections(
+					{
+						type: "hook_success",
+						hookName: "PostToolBatch",
+						hookEvent: "PostToolBatch",
+					},
+				),
+			]).toStrictEqual([
+				[["Hook run", "Command: just hook-post-batch\nExit code: 0\nAccount-memory batch: no"]],
+				[],
+			]);
+		});
+
 		it("shows the run a queued command belongs to", () =>
 		{
 			expect(

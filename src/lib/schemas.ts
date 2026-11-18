@@ -660,6 +660,7 @@ export const UserRecordSchema = z
 				.strict()
 				.optional(),
 			// Groups the records of one prompt's turn for attribution (observed on sdk-origin prompts).
+			// Validated-only: an opaque uuid with nothing to show, and the transcript already groups turns itself.
 			turnAttributionKey: z.string().optional(),
 			turnCompanion: z.boolean().optional(),
 			// On a meta retry prompt: uuids of earlier messages (e.g. a failed tool-call
