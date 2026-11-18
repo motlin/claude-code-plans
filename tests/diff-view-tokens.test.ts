@@ -18,13 +18,16 @@ function tokensDefinedIn(css: string, selector: string): Set<string>
 	return new Set([...block.matchAll(/^\s*(--[\w-]+):/gm)].map((match) => match[1]!));
 }
 
-/** Every custom property the overrides read through `var(...)`. */
+/** Every custom property the overrides read through `var(...)`, minus the ones they define themselves. */
 function referencedTokens(): string[]
 {
 	const tokens = new Set<string>();
 	for (const value of Object.values(OVERRIDES))
 	{
-		for (const match of value.matchAll(/var\((--[\w-]+)\)/g)) tokens.add(match[1]!);
+		for (const [, token] of value.matchAll(/var\((--[\w-]+)\)/g))
+		{
+			if (token !== undefined && !(token in OVERRIDES)) tokens.add(token);
+		}
 	}
 	return [...tokens].toSorted();
 }
@@ -97,7 +100,7 @@ describe("diff view tokens", () =>
 				light: ["#1e9e3c", "#cd2054"],
 				dark: ["#32d74b", "#ff2c56"],
 				theme: ["var(--upstream-git-added)", "var(--upstream-git-removed)"],
-				numbers: ["var(--upstream-git-added)", "var(--upstream-git-removed)"],
+				numbers: ["var(--cds-text-secondary)", "var(--cds-text-secondary)"],
 				inline: [
 					"var(--code-size, var(--upstream-text-code))",
 					"var(--code-leading, var(--upstream-leading-code))",
