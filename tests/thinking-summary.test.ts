@@ -22,7 +22,7 @@ describe("thinkingSummary", () =>
 	});
 
 	it.each([
-		["only markers, an invisible line and fences", "**\n​\n```\n"],
+		["only markers, an invisible line and fences", `**\n${String.fromCodePoint(0x200b)}\n\`\`\`\n`],
 		["only whitespace", "   "],
 		["empty", ""],
 	])("has no summary for %s", (_name, text) =>

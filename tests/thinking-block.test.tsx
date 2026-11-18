@@ -189,6 +189,12 @@ function openStep(): void
 	fireEvent.click(toggle());
 }
 
+/** The label's MorphSlot, which carries the label id the toggle is labelled by. */
+function labelSlot(): Element | null | undefined
+{
+	return row().querySelector('span[dir="auto"]')?.closest("[data-morph-key]")?.parentElement;
+}
+
 function closedState()
 {
 	const label = row().querySelector('span[dir="auto"]');
@@ -285,11 +291,11 @@ describe("thinking step, closed", () =>
 		);
 	});
 
-	it("makes the row one stretched toggle placed last, labelled by the label, with a chevron turned to point right", () =>
+	it("makes the row one stretched toggle placed last, labelled by the label, with upstream's caret turned to point right", () =>
 	{
 		renderThinking();
-		const labelId = row().querySelector('span[dir="auto"]')?.parentElement?.id;
-		const chevron = toggle().querySelector("[data-step-chevron]");
+		const labelId = labelSlot()?.id;
+		const caret = toggle().querySelector('[data-cds="Icon"]');
 
 		expect(
 			{
@@ -297,8 +303,17 @@ describe("thinking step, closed", () =>
 				labelledBy: toggle().getAttribute("aria-labelledby"),
 				owns: toggle().getAttribute("aria-owns"),
 				className: toggle().className,
-				chevronInk: chevron?.parentElement?.className,
-				chevron: chevron?.getAttribute("class"),
+				caretInk: caret?.parentElement?.className,
+				caret: caret?.getAttribute("class"),
+				caretOpen: caret?.hasAttribute("data-open"),
+				caretPath: caret?.querySelector("path")?.getAttribute("d"),
+				caretStyle:
+				{
+					width: caret?.getAttribute("width"),
+					contain: (caret as SVGElement | null)?.style.contain,
+					pointerEvents: (caret as SVGElement | null)?.style.pointerEvents,
+					translate: (caret as SVGElement | null)?.style.translate,
+				},
 			},
 		).toStrictEqual(
 			{
@@ -307,10 +322,90 @@ describe("thinking step, closed", () =>
 				owns: labelId,
 				className:
 					"cds-reset -ms-1 inline-flex h-[1lh] shrink-0 items-center self-start border-0 bg-transparent p-0 outline-none focus-visible:outline-hidden static justify-center after:absolute after:inset-0 after:rounded after:content-[''] after:transition-shadow after:duration-[60ms] focus-visible:after:[box-shadow:inset_0_0_0_1px_var(--cds-fill-accent)] order-last",
-				chevronInk:
+				caretInk:
 					"inline-flex h-[1lh] items-center justify-center text-secondary group-hover/step:text-secondary group-has-[:focus-visible]/step:text-secondary",
-				chevron:
-					"inline-flex transition-transform duration-[60ms] motion-reduce:transition-none -rotate-90 page-rtl:rotate-90",
+				caret: "transition-transform duration-[60ms] motion-reduce:transition-none -rotate-90 page-rtl:rotate-90",
+				caretOpen: false,
+				caretPath: "M7.8 9.9 12 14.1l4.2-4.2",
+				caretStyle:
+				{
+					width: "1em",
+					contain: "layout paint",
+					pointerEvents: "none",
+					translate: "0px 0.5px",
+				},
+			},
+		);
+	});
+
+	it("turns the caret down and marks it open once the step opens", () =>
+	{
+		renderThinking();
+		openStep();
+		const caret = toggle().querySelector('[data-cds="Icon"]');
+
+		expect(
+			{
+				caret: caret?.getAttribute("class"),
+				caretOpen: caret?.getAttribute("data-open"),
+			},
+		).toStrictEqual(
+			{
+				caret: "transition-transform duration-[60ms] motion-reduce:transition-none",
+				caretOpen: "",
+			},
+		);
+	});
+
+	it("holds the label in upstream's MorphSlot, keyed by state and label, so busy swaps to done in place", () =>
+	{
+		const props =
+		{
+			text: "Weighing options\nmore",
+			open: false,
+			onOpenChange: () =>
+			{
+			},
+		};
+		const {rerender} = render(<ThinkingStep {...props} live />);
+		const faces = () =>
+			[...(labelSlot()?.querySelectorAll("[data-morph-key]") ?? [])].map((face) =>
+				face.getAttribute("data-morph-key"),
+			);
+		const busy =
+		{
+			slotClass: labelSlot()?.className,
+			faces: faces(),
+			shimmer: labelSlot()?.querySelectorAll('[data-cds="ShimmerText"]').length,
+		};
+		rerender(<ThinkingStep {...props} />);
+
+		expect(
+			{
+				busy,
+				done:
+				{
+					slotClass: labelSlot()?.className,
+					faces: faces(),
+					shimmer: labelSlot()?.querySelectorAll('[data-cds="ShimmerText"]').length,
+				},
+			},
+		).toStrictEqual(
+			{
+				busy:
+				{
+					slotClass:
+						"group/morph inline-grid items-center justify-items-start data-[gliding]:overflow-x-clip min-w-0 max-w-full",
+					faces: ["busy|Weighing options"],
+					shimmer: 1,
+				},
+				done:
+				{
+					slotClass:
+						"group/morph inline-grid items-center justify-items-start data-[gliding]:overflow-x-clip min-w-0 max-w-full",
+					faces: ["done|Weighing options"],
+					shimmer: 0,
+				},
 			},
 		);
 	});
@@ -773,7 +868,7 @@ describe("thinking step, live and without a summary", () =>
 		);
 		const label = row().querySelector('[data-cds="ShimmerText"]');
 		const busy = row().querySelector("span.sr-only");
-		const labelId = label?.parentElement?.id;
+		const labelId = labelSlot()?.id;
 
 		expect(
 			{
