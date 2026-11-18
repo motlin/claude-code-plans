@@ -300,6 +300,15 @@ describe("permissionDecisionTitle classifier and safety-check details", () =>
 				{
 					decision: "reject",
 					source: "config",
+					reasonType: "classifier",
+					reasonCode: "classifier:auto-mode",
+					classifierCategory: "bot_check_circumvention",
+				},
+			),
+			permissionDecisionTitle(
+				{
+					decision: "reject",
+					source: "config",
 					reasonType: "safetyCheck",
 					circuitBreaker: "dangerousRemoval",
 				},
@@ -314,6 +323,7 @@ describe("permissionDecisionTitle classifier and safety-check details", () =>
 		]).toStrictEqual([
 			"Permission: Rejected · Configuration · Classifier (Git destructive)",
 			"Permission: Rejected · Classifier · Classifier (Unrequested commit in a connected app)",
+			"Permission: Rejected · Configuration · Classifier (Bot check circumvention)",
 			"Permission: Rejected · Configuration · Safety check (Dangerous removal)",
 			"Permission: Rejected · Configuration · Safety check",
 		]);
