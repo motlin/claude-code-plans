@@ -1411,8 +1411,18 @@ function buildSummarySegments(
 		);
 	}
 	if (received.trailing > 0) segments.push(labelledSegment(RECEIVED_LABEL, received.trailing));
-	// Upstream leads with the re-prompt that started the run: "Hook re-prompted Claude, ran a command".
-	if (received.reprompted === true)
+
+	// Upstream folds background completions in last: "Ran a command, finished
+	// a background command", "Used a tool, finished a background task (1 stopped)",
+	// but leads with them when one failed: "Finished a background command, ran a
+	// command (1 failed)". A group mixing failed and stopped completions is unobserved.
+	const failedCompletions = completions.filter((completion) => completion.status === "failed").length;
+	// Upstream leads with the re-prompt that started the run, "Hook re-prompted
+	// Claude, ran a command", unless a failed completion or a received message
+	// leads instead; then the hook trails everything as "received hook feedback".
+	const hookLeads = failedCompletions === 0 && received.leading === 0;
+	if (received.reprompted === true && hookLeads)
+	{
 		segments.unshift(
 			{
 				verb: "Hook",
@@ -1422,16 +1432,11 @@ function buildSummarySegments(
 				leads: true,
 			},
 		);
-
-	// Upstream folds background completions in last: "Ran a command, finished
-	// a background command", "Used a tool, finished a background task (1 stopped)",
-	// but leads with them when one failed: "Finished a background command, ran a
-	// command (1 failed)". A group mixing failed and stopped completions is unobserved.
+	}
 	if (completions.length > 0)
 	{
 		const noun = completions.every((completion) => completion.command) ? "command" : "task";
 		const stopped = completions.filter((completion) => completion.status === "stopped").length;
-		const failedCompletions = completions.filter((completion) => completion.status === "failed").length;
 		const rest = pluralize(completions.length, `a background ${noun}`, `{n} background ${noun}s`);
 		const count = completions.length;
 		if (failedCompletions > 0)
@@ -1459,6 +1464,17 @@ function buildSummarySegments(
 				},
 			);
 		}
+	}
+	if (received.reprompted === true && !hookLeads)
+	{
+		segments.push(
+			{
+				verb: "received",
+				rest: "hook feedback",
+				count: 1,
+				...NO_OUTCOMES,
+			},
+		);
 	}
 
 	const shaped = shapeSegments(segments);

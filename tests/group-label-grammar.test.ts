@@ -1435,7 +1435,7 @@ describe("group label: the fold keeps every leading part", () =>
 		);
 	});
 
-	it("leads with a failed completion, the hook re-prompt and leading messages, then folds", () =>
+	it("leads with a failed completion and leading messages, demotes the hook re-prompt to last, then folds", () =>
 	{
 		expect(
 			countedLabelText(
@@ -1456,8 +1456,44 @@ describe("group label: the fold keeps every leading part", () =>
 					},
 				),
 			),
-		).toBe(
-			"Finished a background command, hook re-prompted Claude, received a message, and 3 more actions, 1 failed",
+		).toBe("Finished a background command, received a message, ran a command, and 3 more actions, 1 failed");
+	});
+
+	it("leads with the hook re-prompt only when no completion failed and no message led", () =>
+	{
+		const hook = (leading: number, failed: boolean): string =>
+			countedLabelText(
+				summarizeToolCallStats(
+					[bash()],
+					failed
+						? [
+								{
+									status: "failed",
+									command: true,
+									toolUseId: null,
+								},
+							]
+						: [],
+					new Set(),
+					{
+						leading,
+						trailing: 0,
+						reprompted: true,
+					},
+				),
+			);
+		expect(
+			{
+				leads: hook(0, false),
+				failedCompletion: hook(0, true),
+				leadingMessage: hook(1, false),
+			},
+		).toStrictEqual(
+			{
+				leads: "Hook re-prompted Claude, ran a command",
+				failedCompletion: "Finished a background command, ran a command, received hook feedback, 1 failed",
+				leadingMessage: "Received a message, ran a command, received hook feedback",
+			},
 		);
 	});
 });
