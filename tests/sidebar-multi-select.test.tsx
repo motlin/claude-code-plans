@@ -21,7 +21,7 @@ import {PIN_STORAGE_KEY, readPinState} from "../src/lib/pin-store";
 import {readSidebarState, setSidebarGroupsCollapsed} from "../src/lib/sidebar-store";
 import {SESSION_GROUP_STORAGE_KEY, readSessionGroupState} from "../src/lib/session-group-store";
 import {DEFAULT_SESSION_LIST_PREFS, PINNED_GROUP_KEY} from "../src/lib/session-groups";
-import {__unreadStoreTesting, hasUnseenWork} from "../src/lib/unread-store";
+import {__unreadStoreTesting, hasUnseenWork, isExplicitUnread} from "../src/lib/unread-store";
 import {installLocalStorage} from "./fake-storage";
 import {rowTitle} from "./sidebar-row-title";
 
@@ -922,7 +922,11 @@ describe("sidebar bulk menu", () =>
 		);
 		await flush();
 
-		expect(["b1", "u1", "u2"].map((id) => hasUnseenWork(id))).toStrictEqual([true, true, false]);
+		expect(["b1", "u1", "u2"].map((id) => [hasUnseenWork(id), isExplicitUnread(id)])).toStrictEqual([
+			[true, true],
+			[true, true],
+			[false, false],
+		]);
 	});
 
 	it("archives every selected row with one Undo toast", async () =>

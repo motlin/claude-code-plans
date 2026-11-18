@@ -3088,6 +3088,146 @@ describe("CommandPalette shell", () =>
 		);
 	});
 
+	describe("phone opens Search (upstream Wg: touch && width < 40rem, latched per open)", () =>
+	{
+		const TOUCH = "(pointer: coarse), (hover: none)";
+		const NARROW = "(width < 40rem)";
+
+		function stubMedia(matching: readonly string[])
+		{
+			vi.stubGlobal("matchMedia", (query: string) => (
+			{
+				matches: matching.includes(query),
+				media: query,
+				addEventListener()
+				{
+				},
+				removeEventListener()
+				{
+				},
+			}));
+		}
+
+		function viewOf(dialog: HTMLElement)
+		{
+			return {
+				input: within(dialog).getByRole("combobox").getAttribute("placeholder"),
+				send:
+					within(dialog).queryByRole(
+						"button",
+						{
+							name: "Send",
+						},
+					) !== null,
+				viewHint: footer(dialog)?.querySelector("[aria-keyshortcuts=Tab]")?.textContent ?? null,
+				stored: localStorage.getItem("cmdk-mode"),
+			};
+		}
+
+		it("opens Search with a remembered Compose, swallows Tab and drops the Compose view hint", async () =>
+		{
+			stubMedia([TOUCH, NARROW]);
+			localStorage.setItem("cmdk-mode", "compose");
+			const dialog = await openPalette();
+			const opened = viewOf(dialog);
+
+			const tab = fireEvent.keyDown(
+				within(dialog).getByRole("combobox"),
+				{
+					key: "Tab",
+					code: "Tab",
+				},
+			);
+
+			expect(
+				{
+					opened,
+					tabAllowed: tab,
+					afterTab: viewOf(dialog),
+				},
+			).toStrictEqual(
+				{
+					opened:
+					{
+						input: "Search",
+						send: false,
+						viewHint: null,
+						stored: "compose",
+					},
+					tabAllowed: false,
+					afterTab:
+					{
+						input: "Search",
+						send: false,
+						viewHint: null,
+						stored: "compose",
+					},
+				},
+			);
+		});
+
+		it.each([
+			["touch only", [TOUCH]],
+			["narrow only", [NARROW]],
+		])("keeps the remembered Compose for %s", async (_label, matching) =>
+		{
+			stubMedia(matching);
+			localStorage.setItem("cmdk-mode", "compose");
+
+			const dialog = await openPalette();
+
+			await within(dialog).findByRole(
+				"combobox",
+				{
+					name: "Write a message…",
+				},
+			);
+		});
+
+		it("holds the latch until the next open", async () =>
+		{
+			stubMedia([TOUCH, NARROW]);
+			localStorage.setItem("cmdk-mode", "compose");
+			const dialog = await openPalette();
+			stubMedia([]);
+			const input = within(dialog).getByRole("combobox");
+			fireEvent.change(
+				input,
+				{
+					target:
+					{
+						value: "x",
+					},
+				},
+			);
+			const whileOpen = viewOf(dialog).input;
+
+			pressK(
+				input,
+				{
+					metaKey: true,
+				},
+			);
+			await waitFor(() =>
+			{
+				expect(screen.queryByRole("dialog")).toBeNull();
+			});
+			const reopened = await pressOpen(document.body);
+
+			expect(
+				{
+					whileOpen,
+					reopened: within(reopened).getByRole("combobox").getAttribute("placeholder"),
+				},
+			).toStrictEqual(
+				{
+					whileOpen: "Search",
+					reopened: "Write a message…",
+				},
+			);
+		});
+	});
+
 	it("ignores an unknown stored cmdk-mode", async () =>
 	{
 		localStorage.setItem("cmdk-mode", "bogus");
@@ -4472,6 +4612,125 @@ describe("CommandPalette shell", () =>
 				["Recents", ["Alpha task", "Beta task Running", "Plain one"]],
 				["Actions", ["New session"]],
 			]);
+		});
+
+		it("leads an old row marked unread from the row card at once, until it is read (upstream explicitUnread)", async () =>
+		{
+			const {__unreadStoreTesting, isExplicitUnread, markSeen} = await import("../src/lib/unread-store");
+			try
+			{
+				const dialog = await openPalette([
+					recentSession(
+						"s-old",
+						"Old one",
+						"done",
+						{
+							mtime: new Date(Date.now() - 8 * 86_400_000).toISOString(),
+						},
+					),
+					recentSession("s-plain", "Plain one"),
+				]);
+				await within(dialog).findByRole(
+					"option",
+					{
+						name: "Old one",
+					},
+				);
+				const opening = groupLabels(dialog);
+
+				fireEvent.keyDown(
+					within(dialog).getByRole("combobox"),
+					{
+						key: "Enter",
+						code: "Enter",
+						altKey: true,
+					},
+				);
+				const card = await screen.findByRole(
+					"menu",
+					{
+						name: "Actions",
+					},
+				);
+				fireEvent.click(
+					within(card).getByRole(
+						"menuitem",
+						{
+							name: /Mark as unread/,
+						},
+					),
+				);
+				await waitFor(() =>
+				{
+					expect(groupLabels(dialog)[0]?.[0]).toBe("Needs attention");
+				});
+				const acted = groupLabels(dialog);
+				const explicit = isExplicitUnread("s-old");
+
+				const reopen = async () =>
+				{
+					pressK(
+						within(screen.getByRole("dialog")).getByRole("combobox"),
+						{
+							metaKey: true,
+						},
+					);
+					await waitFor(() =>
+					{
+						expect(screen.queryByRole("dialog")).toBeNull();
+					});
+					const next = await pressOpen(document.body);
+					await within(next).findByRole(
+						"option",
+						{
+							name: /Old one/,
+						},
+					);
+					return groupLabels(next);
+				};
+				const reopened = await reopen();
+				act(() =>
+				{
+					markSeen("s-old");
+				});
+				const afterRead = await reopen();
+
+				expect(
+					{
+						opening,
+						acted,
+						explicit,
+						reopened,
+						afterRead,
+					},
+				).toStrictEqual(
+					{
+						opening: [
+							["Recents", ["Old one", "Plain one"]],
+							["Actions", ["New session"]],
+						],
+						acted: [
+							["Needs attention", ["Old one Unread"]],
+							["Recents", ["Plain one"]],
+							["Actions", ["New session"]],
+						],
+						explicit: true,
+						reopened: [
+							["Needs attention", ["Old one Unread"]],
+							["Recents", ["Plain one"]],
+							["Actions", ["New session"]],
+						],
+						afterRead: [
+							["Recents", ["Old one", "Plain one"]],
+							["Actions", ["New session"]],
+						],
+					},
+				);
+			}
+			finally
+			{
+				__unreadStoreTesting.reset();
+			}
 		});
 	});
 

@@ -14,7 +14,14 @@ import {herdrPanesQueryOptions} from "../src/lib/api/herdr";
 import type {SessionListItem} from "../src/lib/api/sessions";
 import type {SessionBucket} from "../src/lib/session-state";
 import {__awaitingAckTesting, ackedAt} from "../src/lib/awaiting-ack-store";
-import {__unreadStoreTesting, hasUnseenWork, syncUnseenFromSummaries, toggleUnseen} from "../src/lib/unread-store";
+import
+{
+	__unreadStoreTesting,
+	hasUnseenWork,
+	isExplicitUnread,
+	syncUnseenFromSummaries,
+	toggleUnseen,
+} from "../src/lib/unread-store";
 
 const SESSION_ID = "8f0c2c7e-1111-4222-8333-944445555666";
 
@@ -277,18 +284,23 @@ describe("read state in the row menu", () =>
 
 		await selectItem("Mark as unread");
 		const afterUnread = hasUnseenWork(SESSION_ID);
+		const explicitAfterUnread = isExplicitUnread(SESSION_ID);
 		await selectItem("Mark as read");
 
 		expect(
 			{
 				afterUnread,
+				explicitAfterUnread,
 				afterRead: hasUnseenWork(SESSION_ID),
+				explicitAfterRead: isExplicitUnread(SESSION_ID),
 				calls: viewedCalls(),
 			},
 		).toStrictEqual(
 			{
 				afterUnread: true,
+				explicitAfterUnread: true,
 				afterRead: false,
+				explicitAfterRead: false,
 				calls: [
 					{
 						url: `/api/sessions/${SESSION_ID}/viewed`,
@@ -319,6 +331,12 @@ describe("read state in the row menu", () =>
 				unseen: true,
 			},
 		]);
+		// A hand mark first, so completing must clear the explicit bit too.
+		toggleUnseen(SESSION_ID);
+		toggleUnseen(SESSION_ID);
+		await flush();
+		const explicitBefore = isExplicitUnread(SESSION_ID);
+		fetchMock.mockClear();
 		await renderRow(
 			listItem(
 				"blocked",
@@ -334,13 +352,17 @@ describe("read state in the row menu", () =>
 
 		expect(
 			{
+				explicitBefore,
 				unseen: hasUnseenWork(SESSION_ID),
+				explicit: isExplicitUnread(SESSION_ID),
 				ackedAt: ackedAt(SESSION_ID),
 				calls: viewedCalls(),
 			},
 		).toStrictEqual(
 			{
+				explicitBefore: true,
 				unseen: false,
+				explicit: false,
 				ackedAt: Date.parse("2026-11-04T10:00:00.000Z"),
 				calls: [
 					{
@@ -519,19 +541,24 @@ describe("⌥⌘U on the session page", () =>
 		pressOptionCommandU();
 		await flush();
 		const afterFirst = hasUnseenWork(SESSION_ID);
+		const explicitAfterFirst = isExplicitUnread(SESSION_ID);
 		pressOptionCommandU();
 		await flush();
 
 		expect(
 			{
 				afterFirst,
+				explicitAfterFirst,
 				afterSecond: hasUnseenWork(SESSION_ID),
+				explicitAfterSecond: isExplicitUnread(SESSION_ID),
 				calls: viewedCalls(),
 			},
 		).toStrictEqual(
 			{
 				afterFirst: true,
+				explicitAfterFirst: true,
 				afterSecond: false,
+				explicitAfterSecond: false,
 				calls: [
 					{
 						url: `/api/sessions/${SESSION_ID}/viewed`,

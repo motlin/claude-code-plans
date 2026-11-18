@@ -5,7 +5,7 @@ import {sessionMenuReadState, type SessionMenuReadState} from "../lib/session-me
 import {sessionStateKindLabels} from "../lib/schema-choices";
 import {isLiveSessionState, sessionRowIconKind} from "../lib/session-state";
 import {TOUCH_HIT} from "../lib/touch-reveal";
-import {toggleUnseen} from "../lib/unread-store";
+import {markSeen} from "../lib/unread-store";
 import {useSettings} from "./settings-context";
 import {SessionStateIcon} from "./status-dot";
 import {GIT_PR_STATE_LABELS} from "./git-pr-state-labels";
@@ -59,7 +59,7 @@ export function SessionRowStatusDot({session, tabIndex}: {session: SessionListIt
 				{
 					event.preventDefault();
 					event.stopPropagation();
-					toggleUnseen(session.id);
+					markSeen(session.id);
 				}}
 			>
 				{icon}

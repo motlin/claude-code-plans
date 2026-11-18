@@ -1,4 +1,6 @@
 import type {PaletteMode} from "../hooks/use-command-palette";
+import {TOUCH_QUERY} from "./touch-reveal";
+import {PHONE_SHEET_QUERY} from "./use-phone-sheet";
 
 export type PaletteLoadingVariant = "compose" | "search";
 
@@ -11,13 +13,14 @@ export function paletteLoadingVariant(mode: PaletteMode, phone: boolean): Palett
 	return mode === "compose" && !phone ? "compose" : "search";
 }
 
-/** Upstream's phone test (`Mf()&&HG()`): a coarse or hover-less pointer on a viewport under 40rem. */
+/**
+ * Upstream's phone test (`Mf()&&HG()`, the palette body's `Wg`): a coarse or hover-less pointer on a viewport under
+ * 40rem. The palette reads it once per open, so it opens Search and keeps Compose out of reach for that open.
+ */
 export function isPhoneViewport(): boolean
 {
 	if (typeof window === "undefined" || typeof window.matchMedia !== "function") return false;
-	return (
-		window.matchMedia("(pointer: coarse), (hover: none)").matches && window.matchMedia("(width < 40rem)").matches
-	);
+	return window.matchMedia(TOUCH_QUERY).matches && window.matchMedia(PHONE_SHEET_QUERY).matches;
 }
 
 // Upstream `_C`/`_U`: whether this open began on the cold-load skeleton, so the palette takes over without a fade.

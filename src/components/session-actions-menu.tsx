@@ -487,7 +487,13 @@ function BulkMenuBody({
 				for (const sessionId of ids) markSeen(sessionId);
 				break;
 			case "mark-unread":
-				for (const sessionId of ids) markUnseen(sessionId);
+				for (const sessionId of ids)
+					markUnseen(
+						sessionId,
+						{
+							explicit: true,
+						},
+					);
 				break;
 			case "archive":
 				void archiveSessions(sessions.filter((session) => !session.archived).map(({id}) => id));

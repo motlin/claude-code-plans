@@ -1,3 +1,5 @@
+// @vitest-environment jsdom
+
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 type UnreadStore = typeof import("../src/lib/unread-store");
@@ -274,5 +276,291 @@ describe("unread-store", () =>
 				],
 			},
 		);
+	});
+});
+
+describe("unread-store explicit unreads (upstream explicitUnreadIds)", () =>
+{
+	const KEY = "ccb-explicit-unread-v1";
+
+	afterEach(() =>
+	{
+		localStorage.clear();
+		vi.restoreAllMocks();
+	});
+
+	it("records only a hand mark as explicit and clears it on every path that reads the session", async () =>
+	{
+		const store = await loadTab([]);
+		const marks = () => (
+		{
+			explicit: store.isExplicitUnread("s1"),
+			unseen: store.hasUnseenWork("s1"),
+		});
+
+		store.markUnseen("s1");
+		const plain = marks();
+		store.markSeen("s1");
+		store.syncUnseenFromSummaries([
+			{
+				id: "s1",
+				unseen: true,
+			},
+		]);
+		const synced = marks();
+		store.markUnseen(
+			"s1",
+			{
+				explicit: true,
+			},
+		);
+		const explicit = marks();
+		const stored = localStorage.getItem(KEY);
+		store.markSeen("s1");
+		const afterMarkSeen = marks();
+		store.markUnseen(
+			"s1",
+			{
+				explicit: true,
+			},
+		);
+		store.syncUnseenFromSummaries([
+			{
+				id: "s1",
+				unseen: false,
+			},
+		]);
+		const afterServerSeen = marks();
+		store.markUnseen(
+			"s1",
+			{
+				explicit: true,
+			},
+		);
+		store.clearAll();
+		const afterClearAll = marks();
+		store.markUnseen(
+			"s1",
+			{
+				explicit: true,
+			},
+		);
+		store.toggleUnseen("s1");
+		const afterToggleSeen = marks();
+		store.toggleUnseen("s1");
+		const afterToggleUnseen = marks();
+		await settle();
+
+		expect(
+			{
+				plain,
+				synced,
+				explicit,
+				stored,
+				afterMarkSeen,
+				afterServerSeen,
+				afterClearAll,
+				afterToggleSeen,
+				afterToggleUnseen,
+				storedAfter: localStorage.getItem(KEY),
+			},
+		).toStrictEqual(
+			{
+				plain:
+				{
+					explicit: false,
+					unseen: true,
+				},
+				synced:
+				{
+					explicit: false,
+					unseen: true,
+				},
+				explicit:
+				{
+					explicit: true,
+					unseen: true,
+				},
+				stored: JSON.stringify(
+					{
+						state:
+						{
+							explicitUnreadIds: ["s1"],
+						},
+						version: 0,
+					},
+				),
+				afterMarkSeen:
+				{
+					explicit: false,
+					unseen: false,
+				},
+				afterServerSeen:
+				{
+					explicit: false,
+					unseen: false,
+				},
+				afterClearAll:
+				{
+					explicit: false,
+					unseen: false,
+				},
+				afterToggleSeen:
+				{
+					explicit: false,
+					unseen: false,
+				},
+				afterToggleUnseen:
+				{
+					explicit: true,
+					unseen: true,
+				},
+				storedAfter: JSON.stringify(
+					{
+						state:
+						{
+							explicitUnreadIds: ["s1"],
+						},
+						version: 0,
+					},
+				),
+			},
+		);
+	});
+
+	it("survives a reload and loads malformed storage as empty", async () =>
+	{
+		const first = await loadTab([]);
+		first.markUnseen(
+			"s1",
+			{
+				explicit: true,
+			},
+		);
+		const reloaded = await loadTab([]);
+		const afterReload = [...reloaded.explicitUnreadIds()];
+		localStorage.setItem(KEY, "{not json");
+		const malformed = await loadTab([]);
+		const afterMalformed = [...malformed.explicitUnreadIds()];
+		localStorage.setItem(
+			KEY,
+			JSON.stringify(
+				{
+					state:
+					{
+						explicitUnreadIds: [7],
+					},
+					version: 0,
+				},
+			),
+		);
+		const wrongShape = await loadTab([]);
+		await settle();
+
+		expect(
+			{
+				afterReload,
+				afterMalformed,
+				afterWrongShape: [...wrongShape.explicitUnreadIds()],
+			},
+		).toStrictEqual(
+			{
+				afterReload: ["s1"],
+				afterMalformed: [],
+				afterWrongShape: [],
+			},
+		);
+	});
+
+	it("keeps working in memory when storage throws", async () =>
+	{
+		vi.spyOn(Storage.prototype, "getItem").mockImplementation(() =>
+		{
+			throw new Error("fabricated storage failure");
+		});
+		vi.spyOn(Storage.prototype, "setItem").mockImplementation(() =>
+		{
+			throw new Error("fabricated storage failure");
+		});
+		const store = await loadTab([]);
+
+		store.markUnseen(
+			"s1",
+			{
+				explicit: true,
+			},
+		);
+		await settle();
+
+		expect(store.isExplicitUnread("s1")).toBe(true);
+	});
+
+	it("rolls back the explicit bit with the unseen flag when the server rejects", async () =>
+	{
+		const store = await loadTab([], true);
+		const changes: number[] = [];
+		store.subscribeUnseenWork(() => changes.push(store.unseenWorkVersion()));
+		vi.spyOn(console, "warn").mockImplementation(() => {});
+
+		store.markUnseen(
+			"s1",
+			{
+				explicit: true,
+			},
+		);
+		const optimistic = store.isExplicitUnread("s1");
+		await settle();
+
+		expect(
+			{
+				optimistic,
+				explicit: store.isExplicitUnread("s1"),
+				unseen: store.hasUnseenWork("s1"),
+				changes: changes.length,
+				stored: localStorage.getItem(KEY),
+			},
+		).toStrictEqual(
+			{
+				optimistic: true,
+				explicit: false,
+				unseen: false,
+				changes: 2,
+				stored: JSON.stringify(
+					{
+						state:
+						{
+							explicitUnreadIds: [],
+						},
+						version: 0,
+					},
+				),
+			},
+		);
+	});
+
+	it("notifies when only the explicit bit changes", async () =>
+	{
+		const store = await loadTab([]);
+		store.syncUnseenFromSummaries([
+			{
+				id: "s1",
+				unseen: true,
+			},
+		]);
+		let changes = 0;
+		store.subscribeUnseenWork(() =>
+		{
+			changes++;
+		});
+
+		store.markUnseen(
+			"s1",
+			{
+				explicit: true,
+			},
+		);
+		await settle();
+
+		expect(changes).toBe(1);
 	});
 });

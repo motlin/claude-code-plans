@@ -282,7 +282,12 @@ function SessionCard({
 				ack(session.id, completedAckAt(session.mtime, session.failedAt));
 				return;
 			case "mark-unread":
-				markUnseen(session.id);
+				markUnseen(
+					session.id,
+					{
+						explicit: true,
+					},
+				);
 				return;
 			case "archive":
 			case "unarchive":

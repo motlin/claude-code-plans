@@ -135,7 +135,12 @@ export function useSessionMenuRunner({
 				if (mtime !== undefined) ack(sessionId, completedAckAt(mtime, failedAt));
 				return;
 			case "mark-unread":
-				markUnseen(sessionId);
+				markUnseen(
+					sessionId,
+					{
+						explicit: true,
+					},
+				);
 				return;
 			case "copy-link":
 				void copySessionLink(sessionId, toast, queryClient);

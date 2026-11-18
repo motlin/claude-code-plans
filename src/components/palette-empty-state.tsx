@@ -15,6 +15,7 @@ const SEARCH_ALL_CLASS =
 /**
  * The palette's no-results block, a port of upstream's `rr`: centred copy plus "Search all" when
  * filters emptied (or stalled) the list, or the "Tab to compose" hint otherwise. "silent" renders nothing.
+ * Without `onCompose` (a phone-latched open, upstream `$r`'s `Ge`) the hint is left out.
  */
 export function PaletteEmptyState({
 	kind,
@@ -25,7 +26,7 @@ export function PaletteEmptyState({
 	kind: PaletteEmptyKind;
 	message: string;
 	onSearchAll: () => void;
-	onCompose: () => void;
+	onCompose?: () => void;
 })
 {
 	if (kind === "silent") return null;
@@ -50,7 +51,7 @@ export function PaletteEmptyState({
 				>
 					Search all
 				</button>
-			) : (
+			) : onCompose === undefined ? null : (
 				<p aria-hidden="true" className="m-0 flex items-center gap-1.5 text-muted-as-secondary">
 					<button
 						type="button"

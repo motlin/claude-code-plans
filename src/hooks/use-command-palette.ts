@@ -1,6 +1,7 @@
 import {useCallback, useEffect, useRef, useState} from "react";
 
 import {useShortcut} from "./use-shortcut";
+import {isPhoneViewport} from "../lib/palette-loading";
 import {startPaletteOpenJourney} from "../lib/perf/field-journeys";
 
 export type PaletteMode = "search" | "compose";
@@ -68,15 +69,20 @@ export function useCommandPalette()
 	const [forcedSearch, setForcedSearch] = useState(false);
 	// An unremembered switch (Backspace on an empty Compose) holds until the palette closes.
 	const [openOverride, setOpenOverride] = useState<PaletteMode | null>(null);
+	// Upstream `[phone]=useState(Wg)`: a phone opens Search and Compose stays unavailable until the next open.
+	const [phoneLatched, setPhoneLatched] = useState(false);
 	// Upstream `sendHeldRef` (owned by the shortcut host `gE`): while a send is held, every close is refused.
 	// Only an open palette holds, and it releases before its own closes.
 	const sendHeldRef = useRef(false);
+	const openRef = useRef(open);
+	openRef.current = open;
 
 	const openPalette = useCallback((next: PaletteEntrypoint, options?: PaletteOpenOptions) =>
 	{
 		setEntrypoint(next);
 		setForcedSearch(options?.source !== undefined);
 		setOpenOverride(null);
+		setPhoneLatched(isPhoneViewport());
 		setOpen(true);
 	}, []);
 
@@ -87,6 +93,7 @@ export function useCommandPalette()
 		setEntrypoint("default");
 		setForcedSearch(false);
 		setOpenOverride(null);
+		if (!openRef.current) setPhoneLatched(isPhoneViewport());
 		setOpen((prev) => !prev);
 	}, []);
 
@@ -153,7 +160,8 @@ export function useCommandPalette()
 		sendHeldRef.current = held;
 	}, []);
 
-	const mode: PaletteMode = entrypoint === "search" || forcedSearch ? "search" : (openOverride ?? rememberedMode);
+	const mode: PaletteMode =
+		entrypoint === "search" || forcedSearch || phoneLatched ? "search" : (openOverride ?? rememberedMode);
 
 	return {
 		open,
@@ -164,5 +172,6 @@ export function useCommandPalette()
 		mode,
 		onModeChange,
 		onSendHoldChange,
+		composeAvailable: !phoneLatched,
 	};
 }

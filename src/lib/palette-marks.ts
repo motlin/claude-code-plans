@@ -24,17 +24,21 @@ export const PALETTE_MARK_LABELS =
 	running: "Running",
 } as const satisfies Record<PaletteMark, string>;
 
-/** A marked row leads (is promoted to the top group) when updated within 7 days; awaiting always leads. */
+/**
+ * A marked row leads (is promoted to the top group) when updated within 7 days; awaiting always leads, and so does an
+ * unread row the user marked unread by hand (upstream `Vd`'s explicit clause).
+ */
 export const LEAD_WINDOW_MS = 6048e5;
 
 export type PaletteMarkInput = Pick<SessionListItem, "bucket" | "unseen" | "archived" | "mtime" | "unseenError">;
 
-function markFor({bucket, unseen, unseenError}: PaletteMarkInput): PaletteMark | undefined
+function markFor({bucket, unseen, unseenError}: PaletteMarkInput, explicitUnread: boolean): PaletteMark | undefined
 {
 	if (bucket === "blocked") return unseenError === true ? "error" : "awaiting";
 	if (bucket === "working") return "running";
 	// An open PR (`review`) with nothing unseen gets no mark: upstream has no PR mark.
-	if (unseen) return "unread";
+	// Upstream forces the unread input for an explicit unread, so it shows even before the summary catches up.
+	if (unseen || explicitUnread) return "unread";
 	return undefined;
 }
 
@@ -45,13 +49,26 @@ export interface PaletteMarkEntry
 	leads: boolean;
 }
 
+export interface PaletteMarkOptions
+{
+	/** The session is in this browser's explicit-unread set (a hand "Mark as unread"). */
+	explicitUnread?: boolean;
+}
+
 /** A session's palette mark and whether it leads; archived rows are never marked. */
-export function paletteMark(session: PaletteMarkInput, now: number): PaletteMarkEntry | undefined
+export function paletteMark(
+	session: PaletteMarkInput,
+	now: number,
+	{explicitUnread = false}: PaletteMarkOptions = {},
+): PaletteMarkEntry | undefined
 {
 	if (session.archived) return undefined;
-	const mark = markFor(session);
+	const mark = markFor(session, explicitUnread);
 	if (mark === undefined) return undefined;
-	const leads = mark === "awaiting" || Date.parse(session.mtime) >= now - LEAD_WINDOW_MS;
+	const leads =
+		mark === "awaiting" ||
+		Date.parse(session.mtime) >= now - LEAD_WINDOW_MS ||
+		(mark === "unread" && explicitUnread);
 	return {
 		mark,
 		leads,

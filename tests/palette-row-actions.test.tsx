@@ -31,7 +31,7 @@ import {recentSessionsQueryOptions, sessionQueryKeys, type SessionListItem} from
 import {pin, readPinState} from "../src/lib/pin-store";
 import {useSessionRenameRequest} from "../src/lib/session-rename-request";
 import {__awaitingAckTesting, ackedAt} from "../src/lib/awaiting-ack-store";
-import {clearAll, hasUnseenWork, markUnseen} from "../src/lib/unread-store";
+import {clearAll, hasUnseenWork, isExplicitUnread, markUnseen} from "../src/lib/unread-store";
 import {installLocalStorage} from "./fake-storage";
 import {PanelsOff} from "./fizzy-lake-off";
 
@@ -644,7 +644,17 @@ describe("palette row actions card", () =>
 			},
 		);
 
-		expect(hasUnseenWork("sess-1")).toBe(true);
+		expect(
+			{
+				unseen: hasUnseenWork("sess-1"),
+				explicit: isExplicitUnread("sess-1"),
+			},
+		).toStrictEqual(
+			{
+				unseen: true,
+				explicit: true,
+			},
+		);
 	});
 
 	it("Mark as completed on a waiting row acks it at the session's mtime", async () =>

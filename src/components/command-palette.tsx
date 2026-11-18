@@ -207,7 +207,8 @@ import
 import {useFamilyHeads} from "../lib/sidebar-family-heads-store";
 import {familyFoldState, NESTED_SESSION_COMMANDS} from "../lib/palette-nested-sessions";
 import {type ShortcutKeys, useShortcut, useShortcutKeys} from "../hooks/use-shortcut";
-import {clearAll} from "../lib/unread-store";
+import {clearAll, isExplicitUnread} from "../lib/unread-store";
+import {useUnseenWorkVersion} from "./use-has-unseen-work";
 import {startPaletteSearchJourney} from "../lib/perf/field-journeys";
 import {HighlightRuns} from "./highlight-runs";
 import
@@ -829,7 +830,8 @@ interface PaletteViewSnapshot
  * MRU, falling back to mtime-ordered sessions until the tab has visited anything else; marked
  * sessions lead by rank, and `fitPaletteEmptyView` sizes the groups to the 440px list. With a
  * frozen `view`, membership and lead order come from it and only titles follow the live sessions;
- * a frozen lead whose mark is gone drops out. When `jumpOffered`, the pinned jump row takes its share
+ * a frozen lead whose mark is gone drops out, and a row in `actedIds` that newly leads joins the leads. When
+ * `jumpOffered`, the pinned jump row takes its share
  * of the fit.
  */
 function paletteGroups(
@@ -840,6 +842,7 @@ function paletteGroups(
 	markOf: MarkOf,
 	view: PaletteViewSnapshot | null,
 	jumpOffered: boolean,
+	actedIds: ReadonlySet<string>,
 ):
 {
 	groups: PaletteGroup<EmptyViewRow>[];
@@ -885,7 +888,12 @@ function paletteGroups(
 	else
 	{
 		const recentRows = new Map(recents.map((row) => [row.id, row]));
-		leadRows = view.leadIds.flatMap((id) => marked.get(id) ?? []);
+		// A row acted on while open reads its live mark, so a new lead (Mark as unread) joins the frozen leads.
+		const frozenLeads = new Set(view.leadIds);
+		leadRows = sortLeads([
+			...view.leadIds.flatMap((id) => marked.get(id) ?? []),
+			...leads.filter((row) => actedIds.has(row.id) && !frozenLeads.has(row.id)),
+		]);
 		pool = view.recentIds.flatMap((id) => recentRows.get(id) ?? []);
 	}
 	return {
@@ -1258,7 +1266,13 @@ function freezeMarks(sessions: readonly SessionListItem[], now: number): Readonl
 	return new Map(
 		sessions.flatMap((session) =>
 		{
-			const entry = paletteMark(session, now);
+			const entry = paletteMark(
+				session,
+				now,
+				{
+					explicitUnread: isExplicitUnread(session.id),
+				},
+			);
 			return entry === undefined ? [] : [[session.id, entry] as const];
 		}),
 	);
@@ -1274,6 +1288,8 @@ export interface CommandPaletteProps
 	entrypoint?: PaletteEntrypoint;
 	/** Upstream `onSendHoldChange`: the opener refuses every close while a send is held. */
 	onSendHoldChange?: (held: boolean) => void;
+	/** False for a phone-latched open (upstream `Ge`'s `!phoneOff`): Compose is out of reach until the next open. */
+	composeAvailable?: boolean;
 }
 
 export function CommandPalette({
@@ -1283,6 +1299,7 @@ export function CommandPalette({
 	onModeChange,
 	entrypoint = "default",
 	onSendHoldChange,
+	composeAvailable = true,
 }: CommandPaletteProps)
 {
 	const [uncontrolledMode, setUncontrolledMode] = useState<PaletteMode>("search");
@@ -1309,6 +1326,7 @@ export function CommandPalette({
 						onModeChange={setMode}
 						onOpenChange={onOpenChange}
 						onSendHoldChange={onSendHoldChange}
+						composeAvailable={composeAvailable}
 					/>
 				</Dialog.Portal>
 			</Dialog.Root>
@@ -1486,6 +1504,7 @@ function PalettePopup({
 	onModeChange,
 	onOpenChange,
 	onSendHoldChange,
+	composeAvailable,
 }: {
 	popupRef: RefObject<HTMLDivElement | null>;
 	open: boolean;
@@ -1494,6 +1513,7 @@ function PalettePopup({
 	onModeChange: (mode: PaletteMode, options?: PaletteModeChangeOptions) => void;
 	onOpenChange: (open: boolean) => void;
 	onSendHoldChange: ((held: boolean) => void) | undefined;
+	composeAvailable: boolean;
 })
 {
 	const navigate = useNavigate();
@@ -1637,6 +1657,7 @@ function PalettePopup({
 
 	function switchView(next: PaletteMode, options?: PaletteModeChangeOptions)
 	{
+		if (next === "compose" && !composeAvailable) return;
 		setBuffers((current) => switchPaletteView(next, current));
 		onModeChange(next, options);
 	}
@@ -1701,12 +1722,21 @@ function PalettePopup({
 	const [actedIds, setActedIds] = useState<ReadonlySet<string>>(() => new Set());
 	const settled = data !== undefined && (historySettled || settleTimedOut);
 	if (settled && frozenMarks === null) setFrozenMarks(freezeMarks(data.sessions, Date.now()));
+	// A hand "Mark as unread" changes only the store, so acted rows recompute on its version too.
+	const unseenVersion = useUnseenWorkVersion();
 	const markOf = useCallback(
 		(session: SessionListItem) =>
 			frozenMarks === null || actedIds.has(session.id)
-				? paletteMark(session, Date.now())
+				? paletteMark(
+						session,
+						Date.now(),
+						{
+							explicitUnread: isExplicitUnread(session.id),
+						},
+					)
 				: frozenMarks.get(session.id),
-		[frozenMarks, actedIds],
+		// eslint-disable-next-line react-hooks/exhaustive-deps -- unseenVersion invalidates the store reads above.
+		[frozenMarks, actedIds, unseenVersion],
 	);
 	const emptyView = useMemo(
 		() =>
@@ -1718,8 +1748,9 @@ function PalettePopup({
 				markOf,
 				frozenView,
 				jumpOffered,
+				actedIds,
 			),
-		[data, history, pathname, currentSessionId, markOf, frozenView, jumpOffered],
+		[data, history, pathname, currentSessionId, markOf, frozenView, jumpOffered, actedIds],
 	);
 
 	const trimmedQuery = query.trim();
@@ -2881,8 +2912,9 @@ function PalettePopup({
 		{
 			return;
 		}
+		// Upstream `(e.preventDefault(), U||V("actions"))`: a phone-latched open swallows Tab without toggling.
 		event.preventDefault();
-		if (event.repeat || isComposingKey(event)) return;
+		if (event.repeat || isComposingKey(event) || !composeAvailable) return;
 		switchView(mode === "search" ? "compose" : "search");
 	}
 
@@ -3738,10 +3770,15 @@ function PalettePopup({
 											kind={emptyKind}
 											message={emptyMessage}
 											onSearchAll={searchAll}
-											onCompose={() =>
-											{
-												switchView("compose");
-											}}
+											{...(composeAvailable
+												?
+													{
+														onCompose: () =>
+														{
+															switchView("compose");
+														},
+													}
+												: {})}
 										/>
 									)}
 								</>
@@ -3827,13 +3864,15 @@ function PalettePopup({
 										...(selectedRowHasActions ? [["Actions", ["alt+enter"]] as const] : []),
 									]}
 									trailing={
-										<ViewHint
-											label="Compose"
-											onSwitch={() =>
-											{
-												switchView("compose");
-											}}
-										/>
+										composeAvailable && (
+											<ViewHint
+												label="Compose"
+												onSwitch={() =>
+												{
+													switchView("compose");
+												}}
+											/>
+										)
 									}
 								/>
 							)}

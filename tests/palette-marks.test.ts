@@ -194,6 +194,115 @@ describe("paletteMark", () =>
 		]);
 	});
 
+	it("leads an explicit unread whatever its age, as upstream Vd's (mark==='unread' && explicit) clause", () =>
+	{
+		const eightDays = new Date(NOW - 8 * DAY).toISOString();
+		const cases: [string, PaletteMarkInput][] = [
+			[
+				"done + unseen, 8 days old",
+				input(
+					{
+						unseen: true,
+						mtime: eightDays,
+					},
+				),
+			],
+			[
+				"done, 8 days old (summary lags the mark)",
+				input(
+					{
+						mtime: eightDays,
+					},
+				),
+			],
+			[
+				"working, 8 days old",
+				input(
+					{
+						bucket: "working",
+						mtime: eightDays,
+					},
+				),
+			],
+			[
+				"blocked, 30 days old",
+				input(
+					{
+						bucket: "blocked",
+						mtime: new Date(NOW - 30 * DAY).toISOString(),
+					},
+				),
+			],
+			[
+				"archived unseen",
+				input(
+					{
+						unseen: true,
+						archived: true,
+					},
+				),
+			],
+			[
+				"review without unseen",
+				input(
+					{
+						bucket: "review",
+					},
+				),
+			],
+		];
+
+		expect(
+			cases.map(([name, session]) => [
+				name,
+				paletteMark(
+					session,
+					NOW,
+					{
+						explicitUnread: true,
+					},
+				),
+			]),
+		).toStrictEqual([
+			[
+				"done + unseen, 8 days old",
+				{
+					mark: "unread",
+					leads: true,
+				},
+			],
+			[
+				"done, 8 days old (summary lags the mark)",
+				{
+					mark: "unread",
+					leads: true,
+				},
+			],
+			[
+				"working, 8 days old",
+				{
+					mark: "running",
+					leads: false,
+				},
+			],
+			[
+				"blocked, 30 days old",
+				{
+					mark: "awaiting",
+					leads: true,
+				},
+			],
+			["archived unseen", undefined],
+			[
+				"review without unseen",
+				{
+					mark: "unread",
+					leads: true,
+				},
+			],
+		]);
+	});
+
 	it("leads exactly at the 7-day boundary", () =>
 	{
 		expect(
