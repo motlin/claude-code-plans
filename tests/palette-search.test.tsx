@@ -14,6 +14,7 @@ import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {CommandPalette, PALETTE_RECENT_LIMIT} from "../src/components/command-palette";
 import {ToastProvider} from "../src/components/toast";
+import {encodeFilePath} from "../src/lib/api/file";
 import {useCommandPalette} from "../src/hooks/use-command-palette";
 import type {UnifiedSearchItem} from "../src/lib/api/search";
 import {recentSessionsQueryOptions} from "../src/lib/api/sessions";
@@ -473,6 +474,72 @@ describe("⌘K palette live search", () =>
 				termsWithoutPhrase: "<span>Session for new users</span>",
 				server: "<span>Newer sessions</span>",
 				plan: `${hit("new")}<span> plan for ses</span>`,
+			},
+		);
+	});
+
+	it('⌥⏎ on a file hit opens the generic card under "File · <bucket>", opening /file/<token> in a new tab', async () =>
+	{
+		const open = vi.spyOn(window, "open").mockReturnValue(null);
+		const {dialog} = await openPalette([]);
+
+		type(dialog, "hashing");
+		(await awaitRequest()).resolve([
+			{
+				...serverSession("/repo/src/hash.ts", "src/hash.ts"),
+				kind: "file",
+			},
+		]);
+		await waitFor(() =>
+		{
+			expect(optionLabels(dialog)).toContain("src/hash.ts");
+		});
+		fireEvent.keyDown(
+			within(dialog).getByRole("combobox"),
+			{
+				key: "Enter",
+				code: "Enter",
+				altKey: true,
+			},
+		);
+		const card = await screen.findByRole(
+			"menu",
+			{
+				name: "Actions",
+			},
+		);
+		const summary =
+		{
+			heading: card.querySelector("[data-palette-card-title]")?.textContent,
+			meta: card.querySelector("[data-palette-card-meta]")?.textContent,
+		};
+		fireEvent.keyDown(
+			card,
+			{
+				key: "2",
+				code: "Digit2",
+			},
+		);
+
+		expect(
+			{
+				summary,
+				calls: open.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				summary:
+				{
+					heading: "src/hash.ts",
+					meta: "File · Just now",
+				},
+				calls: [
+					[
+						`http://localhost:3000/file/${encodeFilePath("/repo/src/hash.ts")}`,
+						"_blank",
+						"noopener,noreferrer",
+					],
+				],
 			},
 		);
 	});

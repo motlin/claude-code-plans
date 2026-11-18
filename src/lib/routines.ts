@@ -494,6 +494,13 @@ export const DEFAULT_ROUTINE_VIEW: RoutineView =
 	includeCompleted: false,
 };
 
+/** Where a routine opens: its source record in the session that scheduled it, else that session. */
+export function routineHref(routine: {sessionId: string; recordUuid: string | null}): string
+{
+	const session = `/session/${encodeURIComponent(routine.sessionId)}`;
+	return routine.recordUuid === null ? session : `${session}/source/${encodeURIComponent(routine.recordUuid)}`;
+}
+
 /** A routine's display name: its cloud name, else the first line of its prompt. */
 export function routineTitle(routine: Pick<RoutineRow, "name" | "prompt">): string
 {

@@ -53,7 +53,19 @@ export interface PaletteCardProject
 	name: string;
 }
 
-/** The row a ⌥⏎ card acts on: a session, a local claude.ai artifact record, or a local project. */
+/** Any other row with a local URL (routine, plan, memory, file): upstream's generic card `yt` header values. */
+export interface PaletteCardGeneric
+{
+	title: string;
+	/** Upstream's kind label `wt`, e.g. "Scheduled task". */
+	kindLabel: string;
+	/** The relative-time bucket; upstream gives scheduled tasks none. */
+	when: string | null;
+	/** The row's same-origin path. */
+	href: string;
+}
+
+/** The row a ⌥⏎ card acts on: a session, a local claude.ai artifact record, a local project, or any other URL row. */
 export type PaletteCardTarget =
 	|
 	  {
@@ -69,6 +81,11 @@ export type PaletteCardTarget =
 	  {
 			kind: "project";
 			project: PaletteCardProject;
+	  }
+	|
+	  {
+			kind: "generic";
+			row: PaletteCardGeneric;
 	  };
 
 type OpenItemId = "open" | "open-new-tab";
@@ -134,7 +151,8 @@ interface CardProps
  * backdrop eats the first click outside. ←, Esc, Tab, ⌥⏎ again or a held Enter close only the card; digits
  * ignore repeats and the first 300ms after the item list changes. Session rows get upstream's session card
  * (Rename opens a dialog over the palette, as upstream's `CodeSessionRenameDialog` does; Delete is never
- * offered), artifact rows upstream's `mt` and project rows upstream's `ct`.
+ * offered), artifact rows upstream's `mt`, project rows upstream's `ct` and every other URL row upstream's
+ * generic `yt`.
  */
 export function PaletteRowActionsCard({
 	target,
@@ -155,6 +173,8 @@ export function PaletteRowActionsCard({
 			return <ArtifactCard artifact={target.artifact} {...props} />;
 		case "project":
 			return <ProjectCard project={target.project} {...props} />;
+		case "generic":
+			return <GenericCard row={target.row} {...props} />;
 		default:
 			return assertNever(target);
 	}
@@ -448,6 +468,51 @@ function ProjectCard({
 				when: null,
 			}}
 			items={items}
+			onRun={run}
+			onClose={onClose}
+		/>
+	);
+}
+
+/**
+ * Upstream's generic card `yt` (c09d7445a), the dispatcher's default for web rows with an href (scheduled_task,
+ * thread): just Open and Open in new tab under "title" and "kind · when", with no tail.
+ */
+function GenericCard({
+	row,
+	onOpen,
+	onClose,
+	anchorRect,
+}: CardProps &
+{
+	row: PaletteCardGeneric;
+})
+{
+	const run = (id: OpenItemId): void =>
+	{
+		if (id === "open")
+		{
+			onOpen();
+			return;
+		}
+		onClose(
+			{
+				refocus: true,
+			},
+		);
+		window.open(`${window.location.origin}${row.href}`, "_blank", "noopener,noreferrer");
+	};
+
+	return (
+		<RowActionsCardShell
+			anchorRect={anchorRect}
+			preview={
+			{
+				title: row.title,
+				kind: row.kindLabel,
+				when: row.when,
+			}}
+			items={OPEN_ITEMS}
 			onRun={run}
 			onClose={onClose}
 		/>

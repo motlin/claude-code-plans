@@ -6616,7 +6616,7 @@ describe("CommandPalette Artifacts and Scheduled tabs", () =>
 		]);
 	});
 
-	it("lists active routines with their schedule on the Scheduled tab and opens /routines", async () =>
+	it("lists active routines with their schedule on the Scheduled tab and opens the routine's session", async () =>
 	{
 		const dialog = await openPalette(undefined, "/", seedLocal);
 
@@ -6646,7 +6646,7 @@ describe("CommandPalette Artifacts and Scheduled tabs", () =>
 		]);
 		await waitFor(() =>
 		{
-			expect(currentRouter?.state.location.pathname).toBe("/routines");
+			expect(currentRouter?.state.location.pathname).toBe("/session/sess-1");
 		});
 	});
 });

@@ -168,7 +168,7 @@ import
 import {pin, unpin, usePins} from "../lib/pin-store";
 import {toMdSlug} from "../lib/md-slug";
 import {loadRecents, resolveRecentSessions, routeToRecent, type RecentEntry} from "../lib/recents-history";
-import {filterRoutines, formatNextRun, routineTitle, sortRoutines} from "../lib/routines";
+import {filterRoutines, formatNextRun, routineHref, routineTitle, sortRoutines} from "../lib/routines";
 import {paletteEmptyKind, paletteEmptyMessage} from "../lib/palette-empty";
 import {PaletteEmptyState} from "./palette-empty-state";
 import {PaletteFilterSpoken} from "./palette-filter-spoken";
@@ -209,6 +209,7 @@ import {HighlightRuns} from "./highlight-runs";
 import
 {
 	type PaletteCardSession,
+	type PaletteCardGeneric,
 	type PaletteCardTarget,
 	PaletteRenameDialog,
 	PaletteRowActionsButton,
@@ -532,7 +533,7 @@ function routineRows(routines: readonly Routine[], text: string, now: number): S
 				titleMatches: labelMatches(title, text),
 				snippet: undefined,
 				mtime: new Date(routine.createdAt).toISOString(),
-				href: undefined,
+				href: routineHref(routine),
 				meta:
 					routine.nextRunAt === null
 						? (routine.humanSchedule ?? routine.schedule ?? "")
@@ -1969,9 +1970,32 @@ function PalettePopup({
 	const artifactsById = useMemo(() => new Map(artifacts.map((artifact) => [artifact.id, artifact])), [artifacts]);
 	const projectsById = useMemo(() => new Map(projects.map((project) => [project.id, project])), [projects]);
 
-	/** The ⌥⏎ card target for a row's cmdk value: upstream's `Nm` session, artifact and project kinds. */
+	// The listed rows upstream's generic card `yt` covers, by cmdk value.
+	const genericRows = useMemo(() =>
+	{
+		const byKey = new Map<string, SearchRow>();
+		for (const row of [...(listing ?? []), ...instant, ...serverRows])
+		{
+			if (isGenericKind(row.kind)) byKey.set(rowKey(row), row);
+		}
+		return byKey;
+	}, [listing, instant, serverRows]);
+
+	/** The ⌥⏎ card target for a row's cmdk value: upstream's `Nm` session, artifact and project kinds, else `yt`. */
 	function cardTarget(key: string): PaletteCardTarget | undefined
 	{
+		const generic = genericRows.get(key);
+		if (generic !== undefined)
+		{
+			const target = genericCardTarget(generic, Date.now());
+			return target === undefined
+				? undefined
+				:
+					{
+						kind: "generic",
+						row: target,
+					};
+		}
 		const separator = key.indexOf(":");
 		const kind = key.slice(0, separator);
 		const id = key.slice(separator + 1);
@@ -2123,12 +2147,6 @@ function PalettePopup({
 					{
 						id: row.id,
 					},
-				},
-			);
-		else if (row.kind === "routine")
-			void navigate(
-				{
-					to: "/routines",
 				},
 			);
 		else if (row.kind === "file")
@@ -2865,7 +2883,7 @@ function PalettePopup({
 		return event.nativeEvent.isComposing || event.keyCode === 229;
 	}
 
-	// ⌥⏎ opens the row-actions card for the selected session, artifact or project row.
+	// ⌥⏎ opens the row-actions card for the selected row.
 	function openSelectedRowActions(event: KeyboardEvent<HTMLDivElement>)
 	{
 		const input = inputRef.current;
@@ -3755,6 +3773,12 @@ function PalettePopup({
 							select(() =>
 							{
 								if (target.kind === "session") openSession(target.session.id);
+								else if (target.kind === "generic")
+									void navigate(
+										{
+											href: target.row.href,
+										},
+									);
 								else
 									openRow(
 										{
@@ -4398,8 +4422,42 @@ function PaletteSecondary({text, archived}: {text: string | undefined; archived:
 
 const ROW_ACTIONS_LABEL_CLASS = "me-7 pointer-coarse:me-0";
 
-/** Upstream's `Nm`: the search-row kinds with a ⌥⏎ card (routines have no per-routine page to open). */
-const ROW_ACTION_KINDS: ReadonlySet<SearchKind> = new Set<SearchKind>(["session", "artifact", "project"]);
+type GenericKind = Exclude<SearchKind, "session" | "artifact" | "project">;
+
+/** Upstream's kind label `wt`: routines are its scheduled_task (`5q8phk`); the local-only kinds are named after their tabs. */
+const GENERIC_KIND_LABELS =
+{
+	routine: "Scheduled task",
+	plan: "Plan",
+	memory: "Memory",
+	file: "File",
+} as const satisfies Record<GenericKind, string>;
+
+function isGenericKind(kind: SearchKind): kind is GenericKind
+{
+	return Object.hasOwn(GENERIC_KIND_LABELS, kind);
+}
+
+/** Upstream's `Lm` href and `yt` header for a generic row; a row without a URL gets no card. */
+function genericCardTarget(row: SearchRow, now: number): PaletteCardGeneric | undefined
+{
+	if (!isGenericKind(row.kind)) return undefined;
+	const href = row.kind === "file" ? `/file/${encodeFilePath(row.id)}` : row.href;
+	if (href === undefined) return undefined;
+	return {
+		title: row.title,
+		kindLabel: GENERIC_KIND_LABELS[row.kind],
+		// Upstream's `_t` gives a scheduled task no time, though its row shows the next run.
+		when: row.kind === "routine" ? null : relativeBucket(Date.parse(row.mtime), now),
+		href,
+	};
+}
+
+/** Upstream's `Im` on web: session, artifact and project rows, and every other row with a URL. */
+function rowHasActions(row: SearchRow): boolean
+{
+	return !isGenericKind(row.kind) || genericCardTarget(row, 0) !== undefined;
+}
 
 /** Upstream's search row: kind icon, bold title runs, quoted snippet, bucket meta, ⏎ when selected. */
 function SearchResultItem({
@@ -4414,7 +4472,7 @@ function SearchResultItem({
 	onRowActions: () => void;
 })
 {
-	const actions = ROW_ACTION_KINDS.has(row.kind);
+	const actions = rowHasActions(row);
 	const archived = row.archived === true;
 	const item = (
 		<Command.Item

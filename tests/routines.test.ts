@@ -16,6 +16,7 @@ import
 	hiddenCompletedText,
 	nextCronRun,
 	RoutineCollector,
+	routineHref,
 	routineNextRunAt,
 	routineStatus,
 	sortRoutines,
@@ -793,6 +794,27 @@ describe("formatNextRun", () =>
 			formatNextRun(new Date(2026, 9, 5, 9, 0).getTime(), now),
 			formatNextRun(new Date(2027, 0, 2, 9, 0).getTime(), now),
 		]).toStrictEqual(["today at 3:45 PM", "tomorrow at 9:00 AM", "Oct 5 at 9:00 AM", "Jan 2, 2027 at 9:00 AM"]);
+	});
+});
+
+describe("routineHref", () =>
+{
+	it("opens the routine's source record, else its session, as the /routines row does", () =>
+	{
+		expect([
+			routineHref(
+				{
+					sessionId: "s 1",
+					recordUuid: "r/1",
+				},
+			),
+			routineHref(
+				{
+					sessionId: "s1",
+					recordUuid: null,
+				},
+			),
+		]).toStrictEqual(["/session/s%201/source/r%2F1", "/session/s1"]);
 	});
 });
 

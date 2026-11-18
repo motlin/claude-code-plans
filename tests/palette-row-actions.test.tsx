@@ -15,13 +15,16 @@ import
 import {readFileSync} from "node:fs";
 import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
+import type {z} from "zod";
 import {CommandPalette, PALETTE_RECENT_LIMIT} from "../src/components/command-palette";
 import {rowActionsAnchorRect} from "../src/components/palette-row-actions-geometry";
 import {ToastProvider} from "../src/components/toast";
 import {useCommandPalette} from "../src/hooks/use-command-palette";
 import {artifactsQueryOptions, type ArtifactSummary} from "../src/lib/api/artifacts";
+import {MemoryListResponse, projectMemoriesQueryOptions} from "../src/lib/api/memories";
+import {plansQueryOptions} from "../src/lib/api/plans";
 import {projectsQueryOptions} from "../src/lib/api/projects";
-import {routinesQueryOptions} from "../src/lib/api/routines";
+import {routinesQueryOptions, type Routine} from "../src/lib/api/routines";
 import {ARTIFACT_PIN_STORAGE_KEY} from "../src/lib/artifact-pins";
 import {recentSessionsQueryOptions, sessionQueryKeys, type SessionListItem} from "../src/lib/api/sessions";
 import {pin, readPinState} from "../src/lib/pin-store";
@@ -1830,7 +1833,9 @@ describe("palette row actions card", () =>
 		};
 	}
 
-	async function openTab(tab: "Artifacts" | "Projects" | "Scheduled", seed: (queryClient: QueryClient) => void)
+	type CardTab = "Artifacts" | "Projects" | "Scheduled" | "Plans" | "Memories";
+
+	async function openTab(tab: CardTab, seed: (queryClient: QueryClient) => void)
 	{
 		const opened = await openPalette(undefined, seed);
 		fireEvent.click(
@@ -1853,7 +1858,7 @@ describe("palette row actions card", () =>
 		return opened;
 	}
 
-	async function openTabCard(tab: "Artifacts" | "Projects", seed: (queryClient: QueryClient) => void)
+	async function openTabCard(tab: CardTab, seed: (queryClient: QueryClient) => void)
 	{
 		const opened = await openTab(tab, seed);
 		fireEvent.keyDown(
@@ -1946,34 +1951,171 @@ describe("palette row actions card", () =>
 		);
 	});
 
-	it("gives a routine row no actions, and ⌥⏎ on it opens nothing", async () =>
+	function routine(overrides: Partial<Routine> = {}): Routine
 	{
-		const {dialog, input} = await openTab("Scheduled", (queryClient) =>
+		return {
+			toolUseId: "r-1",
+			recordUuid: null,
+			kind: "cron",
+			routineId: null,
+			name: "Nightly digest",
+			schedule: "0 9 * * *",
+			humanSchedule: "Every day at 9:00 AM",
+			delaySeconds: null,
+			runOnceAt: null,
+			recurring: true,
+			durable: true,
+			prompt: "Check the build",
+			createdAt: 0,
+			deletedAt: null,
+			sessionId: "sess-1",
+			projectId: "-users-dev-project-a",
+			sessionTitle: null,
+			status: "active",
+			nextRunAt: Date.now() + 3_600_000,
+			...overrides,
+		};
+	}
+
+	function seedRoutines(...routines: Routine[])
+	{
+		return (queryClient: QueryClient) =>
 		{
-			queryClient.setQueryData(routinesQueryOptions.queryKey, [
-				{
-					toolUseId: "r-1",
-					recordUuid: null,
-					kind: "cron",
-					routineId: null,
-					name: "Nightly digest",
-					schedule: "0 9 * * *",
-					humanSchedule: "Every day at 9:00 AM",
-					delaySeconds: null,
-					runOnceAt: null,
-					recurring: true,
-					durable: true,
-					prompt: "Check the build",
-					createdAt: 0,
-					deletedAt: null,
-					sessionId: "sess-1",
-					projectId: "-users-dev-project-a",
-					sessionTitle: null,
-					status: "active",
-					nextRunAt: null,
-				},
-			]);
+			queryClient.setQueryData(routinesQueryOptions.queryKey, routines);
+		};
+	}
+
+	it("gives a selected routine row the session row's ⌥⏎ affordances, as upstream's web scheduled_task rows", async () =>
+	{
+		const {dialog} = await openTab("Scheduled", seedRoutines(routine()));
+
+		expect(selectedRowAffordances(dialog)).toStrictEqual(
+			{
+				value: "routine:r-1",
+				keyShortcuts: "Alt+Enter",
+				labelClass: "flex min-w-0 flex-1 items-center gap-2 me-7 pointer-coarse:me-0",
+				button: true,
+				footer: ["Close", "Change type", "Filters", "Actions"],
+			},
+		);
+	});
+
+	it('⌥⏎ on a routine row opens upstream\'s generic card, its meta just "Scheduled task" without the next run', async () =>
+	{
+		const {card} = await openTabCard("Scheduled", seedRoutines(routine()));
+
+		expect(cardSummary(card)).toStrictEqual(
+			{
+				heading: "Nightly digest",
+				meta: "Scheduled task",
+				items: [
+					["Open1", "1"],
+					["Open in new tab2", "2"],
+				],
+				ids: ["open", "open-new-tab"],
+			},
+		);
+	});
+
+	it("opens the routine's source record in a new tab with 2, and a 3 does nothing", async () =>
+	{
+		const open = vi.spyOn(window, "open").mockReturnValue(null);
+		const {card, input} = await openTabCard(
+			"Scheduled",
+			seedRoutines(
+				routine(
+					{
+						recordUuid: "rec-1",
+					},
+				),
+			),
+		);
+
+		fireEvent.keyDown(
+			card,
+			{
+				key: "3",
+				code: "Digit3",
+			},
+		);
+		const afterThree =
+		{
+			calls: open.mock.calls.length,
+			card: screen.queryByRole("menu") !== null,
+		};
+		fireEvent.keyDown(
+			card,
+			{
+				key: "2",
+				code: "Digit2",
+			},
+		);
+		await waitFor(() =>
+		{
+			expect(screen.queryByRole("menu")).toBeNull();
 		});
+
+		expect(
+			{
+				afterThree,
+				calls: open.mock.calls,
+				focused: document.activeElement === input,
+			},
+		).toStrictEqual(
+			{
+				afterThree:
+				{
+					calls: 0,
+					card: true,
+				},
+				calls: [["http://localhost:3000/session/sess-1/source/rec-1", "_blank", "noopener,noreferrer"]],
+				focused: true,
+			},
+		);
+	});
+
+	it("opens the routine's session with 1 and closes the palette", async () =>
+	{
+		const {card} = await openTabCard("Scheduled", seedRoutines(routine()));
+
+		fireEvent.keyDown(
+			card,
+			{
+				key: "1",
+				code: "Digit1",
+			},
+		);
+
+		await waitFor(() =>
+		{
+			expect(screen.queryByRole("dialog")).toBeNull();
+		});
+		expect(
+			screen.getByRole(
+				"status",
+				{
+					name: "Location",
+				},
+			).textContent,
+		).toBe("/session/sess-1");
+	});
+
+	it("← and a held Enter close a routine card with focus back on the Search input", async () =>
+	{
+		const {card, input} = await openTabCard("Scheduled", seedRoutines(routine()));
+
+		fireEvent.keyDown(
+			card,
+			{
+				key: "ArrowLeft",
+				code: "ArrowLeft",
+			},
+		);
+		await waitFor(() =>
+		{
+			expect(screen.queryByRole("menu")).toBeNull();
+		});
+		const afterLeft = document.activeElement === input;
 		fireEvent.keyDown(
 			input,
 			{
@@ -1982,20 +2124,161 @@ describe("palette row actions card", () =>
 				altKey: true,
 			},
 		);
+		const reopened = await screen.findByRole(
+			"menu",
+			{
+				name: "Actions",
+			},
+		);
+		fireEvent.keyDown(
+			reopened,
+			{
+				key: "Enter",
+				code: "Enter",
+				repeat: true,
+			},
+		);
+		await waitFor(() =>
+		{
+			expect(screen.queryByRole("menu")).toBeNull();
+		});
 
 		expect(
 			{
-				...selectedRowAffordances(dialog),
-				card: screen.queryByRole("menu"),
+				afterLeft,
+				focused: document.activeElement === input,
+				location: document.querySelector('output[aria-label="Location"]')?.textContent,
 			},
 		).toStrictEqual(
 			{
-				value: "routine:r-1",
-				keyShortcuts: null,
-				labelClass: "flex min-w-0 flex-1 items-center gap-2 ",
-				button: false,
-				footer: ["Close", "Change type", "Filters"],
-				card: null,
+				afterLeft: true,
+				focused: true,
+				location: "/",
+			},
+		);
+	});
+
+	it("closes the routine card when its row leaves the list", async () =>
+	{
+		const {dialog, input} = await openTabCard(
+			"Scheduled",
+			seedRoutines(
+				routine(),
+				routine(
+					{
+						toolUseId: "r-2",
+						name: "Weekly report",
+					},
+				),
+			),
+		);
+
+		fireEvent.change(
+			input,
+			{
+				target:
+				{
+					value: "weekly",
+				},
+			},
+		);
+
+		await waitFor(() =>
+		{
+			expect(dialog.querySelector('[cmdk-item][data-value="routine:r-1"]')).toBeNull();
+		});
+		await waitFor(() =>
+		{
+			expect(screen.queryByRole("menu")).toBeNull();
+		});
+		expect(document.activeElement).toBe(input);
+	});
+
+	it('⌥⏎ on a plan row opens the generic card under "Plan · <bucket>", opening /plan/<slug> in a new tab', async () =>
+	{
+		const open = vi.spyOn(window, "open").mockReturnValue(null);
+		const {card} = await openTabCard("Plans", (queryClient) =>
+		{
+			queryClient.setQueryData(plansQueryOptions().queryKey, [
+				{
+					filename: "cozy-plan.md",
+					title: "Cozy plan",
+					mtime: new Date(Date.now() - 30 * 60_000).toISOString(),
+					projects: [],
+				},
+			]);
+		});
+		const summary = cardSummary(card);
+
+		fireEvent.keyDown(
+			card,
+			{
+				key: "2",
+				code: "Digit2",
+			},
+		);
+
+		expect(
+			{
+				summary,
+				calls: open.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				summary:
+				{
+					heading: "Cozy plan",
+					meta: "Plan · Past hour",
+					items: [
+						["Open1", "1"],
+						["Open in new tab2", "2"],
+					],
+					ids: ["open", "open-new-tab"],
+				},
+				calls: [["http://localhost:3000/plan/cozy-plan", "_blank", "noopener,noreferrer"]],
+			},
+		);
+	});
+
+	it('⌥⏎ on a memory row opens the generic card under "Memory · <bucket>"', async () =>
+	{
+		const {card} = await openTabCard("Memories", (queryClient) =>
+		{
+			queryClient.setQueryData(projectsQueryOptions().queryKey, [
+				{
+					...project("proj-a", "proj-a"),
+					memoryCount: 1,
+				},
+			]);
+			const memories: z.infer<typeof MemoryListResponse> =
+			{
+				project:
+				{
+					id: "proj-a",
+					name: "proj-a",
+					projectPath: null,
+				},
+				memories: [
+					{
+						filename: "notes.md",
+						title: "Team notes",
+						mtime: new Date().toISOString(),
+						project: "proj-a",
+					},
+				],
+			};
+			queryClient.setQueryData(projectMemoriesQueryOptions("proj-a").queryKey, memories);
+		});
+
+		expect(
+			{
+				heading: cardSummary(card).heading,
+				meta: cardSummary(card).meta,
+			},
+		).toStrictEqual(
+			{
+				heading: "Team notes",
+				meta: "Memory · Just now",
 			},
 		);
 	});
