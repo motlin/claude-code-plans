@@ -1,7 +1,8 @@
 import {Ellipsis, MousePointer2} from "lucide-react";
-import {useEffect, useId, useSyncExternalStore} from "react";
+import {useId} from "react";
 
-import {HerdrRequestError, toggleRemoteControl} from "../../lib/api/herdr";
+import {toggleRemoteControl} from "../../lib/api/herdr";
+import {useRemoteControlToggle} from "../../hooks/use-remote-control-toggle";
 import {writeClipboardText} from "../../lib/clipboard";
 import type {RemoteControlState} from "../../lib/session-state";
 import {useToast} from "../toast-context";
@@ -179,73 +180,6 @@ export function RemoteControlRowPending()
 	);
 }
 
-/*
- * Toggles in flight by session id (upstream `Kf`), kept outside React so a
- * remounted rail still shows the spinner: each holds the requested state until
- * the bridge reaches it or 15 s pass.
- */
-const PENDING_TIMEOUT_MS = 15_000;
-const pendingToggles = new Map<
-	string,
-	{
-		on: boolean;
-		timer: ReturnType<typeof setTimeout> | null;
-	}
->();
-const pendingListeners = new Set<() => void>();
-
-function notifyPending(): void
-{
-	for (const listener of pendingListeners) listener();
-}
-
-function setPendingToggle(sessionId: string, on: boolean | null): void
-{
-	const previous = pendingToggles.get(sessionId);
-	if (previous?.timer != null) clearTimeout(previous.timer);
-	if (on === null) pendingToggles.delete(sessionId);
-	else
-		pendingToggles.set(
-			sessionId,
-			{
-				on,
-				timer: null,
-			},
-		);
-	notifyPending();
-}
-
-/** Starts the 15 s give-up once the send has gone through. */
-function armPendingTimeout(sessionId: string): void
-{
-	const pending = pendingToggles.get(sessionId);
-	if (pending === undefined) return;
-	pending.timer = setTimeout(() =>
-	{
-		if (pendingToggles.get(sessionId) === pending) setPendingToggle(sessionId, null);
-	}, PENDING_TIMEOUT_MS);
-}
-
-function subscribePending(listener: () => void): () => void
-{
-	pendingListeners.add(listener);
-	return () =>
-	{
-		pendingListeners.delete(listener);
-	};
-}
-
-function usePendingToggle(sessionId: string): boolean | null
-{
-	return useSyncExternalStore(
-		subscribePending,
-		() => pendingToggles.get(sessionId)?.on ?? null,
-		() => null,
-	);
-}
-
-const TOGGLE_FAILED = "Couldn’t toggle Remote Control. Try again.";
-
 export interface RemoteControlToggleRowProps
 {
 	sessionId: string;
@@ -277,47 +211,7 @@ export function RemoteControlToggleRow({
 	send = toggleRemoteControl,
 }: RemoteControlToggleRowProps)
 {
-	const toast = useToast();
-	const pending = usePendingToggle(sessionId);
-	useEffect(() =>
-	{
-		if (pending === null || (state === "on") !== pending) return;
-		setPendingToggle(sessionId, null);
-		toast(
-			{
-				kind: "success",
-				message: pending ? "Remote Control turned on." : "Remote Control turned off.",
-			},
-		);
-	}, [pending, state, sessionId, toast]);
-	const onToggle = (on: boolean) =>
-	{
-		if (pendingToggles.has(sessionId)) return;
-		setPendingToggle(sessionId, on);
-		send(sessionId, on).then(
-			() =>
-			{
-				armPendingTimeout(sessionId);
-			},
-			(error: unknown) =>
-			{
-				setPendingToggle(sessionId, null);
-				toast(
-					error instanceof HerdrRequestError && error.status === 409
-						?
-							{
-								kind: "warning",
-								message: error.message,
-							}
-						:
-							{
-								kind: "error",
-								message: TOGGLE_FAILED,
-							},
-				);
-			},
-		);
-	};
+	const {pending, onToggle} = useRemoteControlToggle(sessionId, state, send);
 	return (
 		<RemoteControlRow
 			state={state}

@@ -114,6 +114,7 @@ import
 	LaunchOptionsSchema,
 	type LaunchPermissionMode,
 	MORE_MODELS,
+	modelLabel,
 	PRIMARY_MODELS,
 	type ModeBadgeSettings,
 } from "../lib/launch-options";
@@ -128,8 +129,21 @@ import
 	slashCommandRowKey,
 	stepSlashHighlight,
 	skillChipArgumentHint,
+	slashMatcherCandidate,
 	slashTrigger,
 } from "../lib/slash-commands";
+import
+{
+	buildCompactSlashMenu,
+	COMPACT_SLASH_MENU_HOST,
+	COMPACT_SLASH_MENU_LABELS,
+	compactSlashHostRows,
+	NO_MATCH_LABEL,
+	type SlashEnvironment,
+	type SlashRemoteControl,
+	SUBMENU_OPEN_DELAY_MS,
+} from "../lib/slash-compact-menu";
+import {recordSlashUsage, SLASH_USAGE_ACCOUNT, slashUsageScores} from "../lib/slash-usage";
 import {nearestCommand} from "../lib/command-suggest";
 import {useBackgroundTasksOpener} from "./background-tasks-opener-context";
 import {ComposerCommandNotice} from "./composer-command-notice";
@@ -155,7 +169,7 @@ import {ToastContext} from "./toast-context";
 import {fileMentionOptionId, mentionPopupId} from "./file-mention-option-id";
 import {emojiOptionId} from "./emoji-option-id";
 import {preloadComposerSurfaces, useComposerSurfaces} from "./composer-surfaces-entry";
-import {slashCommandOptionId} from "./slash-command-option-id";
+import {slashCommandOptionId, slashSubmenuOptionId} from "./slash-command-option-id";
 import {Icon} from "./ui/icon";
 import {Spinner} from "./ui/spinner";
 import {Tooltip} from "./ui/tooltip";
@@ -369,6 +383,12 @@ interface ComposerProps
 	slashCommandsLoading?: boolean | undefined;
 	/** Called each time a "/" trigger opens the menu, so a failed command list can retry. */
 	onSlashMenuOpen?: (() => void) | undefined;
+	/** Upstream's `compactSlashMenuHost` gate: the grouped "/" menu with host rows (defaults to `COMPACT_SLASH_MENU_HOST`). */
+	compactSlashMenu?: boolean | undefined;
+	/** The grouped menu's Remote Control row; omitted (null) when the session has no live pane to toggle it in. */
+	slashRemoteControl?: SlashRemoteControl | null | undefined;
+	/** The home draft's grouped-menu Environment row. */
+	slashEnvironment?: SlashEnvironment | undefined;
 	/** Settings allow launching in Bypass permissions mode. */
 	bypassPermissionsAllowed?: boolean | undefined;
 	/** What the Mode menu's Default / Recommended badges read. */
@@ -1186,6 +1206,9 @@ export function Composer({
 	slashMenuHeader,
 	slashCommandsLoading = false,
 	onSlashMenuOpen,
+	compactSlashMenu = COMPACT_SLASH_MENU_HOST,
+	slashRemoteControl = null,
+	slashEnvironment,
 	bypassPermissionsAllowed = false,
 	modeBadges,
 	permissionCwd,
@@ -1315,6 +1338,8 @@ export function Composer({
 		}
 	}
 	const [openMenu, setOpenMenu] = useState<ChinMenu | null>(null);
+	// The grouped "/" menu's Model row while the model menu is open beside it (upstream's model flyout).
+	const [modelFlyout, setModelFlyout] = useState<HTMLElement | null>(null);
 	const chinPickRef = useRef<ChinPickHandle>(null);
 	// Upstream's literal error band: kept while typing, cleared by Dismiss or the next submit.
 	const [commandError, setCommandError] = useState<
@@ -1653,7 +1678,15 @@ export function Composer({
 	);
 
 	// Upstream disables the "/" and "@" suggestions in bash mode.
-	const slash = bashMode ? null : slashTrigger(prompt, caret);
+	const slash = bashMode
+		? null
+		: slashTrigger(
+				prompt,
+				caret,
+				{
+					midMessageNeedsName: !compactSlashMenu,
+				},
+			);
 	// The menu bolds and gates on the trimmed query, as upstream's menu context trims `resetKey` (`Nb`); ranking and
 	// `slashKey` keep the raw query so a trailing space still resets the highlight and can close on an exact head.
 	const query = slash?.query.trim() ?? null;
@@ -1679,31 +1712,90 @@ export function Composer({
 		if (slashTyped) onSlashMenuOpenRef.current?.();
 	}, [slashTyped]);
 	const slashActive = slash !== null && !slashDismissed;
-	const matches = slashActive ? filterSlashCommands(slashCommands, slash.query) : [];
+	// Upstream snapshots the usage scores once per menu mount (a pick closes the menu, so it re-reads after one), and
+	// reads them only under the grouped menu's gate.
+	const [slashPicks, setSlashPicks] = useState(0);
+	const slashUsage = useMemo(
+		() => (compactSlashMenu && slashTyped ? slashUsageScores(SLASH_USAGE_ACCOUNT) : undefined),
+		// oxlint-disable-next-line react-hooks/exhaustive-deps -- slashPicks re-reads the store after a pick
+		[compactSlashMenu, slashTyped, slashPicks],
+	);
+	const matches = slashActive
+		? filterSlashCommands(
+				slashCommands,
+				slash.query,
+				{
+					getScoreBoost: slashUsage === undefined ? undefined : (candidate) => slashUsage(candidate.usageKey),
+				},
+			)
+		: [];
 	const slashLoading = slashActive && slashCommandsLoading;
-	const slashOpen = slashLoading || matches.length > 0;
+	const slashHostRows = compactSlashMenu
+		? compactSlashHostRows(
+				{
+					model:
+						chin === undefined
+							? null
+							: chinLaunchOptions.model === undefined
+								? chin.model
+								: modelLabel(chinLaunchOptions.model),
+					inSession: variant === "session",
+					environment: slashEnvironment,
+					remoteControl: slashRemoteControl,
+				},
+			)
+		: [];
+	// Upstream skips the grouped view while the command list is unknown (`sn`).
+	const slashGrouped =
+		compactSlashMenu && slashActive && !slashLoading && slash.query === "" && slashCommands.length > 0;
 	const slashItems: SlashMenuItem[] = slashLoading
 		? [
 				{
 					type: "loading",
 				},
 			]
-		: [
-				// Upstream ranks a typed query over command rows only (`zq` drops headers), so headers lead the bare `/` alone.
-				...(slashMenuHeader === undefined || query !== ""
-					? []
-					: [
-							{
-								type: "section-header" as const,
-								label: slashMenuHeader,
-							},
-						]),
-				...matches.map((command) => (
-				{
-					type: "command" as const,
-					command,
-				})),
-			];
+		: slashGrouped
+			? buildCompactSlashMenu(
+					{
+						commands: slashCommands,
+						notices: slashMenuHeader === undefined ? [] : [slashMenuHeader],
+						hostRows: slashHostRows,
+						inSession: variant === "session",
+						usageScore: (command) => slashUsage?.(slashMatcherCandidate(command).usageKey) ?? 0,
+						// Claude Code's bundled skills aren't in the local list, so every skill is the user's own.
+						isOwnSkill: () => true,
+						labels: COMPACT_SLASH_MENU_LABELS,
+					},
+				)
+			: compactSlashMenu &&
+				  slashActive &&
+				  matches.length === 0 &&
+				  slash.query !== "" &&
+				  !/[\s/]/.test(slash.query)
+				? [
+						// Upstream's gated no-match header keeps the menu open instead of closing it.
+						{
+							type: "section-header",
+							label: NO_MATCH_LABEL,
+						},
+					]
+				: [
+						// Upstream ranks a typed query over command rows only (`zq` drops headers), so headers lead the bare `/` alone.
+						...(slashMenuHeader === undefined || query !== ""
+							? []
+							: [
+									{
+										type: "section-header" as const,
+										label: slashMenuHeader,
+									},
+								]),
+						...matches.map((command) => (
+						{
+							type: "command" as const,
+							command,
+						})),
+					];
+	const slashOpen = slashActive && slashItems.length > 0;
 	// A mid-line slash opens with nothing highlighted (-1), as upstream's `startsUnselected` does.
 	const highlighted =
 		highlight.key === slashKey
@@ -1713,6 +1805,40 @@ export function Composer({
 				: -1;
 	const highlightedItem = slashItems[highlighted];
 	const highlightedCommand = highlightedItem?.type === "command" ? highlightedItem.command : undefined;
+	// Upstream `Nb`'s `submenuOpen` / `submenuActiveIndex`: a nested list opens 150ms after its row is highlighted.
+	const [submenu, setSubmenu] = useState<
+	{
+		key: string | null;
+		label: string;
+		highlighted: number;
+	} | null>(null);
+	const submenuRow =
+		highlightedItem?.type === "submenu" && highlightedItem.flyout === undefined ? highlightedItem : undefined;
+	const openSubmenu =
+		submenuRow !== undefined && submenu?.key === slashKey && submenu.label === submenuRow.label ? submenu : null;
+	const insideSubmenu = openSubmenu !== null && openSubmenu.highlighted >= 0;
+	const submenuItems = submenuRow?.items ?? [];
+	const submenuCommandItem = insideSubmenu ? submenuItems[openSubmenu.highlighted] : undefined;
+	const submenuCommand = submenuCommandItem?.type === "command" ? submenuCommandItem.command : undefined;
+	const pendingSubmenuLabel = openSubmenu === null ? (submenuRow?.label ?? null) : null;
+	useEffect(() =>
+	{
+		if (pendingSubmenuLabel === null) return undefined;
+		const timer = setTimeout(() =>
+		{
+			setSubmenu(
+				{
+					key: slashKey,
+					label: pendingSubmenuLabel,
+					highlighted: -1,
+				},
+			);
+		}, SUBMENU_OPEN_DELAY_MS);
+		return () =>
+		{
+			clearTimeout(timer);
+		};
+	}, [pendingSubmenuLabel, slashKey]);
 	// Upstream's `te.current`: the row the user arrowed onto (hover doesn't count), cleared whenever the query changes.
 	const [arrowedRow, setArrowedRow] = useState<string | null>(null);
 	const [arrowedSlashKey, setArrowedSlashKey] = useState(slashKey);
@@ -2089,6 +2215,11 @@ export function Composer({
 	)
 	{
 		if (slash === null) return;
+		if (compactSlashMenu)
+		{
+			recordSlashUsage(SLASH_USAGE_ACCOUNT, slashMatcherCandidate(command).usageKey);
+			setSlashPicks((picks) => picks + 1);
+		}
 		const inserted = `/${command.name} `;
 		const next = slash.start + inserted.length;
 		pendingCaretRef.current = next;
@@ -2110,37 +2241,130 @@ export function Composer({
 		textareaRef.current?.focus();
 	}
 
+	/** Moves the main list's highlight; a submenu closes when its row loses the highlight. */
+	function highlightSlashRow(index: number)
+	{
+		setHighlight(
+			{
+				key: slashKey,
+				index,
+			},
+		);
+		setSubmenu(null);
+	}
+
+	/** Enters an open submenu row's nested list, or opens a flyout row's menu beside it. */
+	function enterSlashSubmenu(index: number, row?: HTMLElement)
+	{
+		const item = slashItems[index];
+		if (item?.type !== "submenu") return;
+		if (item.flyout === "model")
+		{
+			const anchor = row ?? document.getElementById(slashCommandOptionId(slashMenuId, index));
+			if (anchor === null) return;
+			setModelFlyout(anchor);
+			setOpenMenu("model");
+		}
+		else if (item.flyout === "environment")
+		{
+			setSlashDismissed(true);
+			slashEnvironment?.open?.();
+		}
+		else
+		{
+			setSubmenu(
+				{
+					key: slashKey,
+					label: item.label,
+					highlighted: firstSlashHighlight(item.items),
+				},
+			);
+		}
+	}
+
+	/** A click or Enter on a non-command main row: a submenu opens and is entered, a toggle flips and stays open. */
+	function activateSlashRow(index: number, row?: HTMLElement)
+	{
+		const item = slashItems[index];
+		if (item?.type === "submenu") enterSlashSubmenu(index, row);
+		else if (item?.type === "toggle" && !item.disabled) slashRemoteControl?.toggle?.();
+	}
+
 	function handleSlashKey(e: React.KeyboardEvent): boolean
 	{
 		if (!slashOpen) return false;
+		const rtl = document.documentElement.dir === "rtl";
+		const enterKey = rtl ? "ArrowLeft" : "ArrowRight";
+		const leaveKey = rtl ? "ArrowRight" : "ArrowLeft";
 		const move = e.key === "ArrowDown" ? 1 : e.key === "ArrowUp" ? -1 : 0;
-		if (move !== 0)
+		if (move !== 0 && insideSubmenu)
 		{
-			const index = stepSlashHighlight(slashItems, highlighted, move);
-			setHighlight(
+			setSubmenu(
 				{
-					key: slashKey,
-					index,
+					...openSubmenu,
+					highlighted: stepSlashHighlight(submenuItems, openSubmenu.highlighted, move),
 				},
 			);
+			setArrowedRow(null);
+		}
+		else if (move !== 0)
+		{
+			const index = stepSlashHighlight(slashItems, highlighted, move);
+			highlightSlashRow(index);
 			const item = slashItems[index];
 			setArrowedRow(item?.type === "command" ? slashCommandRowKey(item.command) : null);
 		}
-		else if ((e.key === "Enter" || e.key === "Tab") && !e.shiftKey)
+		else if (e.key === enterKey)
 		{
-			const command = highlightedCommand;
-			// Nothing highlighted: upstream closes the menu and lets the key through (Enter sends).
-			if (command === undefined)
-			{
-				setSlashDismissed(true);
-				return false;
-			}
-			acceptSlashCommand(
-				command,
+			// Upstream enters a plain submenu only once it is open; a flyout row opens its menu at once locally.
+			const flyout = highlightedItem?.type === "submenu" && highlightedItem.flyout !== undefined;
+			if (!flyout && (openSubmenu === null || insideSubmenu)) return false;
+			enterSlashSubmenu(highlighted);
+		}
+		else if (e.key === leaveKey)
+		{
+			if (!insideSubmenu) return false;
+			setSubmenu(
 				{
-					explicit: arrowedRow === slashCommandRowKey(command),
+					...openSubmenu,
+					highlighted: -1,
 				},
 			);
+		}
+		else if ((e.key === "Enter" || e.key === "Tab") && !e.shiftKey)
+		{
+			if (insideSubmenu)
+			{
+				if (submenuCommand !== undefined)
+				{
+					acceptSlashCommand(
+						submenuCommand,
+						{
+							explicit: true,
+						},
+					);
+				}
+			}
+			else if (highlightedItem !== undefined && highlightedItem.type !== "command")
+			{
+				activateSlashRow(highlighted);
+			}
+			else
+			{
+				const command = highlightedCommand;
+				// Nothing highlighted: upstream closes the menu and lets the key through (Enter sends).
+				if (command === undefined)
+				{
+					setSlashDismissed(true);
+					return false;
+				}
+				acceptSlashCommand(
+					command,
+					{
+						explicit: arrowedRow === slashCommandRowKey(command),
+					},
+				);
+			}
 		}
 		else if (e.key === "Escape")
 		{
@@ -3162,45 +3386,66 @@ export function Composer({
 	const queuedItems = queue?.items;
 	const laterItems = useMemo(() => queuedForLater(queuedItems ?? []), [queuedItems]);
 	const parkedItems = useMemo(() => parkedPrompts(queuedItems ?? []), [queuedItems]);
-	const launchControls = useMemo<ChinLaunchControls>(
-		() => (
-		{
+	const launchControls = useMemo<ChinLaunchControls>(() =>
+	{
+		const apply =
+			live === undefined
+				? (setHeldLaunchOptions ??
+					((options: LaunchOptions) =>
+					{
+						setLaunch(
+							{
+								draftKey,
+								options,
+							},
+						);
+					}))
+				: (options: LaunchOptions) => void live.apply(options);
+		return {
 			launchOptions: chinLaunchOptions,
+			// A model picked from the flyout closes the "/" menu too (upstream's `onDone`).
 			onLaunchOptionsChange:
-				live === undefined
-					? (setHeldLaunchOptions ??
-						((options) =>
+				modelFlyout === null
+					? apply
+					: (options) =>
 						{
-							setLaunch(
-								{
-									draftKey,
-									options,
-								},
-							);
-						}))
-					: (options) => void live.apply(options),
+							if (options.model !== chinLaunchOptions.model) setSlashDismissed(true);
+							apply(options);
+						},
 			confirmEffortChange: live !== undefined,
 			openMenu,
-			onOpenMenuChange: setOpenMenu,
+			onOpenMenuChange: (menu) =>
+			{
+				setOpenMenu(menu);
+				if (menu === null) setModelFlyout(null);
+			},
+			modelFlyout:
+				modelFlyout === null
+					? null
+					:
+						{
+							anchor: modelFlyout,
+							finalFocus: textareaRef,
+						},
 			bypassPermissionsAllowed,
 			modeBadges,
 			permissionWorkspace: consentWorkspaceKey(permissionCwd),
 			onPermissionModePick,
 			tryAutoCoach,
-		}),
-		[
-			chinLaunchOptions,
-			live,
-			setHeldLaunchOptions,
-			draftKey,
-			openMenu,
-			bypassPermissionsAllowed,
-			modeBadges,
-			permissionCwd,
-			onPermissionModePick,
-			tryAutoCoach,
-		],
-	);
+		};
+	}, [
+		chinLaunchOptions,
+		live,
+		setHeldLaunchOptions,
+		draftKey,
+		openMenu,
+		modelFlyout,
+		bypassPermissionsAllowed,
+		modeBadges,
+		permissionCwd,
+		onPermissionModePick,
+		tryAutoCoach,
+	]);
 
 	/** Upstream `Cq` is an atom: Backspace after it (or Delete before it) selects it instead of eating a character. */
 	function handleChipKey(e: React.KeyboardEvent<HTMLTextAreaElement>): boolean
@@ -3574,15 +3819,23 @@ export function Composer({
 							items={slashItems}
 							query={query ?? ""}
 							highlighted={highlighted}
-							onHighlight={(index) =>
+							compactHost={compactSlashMenu}
+							grouped={slashGrouped}
+							submenu={openSubmenu}
+							onHighlight={highlightSlashRow}
+							onSubmenuHighlight={(index) =>
 							{
-								setHighlight(
-									{
-										key: slashKey,
-										index,
-									},
-								);
+								if (openSubmenu !== null)
+								{
+									setSubmenu(
+										{
+											...openSubmenu,
+											highlighted: index,
+										},
+									);
+								}
 							}}
+							onActivate={activateSlashRow}
 							onAccept={(command) =>
 							{
 								acceptSlashCommand(
@@ -3822,9 +4075,11 @@ export function Composer({
 						}
 						aria-activedescendant={
 							slashOpen
-								? highlighted === -1
-									? undefined
-									: slashCommandOptionId(slashMenuId, highlighted)
+								? insideSubmenu
+									? slashSubmenuOptionId(slashMenuId, openSubmenu.highlighted)
+									: highlighted === -1
+										? undefined
+										: slashCommandOptionId(slashMenuId, highlighted)
 								: mentionOpen && !mentionAlone
 									? fileMentionOptionId(mentionMenuId, mentionHighlighted)
 									: emojiOpen

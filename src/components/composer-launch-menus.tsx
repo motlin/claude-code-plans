@@ -1,5 +1,5 @@
 import {Info, TriangleAlert} from "lucide-react";
-import type {ComponentProps, ReactElement} from "react";
+import type {ComponentProps, ReactElement, RefObject} from "react";
 
 import {useShortcutKeys} from "../hooks/use-shortcut";
 
@@ -217,6 +217,20 @@ function ModeRowLabel({item}: {item: ModeMenuItem})
 	);
 }
 
+/** The grouped "/" menu's Model row the model menu opens beside (upstream's `MCe` flyout host). */
+export interface ModelMenuFlyout
+{
+	anchor: HTMLElement;
+	finalFocus: RefObject<HTMLElement | null>;
+}
+
+/* Upstream's nested slash popup offsets: 8px past the row, 4px above its top. */
+const FLYOUT_OFFSET =
+{
+	x: 8,
+	y: -4,
+};
+
 const FABLE_TOOLTIP = "Fable is the most capable model and draws down usage much faster than Opus";
 
 /**
@@ -375,8 +389,11 @@ export function ModelMenu({
 	catalog = DEFAULT_MODEL_CATALOG,
 	restrictionFor,
 	defaultModel = null,
+	flyout = null,
 }: ControlledMenuProps &
 {
+	/** Opened from the grouped "/" menu's Model row: anchored beside that row, handing focus back to the editor. */
+	flyout?: ModelMenuFlyout | null;
 	/** The rows, with any `[1m]` twins (`modelRowsFor`). */
 	catalog?: ModelCatalog;
 	/** Why settings' `availableModels` leaves a row out, or undefined when it may run. */
@@ -521,8 +538,22 @@ export function ModelMenu({
 				</Tooltip>
 			)}
 			<MenuContent
-				side="top"
-				align="end"
+				{...(flyout === null
+					?
+						{
+							side: "top" as const,
+							align: "end" as const,
+						}
+					:
+						{
+							side: "inline-end" as const,
+							align: "start" as const,
+							sideOffset: FLYOUT_OFFSET.x,
+							alignOffset: FLYOUT_OFFSET.y,
+							anchor: flyout.anchor,
+							finalFocus: flyout.finalFocus,
+							structurallyAnchored: true,
+						})}
 				sheetSize="base"
 				cds="ModelSelector"
 				{...(surface === "bar"

@@ -71,7 +71,13 @@ const ALIASED_COMMANDS: SlashCommand[] = [
 function setup(onSend = vi.fn<(prompt: string) => void>(), commands = COMMANDS, {compact = false} = {})
 {
 	render(
-		<Composer variant="session" draftKey="session-alice" onSend={onSend} slashCommands={commands} />,
+		<Composer
+			compactSlashMenu={false}
+			variant="session"
+			draftKey="session-alice"
+			onSend={onSend}
+			slashCommands={commands}
+		/>,
 		compact
 			?
 				{
@@ -2150,6 +2156,7 @@ describe("Composer slash commands", () =>
 		{
 			render(
 				<Composer
+					compactSlashMenu={false}
 					variant="session"
 					draftKey="session-alice"
 					onSend={vi.fn<(prompt: string) => void>()}
@@ -2530,6 +2537,7 @@ describe("Composer slash commands", () =>
 			render(
 				<QueryClientProvider client={queryClient}>
 					<Composer
+						compactSlashMenu={false}
 						variant="session"
 						draftKey="session-alice"
 						onSend={() =>
@@ -2686,7 +2694,13 @@ describe("Composer host commands", () =>
 		const onSend = vi.fn<(prompt: string) => void>();
 		render(
 			<ToastProvider>
-				<Composer variant="session" draftKey="session-alice" onSend={onSend} {...extra} />
+				<Composer
+					compactSlashMenu={false}
+					variant="session"
+					draftKey="session-alice"
+					onSend={onSend}
+					{...extra}
+				/>
 			</ToastProvider>,
 		);
 		const textarea = screen.getByRole<HTMLTextAreaElement>(
@@ -3493,6 +3507,7 @@ describe("Composer host commands", () =>
 			render(
 				<ToastProvider>
 					<Composer
+						compactSlashMenu={false}
 						variant="session"
 						draftKey="session-alice"
 						onSend={onSend}
@@ -3688,6 +3703,7 @@ describe("Composer host commands", () =>
 		render(
 			<ToastProvider>
 				<Composer
+					compactSlashMenu={false}
 					variant="session"
 					draftKey="session-alice"
 					onSend={onSend}

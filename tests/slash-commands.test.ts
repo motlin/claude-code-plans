@@ -844,6 +844,32 @@ describe("filterSlashCommands", () =>
 		expect(filterSlashCommands(COMMANDS, "zzz")).toStrictEqual([]);
 	});
 
+	it("breaks ties by the usage boost the grouped menu passes (upstream getUsageScores)", () =>
+	{
+		const twins: SlashCommand[] = [
+			{
+				name: "deploy-a",
+				description: "",
+				source: "personal-skill",
+			},
+			{
+				name: "deploy-b",
+				description: "",
+				source: "personal-skill",
+			},
+		];
+		expect(filterSlashCommands(twins, "deploy").map((c) => c.name)).toStrictEqual(["deploy-a", "deploy-b"]);
+		expect(
+			filterSlashCommands(
+				twins,
+				"deploy",
+				{
+					getScoreBoost: (candidate) => (candidate.usageKey === "deploy-b" ? 2 : 0),
+				},
+			).map((c) => c.name),
+		).toStrictEqual(["deploy-b", "deploy-a"]);
+	});
+
 	it("ranks the trimmed head while only whitespace follows it, and closes on an argument or an exact head (upstream spaceEndsCommand)", () =>
 	{
 		const cmds: SlashCommand[] = [
@@ -1155,6 +1181,39 @@ describe("highlightMatches", () =>
 describe("slashTrigger", () =>
 {
 	const at = (prompt: string) => slashTrigger(prompt, prompt.length);
+
+	it("opens a bare mid-message slash at once only under the grouped menu's gate (midMessageNeedsName false)", () =>
+	{
+		expect([
+			slashTrigger("hi /", 4),
+			slashTrigger(
+				"hi /",
+				4,
+				{
+					midMessageNeedsName: false,
+				},
+			),
+			slashTrigger(
+				"hi /-",
+				5,
+				{
+					midMessageNeedsName: false,
+				},
+			),
+		]).toStrictEqual([
+			null,
+			{
+				start: 3,
+				query: "",
+				atStart: false,
+			},
+			{
+				start: 3,
+				query: "-",
+				atStart: false,
+			},
+		]);
+	});
 
 	it("opens selected at the start of the prompt while the first token is being typed", () =>
 	{

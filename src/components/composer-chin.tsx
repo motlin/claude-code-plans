@@ -52,7 +52,7 @@ import {settingsModelMenu} from "../lib/retry-model-items";
 import {useShortcutKeys} from "../hooks/use-shortcut";
 import {effortLevelLabels} from "../lib/schema-choices";
 import {ConnectorsLoadingItem} from "./composer-connectors-loading";
-import {type ChinMenu, type ChinSurface, ModeMenu, ModelMenu} from "./composer-launch-menus";
+import {type ChinMenu, type ChinSurface, ModeMenu, ModelMenu, type ModelMenuFlyout} from "./composer-launch-menus";
 import {type TryAutoCoachOffer, tryAutoCoachEligible} from "../lib/try-auto-coach";
 import
 {
@@ -384,6 +384,8 @@ export interface ChinLaunchControls
 	confirmEffortChange?: boolean;
 	/** The home draft's try-auto coach mark offer; the mark shows once the Mode pick is an explicit Manual. */
 	tryAutoCoach?: TryAutoCoachOffer | undefined;
+	/** The grouped "/" menu's Model row: the model menu opens beside it instead of above its own trigger. */
+	modelFlyout?: ModelMenuFlyout | null | undefined;
 }
 
 /** A `/effort <level>`, `/model <id>` or `/fast` sent from the composer, applied the way a menu pick is. */
@@ -595,6 +597,7 @@ export const ComposerChin = memo(function ComposerChin({
 			fastMode={fastMode}
 			fastModeBlocked={fastModeBlocked}
 			onFastModeChange={selectFastMode}
+			flyout={launch.modelFlyout ?? null}
 		/>
 	);
 	const modeMenu = (

@@ -132,6 +132,7 @@ export function HomeComposer({
 		| null
 	>(null);
 	const rootRef = useRef<HTMLDivElement>(null);
+	const projectPickerRef = useRef<HTMLButtonElement>(null);
 	// Upstream keeps the failed start's display error in memory only: a reload or remount drops the card.
 	const [startFailure, setStartFailure] = useState<StartFailure | null>(null);
 	const mountedRef = useRef(true);
@@ -510,8 +511,25 @@ export function HomeComposer({
 				}
 				chin={chin}
 				environment={
-					<ProjectPicker projects={startProjects} selected={project} onSelect={setChosenProjectId} />
+					<ProjectPicker
+						projects={startProjects}
+						selected={project}
+						onSelect={setChosenProjectId}
+						triggerRef={projectPickerRef}
+					/>
 				}
+				slashEnvironment={
+				{
+					value: project?.name ?? "Select project…",
+					// Upstream's Environment flyout opens the env bar's picker; with one choice the row is fixed.
+					open:
+						startProjects.length > 1
+							? () =>
+								{
+									projectPickerRef.current?.click();
+								}
+							: null,
+				}}
 				worktreeToggle={
 					worktreeShown && !launching ? (
 						<WorktreeToggleChip

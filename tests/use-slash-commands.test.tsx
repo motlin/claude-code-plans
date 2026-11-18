@@ -34,6 +34,7 @@ function Harness()
 	const slash = useSlashCommands(undefined);
 	return (
 		<Composer
+			compactSlashMenu={false}
 			variant="session"
 			draftKey="session-alice"
 			onSend={() =>
@@ -256,6 +257,7 @@ describe("useSlashCommands", () =>
 			const slash = useSlashCommands(undefined, false);
 			return (
 				<Composer
+					compactSlashMenu={false}
 					variant="session"
 					draftKey="session-alice"
 					onSend={() =>
@@ -354,6 +356,7 @@ describe("useSlashCommands", () =>
 			const slash = useSlashCommands(undefined, true, session);
 			return (
 				<Composer
+					compactSlashMenu={false}
 					variant="session"
 					draftKey="k"
 					onSend={() =>

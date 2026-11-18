@@ -46,12 +46,17 @@ export function slashCommandRowKey(command: SlashCommand): string
 	return command.shadowsHost === true ? `${command.name}:cli` : command.name;
 }
 
+/** A host row that opens one of the composer's own menus beside it (upstream's `renderFlyout` submenus). */
+export type SlashFlyout = "model" | "environment";
+
 /** One row of the "/" popup, mirroring upstream's `SlashCommandMenuPopupBody` item types. */
 export type SlashMenuItem =
 	|
 	  {
 			type: "command";
 			command: SlashCommand;
+			/** Upstream's relabeled row in the grouped menu ("Compact session", "Manage skills"). */
+			label?: string;
 	  }
 	|
 	  {
@@ -61,20 +66,47 @@ export type SlashMenuItem =
 	|
 	  {
 			type: "separator";
+			/** Upstream's `compact-<n>` key between the grouped menu's groups. */
+			label?: string;
 	  }
 	|
 	  {
 			type: "loading";
+	  }
+	|
+	  {
+			/** A row that opens a nested list (`items`), or with `flyout` one of the composer's own menus. */
+			type: "submenu";
+			label: string;
+			items: readonly SlashMenuItem[];
+			/** The trailing value (upstream's `Dr` suffix), such as the current model. */
+			value?: string;
+			flyout?: SlashFlyout;
+	  }
+	|
+	  {
+			/** Upstream's `toggle` row: a menuitemcheckbox with an inert small Switch that leaves the menu open. */
+			type: "toggle";
+			label: string;
+			checked: boolean;
+			disabled: boolean;
+			subtitle?: string;
+	  }
+	|
+	  {
+			/** Upstream's host `button` row with a trailing value; `undimmed` keeps a disabled row at full ink. */
+			type: "host";
+			label: string;
+			value: string;
+			disabled: boolean;
+			undimmed: boolean;
+			subtitle?: string;
 	  };
 
 /** Upstream's `bB`: ↑/↓ skip headers, separators and the loading row. */
-function isSelectableSlashItem(item: SlashMenuItem): item is
+function isSelectableSlashItem(item: SlashMenuItem): boolean
 {
-	type: "command";
-	command: SlashCommand;
-}
-{
-	return item.type === "command";
+	return item.type === "command" || item.type === "submenu" || item.type === "toggle" || item.type === "host";
 }
 
 /**
@@ -714,7 +746,15 @@ function isExactSlashHead(commands: readonly SlashCommand[], head: string): bool
  * list order; otherwise upstream's `CommandMatcher` ranks the trimmed, lowercased query. A trailing space keeps
  * ranking the head; a second word or an exact name/alias head closes.
  */
-export function filterSlashCommands(commands: readonly SlashCommand[], query: string): SlashCommand[]
+export function filterSlashCommands(
+	commands: readonly SlashCommand[],
+	query: string,
+	options?:
+	{
+		/** Upstream's `getUsageScores`, read only under the grouped menu's gate. */
+		getScoreBoost?: ((candidate: SlashMatcherCandidate) => number) | undefined;
+	},
+): SlashCommand[]
 {
 	if (query === "") return [...commands];
 	if (query.length > MAX_SLASH_QUERY_LENGTH) return [];
@@ -728,7 +768,14 @@ export function filterSlashCommands(commands: readonly SlashCommand[], query: st
 		matcher = new CommandMatcher(commands.map(slashMatcherCandidate));
 		slashMatchers.set(commands, matcher);
 	}
-	return matcher.search(needle).map((candidate) => candidate.command);
+	return matcher
+		.search(
+			needle,
+			{
+				getScoreBoost: options?.getScoreBoost,
+			},
+		)
+		.map((candidate) => candidate.command);
 }
 
 /** The first alias that starts with the query, which upstream appends to the row as `(alias)`. */
@@ -801,7 +848,17 @@ export interface SlashTrigger
  * whitespace (`Pl`/`yl`) and opens selected (`$5`). Only a plain space or a line start may precede the `/` (tiptap
  * `allowedPrefixes:[" "]`), and a query may not start with whitespace or span a line.
  */
-export function slashTrigger(prompt: string, caret: number): SlashTrigger | null
+export function slashTrigger(
+	prompt: string,
+	caret: number,
+	{
+		midMessageNeedsName = true,
+	}:
+	{
+		/** Upstream's `midMessageNeedsName`, false under the grouped menu's gate: a bare mid-message `/` opens at once. */
+		midMessageNeedsName?: boolean;
+	} = {},
+): SlashTrigger | null
 {
 	if (/^\S/.test(prompt.slice(caret))) return null;
 	/*
@@ -814,7 +871,7 @@ export function slashTrigger(prompt: string, caret: number): SlashTrigger | null
 	if (/^\s/.test(query)) return null;
 	const start = caret - query.length - 1;
 	const atStart = !/[^\s\u200b-\u200d\u2060]/.test(prompt.slice(0, start));
-	if (!atStart && !/^[\p{L}\p{N}_]/u.test(query)) return null;
+	if (!atStart && midMessageNeedsName && !/^[\p{L}\p{N}_]/u.test(query)) return null;
 	return {
 		start,
 		query,

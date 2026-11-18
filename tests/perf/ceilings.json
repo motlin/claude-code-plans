@@ -127,10 +127,10 @@
 	},
 	"client.composer.home.slashMenu.componentsPerKeystroke":
 	{
-		"ceiling": 9,
+		"ceiling": 10,
 		"unit": "count",
 		"tolerance": 0,
-		"reason": "send-cell face focus handoff (2026-11-17): the Send and Stop faces now render inside upstream's SendFaceHandoff wrapper (td, a span.contents holding the keyboard handoff hook), one more distinct component in the census when the Send face mounts. Went from 8 to 9.",
+		"reason": "grouped slash menu (2026-11-17, upstream-sync M6 slash-compact-host-grouped-menu): the bare / now opens upstream's gated grouped menu, whose All skills / Model / All commands submenu rows draw the cds Icon CaretRight, one more distinct component in the census. Went from 9 to 10.",
 		"raisedAt": "2026-11-17"
 	},
 	"client.composer.home.slashMenu.localStorageWrites":
@@ -229,10 +229,10 @@
 	},
 	"client.composer.session.slashMenu.componentsPerKeystroke":
 	{
-		"ceiling": 9,
+		"ceiling": 10,
 		"unit": "count",
 		"tolerance": 0,
-		"reason": "send-cell face focus handoff (2026-11-17): the Send and Stop faces now render inside upstream's SendFaceHandoff wrapper (td, a span.contents holding the keyboard handoff hook), one more distinct component in the census when the Send face mounts. Went from 8 to 9.",
+		"reason": "grouped slash menu (2026-11-17, upstream-sync M6 slash-compact-host-grouped-menu): the bare / now opens upstream's gated grouped menu, whose All skills / Model / All commands submenu rows draw the cds Icon CaretRight, one more distinct component in the census. Went from 9 to 10.",
 		"raisedAt": "2026-11-17"
 	},
 	"client.composer.session.slashMenu.localStorageWrites":

@@ -28,6 +28,7 @@ import {usageQueryOptions} from "../lib/api/usage";
 import {focusComposer, getComposerText, refillComposer, refillRejectedSend, takeBackSend} from "../lib/context-attach";
 import {rewindStepsBack, rewindTurns} from "../lib/rewind-picker";
 import {SessionRailSlot} from "./session-rail/session-rail-slot";
+import {useSlashRemoteControl} from "../hooks/use-remote-control-toggle";
 import
 {
 	SessionRailFitContext,
@@ -1218,6 +1219,13 @@ function SessionView({
 		[toast],
 	);
 	const promptBehavior = getSessionPromptBehavior(sessionId, isActive, herdr);
+	const slashRemoteControl = useSlashRemoteControl(
+		{
+			sessionId,
+			canToggle: promptBehavior.hasLivePane && herdr.writesEnabled,
+			working: workingMarkerState.status !== "idle",
+		},
+	);
 	const liveHerdrPrompt = useLiveHerdrPrompt(
 		sessionId,
 		endIndex,
@@ -3089,6 +3097,7 @@ function SessionView({
 																		chin={composerChin}
 																		usageContext={usageContext}
 																		{...slashMenu}
+																		slashRemoteControl={slashRemoteControl}
 																		bypassPermissionsAllowed={
 																			bypassPermissionsAllowed
 																		}
