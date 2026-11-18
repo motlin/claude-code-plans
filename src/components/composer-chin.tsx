@@ -76,6 +76,7 @@ import {UsagePopoverLimitRow} from "./usage-limit-row";
 import type {UsageRingContext, UsagePopoverContextSection} from "./usage-popover-context";
 import {loadedUsagePopoverContext, preloadUsagePopoverContext} from "./usage-popover-context-loader";
 import {useRenameAfterMenuClose} from "./use-rename-after-menu-close";
+import {USAGE_BARS_CROSSFADE} from "../lib/usage-bars-grow";
 import {UsageBars} from "./usage-bars";
 
 const LazyTryAutoCoachMark = lazy(async () =>
@@ -154,7 +155,7 @@ function UsagePopoverBody({
 				{usage !== null && usageRingMode(usage) === "context" ? (
 					<ContextSection usage={usage} {...context} />
 				) : (
-					<UsageBars surface="popover">
+					<UsageBars surface="popover" enabled={USAGE_BARS_CROSSFADE}>
 						<div className="flex flex-col gap-1.5">
 							<div
 								data-usage-popover-header

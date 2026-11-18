@@ -182,7 +182,7 @@ describe("UsagePanel", () =>
 			{
 				surface: "usage_page",
 				className: "contents",
-				crossfade: false,
+				crossfade: true,
 				firstChild: "usage-page-pace",
 			},
 		);

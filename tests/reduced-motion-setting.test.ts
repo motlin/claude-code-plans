@@ -129,3 +129,24 @@ describe("Reduced motion leaves ungated transitions alone, like upstream", () =>
 		expect(offenders).toStrictEqual([]);
 	});
 });
+
+describe("Usage bars crossfade (upstream c37952aed)", () =>
+{
+	it("crossfades meter colours only without OS or app reduced motion", () =>
+	{
+		const block =
+			/@media \(prefers-reduced-motion: no-preference\)\n\{\n(\thtml:not\(\[data-reduce-motion="true"\]\) \[data-usage-bars-crossfade\][\s\S]*?)\n\}\n/.exec(
+				styles,
+			)?.[1];
+		expect(block).toBe(
+			'\thtml:not([data-reduce-motion="true"]) [data-usage-bars-crossfade] [data-usage-bar-fill]\n\t{\n' +
+				"\t\ttransition-property: transform, background-color;\n" +
+				"\t\ttransition-duration: var(--cds-dur-base);\n" +
+				"\t\ttransition-timing-function: var(--cds-ease-out);\n\t}\n\n" +
+				'\thtml:not([data-reduce-motion="true"]) [data-usage-bars-crossfade] [data-share]\n\t{\n' +
+				"\t\ttransition-property: opacity, background-color;\n\t}\n\n" +
+				'\thtml:not([data-reduce-motion="true"]) [data-usage-bars-crossfade] [role="meter"]:not([aria-valuenow="0"])\n\t{\n' +
+				"\t\ttransition: background-color var(--cds-dur-base) var(--cds-ease-out);\n\t}",
+		);
+	});
+});

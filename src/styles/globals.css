@@ -6954,3 +6954,28 @@ html[data-reduce-motion="true"] [data-cds-composer-attachments] [data-cds-attach
 {
 	color: #4caf7d;
 }
+
+/*
+ * Upstream's usage-bars crossfade (c37952aed, gate __gb__1500379757, on locally): inside a gated
+ * `data-usage-bars` wrapper a severity change fades the fill, share overlay and track colours.
+ * Local meters have no cds Meter wrapper, so upstream's `[data-cds=Meter]` rules apply to every fill.
+ */
+@media (prefers-reduced-motion: no-preference)
+{
+	html:not([data-reduce-motion="true"]) [data-usage-bars-crossfade] [data-usage-bar-fill]
+	{
+		transition-property: transform, background-color;
+		transition-duration: var(--cds-dur-base);
+		transition-timing-function: var(--cds-ease-out);
+	}
+
+	html:not([data-reduce-motion="true"]) [data-usage-bars-crossfade] [data-share]
+	{
+		transition-property: opacity, background-color;
+	}
+
+	html:not([data-reduce-motion="true"]) [data-usage-bars-crossfade] [role="meter"]:not([aria-valuenow="0"])
+	{
+		transition: background-color var(--cds-dur-base) var(--cds-ease-out);
+	}
+}

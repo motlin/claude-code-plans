@@ -22,6 +22,7 @@ import
 	weeklyScopedShares,
 } from "../../lib/usage";
 import {ExternalTextLink} from "../external-text-link";
+import {USAGE_BARS_CROSSFADE} from "../../lib/usage-bars-grow";
 import {UsageBars} from "../usage-bars";
 import * as Collapsible from "../ui/collapsible";
 import {Icon} from "../ui/icon";
@@ -332,7 +333,7 @@ export function UsagePanel({usage, planDetail, nowMs, timeZone, refreshing, onRe
 
 	return (
 		<div className="flex flex-col">
-			<UsageBars surface="usage_page">
+			<UsageBars surface="usage_page" enabled={USAGE_BARS_CROSSFADE}>
 				<div data-testid="usage-page-pace" className="flex flex-col pb-6">
 					<div className="mb-3 flex items-baseline gap-2">
 						<h2 data-settings-group-title="" className="text-[15px] leading-[20px] font-[580] text-primary">

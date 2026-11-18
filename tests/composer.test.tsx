@@ -1338,7 +1338,7 @@ describe("Composer", () =>
 							surface: "popover",
 							className: "contents",
 							parent: "flex flex-col py-1.5",
-							crossfade: false,
+							crossfade: true,
 							header: true,
 							group: true,
 						},
