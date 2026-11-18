@@ -26,6 +26,7 @@ import
 	type FindHighlight,
 	findRanges,
 	foldingExtension,
+	hangingIndent,
 	indentGuides as indentGuidesExtension,
 	jumpRangeExtension,
 	setFindHighlight,
@@ -130,7 +131,7 @@ const fromDisk = Annotation.define<boolean>();
 
 function wrapExtension(wordWrap: boolean): Extension
 {
-	return wordWrap ? EditorView.lineWrapping : [];
+	return wordWrap ? [EditorView.lineWrapping, hangingIndent()] : [];
 }
 
 function contentAttributes(ariaLabel: string, language: string | null | undefined): Extension

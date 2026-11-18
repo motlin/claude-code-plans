@@ -48,12 +48,37 @@ describe("SourceEditor read-only", () =>
 		expect(lines.map((line) => line.classList.contains("cm-activeLine"))).toStrictEqual([true, false]);
 	});
 
-	it("wraps lines by default and drops wrapping when wordWrap is false", () =>
+	it("wraps lines with a hanging indent by default and drops both when wordWrap is false", () =>
 	{
-		const {container, rerender} = render(<SourceEditor value="a" readOnly />);
-		expect(container.querySelector(".cm-content")!.classList.contains("cm-lineWrapping")).toBe(true);
-		rerender(<SourceEditor value="a" readOnly wordWrap={false} />);
-		expect(container.querySelector(".cm-content")!.classList.contains("cm-lineWrapping")).toBe(false);
+		const value = "a\n    b\n\tc";
+		const {container, rerender} = render(<SourceEditor value={value} readOnly tabSize={4} />);
+		const contentClasses = () =>
+		{
+			const {classList} = container.querySelector(".cm-content")!;
+			return ["cm-lineWrapping", "cm-epitaxyHangingIndentContainer"].map((name) => classList.contains(name));
+		};
+		const lineIndents = () =>
+			[...container.querySelectorAll<HTMLElement>(".cm-line")].map((line) => [
+				line.classList.contains("cm-epitaxyHangingIndent"),
+				line.style.getPropertyValue("--epitaxy-hanging-indent"),
+			]);
+		expect(contentClasses()).toStrictEqual([true, true]);
+		expect(lineIndents()).toStrictEqual([
+			[false, ""],
+			[true, "4"],
+			[true, "4"],
+		]);
+		const styles = [...document.head.querySelectorAll("style")].map((style) => style.textContent).join("\n");
+		expect(styles).toContain(
+			"text-indent: min((100cqi - 4px - 12px) / 2, var(--epitaxy-hanging-indent) * 1ch) hanging",
+		);
+		rerender(<SourceEditor value={value} readOnly tabSize={4} wordWrap={false} />);
+		expect(contentClasses()).toStrictEqual([false, false]);
+		expect(lineIndents()).toStrictEqual([
+			[false, ""],
+			[false, ""],
+			[false, ""],
+		]);
 	});
 
 	it("sets tab-size on .cm-content and reconfigures it without remounting", () =>

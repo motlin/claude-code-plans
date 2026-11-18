@@ -937,3 +937,101 @@ export function indentGuides(): Extension
 {
 	return [indentGuidesPlugin, indentGuidesTheme];
 }
+
+/** A line's hanging indent in columns; a whitespace run past the scan limit still indents fully. */
+function hangingColumns(text: string, tabSize: number): number
+{
+	const columns = leadingColumns(text, tabSize);
+	if (columns !== NO_INDENT || text.length <= MAX_INDENT_SCAN) return columns;
+	return text.trim() === "" ? NO_INDENT : MAX_INDENT_SCAN;
+}
+
+function hangingIndentDecorations(view: EditorView): DecorationSet
+{
+	const {doc, tabSize} = view.state;
+	const builder = new RangeSetBuilder<Decoration>();
+	const byColumns = new Map<number, Decoration>();
+	for (const {from, to} of view.visibleRanges)
+	{
+		const last = doc.lineAt(to).number;
+		for (let number = doc.lineAt(from).number; number <= last; number += 1)
+		{
+			const line = doc.line(number);
+			const columns = hangingColumns(line.text, tabSize);
+			if (columns <= 0) continue;
+			let decoration = byColumns.get(columns);
+			if (!decoration)
+			{
+				decoration = Decoration.line(
+					{
+						class: "cm-epitaxyHangingIndent",
+						attributes:
+						{
+							style: `--epitaxy-hanging-indent:${columns}`,
+						},
+					},
+				);
+				byColumns.set(columns, decoration);
+			}
+			builder.add(line.from, line.from, decoration);
+		}
+	}
+	return builder.finish();
+}
+
+const hangingIndentPlugin = ViewPlugin.fromClass(
+	class
+	{
+		decorations: DecorationSet;
+
+		constructor(view: EditorView)
+		{
+			this.decorations = hangingIndentDecorations(view);
+		}
+
+		update(update: ViewUpdate)
+		{
+			if (update.docChanged || update.viewportChanged || update.startState.tabSize !== update.state.tabSize)
+				this.decorations = hangingIndentDecorations(update.view);
+		}
+	},
+	{
+		decorations: (plugin) => plugin.decorations,
+	},
+);
+
+/** The 4px and 12px are `.cm-line`'s start and end padding in `sourceEditorTheme`. */
+const hangingIndentTheme = EditorView.baseTheme(
+	{
+		".cm-epitaxyHangingIndentContainer":
+		{
+			containerType: "inline-size",
+		},
+		".cm-epitaxyHangingIndent":
+		{
+			textIndent: "min((100cqi - 4px - 12px) / 2, var(--epitaxy-hanging-indent) * 1ch) hanging",
+		},
+		".cm-epitaxyHangingIndent.cm-epitaxyIndentGuides":
+		{
+			backgroundSize:
+				"var(--epitaxy-indent-guides-width) max(1lh, min(100%, ((100cqi - 16px) / 2 - var(--epitaxy-indent-guides-width)) * 999))",
+		},
+	},
+);
+
+/**
+ * Upstream's wrapped-line hanging indent (`fa()`, chunk cbd02b8f2): continuation rows start under
+ * the line's indent, capped at half the text width.
+ */
+export function hangingIndent(): Extension
+{
+	return [
+		hangingIndentPlugin,
+		EditorView.contentAttributes.of(
+			{
+				class: "cm-epitaxyHangingIndentContainer",
+			},
+		),
+		hangingIndentTheme,
+	];
+}
