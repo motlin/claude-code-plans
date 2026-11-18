@@ -14,7 +14,7 @@ import {POPUP_LIST_GUTTER_CLASS, POPUP_LIST_SCROLL_CLASS, POPUP_LISTBOX_CLASS} f
  * the filter (`filterable={false}`): the listbox itself takes focus and the arrow keys. The `ghost` variant is
  * upstream's borderless fizzy `type` trigger (cebb16f99 `U` over `E8`), whose popup is w-56 and aligned to the
  * trigger's end edge; its Escape closes only the popup and refocuses the trigger. A ghost `className` replaces the
- * root's default `shrink-0` (Response font passes upstream Gt's `min-w-0 shrink`), and `popupClassName` replaces
+ * root's default `shrink-0` (Response and Interface font pass upstream Gt/Ht's `min-w-0 shrink`), and `popupClassName` replaces
  * the ghost popup's `w-56`.
  */
 

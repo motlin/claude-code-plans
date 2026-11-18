@@ -503,7 +503,8 @@ function InterfaceFontRow()
 	const typeLed = useFizzyLake("type");
 
 	// Upstream's fizzy `type` registry hides this description (sr-only, plain text, no Font licenses link);
-	// the link stays on the pre-rollout visible description.
+	// the link stays on the pre-rollout visible description. Type-led, upstream c0db37792 `ln` → `Ht` also lets
+	// the control give way: `controlGivesWay` with a shrinkable ghost Combobox and its wide popup.
 	return (
 		<SettingsRow
 			slug="interface-font"
@@ -513,6 +514,7 @@ function InterfaceFontRow()
 					{
 						description: INTERFACE_FONT_DESCRIPTION,
 						descriptionHidden: true,
+						controlGivesWay: true,
 					}
 				:
 					{
@@ -531,6 +533,8 @@ function InterfaceFontRow()
 					aria-label="Interface font"
 					variant="ghost"
 					filterable={false}
+					className="min-w-0 shrink"
+					popupClassName="w-max max-w-[min(32rem,calc(100vw-2rem))] min-w-56"
 					value={
 						settings.interfaceFont === DEFAULTS.interfaceFont
 							? INTERFACE_FONT_DEFAULT

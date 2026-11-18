@@ -419,6 +419,109 @@ describe("Appearance settings", () =>
 		);
 	});
 
+	// Upstream c0db37792 `ln` passes `controlGivesWay` with the `Ht` ghost Combobox (`min-w-0 shrink`, wide popup);
+	// segmented rows only get the flag in non-en locales, and no other local row's upstream twin passes it.
+	it("lets the type-led Interface font control give way, and no other General or Claude Code row", async () =>
+	{
+		const columns = (row: Element) => (
+		{
+			text: row.querySelector("[data-settings-text]")?.className,
+			title: row.querySelector('[id$="-title"]')?.className,
+			control: row.querySelector("[data-settings-control]")?.className,
+		});
+		await renderTab(<GeneralSettings />);
+		const row = screen.getByRole(
+			"group",
+			{
+				name: "Interface font",
+			},
+		);
+		const root = row.querySelector("[data-cds=Combobox]");
+		fireEvent.click(
+			within(row).getByRole(
+				"combobox",
+				{
+					name: "Interface font",
+				},
+			),
+		);
+		const popupClasses = screen.getByRole("listbox").closest(".absolute")?.className.split(" ") ?? [];
+		const typeLed =
+		{
+			...columns(row),
+			comboboxShrinks:
+				(root?.classList.contains("min-w-0") ?? false) && (root?.classList.contains("shrink") ?? false),
+			comboboxShrink0: root?.classList.contains("shrink-0") ?? false,
+			popupWide: ["w-max", "max-w-[min(32rem,calc(100vw-2rem))]", "min-w-56"].every((name) =>
+				popupClasses.includes(name),
+			),
+			popupW56: popupClasses.includes("w-56"),
+		};
+		const othersGiveWay = () =>
+			[...document.querySelectorAll("[data-settings-row]")]
+				.filter(
+					(other) =>
+						!["interface-font", "response-font"].includes(other.getAttribute("data-settings-row") ?? ""),
+				)
+				.filter((other) =>
+				{
+					const control = other.querySelector("[data-settings-control]");
+					return (
+						other.querySelector("[data-settings-text]")?.classList.contains("min-w-min") === true ||
+						(control !== null && !control.classList.contains("shrink-0"))
+					);
+				})
+				.map((other) => other.getAttribute("data-settings-row"));
+		const generalOthers = othersGiveWay();
+		cleanup();
+		await renderTab(<ClaudeCodeSettings />);
+		const claudeCodeOthers = othersGiveWay();
+		cleanup();
+		await renderTab(
+			<FizzyLakeContext.Provider value={PRE_TYPE_PARTS}>
+				<GeneralSettings />
+			</FizzyLakeContext.Provider>,
+		);
+		const segmented = columns(
+			screen.getByRole(
+				"group",
+				{
+					name: "Interface font",
+				},
+			),
+		);
+
+		expect(
+			{
+				typeLed,
+				generalOthers,
+				claudeCodeOthers,
+				segmented,
+			},
+		).toStrictEqual(
+			{
+				typeLed:
+				{
+					text: "flex min-w-min flex-1 flex-col justify-center gap-1 relative",
+					title: "text-body text-primary [&:is(:lang(zh),:lang(ja),:lang(ko))]:min-w-15",
+					control: "flex min-w-0 items-center",
+					comboboxShrinks: true,
+					comboboxShrink0: false,
+					popupWide: true,
+					popupW56: false,
+				},
+				generalOthers: [],
+				claudeCodeOthers: [],
+				segmented:
+				{
+					text: "flex min-w-0 flex-1 flex-col justify-center gap-1",
+					title: "text-body text-primary",
+					control: "flex shrink-0 items-center",
+				},
+			},
+		);
+	});
+
 	// Upstream fizzy `type` (c0db37792 on() picks en/tn/an): ghost Comboboxes reading the plain option label,
 	// text size with no description, width and motion with `descriptionHidden` (div[data-settings-desc].sr-only).
 	it("renders Transcript text size, width and Motion as ghost comboboxes with hidden descriptions", async () =>

@@ -1427,6 +1427,10 @@ describe("SettingsDialog at phone width", () =>
 				any: true,
 				givesWay: [
 					{
+						row: "interface-font",
+						className: "flex min-w-0 items-center",
+					},
+					{
 						row: "response-font",
 						className: "flex min-w-0 items-center",
 					},

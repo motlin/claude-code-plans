@@ -72,7 +72,10 @@ interface SettingsRowProps
 	 */
 	below?: ReactNode;
 	className?: string;
-	/** Keeps the description for screen readers only (upstream's `descriptionHidden`, a `div.sr-only`). */
+	/**
+	 * Keeps the description for screen readers only (upstream's `descriptionHidden`, a `div.sr-only` marked
+	 * `data-settings-desc="hidden"`); upstream shared-1 `cR` also makes the text column `relative`.
+	 */
 	descriptionHidden?: boolean;
 	/** Content after the title (upstream's `labelAdornment`: the modified dot, scope badge and Reset). */
 	labelAdornment?: ReactNode;
@@ -143,7 +146,7 @@ export function SettingsRow({
 		<>
 			<div
 				data-settings-text=""
-				className={`flex ${controlGivesWay ? "min-w-min" : "min-w-0"} flex-1 flex-col justify-center gap-1`}
+				className={`flex ${controlGivesWay ? "min-w-min" : "min-w-0"} flex-1 flex-col justify-center gap-1${descriptionHidden ? " relative" : ""}`}
 			>
 				{labelAdornment === undefined || labelAdornment === null ? (
 					titleDiv
@@ -156,7 +159,7 @@ export function SettingsRow({
 				{description === undefined ? null : (
 					<div
 						id={descriptionId}
-						data-settings-desc=""
+						data-settings-desc={descriptionHidden ? "hidden" : ""}
 						className={descriptionHidden ? "sr-only" : "text-body text-[var(--settings-muted)]"}
 					>
 						{description}

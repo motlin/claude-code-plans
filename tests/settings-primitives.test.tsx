@@ -315,7 +315,7 @@ describe("SettingsSection and SettingsRow", () =>
 			},
 		);
 	});
-	it("keeps a hidden description for screen readers only (upstream descriptionHidden)", () =>
+	it("keeps a hidden description for screen readers only, marking it hidden and the text column relative (upstream descriptionHidden)", () =>
 	{
 		render(
 			<>
@@ -333,8 +333,10 @@ describe("SettingsSection and SettingsRow", () =>
 			);
 			const desc = group.querySelector("[data-settings-desc]");
 			return {
+				text: group.querySelector("[data-settings-text]")?.className,
 				tag: desc?.tagName,
 				className: desc?.className,
+				marker: desc?.getAttribute("data-settings-desc"),
 				describedBy: group.getAttribute("aria-describedby") === desc?.id,
 			};
 		};
@@ -348,14 +350,18 @@ describe("SettingsSection and SettingsRow", () =>
 			{
 				hidden:
 				{
+					text: "flex min-w-0 flex-1 flex-col justify-center gap-1 relative",
 					tag: "DIV",
 					className: "sr-only",
+					marker: "hidden",
 					describedBy: true,
 				},
 				shown:
 				{
+					text: "flex min-w-0 flex-1 flex-col justify-center gap-1",
 					tag: "DIV",
 					className: "text-body text-[var(--settings-muted)]",
+					marker: "",
 					describedBy: true,
 				},
 			},
