@@ -33,7 +33,8 @@ function skeletonShape(container: HTMLElement)
 	};
 }
 
-const CARD_RING = "rounded-r7 shadow-[0_0_0_1px_var(--color-border)] dark:shadow-[inset_0_0_0_1px_var(--color-border)]";
+const CARD_RING =
+	"rounded-r7 shadow-[0_0_0_1px_var(--color-border)] dark:shadow-[inset_0_0_0_1px_var(--color-border)] [[data-session-rail-flat]_&]:rounded-none [[data-session-rail-flat]_&]:shadow-none";
 const GROUP = "flex flex-col gap-2 py-2 px-3";
 const BAR = "max-w-full rounded bg-[var(--skeleton-base)]";
 
@@ -45,7 +46,8 @@ describe("session rail skeleton", () =>
 
 		expect(skeletonShape(container)).toStrictEqual(
 			{
-				wrapper: "flex w-[var(--session-rail-w,17.5rem)] flex-col gap-2.5 p-px",
+				wrapper:
+					"flex w-[var(--session-rail-w,17.5rem)] flex-col gap-2.5 p-px [[data-session-rail-flat]_&]:gap-0 [[data-session-rail-flat]_&]:p-0",
 				cards: [
 					`h-[var(--session-rail-first-card-h,170px)] overflow-hidden ${CARD_RING}`,
 					`relative h-10 overflow-hidden ${CARD_RING} before:absolute before:inset-x-4 before:top-0 before:h-px before:bg-alpha-1`,

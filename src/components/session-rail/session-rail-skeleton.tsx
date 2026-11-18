@@ -72,7 +72,7 @@ function CardGroup({hold, label, children}: {hold: SkeletonHold; label?: string;
 export function SessionRailSkeleton({hold = "none"}: {hold?: SkeletonHold})
 {
 	return (
-		<div className="flex w-[var(--session-rail-w,17.5rem)] flex-col gap-2.5 p-px">
+		<div className="flex w-[var(--session-rail-w,17.5rem)] flex-col gap-2.5 p-px [[data-session-rail-flat]_&]:gap-0 [[data-session-rail-flat]_&]:p-0">
 			<div className={`h-[var(--session-rail-first-card-h,170px)] overflow-hidden ${RAIL_CARD_RING_CLASS}`}>
 				<CardGroup hold={hold} label="Loading session details">
 					<Bar className="h-[1em] w-20" index={0} height={14} />

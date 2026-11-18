@@ -2666,9 +2666,45 @@ describe("session rail reorder", () =>
 					section: id,
 					tag: "DIV",
 					railCard: id,
-					className: "relative flex flex-col rounded-r7",
+					className: "relative flex flex-col rounded-r7 [[data-session-rail-flat]_&]:rounded-none",
 				})),
 				order: ["environment", "context", "progress"],
+			},
+		);
+	});
+
+	it("flattens the list and cards inside a [data-session-rail-flat] ancestor and draws upstream's zy hairline", () =>
+	{
+		render(
+			<div data-session-rail-flat="">
+				<SessionRail sessionId="s1" cards={CARDS} />
+			</div>,
+		);
+		const list = document.querySelector("[data-rail-card]")?.parentElement;
+		const flatClasses = [
+			"relative",
+			"before:absolute",
+			"before:inset-x-4",
+			"before:top-0",
+			"before:h-px",
+			"[[data-session-rail-flat]_:not(:empty):not([data-rail-slot-off])~[data-rail-card]>&]:before:bg-alpha-1",
+			"[[data-session-rail-flat]_&]:rounded-none",
+			"[[data-session-rail-flat]_&]:shadow-none",
+		];
+
+		expect(
+			{
+				list: ["[[data-session-rail-flat]_&]:gap-0", "[[data-session-rail-flat]_&]:p-0"].filter((name) =>
+					list?.classList.contains(name),
+				),
+				sections: [...document.querySelectorAll<HTMLElement>("section[data-rail-section]")].map((section) =>
+					flatClasses.filter((name) => section.classList.contains(name)),
+				),
+			},
+		).toStrictEqual(
+			{
+				list: ["[[data-session-rail-flat]_&]:gap-0", "[[data-session-rail-flat]_&]:p-0"],
+				sections: [flatClasses, flatClasses, flatClasses],
 			},
 		);
 	});

@@ -418,7 +418,7 @@ export function SessionRail({sessionId, cards}: {sessionId: string; cards: reado
 		>
 			<div
 				ref={listRef}
-				className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto overscroll-contain p-px [scrollbar-width:none]"
+				className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto overscroll-contain p-px [scrollbar-width:none] [[data-session-rail-flat]_&]:gap-0 [[data-session-rail-flat]_&]:p-0"
 			>
 				{/* The list's overflow clips at the rail's edges, so its tooltips portal over the viewport. */}
 				<TooltipPortalContext.Provider value>

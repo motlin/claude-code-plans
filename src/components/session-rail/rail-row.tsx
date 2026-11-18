@@ -77,12 +77,22 @@ export function RailRow(props: {
 	);
 }
 
+/** Upstream's flat-rail chrome (shared-18 `bX`): inside a `[data-session-rail-flat]` ancestor, cards and slots go square and ringless. */
+const RAIL_FLAT_CHROME = "[[data-session-rail-flat]_&]:rounded-none [[data-session-rail-flat]_&]:shadow-none";
+
 /** Upstream's `data-rail-card` slot around each card; its radius follows `RAIL_CARD_CLASS`. Upstream's `contents has-[[data-rail-section]]:flex` only matters for empty slots, which never render here. */
-export const RAIL_SLOT_CLASS = "relative flex flex-col rounded-r7";
+export const RAIL_SLOT_CLASS = "relative flex flex-col rounded-r7 [[data-session-rail-flat]_&]:rounded-none";
 
-/** A rail card's radius and ring (upstream's non-flat `rounded-card shadow-card-ring`), outset in light and inset in dark. */
-export const RAIL_CARD_RING_CLASS =
-	"rounded-r7 shadow-[0_0_0_1px_var(--color-border)] dark:shadow-[inset_0_0_0_1px_var(--color-border)]";
+/** A rail card's radius and ring (upstream's `rounded-card shadow-card-ring`), outset in light and inset in dark, dropped in a flat rail. */
+export const RAIL_CARD_RING_CLASS = `rounded-r7 shadow-[0_0_0_1px_var(--color-border)] dark:shadow-[inset_0_0_0_1px_var(--color-border)] ${RAIL_FLAT_CHROME}`;
 
-/** Upstream's lined card (`epitaxy-rail-lined`): py-md 8px, pb-sm 6px while open, and the card ring, outset in light and inset in dark. */
-export const RAIL_CARD_CLASS = `group/railcard epitaxy-rail-lined flex shrink-0 flex-col pt-2 pb-2 data-open:pb-1.5 ${RAIL_CARD_RING_CLASS}`;
+/**
+ * Upstream's flat-rail section hairline (shared-20 `zy`, built on `el`): a 1px bg-alpha-1 line 16px in
+ * from each side on a card's top edge, drawn only when an earlier present, non-empty slot precedes it,
+ * so the first card never draws one. Local has no empty slots, so upstream's bare-section half is moot.
+ */
+const RAIL_CARD_DIVIDER_CLASS =
+	"relative before:absolute before:inset-x-4 before:top-0 before:h-px [[data-session-rail-flat]_:not(:empty):not([data-rail-slot-off])~[data-rail-card]>&]:before:bg-alpha-1";
+
+/** Upstream's lined card (`epitaxy-rail-lined`): py-md 8px, pb-sm 6px while open, the card ring, and the flat-rail hairline. */
+export const RAIL_CARD_CLASS = `group/railcard epitaxy-rail-lined flex shrink-0 flex-col pt-2 pb-2 data-open:pb-1.5 ${RAIL_CARD_RING_CLASS} ${RAIL_CARD_DIVIDER_CLASS}`;
