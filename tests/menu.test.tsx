@@ -1630,6 +1630,149 @@ describe("MenuItem with a disabled reason", () =>
 	});
 });
 
+describe("MenuItem with a tooltip", () =>
+{
+	const SENTENCE = "Error POSTing to endpoint: the server answered 410 Gone";
+
+	function renderTooltipMenu(disabled = false)
+	{
+		render(
+			<CompactScope>
+				<Menu>
+					<MenuTrigger aria-label="More options">...</MenuTrigger>
+					<MenuContent>
+						<MenuItem
+							onSelect={() =>
+							{
+							}}
+						>
+							Copy link
+						</MenuItem>
+						<MenuItem description="410" tooltip={SENTENCE} disabled={disabled}>
+							Cloudflare
+						</MenuItem>
+					</MenuContent>
+				</Menu>
+			</CompactScope>,
+		);
+	}
+
+	it("opens a multiline tooltip on side right when the enabled row is hovered, as upstream's h()", async () =>
+	{
+		renderTooltipMenu();
+		await openDropdown();
+		const item = screen.getByRole(
+			"menuitem",
+			{
+				name: /^Cloudflare/,
+			},
+		);
+
+		vi.useFakeTimers();
+		try
+		{
+			fireEvent.pointerEnter(item.parentElement!);
+			act(() =>
+			{
+				vi.advanceTimersByTime(300);
+			});
+			const tip = screen.getByRole("tooltip");
+			const classes = tip.className.split(" ");
+			expect(
+				{
+					side: tip.getAttribute("data-side"),
+					text: tip.textContent,
+					wraps: classes.includes("whitespace-pre-line") && !classes.includes("whitespace-nowrap"),
+					description: item.querySelector("[data-menu-item-description]")?.textContent,
+				},
+			).toStrictEqual(
+				{
+					side: "right",
+					text: SENTENCE,
+					wraps: true,
+					description: "410",
+				},
+			);
+		}
+		finally
+		{
+			vi.useRealTimers();
+		}
+	});
+
+	it("opens the tooltip at once when ArrowDown highlights the row", async () =>
+	{
+		renderTooltipMenu();
+		await openDropdown();
+		screen
+			.getByRole(
+				"menuitem",
+				{
+					name: "Copy link",
+				},
+			)
+			.focus();
+
+		fireEvent.keyDown(
+			document.activeElement as HTMLElement,
+			{
+				key: "ArrowDown",
+			},
+		);
+		await flush();
+
+		expect(
+			{
+				active: document.activeElement?.querySelector("[data-menu-item-title]")?.textContent,
+				tooltip: screen.queryByRole("tooltip")?.textContent,
+			},
+		).toStrictEqual(
+			{
+				active: "Cloudflare",
+				tooltip: SENTENCE,
+			},
+		);
+	});
+
+	it("folds the tooltip into a disabled row's description instead of opening it, as upstream's m()", async () =>
+	{
+		renderTooltipMenu(true);
+		await openDropdown();
+		const item = screen.getByRole(
+			"menuitem",
+			{
+				name: /^Cloudflare/,
+			},
+		);
+
+		vi.useFakeTimers();
+		try
+		{
+			fireEvent.pointerEnter(item.parentElement!);
+			fireEvent.pointerEnter(item);
+			act(() =>
+			{
+				vi.advanceTimersByTime(300);
+			});
+			expect(
+				{
+					description: item.querySelector("[data-menu-item-description]")?.textContent,
+					tooltip: screen.queryByRole("tooltip"),
+				},
+			).toStrictEqual(
+				{
+					description: `410 · ${SENTENCE}`,
+					tooltip: null,
+				},
+			);
+		}
+		finally
+		{
+			vi.useRealTimers();
+		}
+	});
+});
+
 describe("ContextMenu", () =>
 {
 	it("opens the same content on right-click", async () =>

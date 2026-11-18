@@ -3,8 +3,11 @@ import {useNavigate} from "@tanstack/react-router";
 import {Blocks, CloudOff, LibraryBig, Wrench} from "lucide-react";
 
 import {customizeMcpServersQueryOptions, type McpScope, type McpServerSummary} from "../lib/api/customize";
+import {sessionMcpStatusQueryOptions} from "../lib/api/sessions";
 import {toConnectorSlug} from "../lib/customize/mcp-tool-permissions";
+import {faultFor, hostDescription} from "../lib/customize/session-mcp-rows";
 import {ConnectorsLoadingItem} from "./composer-connectors-loading";
+import {Icon} from "./ui/icon";
 import {MenuCheckboxSwitchItem, MenuItem, MenuSeparator, MenuSub, MenuSubContent, MenuSubTrigger} from "./ui/menu";
 
 /*
@@ -17,6 +20,11 @@ import {MenuCheckboxSwitchItem, MenuItem, MenuSeparator, MenuSub, MenuSubContent
  *
  * Upstream lists only what is available to this session, so local and project servers show only
  * for the composer's cwd, and same-named servers collapse to the one the CLI resolves.
+ *
+ * Each server row takes upstream's session-server shape (`yi`'s second loop): the host as its
+ * description over a base switch, or, when the session's transcript says the server failed to
+ * connect, a plain fault row (error code, trailing Warning, the error in a tooltip). Sign-in rows
+ * win over fault rows, as upstream checks sign-in first.
  */
 
 const SCOPE_PRECEDENCE: Record<McpScope, number> =
@@ -50,10 +58,11 @@ function reconnectionNote(servers: readonly McpServerSummary[]): string | undefi
 	return count === 0 ? undefined : `${count} ${count === 1 ? "needs" : "need"} reconnection`;
 }
 
-export function ComposerConnectorsMenu({cwd}: {cwd?: string | undefined})
+export function ComposerConnectorsMenu({cwd, sessionId}: {cwd?: string | undefined; sessionId?: string | undefined})
 {
 	const navigate = useNavigate();
 	const {data: allServers = [], isPending} = useQuery(customizeMcpServersQueryOptions);
+	const failed = useQuery(sessionMcpStatusQueryOptions(sessionId ?? "", sessionId !== undefined)).data?.failed ?? [];
 	const servers = sessionMcpServers(allServers, cwd);
 	const note = reconnectionNote(servers);
 	const connected = servers.filter((server) => !server.needsAuth);
@@ -105,21 +114,48 @@ export function ComposerConnectorsMenu({cwd}: {cwd?: string | undefined})
 					Manage connectors
 				</MenuItem>
 				<MenuSeparator />
-				{connected.map((server) => (
-					<MenuCheckboxSwitchItem
-						key={server.id}
-						aria-label={server.name}
-						icon={<Blocks />}
-						checked={server.enabled}
-						closeOnClick
-						onCheckedChange={() =>
-						{
-							openServer(server);
-						}}
-					>
-						{server.name}
-					</MenuCheckboxSwitchItem>
-				))}
+				{connected.map((server) =>
+				{
+					const fault = sessionId === undefined ? undefined : faultFor(server, failed);
+					if (fault !== undefined)
+					{
+						return (
+							<MenuItem
+								key={server.id}
+								icon={<Blocks />}
+								description={fault.name}
+								tooltip={fault.sentence}
+								trailing={
+									<span inert>
+										<Icon name="Warning" size="sm" className="text-warning" />
+									</span>
+								}
+								onSelect={() =>
+								{
+									openServer(server);
+								}}
+							>
+								{server.name}
+							</MenuItem>
+						);
+					}
+					return (
+						<MenuCheckboxSwitchItem
+							key={server.id}
+							aria-label={server.name}
+							icon={<Blocks />}
+							description={hostDescription(server)}
+							checked={server.enabled}
+							closeOnClick
+							onCheckedChange={() =>
+							{
+								openServer(server);
+							}}
+						>
+							{server.name}
+						</MenuCheckboxSwitchItem>
+					);
+				})}
 				{reconnect.map((server) => (
 					<MenuItem
 						key={server.id}

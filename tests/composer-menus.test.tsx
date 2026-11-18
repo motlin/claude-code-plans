@@ -9,6 +9,7 @@ import {CompactScope} from "./fizzy-lake-off";
 import {MentionMenu} from "../src/components/mention-menu";
 import {fileMentionOption} from "../src/lib/mention-options";
 import {customizeMcpServersQueryOptions, type McpServerSummary} from "../src/lib/api/customize";
+import {type SessionMcpStatus, sessionMcpStatusQueryOptions} from "../src/lib/api/sessions";
 import {toConnectorSlug} from "../src/lib/customize/mcp-tool-permissions";
 import type {ComposerState} from "../src/lib/composer-state";
 import type {LiveLaunchControls} from "../src/hooks/use-live-launch-options";
@@ -3941,7 +3942,11 @@ describe("Composer + menu Connectors submenu", () =>
 		server("user:Sentry", "Sentry", true, true),
 	];
 
-	function renderWithServers(servers: McpServerSummary[] = SERVERS, mentionCwd?: string)
+	function renderWithServers(
+		servers: McpServerSummary[] = SERVERS,
+		mentionCwd?: string,
+		failed: SessionMcpStatus["failed"] = [],
+	)
 	{
 		const queryClient = new QueryClient(
 			{
@@ -3955,6 +3960,12 @@ describe("Composer + menu Connectors submenu", () =>
 			},
 		);
 		queryClient.setQueryData(customizeMcpServersQueryOptions.queryKey, servers);
+		queryClient.setQueryData(
+			sessionMcpStatusQueryOptions("session-alice", true).queryKey,
+			{
+				failed,
+			},
+		);
 		render(
 			<QueryClientProvider client={queryClient}>
 				<Composer
@@ -4064,6 +4075,213 @@ describe("Composer + menu Connectors submenu", () =>
 		);
 	});
 
+	const FAULT_SERVERS = [
+		{
+			...server("user:sentry", "sentry", true, false),
+			urlOrCommand: "https://mcp.sentry.dev/mcp",
+		},
+		{
+			...server("user:imcp", "imcp", true, false),
+			transport: "stdio" as const,
+			urlOrCommand: "/Applications/iMCP.app/Contents/MacOS/imcp-server",
+		},
+		server("user:Gmail", "Gmail", true, true),
+	];
+	const IMCP_FAILED = [
+		{
+			name: "imcp",
+			errorCode: "ENOENT",
+			error: "spawn imcp ENOENT",
+		},
+	];
+
+	it("shows host descriptions on base switches and a failed server as upstream's fault row", async () =>
+	{
+		renderWithServers(FAULT_SERVERS, undefined, IMCP_FAILED);
+		const {submenu} = await openConnectors();
+		const sentrySwitch = submenu.querySelector('span[inert] > [role="switch"]');
+		const imcp = within(submenu).getByRole(
+			"menuitem",
+			{
+				name: /^imcp/,
+			},
+		);
+
+		expect(
+			{
+				rows: entries(submenu),
+				sentrySwitch:
+				{
+					size: sentrySwitch?.getAttribute("data-size"),
+					track: sentrySwitch?.className.split(" ").filter((name) => /^[hw]-\[/.test(name)),
+				},
+				imcpTrailing: imcp
+					.querySelector("span[inert] svg")
+					?.getAttribute("class")
+					?.split(" ")
+					.includes("text-warning"),
+			},
+		).toStrictEqual(
+			{
+				rows: [
+					{
+						role: "menuitem",
+						checked: null,
+						title: "Browse connectors",
+						icon: "lucide-library-big",
+						description: null,
+						switch: null,
+					},
+					{
+						role: "menuitem",
+						checked: null,
+						title: "Manage connectors",
+						icon: "lucide-wrench",
+						description: null,
+						switch: null,
+					},
+					"---",
+					{
+						role: "menuitemcheckbox",
+						checked: "true",
+						title: "sentry",
+						icon: "lucide-blocks",
+						description: "mcp.sentry.dev",
+						switch: "true",
+					},
+					{
+						role: "menuitem",
+						checked: null,
+						title: "imcp",
+						icon: "lucide-blocks",
+						description: "ENOENT",
+						switch: null,
+					},
+					{
+						role: "menuitem",
+						checked: null,
+						title: "Gmail",
+						icon: "lucide-cloud-off",
+						description: "Reconnect",
+						switch: null,
+					},
+				],
+				sentrySwitch:
+				{
+					size: "base",
+					track: ["h-[16px]", "w-[28.8px]"],
+				},
+				imcpTrailing: true,
+			},
+		);
+	});
+
+	it("opens the fault sentence on hover and the server's page on click", async () =>
+	{
+		renderWithServers(FAULT_SERVERS, undefined, IMCP_FAILED);
+		navigate.mockClear();
+		const {submenu} = await openConnectors();
+		const imcp = within(submenu).getByRole(
+			"menuitem",
+			{
+				name: /^imcp/,
+			},
+		);
+		fireEvent.focus(imcp);
+		const tooltip = await screen.findByRole("tooltip");
+		const tip =
+		{
+			text: tooltip.textContent,
+			side: tooltip.getAttribute("data-side"),
+		};
+		fireEvent.click(imcp);
+		await waitFor(() =>
+		{
+			expect(screen.queryByRole("menu")).toBeNull();
+		});
+
+		expect(
+			{
+				tip,
+				navigations: navigate.mock.calls.map(([options]) => options),
+			},
+		).toStrictEqual(
+			{
+				tip:
+				{
+					text: "spawn imcp ENOENT",
+					side: "right",
+				},
+				navigations: [
+					{
+						to: "/customize/connectors/id/$serverId",
+						params:
+						{
+							serverId: toConnectorSlug("user:imcp"),
+						},
+					},
+				],
+			},
+		);
+	});
+
+	it("asks for no session MCP status on the home composer and keeps every server a switch row", async () =>
+	{
+		const fetchMock = vi.fn<(input: RequestInfo | URL) => Promise<Response>>(
+			async () => new Promise<Response>(() => {}),
+		);
+		vi.stubGlobal("fetch", fetchMock);
+		try
+		{
+			const queryClient = new QueryClient(
+				{
+					defaultOptions:
+					{
+						queries:
+						{
+							retry: false,
+						},
+					},
+				},
+			);
+			queryClient.setQueryData(customizeMcpServersQueryOptions.queryKey, FAULT_SERVERS.slice(0, 2));
+			render(
+				<QueryClientProvider client={queryClient}>
+					<Composer
+						variant="home"
+						draftKey="home"
+						onSend={() =>
+						{
+						}}
+						chin={CHIN}
+					/>
+				</QueryClientProvider>,
+			);
+			const {submenu} = await openConnectors();
+
+			expect(
+				{
+					rows: entries(submenu)
+						.slice(3)
+						.map((entry) => (typeof entry === "string" ? entry : [entry.title, entry.role])),
+					statusFetches: fetchMock.mock.calls.filter(([input]) => String(input).includes("mcp-status")),
+				},
+			).toStrictEqual(
+				{
+					rows: [
+						["sentry", "menuitemcheckbox"],
+						["imcp", "menuitemcheckbox"],
+					],
+					statusFetches: [],
+				},
+			);
+		}
+		finally
+		{
+			vi.unstubAllGlobals();
+		}
+	});
+
 	async function openConnectors()
 	{
 		fireEvent.click(
@@ -4170,7 +4388,7 @@ describe("Composer + menu Connectors submenu", () =>
 						checked: "true",
 						title: "Gmail",
 						icon: "lucide-blocks",
-						description: null,
+						description: "gmail.example.com",
 						switch: "true",
 					},
 					{
@@ -4178,7 +4396,7 @@ describe("Composer + menu Connectors submenu", () =>
 						checked: "true",
 						title: "Calendar",
 						icon: "lucide-blocks",
-						description: null,
+						description: "calendar.example.com",
 						switch: "true",
 					},
 					{
@@ -4186,7 +4404,7 @@ describe("Composer + menu Connectors submenu", () =>
 						checked: "false",
 						title: "Docs",
 						icon: "lucide-blocks",
-						description: null,
+						description: "docs.example.com",
 						switch: "false",
 					},
 					{
@@ -4199,9 +4417,9 @@ describe("Composer + menu Connectors submenu", () =>
 					},
 				],
 				switches: [
-					["Gmail enabled", "true", "xs"],
-					["Calendar enabled", "true", "xs"],
-					["Docs enabled", "true", "xs"],
+					["Gmail enabled", "true", "base"],
+					["Calendar enabled", "true", "base"],
+					["Docs enabled", "true", "base"],
 				],
 			},
 		);
@@ -4222,8 +4440,8 @@ describe("Composer + menu Connectors submenu", () =>
 				.slice(3)
 				.map((entry) => (typeof entry === "string" ? entry : [entry.title, entry.role, entry.description])),
 		).toStrictEqual([
-			["B", "menuitemcheckbox", null],
-			["D", "menuitemcheckbox", null],
+			["B", "menuitemcheckbox", "b.example.com"],
+			["D", "menuitemcheckbox", "d.example.com"],
 			["A", "menuitem", "Reconnect"],
 			["C", "menuitem", "Reconnect"],
 		]);

@@ -3559,6 +3559,7 @@ export function Composer({
 							onAddFiles={openFilePicker}
 							active={active}
 							cwd={mentionCwd}
+							sessionId={variant === "session" ? draftKey : undefined}
 						/>
 					</div>
 					{slashOpen && (

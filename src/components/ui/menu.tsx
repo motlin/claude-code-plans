@@ -556,6 +556,11 @@ export interface MenuItemProps extends Omit<
 	 * the row is hovered or highlighted (upstream's cds MenuItem `disabledReason`).
 	 */
 	disabledReason?: string | undefined;
+	/**
+	 * Upstream's cds MenuItem `tooltip`: an enabled row opens it on side right (multiline) when hovered or
+	 * highlighted; a disabled row shows it after its description instead (`"<description> · <tooltip>"`).
+	 */
+	tooltip?: string | undefined;
 	onSelect?: () => void;
 }
 
@@ -569,10 +574,20 @@ export function MenuItem({
 	trailing,
 	variant = "default",
 	disabledReason,
+	tooltip,
 	onSelect,
 	...props
 }: MenuItemProps)
 {
+	const disabled = props.disabled === true;
+	const shownDescription =
+		disabled && tooltip !== undefined && description !== undefined ? (
+			<>
+				{description} · {tooltip}
+			</>
+		) : (
+			description
+		);
 	const itemClass = useItemClass(description !== undefined);
 	const ariaKeyShortcuts = useAriaKeyShortcuts(accelerator, shortcut);
 	const reasonId = useId();
@@ -608,7 +623,7 @@ export function MenuItem({
 			className={`${itemClass} ${ITEM_VARIANT_CLASS[variant]}`}
 		>
 			<ItemIcon icon={icon} twoLine={description !== undefined} />
-			<ItemText description={description}>{children}</ItemText>
+			<ItemText description={shownDescription}>{children}</ItemText>
 			<ItemTrailing
 				{...(accelerator === undefined
 					? {}
@@ -627,6 +642,14 @@ export function MenuItem({
 			{trailing !== undefined && <span className={TRAILING_CLASS}>{trailing}</span>}
 		</BaseMenu.Item>
 	);
+	if (!disabled && tooltip !== undefined && tooltip !== "")
+	{
+		return (
+			<Tooltip content={tooltip} side="right" multiline portal closeOnClick={false} className="flex w-full">
+				{item}
+			</Tooltip>
+		);
+	}
 	if (reason === undefined) return item;
 	return (
 		<DisabledReasonRow reason={reason} reasonId={reasonId}>
@@ -824,15 +847,18 @@ export interface MenuCheckboxSwitchItemProps extends Omit<
 	 * purely decorative and the row's `aria-checked` alone carries the state. Its label takes upstream's `kk` nest.
 	 */
 	decorative?: boolean;
-	/** A decorative row's muted second line, as upstream's blocked Fast mode row. */
+	/**
+	 * The row's muted second line: a decorative row's, as upstream's blocked Fast mode row, or a connector row's
+	 * host, which also takes the base switch (upstream `vi`).
+	 */
 	description?: string | undefined;
 	/** Why a disabled row is unavailable: it describes the row and shows in a reason tooltip, as `MenuItem`'s. */
 	disabledReason?: string | undefined;
 }
 
 /**
- * Upstream's connector row: a `menuitemcheckbox` whose `aria-checked` carries the state, with a trailing xs
- * switch wrapped in `inert` so it is display-only and the row stays the single focus and click target.
+ * Upstream's connector row: a `menuitemcheckbox` whose `aria-checked` carries the state, with a trailing switch
+ * (xs, or base under a description) wrapped in `inert` so it is display-only and the row stays the single focus and click target.
  */
 export function MenuCheckboxSwitchItem({
 	children,
@@ -847,7 +873,8 @@ export function MenuCheckboxSwitchItem({
 {
 	const sizing = useMenuSizing();
 	// Upstream's `kk` row has no fixed height: a description line grows it, with the switch kept centred.
-	const itemClass = useItemClass().replace(
+	const twoLine = !decorative && description !== undefined;
+	const itemClass = useItemClass(twoLine).replace(
 		sizing.singleLine,
 		decorative && description !== undefined ? "items-center" : sizing.singleLine,
 	);
@@ -866,22 +893,26 @@ export function MenuCheckboxSwitchItem({
 			closeOnClick={closeOnClick}
 			className={`${itemClass} ${ITEM_VARIANT_CLASS.default}`}
 		>
-			<ItemIcon icon={icon} />
-			<span data-menu-item-title="" className={LABEL_CLASS}>
-				{decorative ? (
-					/* Upstream's `kk` label: a wrapping block holding the truncated title, then the muted line. */
-					<span className="block min-w-0 whitespace-normal">
-						<span className="flex min-w-0 items-center gap-1">
-							<span className="truncate">{children}</span>
+			<ItemIcon icon={icon} twoLine={twoLine} />
+			{twoLine ? (
+				<ItemText description={description}>{children}</ItemText>
+			) : (
+				<span data-menu-item-title="" className={LABEL_CLASS}>
+					{decorative ? (
+						/* Upstream's `kk` label: a wrapping block holding the truncated title, then the muted line. */
+						<span className="block min-w-0 whitespace-normal">
+							<span className="flex min-w-0 items-center gap-1">
+								<span className="truncate">{children}</span>
+							</span>
+							{description !== undefined && (
+								<span className="mt-1 block text-footnote text-[var(--menu-muted)]">{description}</span>
+							)}
 						</span>
-						{description !== undefined && (
-							<span className="mt-1 block text-footnote text-[var(--menu-muted)]">{description}</span>
-						)}
-					</span>
-				) : (
-					children
-				)}
-			</span>
+					) : (
+						children
+					)}
+				</span>
+			)}
 			{decorative ? (
 				<span className={sizing.trailingGroup}>
 					<div aria-hidden="true" className="pointer-events-none inline-flex items-center">
@@ -896,6 +927,7 @@ export function MenuCheckboxSwitchItem({
 						checked={checked}
 						disabled={props.disabled}
 						readOnly
+						size={twoLine ? "base" : "xs"}
 						aria-label={`${children} enabled`}
 					/>
 				</span>

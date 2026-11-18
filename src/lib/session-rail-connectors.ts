@@ -1,5 +1,6 @@
 import type {McpServerSummary} from "./api/customize";
 import type {SessionMcpStatus} from "./api/sessions";
+import {configNameForSession} from "./customize/session-mcp-rows";
 
 /**
  * Upstream's per-row connector states (`ab` in c8b5c2821). Locally, "failed" comes
@@ -59,17 +60,6 @@ export function connectorLabel(name: string): string
 	const pluginServer = /^plugin:[^:]+:(.+)$/.exec(name)?.[1];
 	if (pluginServer !== undefined) return slugLabel(pluginServer);
 	return slugLabel(PRODUCT_NAMES[name] ?? name);
-}
-
-/**
- * The name the session's transcript reports a server under: the CLI names
- * plugin servers `plugin:<plugin>:<server>` without the marketplace.
- */
-function configNameForSession(server: Pick<McpServerSummary, "id" | "name" | "scope">): string
-{
-	if (server.scope !== "plugin") return server.name;
-	const plugin = /^plugin:([^@:]+)/.exec(server.id)?.[1];
-	return plugin === undefined ? server.name : `plugin:${plugin}:${server.name}`;
 }
 
 /** One status per server, as upstream: Off wins, then needs-auth, then failed. */
