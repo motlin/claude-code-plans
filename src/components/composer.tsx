@@ -53,6 +53,7 @@ import
 {
 	appendAttachment,
 	attachUploadedFiles,
+	BASH_MODE_REFUSAL,
 	composePrompt,
 	joinPrefill,
 	mergeTakeBack,
@@ -590,12 +591,9 @@ const COMMAND_IN_BOX_REFUSAL =
 	"A command is in the message box, so nothing was added. Send or clear it first, then try again.";
 /** Upstream's stray-Enter window after a shell-line hand-off (c1958b152 `fp = 500`). */
 const STRAY_ENTER_MS = 500;
-/** Upstream uXFFUp (`Tu.bashRefusal`): text added while bash mode is on. */
 /** Upstream's command-draft test for a prefill (c8f38bf1f `l`), after stripping leading whitespace and format chars. */
 const COMMAND_DRAFT_PATTERN = /^[/!]/;
 
-const BASH_MODE_REFUSAL =
-	"Bash mode is on, so nothing was added. Press Backspace in the empty message box to return to chat, then try again.";
 /** Upstream UfDkK7: a take-back refused over a draft, bash mode included. */
 const TAKE_BACK_DRAFT_REFUSAL = "The input already has a draft. Clear it to pull this message back in.";
 /** Upstream `Pu.bashStatus` / "Chat mode": the sr-only status region's text where bash mode is available. */
@@ -1583,6 +1581,7 @@ export function Composer({
 						textareaRef.current?.focus();
 					},
 					getText: () => promptRef.current,
+					inBashMode: () => bashModeRef.current,
 					submit: () =>
 					{
 						handleSubmitRef.current();

@@ -4,8 +4,10 @@ import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing
 import {afterEach, beforeAll, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {ApiErrorCard, type ApiErrorRecovery} from "../src/components/api-error-card";
 import {preloadErrorRecoveryActions} from "../src/components/error-recovery-actions-entry";
+import {type HardBlockHost, HardBlockHostContext} from "../src/components/hard-block-host";
 import {SessionChat} from "../src/components/session-chat";
 import {errorRecoveryHandlers, type ModelRetry} from "../src/lib/session-error-recovery";
+import {latestHardBlock} from "../src/lib/hard-block";
 import {processTranscript} from "../src/lib/transcript";
 import
 {
@@ -124,19 +126,21 @@ afterEach(() =>
 	Reflect.deleteProperty(HTMLElement.prototype, "scrollIntoView");
 });
 
-function renderRecords(records: unknown[]): HTMLElement
+function renderRecords(records: unknown[], hardBlockHost: HardBlockHost | null = null): HTMLElement
 {
 	const {lines, toolResultMap} = processTranscript(records);
 	return render(
-		<SessionChat
-			sessionId="test-session"
-			lines={lines}
-			toolResultMap={toolResultMap}
-			showCompactSummaries={true}
-			showTranscriptOnly={true}
-			shouldScrollToEnd={false}
-			transcriptMode="normal"
-		/>,
+		<HardBlockHostContext.Provider value={hardBlockHost}>
+			<SessionChat
+				sessionId="test-session"
+				lines={lines}
+				toolResultMap={toolResultMap}
+				showCompactSummaries={true}
+				showTranscriptOnly={true}
+				shouldScrollToEnd={false}
+				transcriptMode="normal"
+			/>
+		</HardBlockHostContext.Provider>,
 	).container;
 }
 
@@ -552,6 +556,65 @@ describe("ApiErrorCard", () =>
 				hint: "Claude’s safeguards flagged this message. This sometimes happens in safe, normal sessions. Switch models to continue. Learn more",
 				learnMore: "https://www.anthropic.com/legal/aup",
 				companion: false,
+			},
+		);
+	});
+
+	it("draws a refusal as upstream's hard-block card while the session page publishes the host", () =>
+	{
+		const refusal =
+		{
+			type: "assistant",
+			uuid: "r1",
+			message:
+			{
+				role: "assistant",
+				model: "claude-opus-5-5",
+				stop_reason: "refusal",
+				content: [
+					{
+						type: "text",
+						text: "",
+					},
+				],
+			},
+		};
+		const records = [
+			{
+				type: "user",
+				uuid: "p1",
+				message:
+				{
+					role: "user",
+					content: "write it",
+				},
+			},
+			refusal,
+		];
+		const container = renderRecords(
+			records,
+			{
+				latest: latestHardBlock(
+					records,
+					{
+						turnInFlight: false,
+					},
+				),
+				blockAt: () => null,
+				held: false,
+				onEditRetry: () => true,
+				editRetryBusyFor: null,
+			},
+		);
+		expect(
+			{
+				legacy: container.querySelectorAll("[data-api-error-card]").length,
+				card: container.querySelector('[data-testid="hard-block-card"]')?.textContent,
+			},
+		).toStrictEqual(
+			{
+				legacy: 0,
+				card: "Message blockedOpus 5.5’s safeguards flagged this message. This sometimes happens with safe, normal conversations.Edit and retry",
 			},
 		);
 	});

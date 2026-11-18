@@ -127,6 +127,8 @@ import {plainSegmentsText, stepDescriptionSegments, taskDescriptionSegments} fro
 import {agentCompletionOf, foldedTaskNotificationOf, taskNotificationOf} from "../lib/task-notification-lines";
 import {ToastContext} from "./toast-context";
 import {TurnUndoSendContext} from "./turn-undo-send-context";
+import {HardBlockHostContext} from "./hard-block-host";
+import {MessageBlockedCard} from "./message-blocked-card";
 import {useOptionalPaneHost} from "./panes/pane-host-context";
 import type {TranscriptMode} from "../lib/transcript-mode";
 import {hmrPersist} from "../lib/hmr-persist";
@@ -7131,7 +7133,7 @@ function AssistantEntry({
 			{attributionRow}
 			{line.isApiErrorMessage === true &&
 				(limitCard === null ? (
-					<ApiErrorCardForLine line={line} text={errorText} />
+					<RefusalCardForLine line={line} text={errorText} />
 				) : (
 					<UsageLimitCardForLine line={line} text={errorText} sessionId={sessionId} />
 				))}
@@ -7149,7 +7151,7 @@ function AssistantEntry({
 					/>
 				),
 			)}
-			{refused && line.isApiErrorMessage !== true && <ApiErrorCardForLine line={line} text="" />}
+			{refused && line.isApiErrorMessage !== true && <RefusalCardForLine line={line} text="" />}
 			{stopWarning && <StopWarningCard stopReason="prompt_injection_risk" />}
 			{requestDisclosure}
 		</div>
@@ -7277,6 +7279,15 @@ function signedInAgain(line: MessageSessionLine, text: string, reloginAt: number
 		},
 		reloginAt,
 	);
+}
+
+/** Upstream `N_`: a refusal row draws the hard-block card while the host is published, else the API error card. */
+function RefusalCardForLine({line, text}: {line: MessageSessionLine; text: string})
+{
+	const host = useContext(HardBlockHostContext);
+	const legacy = <ApiErrorCardForLine line={line} text={text} />;
+	if (host === null || line.stopReason !== "refusal" || line.uuid === undefined) return legacy;
+	return <MessageBlockedCard host={host} uuid={line.uuid} fallback={legacy} />;
 }
 
 /** The API error card for an assistant turn flagged as an API error message, or its marker when a later error or prompt supersedes it. */

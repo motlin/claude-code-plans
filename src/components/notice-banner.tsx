@@ -3,17 +3,7 @@ import {type ReactNode, useLayoutEffect, useRef, useState} from "react";
 
 import {useFizzyLake} from "../lib/fizzy-lake";
 import {GHOST_DISMISS_CLASS} from "./error-card-shell";
-
-/*
- * Upstream's neutral surface (`$9.neutral`): surface-1 with the `--cds-banner-neutral-tint` (alpha-1)
- * layer. Under fizzy-lake `color` its `stacks:` overrides (`TP`) swap both for the page fill and ring
- * the card in `--cds-fizzy-lake-color-banner-line`.
- */
-const SURFACE_CLASS =
-{
-	fizzy: "bg-page shadow-card-ring text-primary [--card-ring-color:var(--banner-line)]",
-	base: "bg-surface-1 bg-[linear-gradient(var(--color-alpha-1)_0_0)] shadow-card-ring text-primary",
-};
+import {NOTICE_SURFACE_CLASS} from "./notice-banner-classes";
 
 /* Upstream's cds spacing, verbatim; the CSS density scope picks the values. */
 const BODY_GAP_X = "gap-x-md";
@@ -190,7 +180,7 @@ export function NoticeBanner({
 })
 {
 	const color = useFizzyLake("color");
-	const surface = color ? SURFACE_CLASS.fizzy : SURFACE_CLASS.base;
+	const surface = color ? NOTICE_SURFACE_CLASS.fizzy : NOTICE_SURFACE_CLASS.base;
 	const panels = useFizzyLake("panels");
 	const hasAction = action !== undefined && action !== null && typeof action !== "boolean";
 	const dismissible = onDismiss !== undefined;

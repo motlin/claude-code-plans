@@ -141,6 +141,8 @@ import {ColdResumeNotice} from "./cold-resume-notice";
 import {RefusalFallbackBand} from "./refusal-fallback-card";
 import {startSessionOnModel} from "../lib/start-session-on-model";
 import {activeRefusalFallback} from "../lib/refusal-fallback";
+import {HARD_BLOCK_CARDS, hardBlockAt, latestHardBlock} from "../lib/hard-block";
+import {type HardBlockHost, HardBlockHostContext} from "./hard-block-host";
 import {settingsModelMenu} from "../lib/retry-model-items";
 import {newestRecordMs, usageWindowSpent} from "../lib/cold-resume-notice";
 import
@@ -177,6 +179,7 @@ import {useFolderModeMemory} from "../hooks/use-folder-mode-memory";
 import {useModeBadges} from "../hooks/use-mode-badges";
 import {useRewindPicker} from "../hooks/use-rewind-shortcut";
 import {useRewindRequest} from "../hooks/use-rewind-request";
+import {useHardBlockEditRetry} from "../hooks/use-hard-block-edit-retry";
 import {useRefusalEditRetry} from "../hooks/use-refusal-edit-retry";
 import {useRefusalFallbackDialog} from "../hooks/use-refusal-fallback-dialog";
 import {canStopResponse, useStopResponse} from "../hooks/use-stop-response";
@@ -1722,14 +1725,13 @@ function SessionView({
 	// Rewinding drives the live CLI's selector, so it needs a writable pane on a session that isn't archived.
 	const rewindAvailable = promptBehavior.hasLivePane && herdr.writesEnabled && !data.archived;
 	// Upstream's picker gate (`E_`) refuses while working, with a send pending, or under a card.
-	const rewindBusy =
-		paneBusy ||
-		liveHerdrPrompt.state.isPending ||
+	const cardHeld =
 		pendingPermission !== null ||
 		inlineQuestion !== null ||
 		hookQuestionCardShown ||
 		inlinePlanId !== null ||
 		dockedPlan !== null;
+	const rewindBusy = paneBusy || liveHerdrPrompt.state.isPending || cardHeld;
 	const rewindPicker = useRewindPicker(
 		{
 			sessionId,
@@ -2152,6 +2154,44 @@ function SessionView({
 			available: rewindAvailable && !rewindBusy,
 			turns: rewindTurnList,
 		},
+	);
+	// Upstream's hard-block host (cf6ae6197 `Fc`): every local session is the viewer's own.
+	const latestBlock = useMemo(
+		() =>
+			HARD_BLOCK_CARDS
+				? latestHardBlock(
+						transcript.records,
+						{
+							turnInFlight: paneBusy,
+							hidden: hiddenUuids,
+						},
+					)
+				: null,
+		[transcript.records, paneBusy, hiddenUuids],
+	);
+	const hardBlockEditRetry = useHardBlockEditRetry(
+		{
+			sessionId,
+			available: rewindAvailable,
+			busy: rewindBusy,
+			block: latestBlock,
+			turns: rewindTurnList,
+			runConversationRewind,
+		},
+	);
+	const hardBlockHost = useMemo<HardBlockHost | null>(
+		() =>
+			HARD_BLOCK_CARDS
+				?
+					{
+						latest: latestBlock,
+						blockAt: (uuid) => hardBlockAt(transcript.records, uuid, hiddenUuids),
+						held: cardHeld,
+						onEditRetry: hardBlockEditRetry.onEditRetry,
+						editRetryBusyFor: hardBlockEditRetry.busyFor,
+					}
+				: null,
+		[latestBlock, transcript.records, hiddenUuids, cardHeld, hardBlockEditRetry],
 	);
 	const refusalNewSession = useMemo(
 		() =>
@@ -3165,132 +3205,145 @@ function SessionView({
 															archived={data.archived}
 														>
 															<TurnUndoSendContext.Provider value={turnUndoSend}>
-																<TranscriptTailContext.Provider value={transcriptTail}>
-																	<TailActionsOutletContext.Provider
-																		value={tailActions}
+																<HardBlockHostContext.Provider value={hardBlockHost}>
+																	<TranscriptTailContext.Provider
+																		value={transcriptTail}
 																	>
-																		<FindLoadRestContext.Provider
-																			value={loadRestForFind}
+																		<TailActionsOutletContext.Provider
+																			value={tailActions}
 																		>
-																			<LiveStatusSourcesProvider
-																				value={liveStatusSources}
+																			<FindLoadRestContext.Provider
+																				value={loadRestForFind}
 																			>
-																				<TranscriptRevisionContext.Provider
-																					value={transcript.records.length}
+																				<LiveStatusSourcesProvider
+																					value={liveStatusSources}
 																				>
-																					<SessionChat
-																						sessionId={sessionId}
-																						lines={processed.lines}
-																						measurementSource={
-																							transcript.records
+																					<TranscriptRevisionContext.Provider
+																						value={
+																							transcript.records.length
 																						}
-																						measurementLayout={JSON.stringify(
-																							[
-																								settings.showDebug,
-																								settings.interfaceFont,
-																								settings.transcriptTextSize,
-																								settings.codeFont,
-																								settings.transcriptWidth,
-																							],
-																						)}
-																						toolResultMap={
-																							processed.toolResultMap
-																						}
-																						rewindCuts={
-																							chainProcessed.cutsByReplacement
-																						}
-																						rewoundUuids={hiddenUuids}
-																						allowedImageRoots={
-																							data.imageRoots
-																						}
-																						subagents={subagents}
-																						{...(workflowRuns === undefined
-																							? null
-																							:
+																					>
+																						<SessionChat
+																							sessionId={sessionId}
+																							lines={processed.lines}
+																							measurementSource={
+																								transcript.records
+																							}
+																							measurementLayout={JSON.stringify(
+																								[
+																									settings.showDebug,
+																									settings.interfaceFont,
+																									settings.transcriptTextSize,
+																									settings.codeFont,
+																									settings.transcriptWidth,
+																								],
+																							)}
+																							toolResultMap={
+																								processed.toolResultMap
+																							}
+																							rewindCuts={
+																								chainProcessed.cutsByReplacement
+																							}
+																							rewoundUuids={hiddenUuids}
+																							allowedImageRoots={
+																								data.imageRoots
+																							}
+																							subagents={subagents}
+																							{...(workflowRuns ===
+																							undefined
+																								? null
+																								:
+																									{
+																										workflowRuns,
+																									})}
+																							showThinking={
+																								transcriptFlags.showThinking
+																							}
+																							showTools={
+																								transcriptFlags.showTools
+																							}
+																							showPassedHooks={
+																								transcriptFlags.showPassedHooks
+																							}
+																							showHookWarnings={
+																								transcriptFlags.showHookWarnings
+																							}
+																							showHookErrors={
+																								transcriptFlags.showHookErrors
+																							}
+																							showSystemBanners={
+																								transcriptFlags.showSystemBanners
+																							}
+																							showCompactSummaries={
+																								transcriptFlags.showCompactSummaries
+																							}
+																							showTranscriptOnly={
+																								transcriptFlags.showTranscriptOnly
+																							}
+																							transcriptMode={
+																								transcriptMode
+																							}
+																							sessionLive={sessionProcessLive(
 																								{
-																									workflowRuns,
-																								})}
-																						showThinking={
-																							transcriptFlags.showThinking
-																						}
-																						showTools={
-																							transcriptFlags.showTools
-																						}
-																						showPassedHooks={
-																							transcriptFlags.showPassedHooks
-																						}
-																						showHookWarnings={
-																							transcriptFlags.showHookWarnings
-																						}
-																						showHookErrors={
-																							transcriptFlags.showHookErrors
-																						}
-																						showSystemBanners={
-																							transcriptFlags.showSystemBanners
-																						}
-																						showCompactSummaries={
-																							transcriptFlags.showCompactSummaries
-																						}
-																						showTranscriptOnly={
-																							transcriptFlags.showTranscriptOnly
-																						}
-																						transcriptMode={transcriptMode}
-																						sessionLive={sessionProcessLive(
-																							{
-																								hookActive: isActive,
-																								summaryState:
-																									sessionSummaryState,
-																							},
-																						)}
-																						turnInProgress={
-																							workingMarkerState.status !==
-																							"idle"
-																						}
-																						archived={data.archived}
-																						permissionWaitToolUseId={
-																							permissionWaitId
-																						}
-																						queuedCallIds={queuedCallIds}
-																						onSendNow={
-																							requestSendNowInterrupt
-																						}
-																						onFocusComposer={
-																							focusSessionComposer
-																						}
-																						sideChatAvailable={true}
-																						initialScrollKey={
-																							initialScrollKey
-																						}
-																						scrollContentRef={
-																							scrollAnchorRef
-																						}
-																						shouldScrollToEnd={
-																							restoredScrollPosition ===
+																									hookActive:
+																										isActive,
+																									summaryState:
+																										sessionSummaryState,
+																								},
+																							)}
+																							turnInProgress={
+																								workingMarkerState.status !==
+																								"idle"
+																							}
+																							archived={data.archived}
+																							permissionWaitToolUseId={
+																								permissionWaitId
+																							}
+																							queuedCallIds={
+																								queuedCallIds
+																							}
+																							onSendNow={
+																								requestSendNowInterrupt
+																							}
+																							onFocusComposer={
+																								focusSessionComposer
+																							}
+																							sideChatAvailable={true}
+																							initialScrollKey={
+																								initialScrollKey
+																							}
+																							scrollContentRef={
+																								scrollAnchorRef
+																							}
+																							shouldScrollToEnd={
+																								restoredScrollPosition ===
+																									undefined &&
+																								locationHash === ""
+																							}
+																							summary={aiSummary}
+																							{...(slashCommands ===
+																							undefined
+																								? {}
+																								:
+																									{
+																										slashCommands,
+																									})}
+																							{...(errorRecovery !==
 																								undefined &&
-																							locationHash === ""
-																						}
-																						summary={aiSummary}
-																						{...(slashCommands === undefined
-																							? {}
-																							:
-																								{
-																									slashCommands,
-																								})}
-																						{...(errorRecovery !==
-																							undefined &&
-																						{
-																							errorRecovery,
-																						})}
-																						staleCompact={staleCompact}
-																						renderClientRowCard={
-																							renderClientRowCard
-																						}
-																					/>
-																				</TranscriptRevisionContext.Provider>
-																			</LiveStatusSourcesProvider>
-																		</FindLoadRestContext.Provider>
-																	</TailActionsOutletContext.Provider>
-																</TranscriptTailContext.Provider>
+																							{
+																								errorRecovery,
+																							})}
+																							staleCompact={staleCompact}
+																							renderClientRowCard={
+																								renderClientRowCard
+																							}
+																						/>
+																					</TranscriptRevisionContext.Provider>
+																				</LiveStatusSourcesProvider>
+																			</FindLoadRestContext.Provider>
+																		</TailActionsOutletContext.Provider>
+																	</TranscriptTailContext.Provider>
+																</HardBlockHostContext.Provider>
 															</TurnUndoSendContext.Provider>
 														</TranscriptActionsProvider>
 													</SessionBackgroundTasksOpener>

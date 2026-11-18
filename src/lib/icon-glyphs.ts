@@ -195,6 +195,25 @@ function CaretRightFilled(props: GlyphProps)
 	);
 }
 
+/** Upstream's `CaretDownFilled`: CaretRightFilled's triangle pointing down (the cds Banner details caret). */
+function CaretDownFilled(props: GlyphProps)
+{
+	return createElement(
+		"svg",
+		{
+			viewBox: "0 0 14 14",
+			...svgAttributes(props),
+		},
+		createElement(
+			"path",
+			{
+				fill: "currentColor",
+				d: "M3.4 5h7.2c.42 0 .65.48.39.81l-3.6 4.5a.5.5 0 0 1-.78 0l-3.6-4.5A.5.5 0 0 1 3.4 5Z",
+			},
+		),
+	);
+}
+
 /**
  * Upstream's `CaretDownSmall` (Anthropicons U+F003): a short down chevron drawn well inside the box,
  * smaller than `CaretDown`. Stroked at the Icon's scaled width like a lucide glyph.
@@ -249,6 +268,7 @@ function Reorder({strokeWidth, ...props}: GlyphProps)
 
 export const DRAWN_GLYPHS =
 {
+	CaretDownFilled,
 	CaretDownSmall,
 	CaretRightFilled,
 	CheckCircleFilled,

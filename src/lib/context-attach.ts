@@ -353,6 +353,8 @@ export interface ComposerHandle
 	 * Absent where bash mode isn't available.
 	 */
 	prefillShell?: (command: string, ignoreStrayEnter: boolean) => ShellLineResult;
+	/** True while the composer is in bash mode; absent where bash mode isn't available. */
+	inBashMode?: () => boolean;
 }
 
 const composers = new Map<string, Set<ComposerHandle>>();
@@ -998,6 +1000,16 @@ export function getComposerText(sessionId: string): string | null
 			.find((each) => each.getText !== undefined)
 			?.getText?.() ?? null
 	);
+}
+
+/** Upstream uXFFUp (`Tu.bashRefusal`): text added while bash mode is on. */
+export const BASH_MODE_REFUSAL =
+	"Bash mode is on, so nothing was added. Press Backspace in the empty message box to return to chat, then try again.";
+
+/** True when any of the session's composers is in bash mode. */
+export function composerInBashMode(sessionId: string): boolean
+{
+	return mounted(sessionId).some((each) => each.inBashMode?.() === true);
 }
 
 /** Submits the session's first composer as Enter would; false when none can submit. */
