@@ -76,10 +76,14 @@ export function sessionEnvironment({
 	};
 }
 
-/** Where a pane runs: `herdr`, `herdr · <named session>`, or `tmux · <session>`. */
+/** The environment label of the app's headless stream-json sessions. */
+export const HEADLESS_HOST_LABEL = "Headless";
+
+/** Where a pane runs: `herdr`, `herdr · <named session>`, `tmux · <session>`, or `Headless`. */
 export function terminalHostLabel(pane: EnvironmentPane): string
 {
 	if (pane.host === "tmux") return `tmux · ${pane.workspaceId}`;
+	if (pane.host === "headless") return HEADLESS_HOST_LABEL;
 	const {session} = splitHerdrId(pane.paneId);
 	return session === null ? "herdr" : `herdr · ${session}`;
 }

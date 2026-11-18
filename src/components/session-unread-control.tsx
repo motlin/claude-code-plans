@@ -1,8 +1,9 @@
-import {Laptop} from "lucide-react";
+import {Cpu, Laptop} from "lucide-react";
 import type {SessionListItem} from "../lib/api/sessions";
 import {prGlyph} from "../lib/pr-status";
 import {sessionMenuReadState, type SessionMenuReadState} from "../lib/session-menu-items";
 import {sessionStateKindLabels} from "../lib/schema-choices";
+import {HEADLESS_HOST_LABEL} from "../lib/session-environment";
 import {isLiveSessionState, sessionRowIconKind} from "../lib/session-state";
 import {TOUCH_HIT} from "../lib/touch-reveal";
 import {markSeen} from "../lib/unread-store";
@@ -115,6 +116,16 @@ function BridgeEnvGlyph({offline}: {offline: boolean})
 	);
 }
 
+/** A headless session's environment glyph: the app owns its CLI process, which runs in no terminal. */
+function HeadlessEnvGlyph()
+{
+	return (
+		<span aria-hidden="true" className="flex size-[var(--sb-row-ctl)] shrink-0 items-center justify-center">
+			<Cpu data-env-glyph="headless" className="size-4 shrink-0 text-muted-as-secondary" />
+		</span>
+	);
+}
+
 /**
  * claude.ai/code's trailing sidebar-row decoration: the status mark (amber Awaiting input, blinking
  * muted Running, accent Unread response) or, on a settled row, the muted environment glyph, here
@@ -155,9 +166,12 @@ export function SidebarRowDecoration({
 			className="pointer-events-none absolute top-1/2 right-[var(--sb-row-ctl-inset)] flex size-[var(--sb-row-ctl,24px)] -translate-y-1/2 items-center justify-center group-hover/session-row:opacity-0 group-has-[:focus-visible]/session-row:opacity-0 group-data-[menu-open=true]/session-row:opacity-0"
 		>
 			{kind === "idle" ? (
-				envGlyph && (
+				envGlyph &&
+				(session.terminalHost === HEADLESS_HOST_LABEL ? (
+					<HeadlessEnvGlyph />
+				) : (
 					<BridgeEnvGlyph offline={session.remoteControl === true && !isLiveSessionState(session.state)} />
-				)
+				))
 			) : (
 				<span aria-hidden="true" className="flex items-center">
 					{attention !== "waiting" && attention !== "unread" ? (

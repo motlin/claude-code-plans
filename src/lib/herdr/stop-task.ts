@@ -109,6 +109,8 @@ export function parseTasksDialog(screen: string): TasksDialog | null
 const HerdrStopTaskSchema = z.strictObject(
 	{
 		sessionId: z.string().min(1),
+		/** The task's id, which only a headless session's `stop_task` uses; the pane path matches on screen. */
+		id: z.string().optional(),
 		kind: z.enum(["bash", "agent", "monitor", "workflow", "task"]),
 		description: z.string(),
 		command: z.string().nullable(),

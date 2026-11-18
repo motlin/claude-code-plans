@@ -135,6 +135,7 @@ describe("useBackgroundTaskStop", () =>
 					[
 						"session-1",
 						{
+							id: "a",
 							kind: "bash",
 							description: "Task a",
 							command: "sleep a",

@@ -25,7 +25,7 @@ import {herdrPanesQueryOptions} from "../lib/api/herdr";
 import {sessionOutputStylesQueryOptions} from "../lib/api/output-styles";
 import {outputStyleItems} from "../lib/output-style-options";
 import {sessionOutputStyle} from "../lib/session-output-style";
-import {sessionHasLiveTerminal} from "../lib/terminal-host-capabilities";
+import {sessionHasLiveTerminal, sessionIsHeadless} from "../lib/terminal-host-capabilities";
 import {openSessionInFinder, sessionOpenInQueryOptions, type SessionDetailData} from "../lib/api/sessions";
 import {writeClipboardText} from "../lib/clipboard";
 import {formatModelName} from "../lib/model-name";
@@ -464,6 +464,7 @@ export function SessionTitlebar({
 }: SessionTitlebarProps)
 {
 	const rename = useSessionRename(sessionId, data.title, data.titleIsStandIn === true);
+	const headless = sessionIsHeadless(useQuery(herdrPanesQueryOptions).data?.panes, sessionId);
 	const panels = useFizzyLake("panels");
 	const cwd = data.cwd ?? data.projectPath;
 	useSessionTitleShortcuts(
@@ -577,6 +578,11 @@ export function SessionTitlebar({
 								<ArrowLeft aria-hidden className="size-3 shrink-0" />
 								Parent session
 							</Link>
+						)}
+						{headless && (
+							<span data-testid="headless-session-pill" className={PILL_CLASS}>
+								Headless
+							</span>
 						)}
 						{titlePending ? (
 							/* Upstream's lead while the title loads: the h2 with a plain preview, no rename, chevron or aria-label. */

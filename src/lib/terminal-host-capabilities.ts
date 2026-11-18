@@ -1,5 +1,5 @@
-/** A terminal multiplexer a pane can come from. */
-export type TerminalPaneHost = "herdr" | "tmux";
+/** A terminal multiplexer a pane can come from, or `headless` for an app-owned stream-json session. */
+export type TerminalPaneHost = "herdr" | "tmux" | "headless";
 
 export interface TerminalHostCapabilities
 {
@@ -25,6 +25,12 @@ export const TERMINAL_HOST_CAPABILITIES =
 		canWrite: true,
 		canStream: true,
 	},
+	// An app-owned stream-json CLI: controls go over its control protocol, and it has no terminal to show.
+	headless:
+	{
+		canWrite: true,
+		canStream: false,
+	},
 } as const satisfies Record<TerminalPaneHost, TerminalHostCapabilities>;
 
 /** Whether the session has a pane the live terminal tab can stream. */
@@ -42,4 +48,19 @@ export function sessionHasLiveTerminal(
 	return (
 		panes?.some((pane) => pane.sessionId === sessionId && TERMINAL_HOST_CAPABILITIES[pane.host].canStream) ?? false
 	);
+}
+
+/** Whether the session is one of the app's headless stream-json sessions. */
+export function sessionIsHeadless(
+	panes:
+		| ReadonlyArray<
+		  {
+				sessionId: string;
+				host: TerminalPaneHost;
+		  }>
+		| undefined,
+	sessionId: string,
+): boolean
+{
+	return panes?.some((pane) => pane.sessionId === sessionId && pane.host === "headless") ?? false;
 }

@@ -7,6 +7,7 @@ import {herdrPaneTable, type HerdrPaneReader, type HerdrPaneState} from "./pane-
 import {HerdrPaneInfoSchema, HerdrSessionSnapshotResultSchema} from "./schema";
 import {knownHerdrServers, qualifiedEntryHerdrPane, qualifyHerdrPaneState, type HerdrServer} from "./servers";
 import type {TerminalPlacementBase, TerminalPlacementProvider} from "../terminal-placements";
+import type {TerminalPaneHost} from "../terminal-host-capabilities";
 
 export type HerdrAgentStatus = z.infer<typeof HerdrPaneInfoSchema>["agent_status"];
 export type HerdrWirePane = z.infer<typeof HerdrPaneInfoSchema>;
@@ -34,7 +35,7 @@ export interface HerdrPane
  */
 export interface HerdrPaneLink extends HerdrPane
 {
-	host: "herdr" | "tmux";
+	host: TerminalPaneHost;
 	sessionId: string;
 	via: "env" | "agent-session" | "process" | "both";
 }

@@ -63,13 +63,14 @@ function sources(overrides: Partial<SessionTerminalHostSources>): SessionTermina
 		},
 		entries: () => [],
 		indexedSessionFilter: (ids) => new Set(ids),
+		headlessSessionIds: () => [],
 		...overrides,
 	};
 }
 
 describe("getSessionTerminalHosts", () =>
 {
-	it("labels each session by the herdr or tmux pane it runs in, from the in-memory pane tables", () =>
+	it("labels each session by the herdr or tmux pane it runs in, from the in-memory pane tables, and headless sessions Headless", () =>
 	{
 		const herdr: HerdrPaneState =
 		{
@@ -100,6 +101,7 @@ describe("getSessionTerminalHosts", () =>
 					{
 						current: () => [tmuxPane("session-tmux", "work")],
 					},
+					headlessSessionIds: () => ["session-headless"],
 					entries: () => [
 						{
 							...viaEnv,
@@ -117,6 +119,7 @@ describe("getSessionTerminalHosts", () =>
 				"session-named": "herdr · later",
 				"session-env": "herdr",
 				"session-tmux": "tmux · work",
+				"session-headless": "Headless",
 			},
 		);
 	});

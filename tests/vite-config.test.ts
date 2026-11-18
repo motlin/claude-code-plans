@@ -249,7 +249,7 @@ describe("quiet output", () =>
 					["isolated", true],
 				],
 				reportCompressedSize: false,
-				chunkSizeWarningLimit: 800,
+				chunkSizeWarningLimit: 850,
 				filtersBundlerLogs: "function",
 				bundlerChecks:
 				{

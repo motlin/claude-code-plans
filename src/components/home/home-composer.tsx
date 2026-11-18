@@ -11,6 +11,7 @@ import {useSlashCommands} from "../../hooks/use-slash-commands";
 import {useAgentMentionProvider} from "../../hooks/use-agent-mention-provider";
 import {promptHistoryQueryOptions} from "../../lib/api/prompt-history";
 import {homeFolderStatusQueryOptions} from "../../lib/api/home-folder-status";
+import {launchHeadlessSession} from "../../lib/api/headless";
 import {HerdrRequestError, isNoTerminalHost, launchHerdrSession} from "../../lib/api/herdr";
 import {getComposerText, refillRejectedSend, restoreRejectedAttachments} from "../../lib/context-attach";
 import {restoreStoredDraft} from "../../lib/composer-draft-store";
@@ -46,7 +47,7 @@ import {GroupLaunchNote} from "./group-launch-note";
 import {useHomeLaunchFolder, useHomeLaunchOptions, useHomeWorktree} from "./launch-folder";
 import {useHomeDraftMode} from "./use-home-draft-mode";
 import {ProjectPicker} from "./project-picker";
-import {WorktreeToggleChip} from "./worktree-toggle-chip";
+import {HeadlessToggleChip, WorktreeToggleChip} from "./worktree-toggle-chip";
 
 export {HOME_RECENT_LIMIT} from "./launch-folder";
 
@@ -124,6 +125,8 @@ export function HomeComposer({
 	}, [navigate]);
 	const activeSessions = useActiveSessionsIfAvailable();
 	useIdlePrefetch(HOME_DOCK_CHUNKS);
+	// The draft starts an app-owned headless session instead of a terminal tab.
+	const [headless, setHeadless] = useState(false);
 	const [pendingLaunch, setPendingLaunch] = useState<
 		| (PendingLaunch &
 		  {
@@ -403,7 +406,8 @@ export function HomeComposer({
 		setLaunching(true);
 		try
 		{
-			const {sessionId} = await launchHerdrSession(request);
+			// Headless: the app spawns and owns the CLI instead of opening a terminal tab for it.
+			const {sessionId} = headless ? await launchHeadlessSession(request) : await launchHerdrSession(request);
 			// The launch ends this draft, so its Worktree override goes back to the preference and its agent goes.
 			worktree.endDraft();
 			setSelectedAgent(undefined);
@@ -433,7 +437,7 @@ export function HomeComposer({
 		catch (error)
 		{
 			// Without a terminal host the shell command is the way to start; a copy that fails falls back to the card.
-			if (isNoTerminalHost(error) && (await writeClipboardText(buildClaudeCopyCommand(request))))
+			if (!headless && isNoTerminalHost(error) && (await writeClipboardText(buildClaudeCopyCommand(request))))
 			{
 				toast(
 					{
@@ -531,14 +535,24 @@ export function HomeComposer({
 							: null,
 				}}
 				worktreeToggle={
-					worktreeShown && !launching ? (
-						<WorktreeToggleChip
-							on={worktree.enabled}
-							pending={false}
-							onChange={worktree.set}
-							onPressed={requestHomeComposerFocus}
-						/>
-					) : undefined
+					launching ? undefined : (
+						<>
+							{worktreeShown && (
+								<WorktreeToggleChip
+									on={worktree.enabled}
+									pending={false}
+									onChange={worktree.set}
+									onPressed={requestHomeComposerFocus}
+								/>
+							)}
+							<HeadlessToggleChip
+								on={headless}
+								pending={false}
+								onChange={setHeadless}
+								onPressed={requestHomeComposerFocus}
+							/>
+						</>
+					)
 				}
 				{...slashMenu}
 				promptHistory={promptHistory?.prompts}

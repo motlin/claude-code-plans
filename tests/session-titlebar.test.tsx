@@ -279,6 +279,8 @@ async function renderTitlebar(
 		railToggleFoldable?: boolean;
 		fizzyLake?: readonly FizzyLakePart[];
 		titlePending?: boolean;
+		/** The session runs as one of the app's headless sessions. */
+		headless?: boolean;
 	} = {},
 )
 {
@@ -303,7 +305,38 @@ async function renderTitlebar(
 	queryClient.setQueryData(
 		herdrPanesQueryOptions.queryKey,
 		{
-			panes: [],
+			panes:
+				slots.headless === true
+					? [
+							{
+								host: "headless",
+								paneId: `headless:${SESSION_ID}`,
+								terminalId: `headless:${SESSION_ID}`,
+								workspaceId: "headless",
+								tabId: `headless:${SESSION_ID}`,
+								focused: false,
+								cwd: data.cwd,
+								foregroundCwd: data.cwd,
+								agentStatus: "idle",
+								agent: "claude",
+								terminalTitle: null,
+								agentSessionId: SESSION_ID,
+								revision: 0,
+								sessionId: SESSION_ID,
+								via: "env",
+								viewedState:
+								{
+									currentMessageIndex: 0,
+									lastViewedMessageIndex: 0,
+									reviewTargetMessageIndex: 0,
+									newMessageCount: 0,
+									viewedInCcp: true,
+									viewedInHerdr: false,
+									viewedAnywhere: true,
+								},
+							},
+						]
+					: [],
 			writesEnabled: false,
 		},
 	);
@@ -1810,6 +1843,22 @@ describe("SessionTitlebar Session tools toolbar (upstream cds Toolbar with tu ro
 		);
 
 		expect(stops(titlebar)).toStrictEqual(["Parent session"]);
+	});
+
+	it("marks a headless session with a Headless pill before its title", async () =>
+	{
+		const titlebar = await renderTitlebar(
+			baseDetail,
+			{
+				headless: true,
+			},
+		);
+
+		expect(
+			[...titlebar.querySelectorAll("[data-testid='headless-session-pill'], h2")].map(
+				(element) => element.getAttribute("aria-label") ?? element.textContent,
+			),
+		).toStrictEqual(["Headless", TITLE]);
 	});
 
 	it("roves with ArrowRight, End and Home", async () =>

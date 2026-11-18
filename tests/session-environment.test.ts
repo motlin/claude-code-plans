@@ -20,15 +20,22 @@ const TMUX =
 	paneId: "%7",
 	workspaceId: "work",
 } as const;
+const HEADLESS =
+{
+	host: "headless",
+	paneId: "headless:session-alice",
+	workspaceId: "headless",
+} as const;
 
 describe("terminalHostLabel", () =>
 {
-	it("names a pane's terminal host, with a herdr named session or the tmux session", () =>
+	it("names a pane's terminal host, with a herdr named session or the tmux session, and a headless session Headless", () =>
 	{
-		expect([HERDR, HERDR_NAMED, TMUX].map(terminalHostLabel)).toStrictEqual([
+		expect([HERDR, HERDR_NAMED, TMUX, HEADLESS].map(terminalHostLabel)).toStrictEqual([
 			"herdr",
 			"herdr · later",
 			"tmux · work",
+			"Headless",
 		]);
 	});
 });

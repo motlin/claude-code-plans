@@ -1215,6 +1215,47 @@ describe("Environment card", () =>
 		);
 	});
 
+	it("labels a headless session Headless and shows its turn status, without a terminal link", async () =>
+	{
+		await renderCards(
+			{
+				...BASE,
+				gitBranch: null,
+				model: null,
+				herdrPane:
+				{
+					...PANE,
+					host: "headless",
+					paneId: `headless:${SESSION_ID}`,
+					workspaceId: "headless",
+					agentStatus: "blocked",
+				},
+			},
+			noBridge,
+		);
+		const card = screen.getByRole(
+			"region",
+			{
+				name: /^Environment/,
+			},
+		);
+
+		expect(
+			{
+				rows: rows("Environment"),
+				links: within(card).queryAllByRole("link"),
+			},
+		).toStrictEqual(
+			{
+				rows: [
+					["~/projects/avalonlogs", "Headless"],
+					["Headless", "blocked"],
+				],
+				links: [],
+			},
+		);
+	});
+
 	function withGitHub(client: QueryClient)
 	{
 		client.setQueryData(

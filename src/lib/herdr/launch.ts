@@ -16,7 +16,7 @@ const AGENT_START_REQUEST_TIMEOUT_MS = AGENT_START_TIMEOUT_MS + 5_000;
 const PROMPT_ATTEMPTS = 20;
 const PROMPT_RETRY_DELAY_MS = 250;
 
-const HerdrLaunchRequestSchema = z
+export const HerdrLaunchRequestSchema = z
 	.object(
 		{
 			/** Absent for launches tied to no project, which start in the home directory. */

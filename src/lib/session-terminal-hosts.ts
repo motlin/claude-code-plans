@@ -1,4 +1,5 @@
 import {getActiveSessionEntries, type ActiveSessionEntry} from "./active-session-store";
+import {getHeadlessRegistry, headlessPaneId} from "./headless/registry";
 import {herdrPaneTable, type HerdrPaneReader} from "./herdr/pane-table";
 import {filterIndexedSessions, linkHerdrPanes, type IndexedSessionFilter} from "./herdr/panes";
 import {terminalHostLabel} from "./session-environment";
@@ -10,6 +11,8 @@ export interface SessionTerminalHostSources
 	tmux: Pick<TmuxPaneTable, "current">;
 	entries: () => ActiveSessionEntry[];
 	indexedSessionFilter: IndexedSessionFilter;
+	/** The app's live headless sessions, which run in no terminal. */
+	headlessSessionIds: () => string[];
 }
 
 const defaultSources: SessionTerminalHostSources =
@@ -18,6 +21,10 @@ const defaultSources: SessionTerminalHostSources =
 	tmux: tmuxPaneTable,
 	entries: getActiveSessionEntries,
 	indexedSessionFilter: filterIndexedSessions,
+	headlessSessionIds: () =>
+		getHeadlessRegistry()
+			.list()
+			.map((session) => session.sessionId),
 };
 
 /**
@@ -32,6 +39,17 @@ export function getSessionTerminalHosts(
 ): ReadonlyMap<string, string>
 {
 	const labels = new Map<string, string>();
+	for (const sessionId of sources.headlessSessionIds())
+		labels.set(
+			sessionId,
+			terminalHostLabel(
+				{
+					host: "headless",
+					paneId: headlessPaneId(sessionId),
+					workspaceId: "headless",
+				},
+			),
+		);
 	const herdr = sources.herdr.current();
 	if (herdr !== null)
 	{

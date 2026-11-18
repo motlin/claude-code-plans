@@ -499,9 +499,10 @@ export default defineConfig(
 			reportCompressedSize: false,
 			// In kB. Past Vite's 500 kB default sit single modules that cannot split further, each loaded on demand: shiki's
 			// emacs-lisp (790) and cpp (786) grammars, ghostty-web (637) and shiki's inlined onig wasm (622); the lazy
-			// markdown editor (756), already behind its own import(); and the home and session route chunks (~615), where
-			// more chunks would raise the browser.J1/J2 request ceilings. just perf-bundle ratchets the route sizes.
-			chunkSizeWarningLimit: 800,
+			// markdown editor (756), already behind its own import(); and the home and session route chunks (session ~801 once
+			// headless sessions added their pill and rail row), where more chunks would raise the browser.J1/J2 request
+			// ceilings. just perf-bundle ratchets the route sizes.
+			chunkSizeWarningLimit: 850,
 			rolldownOptions:
 			{
 				onLog: quietDependencyDirectives,

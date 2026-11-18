@@ -24,7 +24,47 @@ interface WorktreeToggleChipProps
  * hidden detail and hover tooltip. A pointer click toggles and then refocuses the composer; a keyboard (virtual)
  * click toggles and keeps focus on the switch.
  */
-export function WorktreeToggleChip({on, pending, onChange, onPressed}: WorktreeToggleChipProps)
+export function WorktreeToggleChip(props: WorktreeToggleChipProps)
+{
+	return (
+		<EnvironmentToggleChip
+			{...props}
+			label="Worktree"
+			description={WORKTREE_DESCRIPTION}
+			testId="environment-bar-worktree-toggle"
+		/>
+	);
+}
+
+const HEADLESS_DESCRIPTION = "Run without a terminal: the app owns the CLI and drives it over stream-json";
+
+/** The home draft's Headless chip, Worktree's twin: on, the send starts an app-owned headless session. */
+export function HeadlessToggleChip(props: WorktreeToggleChipProps)
+{
+	return (
+		<EnvironmentToggleChip
+			{...props}
+			label="Headless"
+			description={HEADLESS_DESCRIPTION}
+			testId="environment-bar-headless-toggle"
+		/>
+	);
+}
+
+function EnvironmentToggleChip({
+	on,
+	pending,
+	onChange,
+	onPressed,
+	label,
+	description,
+	testId,
+}: WorktreeToggleChipProps &
+{
+	label: string;
+	description: string;
+	testId: string;
+})
 {
 	const iconOnly = useContext(EnvironmentBarIconOnlyContext);
 	const labelId = useId();
@@ -38,14 +78,11 @@ export function WorktreeToggleChip({on, pending, onChange, onPressed}: WorktreeT
 		// oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- upstream's presentation row: the switch inside it is the keyboard control, the row only refocuses after a pointer toggle
 		<span role="presentation" onClick={handleClick} className={CHIP_CLASS}>
 			{/* Collapsed, the label is screen-reader text, so the tip names the chip and adds the description. */}
-			<Tooltip
-				content={iconOnly ? "Worktree" : WORKTREE_DESCRIPTION}
-				detail={iconOnly ? WORKTREE_DESCRIPTION : undefined}
-			>
+			<Tooltip content={iconOnly ? label : description} detail={iconOnly ? description : undefined}>
 				<Switch
 					size="xxs"
 					className="hit-row-main"
-					data-testid="environment-bar-worktree-toggle"
+					data-testid={testId}
 					aria-labelledby={labelId}
 					aria-describedby={descriptionId}
 					checked={on}
@@ -54,10 +91,10 @@ export function WorktreeToggleChip({on, pending, onChange, onPressed}: WorktreeT
 				/>
 			</Tooltip>
 			<span id={labelId} className={iconOnly ? "sr-only" : "pointer-events-none text-muted-as-secondary"}>
-				Worktree
+				{label}
 			</span>
 			<span id={descriptionId} hidden>
-				{WORKTREE_DESCRIPTION}
+				{description}
 			</span>
 		</span>
 	);

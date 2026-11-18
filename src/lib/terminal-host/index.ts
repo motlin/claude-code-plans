@@ -1,5 +1,8 @@
 import type {ActiveSessionEntry} from "../active-session-store";
-import {terminalHostSetting} from "../config";
+import {terminalHostSetting, terminalWritesEnabled} from "../config";
+import {withHeadlessSessions} from "../headless/host";
+import {getHeadlessRegistry} from "../headless/registry";
+import {rejectCrossSite} from "../same-origin-guard";
 import type {HookEvent} from "../hook-events";
 import type {TerminalPlacementProvider} from "../terminal-placements";
 import type {TerminalHostSetting} from "../terminal-host-setting";
@@ -548,10 +551,18 @@ export async function resolveTerminalHost(
 	return id === "herdr" ? herdrTerminalHost : tmuxTerminalHost;
 }
 
-/** The host the Terminal host setting picks right now. */
+/** The host the Terminal host setting picks right now, with the app's headless sessions layered on. */
 export async function getTerminalHost(): Promise<TerminalHost>
 {
-	return resolveTerminalHost(terminalHostSetting());
+	return withHeadlessSessions(
+		await resolveTerminalHost(terminalHostSetting()),
+		{
+			registry: getHeadlessRegistry,
+			rejectRequest: rejectCrossSite,
+			writesEnabled: terminalWritesEnabled,
+			clearPendingPermission: defaultHerdrPermissionDependencies.clearPendingPermission,
+		},
+	);
 }
 
 interface PaneEventStarters

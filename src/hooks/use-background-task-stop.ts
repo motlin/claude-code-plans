@@ -134,6 +134,7 @@ export function useBackgroundTaskStop({
 			stop(
 				sessionId,
 				{
+					id: task.id,
 					kind: task.kind,
 					description: task.description,
 					command: task.command,

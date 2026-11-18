@@ -17,7 +17,7 @@ import type {BackgroundTask} from "../background-tasks";
 export const HerdrPaneSchema = z
 	.object(
 		{
-			host: z.enum(["herdr", "tmux"]),
+			host: z.enum(["herdr", "tmux", "headless"]),
 			paneId: z.string(),
 			terminalId: z.string(),
 			workspaceId: z.string(),
@@ -552,8 +552,11 @@ export async function stopHerdrBackgroundAgents(sessionId: string, fetcher: type
 	HerdrPromptSuccessResponse.parse(json);
 }
 
-/** The fields the CLI's `/tasks` dialog shows for a task, which the server matches on screen. */
-export type StoppableTask = Pick<BackgroundTask, "kind" | "description" | "command">;
+/**
+ * The fields the CLI's `/tasks` dialog shows for a task, which the server matches on screen, plus its id,
+ * which a headless session's `stop_task` names directly.
+ */
+export type StoppableTask = Pick<BackgroundTask, "id" | "kind" | "description" | "command">;
 
 /** Stop one background task through the CLI's `/tasks` dialog in the session's live pane. */
 export async function stopHerdrBackgroundTask(
@@ -574,6 +577,7 @@ export async function stopHerdrBackgroundTask(
 			body: JSON.stringify(
 				{
 					sessionId,
+					id: task.id,
 					kind: task.kind,
 					description: task.description,
 					command: task.command,

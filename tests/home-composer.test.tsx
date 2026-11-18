@@ -163,6 +163,21 @@ async function fetchMock(url: string, init?: RequestInit): Promise<Response>
 		filesCalls.push(url);
 		return Response.json(FILES_LISTING);
 	}
+	if (url === "/api/headless/launch")
+	{
+		launchCalls.push(
+			{
+				url,
+				init,
+			},
+		);
+		return Response.json(
+			{
+				ok: true,
+				sessionId: "headless-session-alice",
+			},
+		);
+	}
 	if (url === "/api/herdr/launch")
 	{
 		launchCalls.push(
@@ -503,7 +518,12 @@ describe("HomeComposer", () =>
 				placeButton: "Folder: it's",
 				placeButtonClass:
 					"flex h-6 max-w-[240px] min-w-0 items-center gap-1 comfortable:gap-2 rounded-r6 px-1.5 text-body text-secondary-control transition-colors hover:bg-fill-ghost-hover hover:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus",
-				rowItems: ["it's", "Opus 4.8 Medium", "Plan", ""],
+				rowItems: [
+					"it'sHeadlessRun without a terminal: the app owns the CLI and drives it over stream-json",
+					"Opus 4.8 Medium",
+					"Plan",
+					"",
+				],
 			},
 		);
 	});
@@ -677,6 +697,44 @@ describe("HomeComposer", () =>
 		).toStrictEqual(
 			{
 				url: "/api/herdr/launch",
+				method: "POST",
+				body:
+				{
+					cwd: "/users/dev/it's",
+					prompt: "fix the flaky test",
+				},
+			},
+		);
+	});
+
+	it("posts to the headless launch API instead while the Headless chip is on", async () =>
+	{
+		await renderApp();
+		fireEvent.click(screen.getByTestId("environment-bar-headless-toggle"));
+		await typePrompt("fix the flaky test");
+
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Send",
+				},
+			),
+		);
+
+		await waitFor(() =>
+		{
+			expect(launchCalls.length).toBe(1);
+		});
+		expect(
+			{
+				url: launchCalls[0]?.url,
+				method: launchCalls[0]?.init?.method,
+				body: launchBody(launchCalls[0]),
+			},
+		).toStrictEqual(
+			{
+				url: "/api/headless/launch",
 				method: "POST",
 				body:
 				{

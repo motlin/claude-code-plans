@@ -31,6 +31,7 @@ import {getCacheDir} from "./lib/db/connection";
 import {enableArtifactThumbnailWarming} from "./lib/artifact-thumbnail-warm";
 import {initPendingApprovalsCache} from "./lib/db/pending-approvals-cache";
 import {startTerminalHostEvents} from "./lib/terminal-host";
+import {getHeadlessRegistry, initHeadlessRegistry} from "./lib/headless/registry";
 import {resolveFileSearchRoots} from "./lib/config";
 import type {RecursiveWatcher} from "./lib/recursive-watch";
 import {initPrStatusService} from "./lib/pr-status-service";
@@ -93,6 +94,8 @@ void (async () =>
 		stopLiveSubagentSweep();
 		stopHerdrEventBridge?.();
 		stopHerdrEventBridge = null;
+		// Closing stdin lets each headless CLI finish and exit; a restarted server cannot re-adopt them.
+		getHeadlessRegistry().closeAll();
 		stopStallMonitor?.();
 		stopStallMonitor = null;
 		await closeWatcher();
@@ -129,6 +132,12 @@ void (async () =>
 	persistPendingPlansTo(join(getCacheDir(), "pending-plans.json"));
 	// Titles pushed to claude.ai/code before a restart still title their bridged sessions.
 	persistBridgePushedTitlesTo(join(getCacheDir(), "bridge-pushed-titles.json"));
+	// Headless sessions a previous server owned end with it; stop any CLI it left running.
+	await initHeadlessRegistry(join(getCacheDir(), "headless-sessions.json")).catch((err: unknown) =>
+	{
+		console.error("Failed to recover headless sessions:", err);
+	});
+	if (stopped()) return;
 
 	try
 	{

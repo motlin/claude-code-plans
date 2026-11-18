@@ -324,6 +324,8 @@ function EnvironmentBody({inputs}: {inputs: SessionRailInputs})
 				<RailRow icon={<Icon icon={SquareTerminal} />} label="herdr" hint="No pane" />
 			) : herdrPane.host === "tmux" ? (
 				<RailRow icon={<Icon icon={SquareTerminal} />} label="tmux" hint={herdrPane.paneId} />
+			) : herdrPane.host === "headless" ? (
+				<RailRow icon={<Icon icon={SquareTerminal} />} label="Headless" hint={herdrPane.agentStatus} />
 			) : (
 				<Link
 					to="/terminals/$sessionId"

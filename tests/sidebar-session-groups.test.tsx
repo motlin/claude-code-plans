@@ -1936,10 +1936,14 @@ describe("sidebar SessionGroups", () =>
 		);
 	});
 
-	it("draws upstream's bridge env glyph on the icon, LaptopSlash when offline, and none on pinned rows or under project grouping", async () =>
+	it("draws upstream's bridge env glyph on the icon, LaptopSlash when offline, a CPU on a headless session, and none on pinned rows or under project grouping", async () =>
 	{
 		const rows = [
 			session("d1", "Live bridged", "done", 5),
+			{
+				...session("h1", "Headless run", "done", 4),
+				terminalHost: "Headless",
+			},
 			{
 				...session("d2", "Offline bridged", "done", 6),
 				remoteControl: true,
@@ -2034,10 +2038,16 @@ describe("sidebar SessionGroups", () =>
 						slash: true,
 					},
 					"Live remote": live,
+					"Headless run":
+					{
+						...live,
+						kind: "headless",
+					},
 				},
 				byProject:
 				{
 					"Pinned one": null,
+					"Headless run": null,
 					"Live bridged": null,
 					"Offline bridged": null,
 					"Live remote": null,
