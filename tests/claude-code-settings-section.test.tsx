@@ -270,6 +270,12 @@ describe("Claude Code settings ▸ Sessions", () =>
 						title: "Local sandbox",
 						description: "Runs commands from Claude Code in an isolated sandbox. Applies to new sessions.",
 					},
+					{
+						slug: "strict-sandbox-mode",
+						title: "Strict sandbox mode",
+						description:
+							"Blocks commands that can’t run inside the sandbox (ssh, for example) instead of running them outside it or asking you. Applies to every Claude Code session on this computer, including the terminal, unless a project’s own settings override it.",
+					},
 				],
 			},
 		);
@@ -774,6 +780,172 @@ describe("Claude Code settings ▸ Sessions", () =>
 				},
 			);
 		});
+	});
+
+	it("indents Strict sandbox mode and keeps it off and disabled until Local sandbox is on", async () =>
+	{
+		vi.stubGlobal(
+			"fetch",
+			fakeEndpoint(
+				{
+					mtimeMs: 1,
+					values: {},
+				},
+			).fetchMock,
+		);
+		await renderTab();
+		await settled();
+
+		expect(
+			{
+				checked: switchIn("strict-sandbox-mode").checked,
+				disabled: switchIn("strict-sandbox-mode").disabled,
+				reason: row("strict-sandbox-mode").querySelector("[data-cds-disabled-reason]")?.textContent,
+				indented: row("strict-sandbox-mode").classList.contains("ps-lg"),
+				parentIndented: row("local-sandbox").classList.contains("ps-lg"),
+			},
+		).toStrictEqual(
+			{
+				checked: "false",
+				disabled: "true",
+				reason: "Available when Local sandbox is on",
+				indented: true,
+				parentIndented: false,
+			},
+		);
+	});
+
+	it.each<[boolean | undefined, string]>([
+		[undefined, "false"],
+		[true, "false"],
+		[false, "true"],
+	])("shows Strict sandbox mode for allowUnsandboxedCommands %s as checked %s", async (allow, checked) =>
+	{
+		vi.stubGlobal(
+			"fetch",
+			fakeEndpoint(
+				{
+					mtimeMs: 1,
+					values:
+					{
+						"sandbox.enabled": true,
+						...(allow === undefined
+							? {}
+							:
+								{
+									"sandbox.allowUnsandboxedCommands": allow,
+								}),
+					},
+				},
+			).fetchMock,
+		);
+		await renderTab();
+		await settled();
+
+		await waitFor(() =>
+		{
+			expect(
+				{
+					checked: switchIn("strict-sandbox-mode").checked,
+					disabled: switchIn("strict-sandbox-mode").disabled,
+					reason: row("strict-sandbox-mode").querySelector("[data-cds-disabled-reason]"),
+				},
+			).toStrictEqual(
+				{
+					checked,
+					disabled: null,
+					reason: null,
+				},
+			);
+		});
+	});
+
+	it("writes sandbox.allowUnsandboxedCommands false when strict turns on and true when it turns off", async () =>
+	{
+		const endpoint = fakeEndpoint(
+			{
+				mtimeMs: 1,
+				values:
+				{
+					"sandbox.enabled": true,
+				},
+			},
+		);
+		vi.stubGlobal("fetch", endpoint.fetchMock);
+		await renderTab();
+		await waitFor(() =>
+		{
+			expect(switchIn("strict-sandbox-mode").disabled).toBeNull();
+		});
+
+		fireEvent.click(switchIn("strict-sandbox-mode").element);
+		await endpoint.reply(0, "ok");
+		await waitFor(() =>
+		{
+			expect(switchIn("strict-sandbox-mode").checked).toBe("true");
+		});
+		fireEvent.click(switchIn("strict-sandbox-mode").element);
+		await waitFor(() =>
+		{
+			expect(endpoint.posts).toHaveLength(2);
+		});
+		await endpoint.reply(1, "ok");
+
+		expect(endpoint.posts).toStrictEqual([
+			{
+				key: "sandbox.allowUnsandboxedCommands",
+				value: false,
+				expectedMtimeMs: 1,
+			},
+			{
+				key: "sandbox.allowUnsandboxedCommands",
+				value: true,
+				expectedMtimeMs: 2,
+			},
+		]);
+	});
+
+	it("reverts a failed Strict sandbox mode write and shows the alert inside the indented row", async () =>
+	{
+		const endpoint = fakeEndpoint(
+			{
+				mtimeMs: 1,
+				values:
+				{
+					"sandbox.enabled": true,
+				},
+			},
+		);
+		vi.stubGlobal("fetch", endpoint.fetchMock);
+		await renderTab();
+		await waitFor(() =>
+		{
+			expect(switchIn("strict-sandbox-mode").disabled).toBeNull();
+		});
+
+		fireEvent.click(switchIn("strict-sandbox-mode").element);
+		await endpoint.reply(0, "fail");
+
+		await waitFor(() =>
+		{
+			expect(screen.getByRole("alert").textContent).toBe("Couldn’t save this setting.");
+		});
+		const strict = row("strict-sandbox-mode");
+		expect(
+			{
+				checked: switchIn("strict-sandbox-mode").checked,
+				inRow: strict.contains(screen.getByRole("alert")),
+				column: strict.classList.contains("flex-col"),
+				indented: strict.classList.contains("ps-lg"),
+			},
+		).toStrictEqual(
+			{
+				checked: "false",
+				inRow: true,
+				column: true,
+				indented: true,
+			},
+		);
 	});
 });
 

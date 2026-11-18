@@ -84,6 +84,8 @@ interface SettingsRowProps
 	 * column may shrink, so a long control value truncates inside its trigger instead of squeezing the title.
 	 */
 	controlGivesWay?: boolean;
+	/** Upstream shared-1 `V` `indent`: a child row (Strict sandbox mode under Local sandbox) adds `ps-lg`. */
+	indent?: boolean;
 }
 
 export function SettingsRow({
@@ -97,6 +99,7 @@ export function SettingsRow({
 	descriptionHidden = false,
 	labelAdornment,
 	controlGivesWay = false,
+	indent = false,
 }: SettingsRowProps)
 {
 	const baseId = useId();
@@ -189,7 +192,7 @@ export function SettingsRow({
 				// Upstream's data-settings-row is empty; here it holds the slug, which search and the deep-link flash key off.
 				data-settings-row={slug}
 				data-settings-item=""
-				className={`group/setting ${below === undefined ? "flex items-center justify-between gap-7" : "flex flex-col gap-2"} py-3 ${lit ? "feature-anchor-row-fill" : ""} ${className ?? ""}`}
+				className={`group/setting ${below === undefined ? "flex items-center justify-between gap-7" : "flex flex-col gap-2"} py-3${indent ? " ps-lg" : ""} ${lit ? "feature-anchor-row-fill" : ""} ${className ?? ""}`}
 			>
 				{below === undefined ? (
 					inner

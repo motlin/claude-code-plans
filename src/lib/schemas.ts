@@ -3488,6 +3488,7 @@ const SandboxSchema = z
 		{
 			enabled: z.boolean().optional(),
 			autoAllowBashIfSandboxed: z.boolean().optional(),
+			allowUnsandboxedCommands: z.boolean().optional(),
 			excludedCommands: z.array(z.string()).optional(),
 		},
 	)

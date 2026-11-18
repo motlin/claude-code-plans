@@ -16,6 +16,7 @@ export const CLAUDE_CODE_SETTING_KEYS = [
 	"sandbox.enabled",
 	"enableWorkflows",
 	"switchModelsOnFlag",
+	"sandbox.allowUnsandboxedCommands",
 ] as const;
 
 export type ClaudeCodeSettingKey = (typeof CLAUDE_CODE_SETTING_KEYS)[number];

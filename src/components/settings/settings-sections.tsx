@@ -1491,6 +1491,7 @@ function ClaudeCodeSwitchRow({
 	disabledReason,
 	defaultOn,
 	managed,
+	indent,
 }: {
 	slug: string;
 	title: string;
@@ -1504,6 +1505,7 @@ function ClaudeCodeSwitchRow({
 	/** The value to write for each position; undefined deletes the key. */
 	valueFor: (on: boolean) => string | boolean | undefined;
 	disabledReason?: (state: ClaudeCodeSettingsState) => string | null;
+	indent?: boolean;
 })
 {
 	const setting = useClaudeCodeSetting(settingKey);
@@ -1516,6 +1518,7 @@ function ClaudeCodeSwitchRow({
 			title={title}
 			description={setting.loading ? "Loading…" : description}
 			below={setting.writeFailed ? WRITE_FAILED_ALERT : undefined}
+			indent={indent === true}
 			labelAdornment={rowChrome(
 				{
 					modified: !setting.loading && checked !== defaultOn,
@@ -1711,6 +1714,21 @@ function LocalSessionsSection()
 				defaultOn={false}
 				isOn={(value) => value === true}
 				valueFor={(on) => on}
+			/>
+			{/* Upstream's desktop row `strict-sandbox-mode` (renderer `Ne`): setStrictSandboxMode(strict) writes
+			    sandbox.allowUnsandboxedCommands = !strict, explicitly true when off rather than deleting. */}
+			<ClaudeCodeSwitchRow
+				slug="strict-sandbox-mode"
+				title="Strict sandbox mode"
+				indent
+				description="Blocks commands that can’t run inside the sandbox (ssh, for example) instead of running them outside it or asking you. Applies to every Claude Code session on this computer, including the terminal, unless a project’s own settings override it."
+				settingKey="sandbox.allowUnsandboxedCommands"
+				defaultOn={false}
+				isOn={(value) => value === false}
+				valueFor={(on) => !on}
+				disabledReason={(state) =>
+					state.values["sandbox.enabled"] === true ? null : "Available when Local sandbox is on"
+				}
 			/>
 		</SettingsSection>
 	);

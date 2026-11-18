@@ -70,6 +70,7 @@ describe("CLAUDE_CODE_SETTING_KEYS", () =>
 			"sandbox.enabled",
 			"enableWorkflows",
 			"switchModelsOnFlag",
+			"sandbox.allowUnsandboxedCommands",
 		]);
 	});
 });
@@ -220,6 +221,51 @@ describe("patchClaudeCodeSetting", () =>
 		);
 		expect(readSettings()).toContain('    "sandbox": {\n        "excludedCommands": [');
 	});
+
+	it.each([false, true])(
+		"writes sandbox.allowUnsandboxedCommands %s next to sandbox.excludedCommands and reads it back",
+		async (value) =>
+		{
+			const mtimeMs = writeSettings('{\n  "sandbox": {\n    "excludedCommands": ["ssh *"]\n  }\n}\n');
+			const result = await patchClaudeCodeSetting(
+				claudeDir,
+				{
+					key: "sandbox.allowUnsandboxedCommands",
+					value,
+					expectedMtimeMs: mtimeMs,
+				},
+			);
+			expect(
+				{
+					file: JSON.parse(readSettings()),
+					result,
+				},
+			).toStrictEqual(
+				{
+					file:
+					{
+						sandbox:
+						{
+							excludedCommands: ["ssh *"],
+							allowUnsandboxedCommands: value,
+						},
+					},
+					result:
+					{
+						ok: true,
+						state:
+						{
+							mtimeMs: statSync(settingsPath).mtimeMs,
+							values:
+							{
+								"sandbox.allowUnsandboxedCommands": value,
+							},
+						},
+					},
+				},
+			);
+		},
+	);
 
 	it("creates settings.json with the nested key when the file is missing", async () =>
 	{

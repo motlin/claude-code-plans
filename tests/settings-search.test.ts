@@ -128,6 +128,16 @@ describe("rankSettingsSections grouping", () =>
 				},
 			],
 		],
+		// Upstream's strict-sandbox-mode def is searchable (localSessionRow) with no extra phrases.
+		[
+			"strict",
+			[
+				{
+					tab: "claude-code",
+					rows: [["strict-sandbox-mode", "Strict sandbox mode"]],
+				},
+			],
+		],
 		[
 			"response style",
 			[
@@ -410,6 +420,7 @@ describe("rankSettingsSections", () =>
 					rows: [
 						["allow-bypass-permissions-mode", 2],
 						["switch-models-local", 2],
+						["strict-sandbox-mode", 2],
 					],
 				},
 				{

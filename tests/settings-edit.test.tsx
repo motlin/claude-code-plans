@@ -31,6 +31,7 @@ describe("settings form editors", () =>
 		expect(html).toContain("Sandbox");
 		expect(html).toContain("Enabled");
 		expect(html).toContain("Auto-allow Bash if sandboxed");
+		expect(html).toContain("Allow unsandboxed commands");
 	});
 
 	it("renders sandbox excludedCommands entries via ObjectFieldsEditor stringList sub-field", () =>

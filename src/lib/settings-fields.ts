@@ -348,6 +348,13 @@ export const OBJECT_EDITORS: ObjectEditorDef[] = [
 				type: "boolean",
 			},
 			{
+				key: "allowUnsandboxedCommands",
+				label: "Allow unsandboxed commands",
+				description:
+					"Let commands run outside the sandbox (dangerouslyDisableSandbox); false is strict sandbox mode",
+				type: "boolean",
+			},
+			{
 				key: "excludedCommands",
 				label: "Excluded commands",
 				description: "Command patterns that run outside the sandbox",

@@ -178,6 +178,41 @@ describe("ClaudeSettingsSchema", () =>
 		);
 	});
 
+	it("parses sandbox.allowUnsandboxedCommands as a boolean", () =>
+	{
+		const sandbox =
+		{
+			enabled: true,
+			allowUnsandboxedCommands: false,
+			excludedCommands: ["ssh *"],
+		};
+		expect(
+			{
+				parsed: ClaudeSettingsSchema.parse(
+					{
+						sandbox,
+					},
+				),
+				string: ClaudeSettingsSchema.safeParse(
+					{
+						sandbox:
+						{
+							allowUnsandboxedCommands: "no",
+						},
+					},
+				).success,
+			},
+		).toStrictEqual(
+			{
+				parsed:
+				{
+					sandbox,
+				},
+				string: false,
+			},
+		);
+	});
+
 	it("parses settings with env key/value pairs", () =>
 	{
 		const result = ClaudeSettingsSchema.safeParse(

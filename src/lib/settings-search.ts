@@ -135,6 +135,11 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
 		title: "Local sandbox",
 	},
 	{
+		tab: "claude-code",
+		rowSlug: "strict-sandbox-mode",
+		title: "Strict sandbox mode",
+	},
+	{
 		tab: "transcript",
 		rowSlug: "thinking",
 		title: "Thinking",
