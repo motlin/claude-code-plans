@@ -1,228 +1,199 @@
-import {PreviewCard} from "@base-ui/react/preview-card";
-import {useState} from "react";
+import {Collapsible as BaseCollapsible} from "@base-ui/react/collapsible";
+import {type ReactNode, useContext, useState} from "react";
 
+import {useRefusalOptOut} from "../hooks/use-refusal-opt-out";
+import {useFizzyLake} from "../lib/fizzy-lake";
 import {formatModelName} from "../lib/model-name";
-import type {RefusalFallback} from "../lib/refusal-fallback";
-import {type RefusalOptOutView, useRefusalOptOut} from "../hooks/use-refusal-opt-out";
 import {ApprovalActionButton} from "./approval-action-button";
-import {useComposerNotice} from "./composer-notice-context";
-import {NoticeBanner} from "./notice-banner";
-import {COLLISION_PADDING, POPUP_CLASS} from "./session-hover-card-classes";
-
-/** Upstream `Tv.flagged`, the Why card's copy when the runtime catalog has no per-category entry. */
-export const REFUSAL_FLAGGED_COPY =
-	"This model's safeguards flagged this message. This sometimes happens with safe, normal conversations.";
-
-/** What the card needs from `useRefusalOptOut`. */
-export interface RefusalOptOutBinding
+import {ExternalTextLink} from "./external-text-link";
+import {NOTICE_SURFACE_CLASS} from "./notice-banner-classes";
+import
 {
-	view: RefusalOptOutView;
-	pending: boolean;
-	optOut: () => void;
-	openSettings: () => void;
-}
+	type ModelSwitchedRecord,
+	modelSwitchedOpenMemory,
+	type RefusalFallbackHost,
+	RefusalFallbackHostContext,
+	type RefusalSettingsLink,
+} from "./refusal-fallback-host";
+import * as Collapsible from "./ui/collapsible";
+import {Icon} from "./ui/icon";
+
+/** Upstream's learn-more article for a safeguards flag (shared-41 `Id` → `tG`), as the approval card uses. */
+const REFUSAL_LEARN_MORE_URL = "https://support.claude.com/en/articles/8106465";
+/** Upstream `zuPE8I`, or `cm.flagged` when there is no model name. */
+const FLAGGED_TAIL = "safeguards flagged this message. This sometimes happens with safe, normal conversations.";
 
 function modelName(model: string): string
 {
 	return formatModelName(model) ?? model;
 }
 
-/**
- * Upstream's Why card (cf74bc599 `CO`/`FO`): a cds PreviewCard opening 200ms after hover or focus,
- * above and start-aligned, with the "Switched to" title, the flagged copy and, when the API sent one,
- * the raw refusal category.
- */
-function WhyCard({fallback}: {fallback: RefusalFallback})
+const ROOT_CLASS = "flex items-start gap-xs py-md font-sans text-body font-normal break-words px-lg rounded-card";
+const TOGGLE_CLASS =
+	"cds-reset flex min-w-0 grow select-none items-center gap-x-[2px] border-0 text-start outline-none focus-visible:shadow-focus focus-visible:outline-hidden rounded transition-shadow duration-fast";
+const CARET_CLASS = "shrink-0 text-secondary transition-transform motion-reduce:transition-none";
+
+/** Upstream `my`: the API's explanation, else the flagged copy naming the refused model. */
+function bodyCopy(record: ModelSwitchedRecord): string
 {
-	const raw = fallback.apiRefusalCategoryRaw;
-	return (
-		<PreviewCard.Root>
-			<PreviewCard.Trigger
-				delay={200}
-				render={<button type="button" data-cds="TextLink" />}
-				className="cds-reset text-link shrink-0 text-body cursor-pointer"
-			>
-				Why
-			</PreviewCard.Trigger>
-			<PreviewCard.Portal>
-				<PreviewCard.Positioner
-					side="top"
-					align="start"
-					sideOffset={6}
-					collisionPadding={COLLISION_PADDING}
-					className="z-[130]"
-				>
-					<PreviewCard.Popup data-refusal-why-card="" className={`epitaxy-root ${POPUP_CLASS}`}>
-						<span className="text-footnote font-medium text-secondary pb-1.5 comfortable:pb-2">
-							Switched to {modelName(fallback.fallbackModel)}
-						</span>
-						<span className="text-pretty text-body text-muted-as-secondary break-words">
-							{REFUSAL_FLAGGED_COPY}
-						</span>
-						{raw !== null && raw.trim() !== "" && (
-							<span className="block text-body text-muted-as-secondary pt-1.5 comfortable:pt-2">
-								Details: <code className="font-mono-ui break-all">[{raw}]</code>
-							</span>
-						)}
-					</PreviewCard.Popup>
-				</PreviewCard.Positioner>
-			</PreviewCard.Portal>
-		</PreviewCard.Root>
-	);
+	const explanation = record.apiRefusalExplanation?.trim() ?? "";
+	if (explanation !== "") return explanation;
+	return record.originalModel === ""
+		? `This model's ${FLAGGED_TAIL}`
+		: `${modelName(record.originalModel)}’s ${FLAGGED_TAIL}`;
 }
 
-/**
- * Upstream's refusal band as a notice-region card (cf74bc599 `xO` → `wO`, slot `refusal`, id
- * `model-switched`): after a live safeguards refusal moved the turn to a fallback model, "Switched to
- * {fallback} Why", with "Automatic switching is off." once the opt-out is off. Actions: escalated
- * (strike 2+) "Start a new session" on the streak's original model, else "Rewind and retry" when the
- * session can rewind, then the opt-out's "Don’t switch
- * models automatically" (busy while writing) or "Open settings". The X hides it for that fallback.
- */
-export function RefusalFallbackNotice({
-	fallback,
-	optOut,
-	onNewSession,
-	onDismiss,
-	onEditRetry,
-}: {
-	fallback: RefusalFallback | null;
-	optOut: RefusalOptOutBinding;
-	/** Starts a new session on the given model; undefined when the session's folder is unknown. */
-	onNewSession?: ((model: string) => void) | undefined;
-	onDismiss?: () => void;
-	/** Upstream's `onEditPromptRetry` (refusal-edit-retry-rewind); undefined when the session can't rewind now. */
-	onEditRetry?: (() => boolean) | undefined;
-})
+function cardAction(record: ModelSwitchedRecord, host: RefusalFallbackHost): ReactNode
 {
-	const [dismissed, setDismissed] = useState<ReadonlySet<string>>(new Set());
-	const shown = fallback !== null && !dismissed.has(fallback.uuid) ? fallback : null;
-	let notice = null;
-	if (shown !== null)
+	const live = host.live !== null && host.live.uuid === record.uuid && !host.held ? host.live : null;
+	if (live === null) return null;
+	const {onNewSession, onEditRetry} = host;
+	if (live.strike >= 2)
 	{
-		const escalated = shown.strike >= 2;
-		const newSession = escalated && onNewSession !== undefined;
-		const editRetry = escalated ? undefined : onEditRetry;
-		const hasAction = newSession || editRetry !== undefined || optOut.view !== "hidden";
-		notice =
-		{
-			id: "model-switched",
-			content: (
-				<NoticeBanner
-					icon={null}
-					data-testid="code-refusal-card"
-					onDismiss={() =>
-					{
-						setDismissed((previous) => new Set([...previous, shown.uuid]));
-						onDismiss?.();
-					}}
-					action={
-						hasAction ? (
-							<div className="flex min-w-0 flex-wrap items-center gap-xs">
-								{newSession && (
-									<ApprovalActionButton
-										variant="secondary"
-										onClick={() =>
-										{
-											onNewSession(shown.streakOriginalModel);
-										}}
-									>
-										Start a new session
-									</ApprovalActionButton>
-								)}
-								{editRetry !== undefined && (
-									<ApprovalActionButton
-										variant="secondary"
-										onClick={() =>
-										{
-											editRetry();
-										}}
-									>
-										Rewind and retry
-									</ApprovalActionButton>
-								)}
-								{optOut.view === "offer" && (
-									<ApprovalActionButton
-										variant="secondary"
-										busy={optOut.pending}
-										onClick={optOut.optOut}
-									>
-										Don’t switch models automatically
-									</ApprovalActionButton>
-								)}
-								{optOut.view === "off" && (
-									<ApprovalActionButton variant="secondary" onClick={optOut.openSettings}>
-										Open settings
-									</ApprovalActionButton>
-								)}
-							</div>
-						) : undefined
-					}
-				>
-					<span aria-atomic="true" className="flex flex-wrap items-baseline gap-x-2.5 gap-y-0.75">
-						<span className="min-w-0">
-							Switched to {modelName(shown.fallbackModel)} <WhyCard fallback={shown} />
-						</span>
-						{optOut.view === "off" && (
-							<span className="min-w-0 text-secondary">Automatic switching is off.</span>
-						)}
-					</span>
-				</NoticeBanner>
-			),
-		};
+		return onNewSession === undefined ? null : (
+			<ApprovalActionButton
+				variant="secondary"
+				onClick={() =>
+				{
+					onNewSession(live.streakOriginalModel);
+				}}
+			>
+				Start a new session
+			</ApprovalActionButton>
+		);
 	}
-	const claimed = useComposerNotice("refusal", notice);
-	return claimed ? null : (notice?.content ?? null);
+	return onEditRetry === undefined ? null : (
+		<ApprovalActionButton
+			variant="secondary"
+			onClick={() =>
+			{
+				onEditRetry();
+			}}
+		>
+			Rewind and retry
+		</ApprovalActionButton>
+	);
 }
 
-interface BandProps
+/**
+ * Upstream's in-transcript model-switched card (c01e7498d `vy` → shared-41 `Dj` with `inTranscript`):
+ * at a safeguards refusal that moved the turn to a fallback, a neutral Banner with no icon whose title
+ * "Switched to {fallback}" is a details disclosure. The details hold the API's explanation (or the
+ * flagged copy naming the refused model), Learn more, the settings sentence while automatic switching
+ * is on, and the raw category. Only the live fallback, when no card holds the session, gets an action:
+ * escalated (strike 2+) "Start a new session" on the streak's original model, else "Rewind and retry".
+ * It opens on arrival (the live one) and remembers a toggled choice. No dismiss X, no opt-out button.
+ */
+export function ModelSwitchedCard({
+	record,
+	host,
+	settings,
+}: {
+	record: ModelSwitchedRecord;
+	host: RefusalFallbackHost;
+	settings: RefusalSettingsLink;
+}): ReactNode
 {
-	sessionId: string;
-	onNewSession?: ((model: string) => void) | undefined;
-	onEditRetry?: (() => boolean) | undefined;
-}
-
-function BoundRefusalFallbackNotice({
-	sessionId,
-	fallback,
-	onNewSession,
-	onEditRetry,
-}: BandProps &
-{
-	fallback: RefusalFallback;
-})
-{
-	const optOut = useRefusalOptOut(sessionId);
+	const color = useFizzyLake("color");
+	const arrived = host.live?.uuid === record.uuid;
+	const [choice, setChoice] = useState(() => modelSwitchedOpenMemory.get(record.uuid));
+	const open = choice ?? arrived;
+	const toggle = (next: boolean) =>
+	{
+		modelSwitchedOpenMemory.set(record.uuid, next);
+		setChoice(next);
+	};
+	const action = cardAction(record, host);
+	const category = record.apiRefusalCategory?.trim() ?? "";
 	return (
-		<RefusalFallbackNotice
-			fallback={fallback}
-			optOut={optOut}
-			onNewSession={onNewSession}
-			onEditRetry={onEditRetry}
+		<div className="contents">
+			<div
+				data-cds="Banner"
+				data-prose-box=""
+				data-icon-layout="first-line"
+				data-cta-layout="inline"
+				data-action-align="first-line"
+				data-testid="code-model-switched-card"
+				role="none"
+				className={`${ROOT_CLASS} ${color ? NOTICE_SURFACE_CLASS.fizzy : NOTICE_SURFACE_CLASS.base}`}
+			>
+				<div className="flex min-w-0 flex-1 flex-col">
+					<Collapsible.Root open={open} onOpenChange={toggle} className="contents">
+						<div className="flex min-w-0 flex-wrap items-start gap-y-sm gap-x-md">
+							<BaseCollapsible.Trigger className={TOGGLE_CLASS}>
+								<span className="min-w-0">Switched to {modelName(record.fallbackModel)}</span>
+								<Icon
+									name="CaretDownFilled"
+									size="sm"
+									className={`${CARET_CLASS} ${open ? "rotate-0" : "-rotate-90 rtl:rotate-90"}`}
+								/>
+							</BaseCollapsible.Trigger>
+							{action !== null && <div className="flex flex-wrap items-center gap-sm">{action}</div>}
+						</div>
+						<Collapsible.Panel className="w-full text-secondary">
+							<div className="pt-[var(--cds-gap-sm)] stacks:pt-[var(--cds-gap-xs)]">
+								<p>
+									{bodyCopy(record)}{" "}
+									<ExternalTextLink rel="noreferrer" href={REFUSAL_LEARN_MORE_URL}>
+										Learn more
+									</ExternalTextLink>
+									.
+									{settings.view === "offer" && (
+										<>
+											{" "}
+											You can turn off automatic model switching in{" "}
+											<button
+												type="button"
+												data-cds="TextLink"
+												className="cds-reset text-link inline cursor-pointer"
+												onClick={() =>
+												{
+													settings.openSettings();
+												}}
+											>
+												settings
+											</button>
+											.
+										</>
+									)}
+									{category !== "" && (
+										<span className="block pt-1">
+											Details: <code className="font-mono-ui break-all">[{category}]</code>
+										</span>
+									)}
+								</p>
+							</div>
+						</Collapsible.Panel>
+					</Collapsible.Root>
+				</div>
+			</div>
+		</div>
+	);
+}
+
+function BoundModelSwitchedCard({record, host}: {record: ModelSwitchedRecord; host: RefusalFallbackHost})
+{
+	const {view, openSettings} = useRefusalOptOut();
+	return (
+		<ModelSwitchedCard
+			record={record}
+			host={host}
+			settings={
+			{
+				view,
+				openSettings,
+			}}
 		/>
 	);
 }
 
 /**
- * The session page's refusal band: it reads the CLI's settings.json for the opt-out only while a live
- * fallback is showing, so opening a session costs no settings fetch.
+ * Upstream `Ty`: a `model_refusal_fallback` row draws the card while the session page publishes its
+ * host, else nothing. It reads the CLI's settings.json for the settings sentence only once a fallback
+ * row renders, so opening a session without one costs no settings fetch.
  */
-export function RefusalFallbackBand({
-	sessionId,
-	fallback,
-	onNewSession,
-	onEditRetry,
-}: BandProps &
+export function ModelSwitchedCardForLine({record}: {record: ModelSwitchedRecord}): ReactNode
 {
-	fallback: RefusalFallback | null;
-})
-{
-	return fallback === null ? null : (
-		<BoundRefusalFallbackNotice
-			sessionId={sessionId}
-			fallback={fallback}
-			onNewSession={onNewSession}
-			onEditRetry={onEditRetry}
-		/>
-	);
+	const host = useContext(RefusalFallbackHostContext);
+	return host === null ? null : <BoundModelSwitchedCard record={record} host={host} />;
 }

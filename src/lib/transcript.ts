@@ -297,6 +297,7 @@ const RenderedSystemSubtypeSchema = z.enum([
 	"local_command",
 	"bridge_status",
 	"model_refusal_no_fallback",
+	"model_refusal_fallback",
 ]);
 
 const SystemLineSchema = z.object(
@@ -332,6 +333,7 @@ const SystemLineSchema = z.object(
 			.optional(),
 		url: z.string().optional(),
 		originalModel: z.string().optional(),
+		fallbackModel: z.string().optional(),
 		requestId: z.string().optional(),
 		apiRefusalCategory: z.string().optional(),
 		apiRefusalExplanation: z.string().optional(),
@@ -1873,6 +1875,15 @@ function* processRecordBatchSteps(
 			// The input-echo half of a local command carries no commandRun; the
 			// output half names the command, so render only that one.
 			if (subtype.data === "local_command" && record.commandRun === undefined) continue;
+			// Upstream's model-switched card is drawn for a refusal that moved the turn to a fallback
+			// (`direction: "retry"`), the same records the live refusal scan counts.
+			if (
+				subtype.data === "model_refusal_fallback" &&
+				(record.direction !== "retry" ||
+					record.originalModel === undefined ||
+					record.fallbackModel === undefined)
+			)
+				continue;
 			const systemLine: z.infer<typeof SystemLineSchema> =
 			{
 				type: "system",
@@ -1910,6 +1921,7 @@ function* processRecordBatchSteps(
 			if (record.commandRun !== undefined) systemLine.commandRun = record.commandRun;
 			if (record.url !== undefined) systemLine.url = record.url;
 			if (record.originalModel !== undefined) systemLine.originalModel = record.originalModel;
+			if (record.fallbackModel !== undefined) systemLine.fallbackModel = record.fallbackModel;
 			if (typeof record.requestId === "string") systemLine.requestId = record.requestId;
 			if (typeof record.apiRefusalCategory === "string")
 				systemLine.apiRefusalCategory = record.apiRefusalCategory;

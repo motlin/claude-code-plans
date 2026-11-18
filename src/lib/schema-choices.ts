@@ -1076,6 +1076,7 @@ const systemSubtypeLabels =
 	local_command: "Local command",
 	bridge_status: "Remote Control status",
 	model_refusal_no_fallback: "Request refused",
+	model_refusal_fallback: "Model switched",
 } satisfies Record<
 	Extract<
 		ProcessedLine,

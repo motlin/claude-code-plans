@@ -1,11 +1,10 @@
 // @vitest-environment jsdom
 
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
-import {act, cleanup, renderHook, waitFor} from "@testing-library/react";
+import {cleanup, renderHook, waitFor} from "@testing-library/react";
 import type {ReactNode} from "react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
-import {ToastContext, type ToastOptions} from "../src/components/toast-context";
 import type {ClaudeCodeSettingsState} from "../src/lib/claude-code-settings-schema";
 
 const api = vi.hoisted(() => (
@@ -41,28 +40,17 @@ vi.mock("../src/components/settings/open-settings", () => (
 	useOpenSettings: () => openSettings,
 }));
 
-const {useRefusalOptOut, REFUSAL_OPT_OUT_FAILED} = await import("../src/hooks/use-refusal-opt-out");
+const {useRefusalOptOut} = await import("../src/hooks/use-refusal-opt-out");
 
-let toasts: ToastOptions[] = [];
 let queryClient = new QueryClient();
-
-function pushToast(options: ToastOptions)
-{
-	toasts.push(options);
-}
 
 function wrapper({children}: {children: ReactNode})
 {
-	return (
-		<QueryClientProvider client={queryClient}>
-			<ToastContext.Provider value={pushToast}>{children}</ToastContext.Provider>
-		</QueryClientProvider>
-	);
+	return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
 }
 
 beforeEach(() =>
 {
-	toasts = [];
 	queryClient = new QueryClient(
 		{
 			defaultOptions:
@@ -90,10 +78,10 @@ afterEach(() =>
 
 describe("useRefusalOptOut", () =>
 {
-	it("is hidden while the settings load, then offers the opt-out when the key is unset", async () =>
+	it("is hidden while the settings load, then offers the settings sentence when the key is unset", async () =>
 	{
 		const {result} = renderHook(
-			() => useRefusalOptOut("s1"),
+			() => useRefusalOptOut(),
 			{
 				wrapper,
 			},
@@ -103,7 +91,6 @@ describe("useRefusalOptOut", () =>
 		{
 			expect(result.current.view).toBe("offer");
 		});
-		expect(result.current.pending).toBe(false);
 	});
 
 	it("is off at mount when settings.json already has switchModelsOnFlag false", async () =>
@@ -117,7 +104,7 @@ describe("useRefusalOptOut", () =>
 			},
 		};
 		const {result} = renderHook(
-			() => useRefusalOptOut("s1"),
+			() => useRefusalOptOut(),
 			{
 				wrapper,
 			},
@@ -128,128 +115,10 @@ describe("useRefusalOptOut", () =>
 		});
 	});
 
-	it("writes switchModelsOnFlag false, is pending until it lands, then turns off", async () =>
-	{
-		let resolve: (state: ClaudeCodeSettingsState | null) => void = () =>
-		{
-		};
-		api.post.mockImplementation(
-			async () =>
-				new Promise((done) =>
-				{
-					resolve = done;
-				}),
-		);
-		const {result} = renderHook(
-			() => useRefusalOptOut("s1"),
-			{
-				wrapper,
-			},
-		);
-		await waitFor(() =>
-		{
-			expect(result.current.view).toBe("offer");
-		});
-		act(() =>
-		{
-			result.current.optOut();
-		});
-		await waitFor(() =>
-		{
-			expect(api.post).toHaveBeenCalledTimes(1);
-		});
-		expect(api.post.mock.calls[0]?.[0]).toStrictEqual(
-			{
-				key: "switchModelsOnFlag",
-				value: false,
-				expectedMtimeMs: 1,
-			},
-		);
-		expect(
-			{
-				view: result.current.view,
-				pending: result.current.pending,
-			},
-		).toStrictEqual(
-			{
-				view: "offer",
-				pending: true,
-			},
-		);
-		await act(async () =>
-		{
-			resolve(
-				{
-					mtimeMs: 2,
-					values:
-					{
-						switchModelsOnFlag: false,
-					},
-				},
-			);
-			await Promise.resolve();
-		});
-		await waitFor(() =>
-		{
-			expect(
-				{
-					view: result.current.view,
-					pending: result.current.pending,
-				},
-			).toStrictEqual(
-				{
-					view: "off",
-					pending: false,
-				},
-			);
-		});
-		expect(toasts).toStrictEqual([]);
-	});
-
-	it("toasts the exact error and goes back to the offer when the write is refused", async () =>
-	{
-		api.post.mockResolvedValue(null);
-		const {result} = renderHook(
-			() => useRefusalOptOut("s1"),
-			{
-				wrapper,
-			},
-		);
-		await waitFor(() =>
-		{
-			expect(result.current.view).toBe("offer");
-		});
-		act(() =>
-		{
-			result.current.optOut();
-		});
-		await waitFor(() =>
-		{
-			expect(toasts).toStrictEqual([
-				{
-					kind: "error",
-					message: REFUSAL_OPT_OUT_FAILED,
-				},
-			]);
-		});
-		expect(REFUSAL_OPT_OUT_FAILED).toBe("Couldn’t update the setting. Change it in Settings → Claude Code.");
-		expect(
-			{
-				view: result.current.view,
-				pending: result.current.pending,
-			},
-		).toStrictEqual(
-			{
-				view: "offer",
-				pending: false,
-			},
-		);
-	});
-
 	it("opens Settings at the claude-code tab only, like upstream gO (the def has no anchor)", () =>
 	{
 		const {result} = renderHook(
-			() => useRefusalOptOut("s1"),
+			() => useRefusalOptOut(),
 			{
 				wrapper,
 			},

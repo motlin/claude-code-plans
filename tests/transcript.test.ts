@@ -4682,6 +4682,52 @@ describe("system record lines", () =>
 		]);
 	});
 
+	it("emits retry model_refusal_fallback records as the model-switched card's row and skips the others", () =>
+	{
+		const records = [
+			{
+				type: "system",
+				subtype: "model_refusal_fallback",
+				content: "",
+				originalModel: "claude-opus-4-7",
+				fallbackModel: "claude-sonnet-4-5",
+				trigger: "refusal",
+				direction: "retry",
+				scope: "session",
+				requestId: "req_1",
+				apiRefusalCategory: "cyber",
+				apiRefusalExplanation: "Flagged for cyber.",
+				refusedUserMessageUuid: "u1",
+				uuid: "fallback-1",
+			},
+			{
+				type: "system",
+				subtype: "model_refusal_fallback",
+				content: "",
+				originalModel: "claude-sonnet-4-5",
+				fallbackModel: "claude-opus-4-7",
+				direction: "revert",
+				apiRefusalCategory: null,
+				apiRefusalExplanation: null,
+				uuid: "fallback-2",
+			},
+		];
+		expect(processTranscript(records).lines).toStrictEqual([
+			{
+				type: "system",
+				subtype: "model_refusal_fallback",
+				content: "",
+				originalModel: "claude-opus-4-7",
+				fallbackModel: "claude-sonnet-4-5",
+				requestId: "req_1",
+				apiRefusalCategory: "cyber",
+				apiRefusalExplanation: "Flagged for cyber.",
+				uuid: "fallback-1",
+				lineIndex: 0,
+			},
+		]);
+	});
+
 	it("emits local_command records that name the slash command they ran", () =>
 	{
 		const records = [

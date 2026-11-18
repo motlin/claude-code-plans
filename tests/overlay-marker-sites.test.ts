@@ -46,7 +46,6 @@ describe("data-cds-overlay popup sites", () =>
 				"coach-mark.tsx:Popover": false,
 				"composer-skill-chip.tsx:PreviewCard": false,
 				"home/project-picker.tsx:Popover": true,
-				"refusal-fallback-card.tsx:PreviewCard": false,
 				"session-hover-card.tsx:PreviewCard": false,
 				"session-link-chip.tsx:PreviewCard": false,
 				"settings/settings-search.tsx:Popover": true,

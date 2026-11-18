@@ -1,17 +1,17 @@
 // @vitest-environment jsdom
 
-import {act, cleanup, fireEvent, render, screen, waitFor} from "@testing-library/react";
-import {useContext} from "react";
+import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
-import {EntriesContext, useComposerNotice} from "../src/components/composer-notice-context";
-import {ComposerNoticeProvider, ComposerNoticeRegion} from "../src/components/composer-notice-region";
+import {ModelSwitchedCard} from "../src/components/refusal-fallback-card";
 import
 {
-	REFUSAL_FLAGGED_COPY,
-	RefusalFallbackNotice,
-	type RefusalOptOutBinding,
-} from "../src/components/refusal-fallback-card";
+	type ModelSwitchedRecord,
+	type RefusalFallbackHost,
+	type RefusalSettingsLink,
+	resetModelSwitchedOpenMemory,
+} from "../src/components/refusal-fallback-host";
+import {SystemBanner} from "../src/components/system-banner";
 import type {HerdrLaunchResponse} from "../src/lib/api/herdr";
 import {startSessionOnModel} from "../src/lib/start-session-on-model";
 import type {ToastOptions} from "../src/components/toast-context";
@@ -34,611 +34,302 @@ const FALLBACK: RefusalFallback =
 	uuid: "f1",
 };
 
-const OFFER: RefusalOptOutBinding =
+const LIVE: RefusalFallbackHost =
+{
+	sessionId: "s1",
+	live: FALLBACK,
+	held: false,
+	onNewSession: undefined,
+	onEditRetry: undefined,
+};
+
+const RECORD: ModelSwitchedRecord =
+{
+	uuid: "f1",
+	originalModel: "claude-opus-4-7",
+	fallbackModel: "claude-sonnet-4-5",
+	apiRefusalCategory: "cyber",
+	apiRefusalExplanation: null,
+};
+
+const OFFER: RefusalSettingsLink =
 {
 	view: "offer",
-	pending: false,
-	optOut: () =>
-	{
-	},
 	openSettings: () =>
 	{
 	},
 };
 
-function EntryKeys()
+const HIDDEN: RefusalSettingsLink =
 {
-	const entries = useContext(EntriesContext);
-	return (
-		<output data-testid="entries">
-			{[...entries].map(([slot, entry]) => `code-${slot}:${entry.id}`).join(",")}
-		</output>
-	);
-}
-
-function LimitNotice()
-{
-	useComposerNotice(
-		"limit",
-		{
-			id: "pace",
-			content: <div data-testid="limit-card">limit</div>,
-		},
-	);
-	return null;
-}
-
-interface Props
-{
-	fallback?: RefusalFallback | null;
-	optOut?: RefusalOptOutBinding;
-	onNewSession?: ((model: string) => void) | undefined;
-	onDismiss?: () => void;
-	onEditRetry?: (() => boolean) | undefined;
-	withLimit?: boolean;
-}
-
-function ui({
-	fallback = FALLBACK,
-	optOut = OFFER,
-	onNewSession,
-	onDismiss = () =>
+	view: "hidden",
+	openSettings: () =>
 	{
 	},
-	onEditRetry,
-	withLimit = false,
-}: Props)
+};
+
+const card = () => screen.getByTestId("code-model-switched-card");
+const toggle = () => card().querySelector("button[aria-expanded]");
+const details = () => card().querySelector("p")?.textContent ?? null;
+const actions = () =>
+	[...card().querySelectorAll("button:not([aria-expanded])")]
+		.filter((button) => button.getAttribute("data-cds") !== "TextLink")
+		.map((button) => button.textContent);
+
+describe("ModelSwitchedCard", () =>
 {
-	return (
-		<ComposerNoticeProvider>
-			<ComposerNoticeRegion />
-			<EntryKeys />
-			{withLimit && <LimitNotice />}
-			<RefusalFallbackNotice
-				fallback={fallback}
-				optOut={optOut}
-				onNewSession={onNewSession}
-				onDismiss={onDismiss}
-				onEditRetry={onEditRetry}
-			/>
-		</ComposerNoticeProvider>
-	);
-}
-
-const liveCards = () => [...document.querySelectorAll("[data-cds-dock-card]:not([data-cds-dock-leaving])")];
-const card = () => screen.getByTestId("code-refusal-card");
-const buttonNames = () =>
-	[...card().querySelectorAll("button")].map((button) => button.getAttribute("aria-label") ?? button.textContent);
-
-describe("RefusalFallbackNotice", () =>
-{
-	it("registers the card in slot refusal as model-switched", () =>
+	afterEach(() =>
 	{
-		render(ui({}));
-		expect(screen.getByTestId("entries").textContent).toBe("code-refusal:model-switched");
+		resetModelSwitchedOpenMemory();
 	});
 
-	it("draws upstream's words: Switched to the fallback, a Why TextLink, no icon", () =>
-	{
-		render(ui({}));
-		const atomic = card().querySelector('span[aria-atomic="true"]');
-		expect(
-			{
-				className: atomic?.className,
-				children: [...(atomic?.children ?? [])].map((child) => (
-				{
-					className: child.className,
-					text: child.textContent,
-				})),
-			},
-		).toStrictEqual(
-			{
-				className: "flex flex-wrap items-baseline gap-x-2.5 gap-y-0.75",
-				children: [
-					{
-						className: "min-w-0",
-						text: "Switched to Sonnet 4.5 Why",
-					},
-				],
-			},
-		);
-		const why = screen.getByRole(
-			"button",
-			{
-				name: "Why",
-			},
-		);
-		expect(
-			{
-				cds: why.dataset["cds"],
-				className: why.className,
-			},
-		).toStrictEqual(
-			{
-				cds: "TextLink",
-				className: "cds-reset text-link shrink-0 text-body cursor-pointer",
-			},
-		);
-		expect(card().getAttribute("data-icon-layout")).toBe("first-line");
-		// No icon slot: the body is the Banner's first child.
-		expect(card().firstElementChild?.className.startsWith("flex min-w-0 flex-wrap")).toBe(true);
-	});
-
-	it("opens the Why card on hover after the delay, with the flagged copy and the raw category", async () =>
-	{
-		render(ui({}));
-		const why = screen.getByRole(
-			"button",
-			{
-				name: "Why",
-			},
-		);
-		fireEvent.pointerEnter(
-			why,
-			{
-				pointerType: "mouse",
-			},
-		);
-		fireEvent.mouseEnter(why);
-		fireEvent.mouseMove(why);
-		expect(document.querySelector("[data-refusal-why-card]")).toBeNull();
-		const popup = await waitFor(() =>
-		{
-			const found = document.querySelector("[data-refusal-why-card]");
-			if (!(found instanceof HTMLElement)) throw new Error("no card");
-			return found;
-		});
-		// jsdom has no layout, so the 48px top collision padding flips the side; only the align is stable.
-		expect(
-			{
-				align: popup.getAttribute("data-align"),
-				children: [...popup.children].map((child) => (
-				{
-					className: child.className,
-					text: child.textContent,
-				})),
-				code: popup.querySelector("code")?.className,
-			},
-		).toStrictEqual(
-			{
-				align: "start",
-				children: [
-					{
-						className: "text-footnote font-medium text-secondary pb-1.5 comfortable:pb-2",
-						text: "Switched to Sonnet 4.5",
-					},
-					{
-						className: "text-pretty text-body text-muted-as-secondary break-words",
-						text: REFUSAL_FLAGGED_COPY,
-					},
-					{
-						className: "block text-body text-muted-as-secondary pt-1.5 comfortable:pt-2",
-						text: "Details: [weird]",
-					},
-				],
-				code: "font-mono-ui break-all",
-			},
-		);
-		expect(REFUSAL_FLAGGED_COPY).toBe(
-			"This model's safeguards flagged this message. This sometimes happens with safe, normal conversations.",
-		);
-	});
-
-	it("leaves the Details line out when the raw category is missing", async () =>
+	it("draws the live fallback at strike 1 open, with the model-named copy, Learn more, the category and Rewind and retry", () =>
 	{
 		render(
-			ui(
+			<ModelSwitchedCard
+				record={RECORD}
+				host={
 				{
-					fallback:
+					...LIVE,
+					onEditRetry: () => true,
+				}}
+				settings={HIDDEN}
+			/>,
+		);
+		expect(
+			{
+				title: toggle()?.textContent,
+				expanded: toggle()?.getAttribute("aria-expanded"),
+				details: details(),
+				learnMore: card().querySelector("a")?.getAttribute("href"),
+				actions: actions(),
+			},
+		).toStrictEqual(
+			{
+				title: "Switched to Sonnet 4.5",
+				expanded: "true",
+				details:
+					"Opus 4.7’s safeguards flagged this message. This sometimes happens with safe, normal conversations. Learn more(opens in new tab).Details: [cyber]",
+				learnMore: "https://support.claude.com/en/articles/8106465",
+				actions: ["Rewind and retry"],
+			},
+		);
+	});
+
+	it("runs the edit-retry handler from Rewind and retry", () =>
+	{
+		const onEditRetry = vi.fn<() => boolean>(() => true);
+		render(
+			<ModelSwitchedCard
+				record={RECORD}
+				host={
+				{
+					...LIVE,
+					onEditRetry,
+				}}
+				settings={HIDDEN}
+			/>,
+		);
+		fireEvent.click(screen.getByText("Rewind and retry"));
+		expect(onEditRetry.mock.calls).toStrictEqual([[]]);
+	});
+
+	it("draws an older fallback closed and with no action", () =>
+	{
+		render(
+			<ModelSwitchedCard
+				record={RECORD}
+				host={
+				{
+					...LIVE,
+					live: null,
+					onEditRetry: () => true,
+				}}
+				settings={HIDDEN}
+			/>,
+		);
+		expect(
+			{
+				title: toggle()?.textContent,
+				expanded: toggle()?.getAttribute("aria-expanded"),
+				actions: actions(),
+			},
+		).toStrictEqual(
+			{
+				title: "Switched to Sonnet 4.5",
+				expanded: "false",
+				actions: [],
+			},
+		);
+	});
+
+	it("offers no action while a card holds the session", () =>
+	{
+		render(
+			<ModelSwitchedCard
+				record={RECORD}
+				host={
+				{
+					...LIVE,
+					held: true,
+					onEditRetry: () => true,
+				}}
+				settings={HIDDEN}
+			/>,
+		);
+		expect(actions()).toStrictEqual([]);
+	});
+
+	it("offers Start a new session on the streak's original model at strike 2", () =>
+	{
+		const onNewSession = vi.fn<(model: string) => void>();
+		render(
+			<ModelSwitchedCard
+				record={RECORD}
+				host={
+				{
+					...LIVE,
+					live:
 					{
 						...FALLBACK,
-						apiRefusalCategoryRaw: null,
+						strike: 2,
 					},
-				},
-			),
+					onNewSession,
+					onEditRetry: () => true,
+				}}
+				settings={HIDDEN}
+			/>,
 		);
-		const why = screen.getByRole(
-			"button",
-			{
-				name: "Why",
-			},
-		);
-		fireEvent.focus(why);
-		const popup = await waitFor(() =>
-		{
-			const found = document.querySelector("[data-refusal-why-card]");
-			if (!(found instanceof HTMLElement)) throw new Error("no card");
-			return found;
-		});
-		expect([...popup.children].map((child) => child.textContent)).toStrictEqual([
-			"Switched to Sonnet 4.5",
-			REFUSAL_FLAGGED_COPY,
-		]);
+		expect(actions()).toStrictEqual(["Start a new session"]);
+		fireEvent.click(screen.getByText("Start a new session"));
+		expect(onNewSession.mock.calls).toStrictEqual([["claude-opus-4-5"]]);
 	});
 
-	it("dismisses once and stays gone for that fallback", () =>
+	it("offers nothing when escalated without a launcher", () =>
 	{
-		const onDismiss = vi.fn<() => void>();
-		const {rerender} = render(
-			ui(
+		render(
+			<ModelSwitchedCard
+				record={RECORD}
+				host={
 				{
-					onDismiss,
-				},
-			),
-		);
-		fireEvent.click(
-			screen.getByRole(
-				"button",
-				{
-					name: "Dismiss",
-				},
-			),
-		);
-		expect(onDismiss).toHaveBeenCalledTimes(1);
-		rerender(
-			ui(
-				{
-					onDismiss,
-				},
-			),
-		);
-		expect(screen.getByTestId("entries").textContent).toBe("");
-		rerender(
-			ui(
-				{
-					onDismiss,
-					fallback:
+					...LIVE,
+					live:
 					{
 						...FALLBACK,
-						uuid: "f2",
+						strike: 2,
 					},
-				},
-			),
+					onEditRetry: () => true,
+				}}
+				settings={HIDDEN}
+			/>,
 		);
-		expect(screen.getByTestId("entries").textContent).toBe("code-refusal:model-switched");
+		expect(actions()).toStrictEqual([]);
 	});
 
-	it("withdraws the card when there is no fallback", () =>
+	it("shows the API's explanation in place of the flagged copy and leaves Details out without a category", () =>
 	{
 		render(
-			ui(
+			<ModelSwitchedCard
+				record={
 				{
-					fallback: null,
-				},
-			),
+					...RECORD,
+					apiRefusalCategory: null,
+					apiRefusalExplanation: "This request triggered restrictions on violative cyber content.",
+				}}
+				host={LIVE}
+				settings={HIDDEN}
+			/>,
 		);
-		expect(screen.getByTestId("entries").textContent).toBe("");
+		expect(details()).toBe(
+			"This request triggered restrictions on violative cyber content. Learn more(opens in new tab).",
+		);
 	});
 
-	it("is ordered after the limit notice", () =>
+	it("points to settings while automatic switching is on, and opens them", () =>
+	{
+		const openSettings = vi.fn<() => void>();
+		render(
+			<ModelSwitchedCard
+				record={
+				{
+					...RECORD,
+					apiRefusalCategory: null,
+				}}
+				host={LIVE}
+				settings={
+				{
+					view: "offer",
+					openSettings,
+				}}
+			/>,
+		);
+		expect(details()).toBe(
+			"Opus 4.7’s safeguards flagged this message. This sometimes happens with safe, normal conversations. Learn more(opens in new tab). You can turn off automatic model switching in settings.",
+		);
+		fireEvent.click(screen.getByText("settings"));
+		expect(openSettings.mock.calls).toStrictEqual([[]]);
+	});
+
+	it("drops the settings sentence once automatic switching is off", () =>
 	{
 		render(
-			ui(
+			<ModelSwitchedCard
+				record={
 				{
-					withLimit: true,
-				},
-			),
+					...RECORD,
+					apiRefusalCategory: null,
+				}}
+				host={LIVE}
+				settings={
+				{
+					...OFFER,
+					view: "off",
+				}}
+			/>,
 		);
-		expect(screen.getByTestId("entries").textContent).toBe("code-limit:pace,code-refusal:model-switched");
-		const cards = liveCards();
-		expect(cards.map((item) => item.querySelector("[data-testid]")?.getAttribute("data-testid"))).toStrictEqual([
-			"limit-card",
-			"code-refusal-card",
-		]);
+		expect(details()).toBe(
+			"Opus 4.7’s safeguards flagged this message. This sometimes happens with safe, normal conversations. Learn more(opens in new tab).",
+		);
 	});
 
-	describe("opt-out", () =>
+	it("remembers a toggled open state across remounts", () =>
 	{
-		it("offers Don’t switch models automatically and calls optOut", () =>
-		{
-			const optOut = vi.fn<() => void>();
-			render(
-				ui(
-					{
-						optOut:
-						{
-							...OFFER,
-							optOut,
-						},
-					},
-				),
-			);
-			const group = card().querySelector("div.flex.min-w-0.flex-wrap.items-center.gap-xs");
-			expect([...(group?.querySelectorAll("button") ?? [])].map((button) => button.textContent)).toStrictEqual([
-				"Don’t switch models automatically",
-			]);
-			fireEvent.click(
-				screen.getByRole(
-					"button",
-					{
-						name: "Don’t switch models automatically",
-					},
-				),
-			);
-			expect(optOut).toHaveBeenCalledTimes(1);
-		});
-
-		it("marks the opt-out busy while the write is pending", () =>
-		{
-			render(
-				ui(
-					{
-						optOut:
-						{
-							...OFFER,
-							pending: true,
-						},
-					},
-				),
-			);
-			const button = card().querySelector('[data-approval-variant="secondary"]');
-			expect(button?.getAttribute("aria-busy")).toBe("true");
-		});
-
-		it("shows Automatic switching is off. and Open settings in the off view", () =>
-		{
-			const openSettings = vi.fn<() => void>();
-			render(
-				ui(
-					{
-						optOut:
-						{
-							...OFFER,
-							view: "off",
-							openSettings,
-						},
-					},
-				),
-			);
-			const atomic = card().querySelector('span[aria-atomic="true"]');
-			expect([...(atomic?.children ?? [])].map((child) => [child.className, child.textContent])).toStrictEqual([
-				["min-w-0", "Switched to Sonnet 4.5 Why"],
-				["min-w-0 text-secondary", "Automatic switching is off."],
-			]);
-			fireEvent.click(
-				screen.getByRole(
-					"button",
-					{
-						name: "Open settings",
-					},
-				),
-			);
-			expect(openSettings).toHaveBeenCalledTimes(1);
-		});
-
-		it("draws no opt-out when hidden", () =>
-		{
-			render(
-				ui(
-					{
-						optOut:
-						{
-							...OFFER,
-							view: "hidden",
-						},
-					},
-				),
-			);
-			expect(buttonNames()).toStrictEqual(["Why", "Dismiss"]);
-		});
+		const first = render(<ModelSwitchedCard record={RECORD} host={LIVE} settings={HIDDEN} />);
+		fireEvent.click(toggle()!);
+		first.unmount();
+		render(<ModelSwitchedCard record={RECORD} host={LIVE} settings={HIDDEN} />);
+		expect(toggle()?.getAttribute("aria-expanded")).toBe("false");
 	});
 
-	describe("escalated", () =>
+	it("has no dismiss X and no opt-out button", () =>
 	{
-		it("offers Start a new session on the streak's original model at strike 2", () =>
-		{
-			const onNewSession = vi.fn<(model: string) => void>();
-			render(
-				ui(
-					{
-						fallback:
-						{
-							...FALLBACK,
-							strike: 2,
-						},
-						onNewSession,
-						optOut:
-						{
-							...OFFER,
-							view: "hidden",
-						},
-					},
-				),
-			);
-			expect(buttonNames()).toStrictEqual(["Why", "Start a new session", "Dismiss"]);
-			expect(
-				screen.queryByRole(
-					"button",
-					{
-						name: "Rewind and retry",
-					},
-				),
-			).toBeNull();
-			fireEvent.click(
-				screen.getByRole(
-					"button",
-					{
-						name: "Start a new session",
-					},
-				),
-			);
-			expect(onNewSession.mock.calls).toStrictEqual([["claude-opus-4-5"]]);
-		});
-
-		it("puts Start a new session before the opt-out", () =>
-		{
-			render(
-				ui(
-					{
-						fallback:
-						{
-							...FALLBACK,
-							strike: 2,
-						},
-						onNewSession: () =>
-						{
-						},
-					},
-				),
-			);
-			expect(buttonNames()).toStrictEqual([
-				"Why",
-				"Start a new session",
-				"Don’t switch models automatically",
-				"Dismiss",
-			]);
-		});
-
-		it("offers no new session at strike 1", () =>
-		{
-			render(
-				ui(
-					{
-						onNewSession: () =>
-						{
-						},
-					},
-				),
-			);
-			expect(
-				screen.queryByRole(
-					"button",
-					{
-						name: "Start a new session",
-					},
-				),
-			).toBeNull();
-		});
-
-		it("offers no new session without a launcher", () =>
-		{
-			render(
-				ui(
-					{
-						fallback:
-						{
-							...FALLBACK,
-							strike: 2,
-						},
-						onNewSession: undefined,
-					},
-				),
-			);
-			expect(
-				screen.queryByRole(
-					"button",
-					{
-						name: "Start a new session",
-					},
-				),
-			).toBeNull();
-		});
+		render(<ModelSwitchedCard record={RECORD} host={LIVE} settings={OFFER} />);
+		expect(
+			[...card().querySelectorAll("button")].map(
+				(button) => button.getAttribute("aria-label") ?? button.textContent,
+			),
+		).toStrictEqual(["Switched to Sonnet 4.5", "settings"]);
 	});
+});
 
-	describe("Rewind and retry", () =>
+describe("SystemBanner model_refusal_fallback", () =>
+{
+	it("draws nothing without a session host, like upstream's static marker in English", () =>
 	{
-		it("is the primary CTA at strike 1, before the opt-out, as a secondary button", () =>
-		{
-			const onEditRetry = vi.fn<() => boolean>(() => true);
-			render(
-				ui(
-					{
-						onEditRetry,
-					},
-				),
-			);
-			expect(buttonNames()).toStrictEqual([
-				"Why",
-				"Rewind and retry",
-				"Don’t switch models automatically",
-				"Dismiss",
-			]);
-			const button = screen.getByRole(
-				"button",
+		const {container} = render(
+			<SystemBanner
+				line={
 				{
-					name: "Rewind and retry",
-				},
-			);
-			expect(
-				{
-					tag: button.tagName,
-					variant: button.getAttribute("data-approval-variant"),
-				},
-			).toStrictEqual(
-				{
-					tag: "BUTTON",
-					variant: "secondary",
-				},
-			);
-			fireEvent.click(button);
-			expect(onEditRetry.mock.calls).toStrictEqual([[]]);
-		});
-
-		it("is absent without a handler", () =>
-		{
-			render(
-				ui(
-					{
-						onEditRetry: undefined,
-					},
-				),
-			);
-			expect(
-				screen.queryByRole(
-					"button",
-					{
-						name: "Rewind and retry",
-					},
-				),
-			).toBeNull();
-		});
-
-		it("gives way to Start a new session when escalated", () =>
-		{
-			render(
-				ui(
-					{
-						fallback:
-						{
-							...FALLBACK,
-							strike: 2,
-						},
-						onNewSession: () =>
-						{
-						},
-						onEditRetry: () => true,
-					},
-				),
-			);
-			expect(buttonNames()).toStrictEqual([
-				"Why",
-				"Start a new session",
-				"Don’t switch models automatically",
-				"Dismiss",
-			]);
-		});
-
-		it("is not offered when escalated without a launcher", () =>
-		{
-			render(
-				ui(
-					{
-						fallback:
-						{
-							...FALLBACK,
-							strike: 2,
-						},
-						onEditRetry: () => true,
-						optOut:
-						{
-							...OFFER,
-							view: "hidden",
-						},
-					},
-				),
-			);
-			expect(buttonNames()).toStrictEqual(["Why", "Dismiss"]);
-		});
+					type: "system",
+					subtype: "model_refusal_fallback",
+					originalModel: "claude-opus-4-7",
+					fallbackModel: "claude-sonnet-4-5",
+					uuid: "f1",
+					lineIndex: 0,
+				}}
+			/>,
+		);
+		expect(container.innerHTML).toBe("");
 	});
 });
 

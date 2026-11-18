@@ -1,6 +1,7 @@
 import {Clock, Laptop, ShieldAlert, SquareTerminal, Webhook} from "lucide-react";
 import {assertNever} from "../lib/assert-never";
 import {Banner, Pre} from "./attachment-banner";
+import {ModelSwitchedCardForLine} from "./refusal-fallback-card";
 import {CollapsibleSection} from "./tool-renderers/shared";
 import {formatTokens, compactBoundaryLabel, localCommandOutput} from "./system-banner-text";
 import type {SystemLine} from "./system-banner-text";
@@ -37,7 +38,8 @@ function jsonText(value: unknown): string
  * Renders a system JSONL record (compact_boundary, stop_hook_summary,
  * api_error, turn_duration, scheduled_task_fire, local_command, bridge_status,
  * model_refusal_no_fallback) as a compact informational banner, mirroring
- * the visual language of AttachmentBanner.
+ * the visual language of AttachmentBanner; model_refusal_fallback draws
+ * upstream's model-switched card.
  */
 export function SystemBanner({line, sessionId}: {line: SystemLine; sessionId?: string | undefined})
 {
@@ -241,6 +243,19 @@ export function SystemBanner({line, sessionId}: {line: SystemLine; sessionId?: s
 						<span className="basis-full min-w-0 text-t5">{line.apiRefusalExplanation}</span>
 					)}
 				</Banner>
+			);
+		case "model_refusal_fallback":
+			return (
+				<ModelSwitchedCardForLine
+					record={
+					{
+						uuid: line.uuid ?? `record-${line.lineIndex}`,
+						originalModel: line.originalModel ?? "",
+						fallbackModel: line.fallbackModel ?? "",
+						apiRefusalCategory: line.apiRefusalCategory ?? null,
+						apiRefusalExplanation: line.apiRefusalExplanation ?? null,
+					}}
+				/>
 			);
 		default:
 			return assertNever(line.subtype);

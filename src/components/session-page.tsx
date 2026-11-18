@@ -139,7 +139,7 @@ import {UsagePaceBanner} from "./usage-pace-banner";
 import {WorkflowSizeWarningNotice} from "./workflow-size-warning-notice";
 import {SessionAutoModeSetupBand} from "./auto-mode-setup-band";
 import {ColdResumeNotice} from "./cold-resume-notice";
-import {RefusalFallbackBand} from "./refusal-fallback-card";
+import {type RefusalFallbackHost, RefusalFallbackHostContext} from "./refusal-fallback-host";
 import {startSessionOnModel} from "../lib/start-session-on-model";
 import {activeRefusalFallback} from "../lib/refusal-fallback";
 import {HARD_BLOCK_CARDS, hardBlockAt, latestHardBlock} from "../lib/hard-block";
@@ -2223,6 +2223,18 @@ function SessionView({
 				: undefined,
 		[sessionDirectory, toast, navigate],
 	);
+	// Upstream c01e7498d `gh()`: the model-switched cards' host; only the live fallback gets an action.
+	const refusalFallbackHost = useMemo<RefusalFallbackHost>(
+		() => (
+		{
+			sessionId,
+			live: refusalFallback,
+			held: cardHeld,
+			onNewSession: refusalNewSession,
+			onEditRetry: refusalEditRetry,
+		}),
+		[sessionId, refusalFallback, cardHeld, refusalNewSession, refusalEditRetry],
+	);
 	const sessionProjectId = data.projectId;
 	const coldResumeNewSession = useCallback(() =>
 	{
@@ -3031,14 +3043,6 @@ function SessionView({
 																	onHoldChange={setColdResumeHolds}
 																/>
 															)}
-															{!chromeHidden && sessionDirectory && !data.archived && (
-																<RefusalFallbackBand
-																	sessionId={sessionId}
-																	fallback={refusalFallback}
-																	onNewSession={refusalNewSession}
-																	onEditRetry={refusalEditRetry}
-																/>
-															)}
 															{/* Upstream's notice region: registered bands (usage → `limit`) stacked in NOTICE_ORDER */}
 															{!chromeHidden && sessionDirectory && (
 																<ComposerNoticeRegion />
@@ -3210,143 +3214,152 @@ function SessionView({
 														>
 															<TurnUndoSendContext.Provider value={turnUndoSend}>
 																<HardBlockHostContext.Provider value={hardBlockHost}>
-																	<TranscriptTailContext.Provider
-																		value={transcriptTail}
+																	<RefusalFallbackHostContext.Provider
+																		value={refusalFallbackHost}
 																	>
-																		<TailActionsOutletContext.Provider
-																			value={tailActions}
+																		<TranscriptTailContext.Provider
+																			value={transcriptTail}
 																		>
-																			<FindLoadRestContext.Provider
-																				value={loadRestForFind}
+																			<TailActionsOutletContext.Provider
+																				value={tailActions}
 																			>
-																				<LiveStatusSourcesProvider
-																					value={liveStatusSources}
+																				<FindLoadRestContext.Provider
+																					value={loadRestForFind}
 																				>
-																					<TranscriptRevisionContext.Provider
-																						value={
-																							transcript.records.length
-																						}
+																					<LiveStatusSourcesProvider
+																						value={liveStatusSources}
 																					>
-																						<SessionChat
-																							sessionId={sessionId}
-																							lines={processed.lines}
-																							measurementSource={
+																						<TranscriptRevisionContext.Provider
+																							value={
 																								transcript.records
+																									.length
 																							}
-																							measurementLayout={JSON.stringify(
-																								[
-																									settings.showDebug,
-																									settings.interfaceFont,
-																									settings.transcriptTextSize,
-																									settings.codeFont,
-																									settings.transcriptWidth,
-																								],
-																							)}
-																							toolResultMap={
-																								processed.toolResultMap
-																							}
-																							rewindCuts={
-																								chainProcessed.cutsByReplacement
-																							}
-																							rewoundUuids={hiddenUuids}
-																							allowedImageRoots={
-																								data.imageRoots
-																							}
-																							subagents={subagents}
-																							{...(workflowRuns ===
-																							undefined
-																								? null
-																								:
+																						>
+																							<SessionChat
+																								sessionId={sessionId}
+																								lines={processed.lines}
+																								measurementSource={
+																									transcript.records
+																								}
+																								measurementLayout={JSON.stringify(
+																									[
+																										settings.showDebug,
+																										settings.interfaceFont,
+																										settings.transcriptTextSize,
+																										settings.codeFont,
+																										settings.transcriptWidth,
+																									],
+																								)}
+																								toolResultMap={
+																									processed.toolResultMap
+																								}
+																								rewindCuts={
+																									chainProcessed.cutsByReplacement
+																								}
+																								rewoundUuids={
+																									hiddenUuids
+																								}
+																								allowedImageRoots={
+																									data.imageRoots
+																								}
+																								subagents={subagents}
+																								{...(workflowRuns ===
+																								undefined
+																									? null
+																									:
+																										{
+																											workflowRuns,
+																										})}
+																								showThinking={
+																									transcriptFlags.showThinking
+																								}
+																								showTools={
+																									transcriptFlags.showTools
+																								}
+																								showPassedHooks={
+																									transcriptFlags.showPassedHooks
+																								}
+																								showHookWarnings={
+																									transcriptFlags.showHookWarnings
+																								}
+																								showHookErrors={
+																									transcriptFlags.showHookErrors
+																								}
+																								showSystemBanners={
+																									transcriptFlags.showSystemBanners
+																								}
+																								showCompactSummaries={
+																									transcriptFlags.showCompactSummaries
+																								}
+																								showTranscriptOnly={
+																									transcriptFlags.showTranscriptOnly
+																								}
+																								transcriptMode={
+																									transcriptMode
+																								}
+																								sessionLive={sessionProcessLive(
 																									{
-																										workflowRuns,
-																									})}
-																							showThinking={
-																								transcriptFlags.showThinking
-																							}
-																							showTools={
-																								transcriptFlags.showTools
-																							}
-																							showPassedHooks={
-																								transcriptFlags.showPassedHooks
-																							}
-																							showHookWarnings={
-																								transcriptFlags.showHookWarnings
-																							}
-																							showHookErrors={
-																								transcriptFlags.showHookErrors
-																							}
-																							showSystemBanners={
-																								transcriptFlags.showSystemBanners
-																							}
-																							showCompactSummaries={
-																								transcriptFlags.showCompactSummaries
-																							}
-																							showTranscriptOnly={
-																								transcriptFlags.showTranscriptOnly
-																							}
-																							transcriptMode={
-																								transcriptMode
-																							}
-																							sessionLive={sessionProcessLive(
-																								{
-																									hookActive:
-																										isActive,
-																									summaryState:
-																										sessionSummaryState,
-																								},
-																							)}
-																							turnInProgress={
-																								workingMarkerState.status !==
-																								"idle"
-																							}
-																							archived={data.archived}
-																							permissionWaitToolUseId={
-																								permissionWaitId
-																							}
-																							queuedCallIds={
-																								queuedCallIds
-																							}
-																							onSendNow={
-																								requestSendNowInterrupt
-																							}
-																							onFocusComposer={
-																								focusSessionComposer
-																							}
-																							sideChatAvailable={true}
-																							initialScrollKey={
-																								initialScrollKey
-																							}
-																							scrollContentRef={
-																								scrollAnchorRef
-																							}
-																							shouldScrollToEnd={
-																								restoredScrollPosition ===
+																										hookActive:
+																											isActive,
+																										summaryState:
+																											sessionSummaryState,
+																									},
+																								)}
+																								turnInProgress={
+																									workingMarkerState.status !==
+																									"idle"
+																								}
+																								archived={data.archived}
+																								permissionWaitToolUseId={
+																									permissionWaitId
+																								}
+																								queuedCallIds={
+																									queuedCallIds
+																								}
+																								onSendNow={
+																									requestSendNowInterrupt
+																								}
+																								onFocusComposer={
+																									focusSessionComposer
+																								}
+																								sideChatAvailable={true}
+																								initialScrollKey={
+																									initialScrollKey
+																								}
+																								scrollContentRef={
+																									scrollAnchorRef
+																								}
+																								shouldScrollToEnd={
+																									restoredScrollPosition ===
+																										undefined &&
+																									locationHash === ""
+																								}
+																								summary={aiSummary}
+																								{...(slashCommands ===
+																								undefined
+																									? {}
+																									:
+																										{
+																											slashCommands,
+																										})}
+																								{...(errorRecovery !==
 																									undefined &&
-																								locationHash === ""
-																							}
-																							summary={aiSummary}
-																							{...(slashCommands ===
-																							undefined
-																								? {}
-																								:
-																									{
-																										slashCommands,
-																									})}
-																							{...(errorRecovery !==
-																								undefined &&
-																							{
-																								errorRecovery,
-																							})}
-																							staleCompact={staleCompact}
-																							renderClientRowCard={
-																								renderClientRowCard
-																							}
-																						/>
-																					</TranscriptRevisionContext.Provider>
-																				</LiveStatusSourcesProvider>
-																			</FindLoadRestContext.Provider>
-																		</TailActionsOutletContext.Provider>
-																	</TranscriptTailContext.Provider>
+																								{
+																									errorRecovery,
+																								})}
+																								staleCompact={
+																									staleCompact
+																								}
+																								renderClientRowCard={
+																									renderClientRowCard
+																								}
+																							/>
+																						</TranscriptRevisionContext.Provider>
+																					</LiveStatusSourcesProvider>
+																				</FindLoadRestContext.Provider>
+																			</TailActionsOutletContext.Provider>
+																		</TranscriptTailContext.Provider>
+																	</RefusalFallbackHostContext.Provider>
 																</HardBlockHostContext.Provider>
 															</TurnUndoSendContext.Provider>
 														</TranscriptActionsProvider>
