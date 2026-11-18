@@ -88,6 +88,7 @@ import {ChevronIcon, DiffStatPill, TerminalOutput} from "./tool-renderers/shared
 import {SystemBanner, type CompactMetadata} from "./system-banner";
 import {compactBoundaryLabel, localCommandOutput} from "./system-banner-text";
 import {ArtifactLinkBanner, ArtifactWatchBanner} from "./artifact-banner";
+import {ContinuedInBanner} from "./continued-in-banner";
 import {permissionDecisionLabel, permissionDecisionTitle} from "../lib/permission-decision";
 import {DebugLink} from "./debug-link";
 import {ToolCardBoundary} from "./tool-card-boundary";
@@ -2779,6 +2780,7 @@ const BANNER_LINE_TYPES = new Set([
 	"permission-mode",
 	"artifact-link",
 	"artifact-watch",
+	"continued-in",
 	"attachment",
 	"system",
 	"worktree",
@@ -5575,6 +5577,8 @@ function renderSessionMessage({
 			return <ArtifactLinkBanner line={line} />;
 		case "artifact-watch":
 			return <ArtifactWatchBanner line={line} />;
+		case "continued-in":
+			return <ContinuedInBanner line={line} />;
 		case "queued-task-notification":
 			// buildSessionListEntries draws the ones upstream shows as task-event rows.
 			return null;

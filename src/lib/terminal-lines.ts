@@ -417,6 +417,7 @@ export function buildTerminalLines(
 			case "permission-mode":
 			case "artifact-link":
 			case "artifact-watch":
+			case "continued-in":
 			case "queued-prompt":
 			case "queued-task-notification":
 			case "worktree":

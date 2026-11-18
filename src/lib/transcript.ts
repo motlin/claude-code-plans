@@ -222,6 +222,16 @@ const ArtifactLinkLineSchema = z.object(
 	},
 );
 
+/** The session this one was continued in, from a `continued-in` record. */
+const ContinuedInLineSchema = z.object(
+	{
+		type: z.literal("continued-in"),
+		continuedInSessionId: z.string(),
+		timestamp: z.string(),
+		lineIndex: z.number(),
+	},
+);
+
 /**
  * The artifacts the session watches for comments, from the latest
  * `artifact-comment-monitor` record, with thread counts from the latest
@@ -486,6 +496,7 @@ export const RenderedLineSchema = z.discriminatedUnion("type", [
 	PermissionModeLineSchema,
 	ArtifactLinkLineSchema,
 	ArtifactWatchLineSchema,
+	ContinuedInLineSchema,
 	QueuedTaskNotificationLineSchema,
 	QueuedPromptLineSchema,
 	AttachmentLineSchema,
@@ -1687,6 +1698,19 @@ function* processRecordBatchSteps(
 				{
 					type: "permission-mode",
 					permissionMode: record.permissionMode,
+					lineIndex,
+				},
+			);
+			continue;
+		}
+
+		if (record.type === "continued-in")
+		{
+			sessionLines.push(
+				{
+					type: "continued-in",
+					continuedInSessionId: record.continuedInSessionId,
+					timestamp: record.timestamp,
 					lineIndex,
 				},
 			);

@@ -658,7 +658,11 @@ const madeByChoices =
 	model: true,
 } satisfies Record<z.infer<typeof MadeBySchema>, true>;
 
-/** Not consumed yet — `promptCacheRequested` (the prompt-cache TTL asked for) on assistant records is only validated. */
+/**
+ * Not consumed — `promptCacheRequested` (the prompt-cache TTL asked for) and its sibling `toolInputStreamMs` on
+ * assistant records stay validated-only: the transcript has no per-message metadata panel, and the record's
+ * source view already shows both.
+ */
 const promptCacheTtlChoices =
 {
 	"5m": true,
@@ -1257,6 +1261,7 @@ const renderedLineVariants =
 	"permission-mode": true,
 	"artifact-link": true,
 	"artifact-watch": true,
+	"continued-in": true,
 	"queued-task-notification": true,
 	"queued-prompt": true,
 	attachment: true,

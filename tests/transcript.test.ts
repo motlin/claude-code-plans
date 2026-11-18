@@ -5020,6 +5020,29 @@ describe("schema-rejected records", () =>
 	});
 });
 
+describe("continued-in records", () =>
+{
+	it("emits a continued-in line linking to the session that continued this one", () =>
+	{
+		const records = [
+			{
+				type: "continued-in",
+				timestamp: "2000-01-01T00:00:00.000Z",
+				sessionId: "session-alice-100",
+				continuedInSessionId: "session-alice-200",
+			},
+		];
+		expect(processTranscript(records).lines).toStrictEqual([
+			{
+				type: "continued-in",
+				continuedInSessionId: "session-alice-200",
+				timestamp: "2000-01-01T00:00:00.000Z",
+				lineIndex: 0,
+			},
+		]);
+	});
+});
+
 describe("artifact records", () =>
 {
 	const uuid = "29d89ae8-e33b-4f55-bbbd-874d5d316169";
