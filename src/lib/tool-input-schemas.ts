@@ -293,13 +293,20 @@ const AskUserQuestionInputSchema = z
 	)
 	.strict();
 
-/** An answered AskUserQuestion call's `toolUseResult`: the questions asked and the user's answer to each. */
+/**
+ * A settled AskUserQuestion call's `toolUseResult`: the questions asked and the user's answer to each, plus what
+ * CLI 2.1.327 adds: the typed `response`, the idle timeout that settled it (`afkTimeoutMs`), and `followUp` when the
+ * user asked for more questions.
+ */
 export const AskUserQuestionResultSchema = z
 	.object(
 		{
 			questions: AskUserQuestionInputSchema.shape.questions,
 			answers: z.record(z.string(), z.string()),
 			annotations: z.record(z.string(), AskUserQuestionAnnotationSchema).optional(),
+			response: z.string().optional(),
+			afkTimeoutMs: z.number().optional(),
+			followUp: z.boolean().optional(),
 		},
 	)
 	.strict();

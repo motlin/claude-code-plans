@@ -18,6 +18,10 @@ import {infinitive, pastTense, startsWithKnownVerb} from "./past-tense";
 import type {ReadFileLines} from "./tool-runs";
 import {AskUserQuestionResultSchema, ExitWorktreeActionSchema, RemoteTriggerActionSchema} from "./tool-input-schemas";
 import {workflowCallName} from "./workflow-name";
+import {toLenient} from "./lenient-schema";
+
+/** The runtime twin: a newer CLI's extra result key must not drop the answers. */
+const LenientAskUserQuestionResultSchema = /* @__PURE__ */ toLenient(AskUserQuestionResultSchema);
 
 /**
  * What a tool row needs from the call's `toolUseResult`, pulled out through
@@ -55,6 +59,8 @@ export interface ToolResultMeta
 			}
 		>
 	>;
+	/** An AskUserQuestion call the CLI's idle timeout settled (`afkTimeoutMs`): its unanswered questions timed out. */
+	timedOut?: true;
 	/** The lines a Read result reports it returned, for upstream's range suffix. */
 	readFile?: ReadFileLines;
 	/**
@@ -310,7 +316,7 @@ export function toolResultMetaFrom(toolUseResult: unknown, call?: ToolResultCall
 	}
 	if ("answers" in toolUseResult)
 	{
-		const asked = AskUserQuestionResultSchema.safeParse(toolUseResult);
+		const asked = LenientAskUserQuestionResultSchema.safeParse(toolUseResult);
 		if (!asked.success) return undefined;
 		const answers: Record<
 			string,
@@ -327,9 +333,16 @@ export function toolResultMetaFrom(toolUseResult: unknown, call?: ToolResultCall
 				notes: asked.data.annotations?.[question]?.notes ?? null,
 			};
 		}
-		return {
-			answers,
-		};
+		return asked.data.afkTimeoutMs === undefined
+			?
+				{
+					answers,
+				}
+			:
+				{
+					answers,
+					timedOut: true,
+				};
 	}
 	return undefined;
 }

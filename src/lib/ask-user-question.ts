@@ -186,11 +186,13 @@ export interface AskUserQuestionStatus
 	detail?: string;
 }
 
-const TIMEOUT_PREFIX = "No response after 60s";
+/** The CLI's idle-timeout text, `No response after <N>s` (60s, 5m or 10m by setting). */
+const TIMEOUT_PATTERN = /^No response after \d+s/;
 
 /**
  * Collapse the two non-answer `AskUserQuestion` outcomes -- the user dismissing
- * the prompt, and the 60s no-response timeout -- to a status line.
+ * the prompt, and a no-response timeout without the structured result that
+ * would draw it as a receipt -- to a status line.
  *
  * Both results are boilerplate addressed to the model ("STOP what you are
  * doing", "Proceed using your best judgment"), so only the outcome and any
@@ -214,11 +216,12 @@ export function describeAskUserQuestionResult(result: string | undefined): AskUs
 		return status;
 	}
 
-	if (trimmed.startsWith(TIMEOUT_PREFIX))
+	const timeout = TIMEOUT_PATTERN.exec(trimmed);
+	if (timeout)
 	{
 		return {
 			tone: "timeout",
-			text: "No response after 60s",
+			text: timeout[0],
 		};
 	}
 
@@ -281,7 +284,10 @@ export function isWithdrawnQuestion(call: AskedCall): boolean
 	if (questions === null) return false;
 	const answers = answersFromResultMeta(call.resultMeta, questions) ?? parseAnswerResult(result, questions);
 	if (answers?.every((entry) => entry.answer.startsWith(DISMISSED_ANSWER_PREFIX)) === true) return true;
-	return call.isError !== true && questionOutcomes(call).every((entry) => entry.answer === undefined);
+	// Upstream's lc/dc keep the receipt whenever a question timed out.
+	const outcomes = questionOutcomes(call);
+	if (outcomes.some((entry) => entry.unanswered === "timedOut")) return false;
+	return call.isError !== true && outcomes.every((entry) => entry.answer === undefined);
 }
 
 /**
@@ -304,15 +310,29 @@ export function questionOutcomeNote(call: AskedCall): string | undefined
 }
 
 /** Why a question has no real answer, as upstream classifies its recorded answer text. */
-export type QuestionOutcome = "skipped" | "replied" | "dismissed";
+export type QuestionOutcome = "skipped" | "replied" | "dismissed" | "timedOut";
 
-/** Upstream's word for each unanswered outcome. */
+/** Upstream's word for each unanswered outcome (its `se`). */
 export const OUTCOME_LABEL =
 {
 	skipped: "Skipped",
 	replied: "Replied in chat",
 	dismissed: "Not answered",
+	timedOut: "Not answered",
 } as const;
+
+/**
+ * The label upstream's `le` adds to a receipt whose every question timed out.
+ * TODO-live: upstream's copy is intl id `1jpu27a` (shared-39 `_d2`), which has no default message in the bundle;
+ * resolve it from the live IntlProvider. Until then this is a stand-in.
+ */
+export const ALL_TIMED_OUT_LABEL = "No response";
+
+/** Upstream's `ce`: every question of the receipt timed out. */
+export function allQuestionsTimedOut(entries: readonly QuestionOutcomeEntry[]): boolean
+{
+	return entries.length > 0 && entries.every((entry) => entry.unanswered === "timedOut");
+}
 
 const SKIPPED_ANSWERS: ReadonlySet<string> = new Set([
 	"",
@@ -360,9 +380,16 @@ export function questionOutcomes(call: AskedCall): QuestionOutcomeEntry[]
 	{
 		const answer = recorded.get(question);
 		if (answer === undefined)
-			return {
-				question,
-			};
+			return call.resultMeta?.timedOut === true
+				?
+					{
+						question,
+						unanswered: "timedOut",
+					}
+				:
+					{
+						question,
+					};
 		const unanswered = questionOutcome(answer);
 		return unanswered === undefined
 			?
@@ -568,12 +595,47 @@ function nextPairStart(body: string, from: number, later: QuestionLike[]): numbe
 	return earliest;
 }
 
+const FOLLOW_UP_PREFIX = "The user asked for more questions before you proceed. So far they answered: ";
+const FOLLOW_UP_SUFFIX = " Call AskUserQuestion again with follow-up questions";
+const FOLLOW_UP_WROTE = '. They also wrote: "';
+
+/**
+ * CLI 2.1.327's results that carry no answer pairs: more questions asked for before any answer,
+ * a typed freeform response, and nothing answered. Upstream draws each as the compact step.
+ */
+const NO_ANSWER_PREFIXES: readonly string[] = [
+	"The user asked for more questions before answering.",
+	"The user responded: ",
+	"The user did not answer the questions.",
+];
+
+/** Whether the result text is one of the CLI's no-answer outcomes, which upstream draws as the compact step. */
+export function isNoAnswerResult(text: string): boolean
+{
+	const trimmed = text.trim();
+	return NO_ANSWER_PREFIXES.some((prefix) => trimmed.startsWith(prefix));
+}
+
+/** The pairs of a followUp result: `<prefix><pairs>.[ They also wrote: "<response>".] Call AskUserQuestion again …`. */
+function matchFollowUp(text: string): string | null
+{
+	if (!text.startsWith(FOLLOW_UP_PREFIX)) return null;
+	const end = text.lastIndexOf(FOLLOW_UP_SUFFIX);
+	if (end < FOLLOW_UP_PREFIX.length) return null;
+	const rest = text.slice(FOLLOW_UP_PREFIX.length, end);
+	const wrote = rest.indexOf(FOLLOW_UP_WROTE);
+	if (wrote >= 0) return rest.slice(0, wrote);
+	return rest.endsWith(".") ? rest.slice(0, -1) : null;
+}
+
 /**
  * Strip whichever known envelope wraps the result text, returning the inner
  * question/answer body. Returns null when no envelope matches.
  */
 function matchEnvelope(text: string): string | null
 {
+	const followUp = matchFollowUp(text);
+	if (followUp !== null) return followUp;
 	for (const envelope of ENVELOPES)
 	{
 		if (!text.startsWith(envelope.prefix)) continue;

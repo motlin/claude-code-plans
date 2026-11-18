@@ -3,6 +3,7 @@ import
 {
 	answerForQuestion,
 	formatAnswerPrompt,
+	isNoAnswerResult,
 	isWithdrawnQuestion,
 	makeInitialDraft,
 	normalizeQuestions,
@@ -845,6 +846,97 @@ describe("parseAnswerResult with the read-carefully answer envelope", () =>
 	});
 });
 
+describe("CLI 2.1.327's followUp, freeform and unanswered result texts", () =>
+{
+	const input =
+	{
+		questions: [
+			{
+				question: "Which color?",
+				options: [
+					{
+						label: "Red",
+					},
+				],
+			},
+			{
+				question: "Which size?",
+				options: [
+					{
+						label: "Small",
+					},
+				],
+			},
+		],
+	};
+	const questions = normalizeQuestions(input) ?? [];
+
+	it("parses the answers of a followUp result, with and without the user's words", () =>
+	{
+		expect(
+			{
+				plain: parseAnswerResult(
+					'The user asked for more questions before you proceed. So far they answered: "Which color?"="Red". Call AskUserQuestion again with follow-up questions that build on these answers (do not repeat these); do not start the task yet.',
+					questions,
+				),
+				wrote: parseAnswerResult(
+					'The user asked for more questions before you proceed. So far they answered: "Which color?"="Red", "Which size?"="Small". They also wrote: "ask about shape". Call AskUserQuestion again with follow-up questions that build on these answers (do not repeat these); do not start the task yet.',
+					questions,
+				),
+			},
+		).toStrictEqual(
+			{
+				plain: [
+					{
+						question: "Which color?",
+						answer: "Red",
+						notes: null,
+					},
+				],
+				wrote: [
+					{
+						question: "Which color?",
+						answer: "Red",
+						notes: null,
+					},
+					{
+						question: "Which size?",
+						answer: "Small",
+						notes: null,
+					},
+				],
+			},
+		);
+	});
+
+	it("treats the no-answer followUp, freeform and unanswered texts as withdrawn and recognises them", () =>
+	{
+		const texts = [
+			'The user asked for more questions before answering. They also wrote: "hm". Call AskUserQuestion again now with further questions about this decision (do not repeat these); do not proceed with the task yet.',
+			"The user responded: just pick",
+			"The user did not answer the questions.",
+		];
+		expect(
+			texts.map((result) => (
+			{
+				withdrawn: isWithdrawnQuestion(
+					{
+						input,
+						result,
+					},
+				),
+				noAnswer: isNoAnswerResult(result),
+			})),
+		).toStrictEqual(
+			texts.map(() => (
+			{
+				withdrawn: true,
+				noAnswer: true,
+			})),
+		);
+	});
+});
+
 describe("questionOutcome", () =>
 {
 	it("classifies each upstream non-answer sentence and leaves a real answer unclassified", () =>
@@ -874,6 +966,7 @@ describe("questionOutcome", () =>
 				skipped: "Skipped",
 				replied: "Replied in chat",
 				dismissed: "Not answered",
+				timedOut: "Not answered",
 			},
 		);
 	});

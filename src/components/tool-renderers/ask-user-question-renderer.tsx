@@ -15,7 +15,10 @@ import {removeMemoryTags} from "../../lib/task-checklist";
 import {clearSentQuestionCard, isQuestionCardSent, useQuestionCardSent} from "../../lib/question-card-store";
 import
 {
+	ALL_TIMED_OUT_LABEL,
+	allQuestionsTimedOut,
 	describeAskUserQuestionResult,
+	isNoAnswerResult,
 	isWithdrawnQuestion,
 	normalizeQuestions,
 	OUTCOME_LABEL,
@@ -187,6 +190,7 @@ export function AskUserQuestionRenderer({toolCall}: ToolRendererProps)
 		result !== undefined &&
 		status === null &&
 		toolCall.resultMeta?.answers === undefined &&
+		!isNoAnswerResult(result) &&
 		parseAnswerResult(result, questions) === null;
 
 	if (isWithdrawnQuestion(toolCall))
@@ -215,7 +219,13 @@ export function AskUserQuestionRenderer({toolCall}: ToolRendererProps)
 		}));
 		// The card that sent the answer stays mounted to draw the result in its sent receipt's node.
 		if (sentHereRef.current) return <QuestionCard draftKey={toolCall.id} questions={questions} answered={rows} />;
-		return <QuestionReceipt enters={receiptEntersRef.current ?? false} rows={rows} />;
+		return (
+			<QuestionReceipt
+				enters={receiptEntersRef.current ?? false}
+				rows={rows}
+				label={allQuestionsTimedOut(receipt) ? ALL_TIMED_OUT_LABEL : undefined}
+			/>
+		);
 	}
 
 	// Upstream's `Ev` sends any other question call with a result (an error) down the generic tool body.

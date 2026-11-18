@@ -72,7 +72,16 @@ function AnsweredQuestion({question, answer, notes}: QuestionReceiptRow)
  * Like upstream's `wd` it reads `enters` once, so a later `true` never restarts the
  * fade; a later `false` drops the class, which ends it without replaying.
  */
-export function QuestionReceipt({rows, enters}: {rows: readonly QuestionReceiptRow[]; enters: boolean})
+export function QuestionReceipt({
+	rows,
+	enters,
+	label,
+}: {
+	rows: readonly QuestionReceiptRow[];
+	enters: boolean;
+	/** Upstream's `le`: the line over a receipt whose every question timed out. */
+	label?: string | undefined;
+})
 {
 	const [entersAtMount] = useState(enters);
 	const fades = entersAtMount && enters;
@@ -83,6 +92,11 @@ export function QuestionReceipt({rows, enters}: {rows: readonly QuestionReceiptR
 				fades ? " animate-question-receipt-enter motion-reduce:animate-none" : ""
 			}`}
 		>
+			{label !== undefined && (
+				<div data-question-receipt-label="" className="px-lg py-md text-footnote text-secondary">
+					{label}
+				</div>
+			)}
 			{rows.map((row, i) => (
 				<AnsweredQuestion key={i} question={row.question} answer={row.answer} notes={row.notes} />
 			))}

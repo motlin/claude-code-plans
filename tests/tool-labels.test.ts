@@ -1,5 +1,6 @@
 import {infinitive} from "../src/lib/past-tense";
 import {groupWordCase, groupWords, runningToolLabel, toolLabel, toolResultMetaFrom} from "../src/lib/tool-labels";
+import {AskUserQuestionResultSchema} from "../src/lib/tool-input-schemas";
 import type {ToolLabelCall} from "../src/lib/tool-labels";
 
 const call = (
@@ -1050,6 +1051,138 @@ describe("toolResultMetaFrom", () =>
 				plain: undefined,
 				text: undefined,
 				missing: undefined,
+			},
+		);
+	});
+});
+
+describe("toolResultMetaFrom AskUserQuestion results", () =>
+{
+	const questions = [
+		{
+			question: "Which color?",
+			header: "Color",
+			options: [
+				{
+					label: "Red",
+					description: "Warm",
+				},
+			],
+			multiSelect: false,
+		},
+	];
+
+	it("keeps the answers of CLI 2.1.327's AFK, followUp and freeform results, marks the AFK one timed out, and strips unknown keys", () =>
+	{
+		expect(
+			{
+				afk: toolResultMetaFrom(
+					{
+						questions,
+						answers:
+						{
+							"Which color?": "Red",
+						},
+						afkTimeoutMs: 300000,
+					},
+				),
+				followUp: toolResultMetaFrom(
+					{
+						questions,
+						answers:
+						{
+							"Which color?": "Red",
+						},
+						followUp: true,
+						response: "and blue too",
+					},
+				),
+				responded: toolResultMetaFrom(
+					{
+						questions,
+						answers: {},
+						response: "neither",
+					},
+				),
+				unknownKey: toolResultMetaFrom(
+					{
+						questions,
+						answers:
+						{
+							"Which color?": "Red",
+						},
+						futureKey: 1,
+					},
+				),
+			},
+		).toStrictEqual(
+			{
+				afk:
+				{
+					answers:
+					{
+						"Which color?":
+						{
+							answer: "Red",
+							notes: null,
+						},
+					},
+					timedOut: true,
+				},
+				followUp:
+				{
+					answers:
+					{
+						"Which color?":
+						{
+							answer: "Red",
+							notes: null,
+						},
+					},
+				},
+				responded:
+				{
+					answers: {},
+				},
+				unknownKey:
+				{
+					answers:
+					{
+						"Which color?":
+						{
+							answer: "Red",
+							notes: null,
+						},
+					},
+				},
+			},
+		);
+	});
+
+	it("declares the AFK, followUp and response keys in the strict schema, which still rejects an unknown key", () =>
+	{
+		const afk =
+		{
+			questions,
+			answers: {},
+			response: "x",
+			afkTimeoutMs: 60000,
+			followUp: true,
+		};
+		expect(
+			{
+				known: AskUserQuestionResultSchema.parse(afk),
+				unknown: AskUserQuestionResultSchema.safeParse(
+					{
+						...afk,
+						futureKey: 1,
+					},
+				).success,
+			},
+		).toStrictEqual(
+			{
+				known: afk,
+				unknown: false,
 			},
 		);
 	});

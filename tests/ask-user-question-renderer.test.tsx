@@ -4,6 +4,7 @@ import {cleanup, render} from "@testing-library/react";
 import {afterEach, describe, expect, it} from "vite-plus/test";
 import {AskUserQuestionRenderer} from "../src/components/tool-renderers/ask-user-question-renderer";
 import type {ClientToolCall} from "../src/components/tool-renderers/types";
+import {ALL_TIMED_OUT_LABEL} from "../src/lib/ask-user-question";
 import {markQuestionCardSeen, markQuestionCardSent} from "../src/lib/question-card-store";
 
 afterEach(cleanup);
@@ -13,9 +14,6 @@ const REJECTION_RESULT =
 
 const REJECTION_WITH_FEEDBACK_RESULT =
 	"The user doesn't want to proceed with this tool use. The tool use was rejected (eg. if it was a file edit, the new_string was NOT written to the file). To tell you how to proceed, the user said:\nJust pick one and keep going.";
-
-const TIMEOUT_RESULT =
-	"No response after 60s — the user may be away from keyboard. Proceed using your best judgment based on the context so far; you can re-ask this question later if it's still relevant.";
 
 const ANSWERED_RESULT =
 	'Your questions have been answered: "Which test runner?"="Vitest". You can now continue with these answers in mind.';
@@ -844,29 +842,160 @@ describe("AskUserQuestionRenderer", () =>
 		);
 	});
 
-	it("shows a pink status line for the 60s no-response timeout", () =>
+	describe("AFK timeouts (upstream's cc timedOut + se/le)", () =>
 	{
-		const {container} = render(
-			<AskUserQuestionRenderer
-				toolCall={makeCall(
-					{
-						result: TIMEOUT_RESULT,
-					},
-				)}
-			/>,
-		);
+		const TWO =
+		{
+			questions: [
+				{
+					question: "Which color?",
+					header: "Color",
+					options: [
+						{
+							label: "Red",
+						},
+					],
+					multiSelect: false,
+				},
+				{
+					question: "Which size?",
+					header: "Size",
+					options: [
+						{
+							label: "Small",
+						},
+					],
+					multiSelect: false,
+				},
+			],
+		};
+		const afkText = (seconds: number) =>
+			`No response after ${seconds}s — the user may be away from keyboard. Proceed using your best judgment based on the context so far; you can re-ask this question later if it's still relevant.`;
 
-		expect(
-			{
-				status: container.querySelector(".text-extended-pink")?.textContent,
+		function draw(overrides: Partial<ClientToolCall>)
+		{
+			const {container} = render(
+				<AskUserQuestionRenderer
+					toolCall={makeCall(
+						{
+							input: TWO,
+							...overrides,
+						},
+					)}
+				/>,
+			);
+			return {
+				rows: [...container.querySelectorAll("[data-answered-question]")].map((row) =>
+					[...row.children].map((line) => line.textContent),
+				),
+				label: container.querySelector("[data-question-receipt-label]")?.textContent ?? null,
+				status: container.querySelector(".text-extended-pink")?.textContent ?? null,
 				rawBoilerplate: container.textContent.includes("best judgment"),
-			},
-		).toStrictEqual(
-			{
-				status: "No response after 60s",
-				rawBoilerplate: false,
-			},
-		);
+			};
+		}
+
+		it("draws a 5m timeout with a partial selection as a receipt: the picked answer, then Not answered", () =>
+		{
+			expect(
+				draw(
+					{
+						result: `${afkText(300)}\n\nBefore going idle the user had selected: "Which color?"="Red".`,
+						resultMeta:
+						{
+							answers:
+							{
+								"Which color?":
+								{
+									answer: "Red",
+									notes: null,
+								},
+							},
+							timedOut: true,
+						},
+					},
+				),
+			).toStrictEqual(
+				{
+					rows: [
+						["Which color?", "Red"],
+						["Which size?", "Not answered"],
+					],
+					label: null,
+					status: null,
+					rawBoilerplate: false,
+				},
+			);
+		});
+
+		it("draws a timeout with nothing selected as every question Not answered under the all-timed-out label", () =>
+		{
+			expect(
+				draw(
+					{
+						result: afkText(60),
+						resultMeta:
+						{
+							answers: {},
+							timedOut: true,
+						},
+					},
+				),
+			).toStrictEqual(
+				{
+					rows: [
+						["Which color?", "Not answered"],
+						["Which size?", "Not answered"],
+					],
+					label: ALL_TIMED_OUT_LABEL,
+					status: null,
+					rawBoilerplate: false,
+				},
+			);
+		});
+
+		it("keeps a pink status line for a meta-less legacy timeout at any duration", () =>
+		{
+			expect(
+				draw(
+					{
+						result: afkText(600),
+					},
+				),
+			).toStrictEqual(
+				{
+					rows: [],
+					label: null,
+					status: "No response after 600s",
+					rawBoilerplate: false,
+				},
+			);
+		});
+
+		it("draws the meta-less followUp, freeform and unanswered texts as the compact step without their raw text", () =>
+		{
+			expect(
+				[
+					"The user asked for more questions before answering. Call AskUserQuestion again now with further questions about this decision (do not repeat these); do not proceed with the task yet.",
+					"The user responded: just pick",
+					"The user did not answer the questions.",
+				].map((result) =>
+				{
+					const {container} = render(
+						<AskUserQuestionRenderer
+							toolCall={makeCall(
+								{
+									input: TWO,
+									result,
+								},
+							)}
+						/>,
+					);
+					const text = container.textContent;
+					cleanup();
+					return text.includes(result);
+				}),
+			).toStrictEqual([false, false, false]);
+		});
 	});
 
 	it("draws unanswered questions outside a session as upstream's gy > _y does: only the question lines, memory tags dropped, chips over u9(ME(question))", () =>
