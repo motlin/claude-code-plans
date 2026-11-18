@@ -479,6 +479,7 @@ describe("HomeLanding", () =>
 			bypassPermissionsAllowed: false,
 			fastMode: false,
 			fastModeBlocked: null,
+			cliFallbackMode: "default" as const,
 		};
 		queryClient.setQueryData(composerDefaultsQueryOptions.queryKey, defaults);
 		queryClient.setQueryData(composerFolderDefaultsQueryOptions("/projects/alpha").queryKey, defaults);

@@ -63,6 +63,7 @@ function setup({
 			bypassPermissionsAllowed: false,
 			fastMode: false,
 			fastModeBlocked: null,
+			cliFallbackMode: "default",
 		},
 	);
 	const postSpy = vi.fn<(body: AutoDefaultOfferBody) => Promise<AutoDefaultOffer>>(post);

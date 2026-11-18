@@ -161,6 +161,19 @@ export const FIELD_DEFINITIONS: FieldDefinition[] = [
 		section: "Permissions",
 	},
 	{
+		key: "disableAutoMode",
+		label: "Disable auto mode",
+		description: '"disable" turns off Auto mode, including the CLI\'s Auto start when no default mode is set',
+		type: "enum",
+		section: "Permissions",
+		options: [
+			{
+				value: "disable",
+				label: "Disable",
+			},
+		],
+	},
+	{
 		key: "teammateMode",
 		label: "Teammate mode",
 		description: "How Claude Code runs as a teammate / background agent",

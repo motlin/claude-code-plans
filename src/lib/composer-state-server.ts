@@ -1,9 +1,11 @@
 import {StatuslineSchema, SESSION_ID_PATTERN} from "./api/statusline";
-import type {ComposerDefaults, ComposerServerState} from "./composer-state";
+import {defaultCliConfigDir, readCliConfig} from "./cli-global-config";
+import type {CliFallbackMode, ComposerDefaults, ComposerServerState} from "./composer-state";
 import type {AvailableModels} from "./model-restrictions";
 import {isBypassPermissionsAllowed} from "./launch-options";
+import {isRecord} from "./narrow";
 import {ClaudeSettingsSchema} from "./runtime-schemas";
-import {type FastModeBlocked, fastModeBlockedReason, sessionFastMode} from "./session-fast-mode";
+import {envTruthy, type FastModeBlocked, fastModeBlockedReason, sessionFastMode} from "./session-fast-mode";
 
 // The server side of the composer chin, reading settings.json and the statusline snapshot. Kept apart from
 // `composer-state.ts` so the client, which only resolves the chin, doesn't download the settings schema.
@@ -16,6 +18,8 @@ export interface FastModeBlockDependencies
 	readManagedSettings?: () => Promise<unknown>;
 	/** Where `readManagedSettings` reads, for upstream's availableModels tooltip; defaults to this platform's. */
 	managedSettingsPath?: string;
+	/** The CLI's global config (`~/.claude.json`), for its cached rollout gates; null when there is none. */
+	readCliConfig?: () => Promise<Record<string, unknown> | null>;
 }
 
 export interface ComposerStateDependencies extends FastModeBlockDependencies
@@ -250,18 +254,54 @@ export async function getComposerState(
 /** A project folder's settings files under `<cwd>/.claude/`. */
 export type ReadProjectSettings = (file: "settings.local.json" | "settings.json") => Promise<unknown>;
 
+/** The project folder's two settings layers, local first; empty when no folder was asked about. */
+async function readProjectLayers(
+	readProjectSettings: ReadProjectSettings | undefined,
+): Promise<(ClaudeSettings | null)[]>
+{
+	if (readProjectSettings === undefined) return [];
+	return Promise.all([
+		readSettingsData(async () => readProjectSettings("settings.local.json")),
+		readSettingsData(async () => readProjectSettings("settings.json")),
+	]);
+}
+
 /**
  * The folder's `permissions.defaultMode` as the CLI merges it: `settings.local.json` beats `settings.json`. Upstream
  * (ca8b34310 `xo`) ranks this repo default below the folder's remembered mode.
  */
-async function readRepoDefaultMode(readProjectSettings: ReadProjectSettings | undefined): Promise<string | null>
+function repoDefaultModeOf([local, shared]: readonly (ClaudeSettings | null | undefined)[]): string | null
 {
-	if (readProjectSettings === undefined) return null;
-	const [local, shared] = await Promise.all([
-		readSettingsData(async () => readProjectSettings("settings.local.json")),
-		readSettingsData(async () => readProjectSettings("settings.json")),
-	]);
 	return local?.permissions?.defaultMode ?? shared?.permissions?.defaultMode ?? null;
+}
+
+/** CLI 2.1.327 `Y`: a settings layer turns Auto off with `"disable"`, under `permissions` or at the top level. */
+function disablesAutoMode(settings: ClaudeSettings | null): boolean
+{
+	return settings?.permissions?.disableAutoMode === "disable" || settings?.disableAutoMode === "disable";
+}
+
+/** CLI 2.1.327 `NQr`'s `tengu_harbor_willow` rollout gate, from the cached feature values with the CLI's default of true. */
+function harborWillowOn(config: Record<string, unknown> | null): boolean
+{
+	const features = config?.["cachedGrowthBookFeatures"];
+	return !isRecord(features) || features["tengu_harbor_willow"] !== false;
+}
+
+/**
+ * The mode the CLI starts in when no flag or settings layer gives one: CLI 2.1.327 `wCn`'s fallback
+ * `C = S && !CLAUDE_CODE_REMOTE && NQr() && interactive`, where `S` is "no killswitch and no layer's `disableAutoMode`".
+ * Local launches are interactive TUI sessions. The killswitch/circuit breaker and `NQr`'s client-data `meadow_lantern`
+ * can't be seen from here, so they're taken as off.
+ */
+function cliFallbackMode(
+	layers: readonly (ClaudeSettings | null)[],
+	config: Record<string, unknown> | null,
+	env: Readonly<Record<string, string | undefined>>,
+): CliFallbackMode
+{
+	const autoOn = !layers.some(disablesAutoMode) && !envTruthy(env["CLAUDE_CODE_REMOTE"]) && harborWillowOn(config);
+	return autoOn ? "auto" : "default";
 }
 
 export async function getComposerDefaults(
@@ -270,11 +310,14 @@ export async function getComposerDefaults(
 	readProjectSettings?: ReadProjectSettings,
 ): Promise<ComposerDefaults>
 {
-	const [settings, managed, repoDefaultMode] = await Promise.all([
+	const [settings, managed, projectLayers, config] = await Promise.all([
 		readSettingsData(readSettings),
 		readManagedSettingsData(blockDependencies),
-		readRepoDefaultMode(readProjectSettings),
+		readProjectLayers(readProjectSettings),
+		blockDependencies.readCliConfig?.() ?? Promise.resolve(null),
 	]);
+	const repoDefaultMode = repoDefaultModeOf(projectLayers);
+	const fallback = cliFallbackMode([settings, managed, ...projectLayers], config, blockDependencies.env ?? {});
 	const models = modelSettings(settings, managed, blockDependencies);
 	const blocked = fastModeBlocked(settings?.env, managed, blockDependencies);
 	const defaultMode = settingsDefaultMode(settings, managed);
@@ -289,6 +332,7 @@ export async function getComposerDefaults(
 			bypassPermissionsAllowed: false,
 			fastMode: false,
 			fastModeBlocked: blocked,
+			cliFallbackMode: fallback,
 		};
 	}
 	return {
@@ -305,6 +349,7 @@ export async function getComposerDefaults(
 		),
 		fastMode: sessionFastMode([], settings),
 		fastModeBlocked: blocked,
+		cliFallbackMode: fallback,
 	};
 }
 
@@ -369,9 +414,11 @@ export async function nodeFastModeBlockDependencies(): Promise<Required<FastMode
 {
 	const {readFile} = await import("node:fs/promises");
 	const path = managedSettingsPath(process.platform);
+	const configDir = defaultCliConfigDir();
 	return {
 		env: process.env,
 		readManagedSettings: async () => JSON.parse(await readFile(path, "utf-8")) as unknown,
 		managedSettingsPath: path,
+		readCliConfig: async () => readCliConfig(configDir),
 	};
 }

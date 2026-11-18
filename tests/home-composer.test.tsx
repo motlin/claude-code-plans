@@ -220,6 +220,7 @@ async function renderApp(
 			bypassPermissionsAllowed: false,
 			fastMode,
 			fastModeBlocked: null,
+			cliFallbackMode: "default",
 			...defaultsOverride,
 		},
 	);
@@ -2635,6 +2636,7 @@ describe("HomeComposer", () =>
 						bypassPermissionsAllowed: false,
 						fastMode: false,
 						fastModeBlocked: null,
+						cliFallbackMode: "default",
 					},
 				);
 			});
@@ -3188,6 +3190,7 @@ describe("getComposerDefaults", () =>
 				bypassPermissionsAllowed: false,
 				fastMode: false,
 				fastModeBlocked: null,
+				cliFallbackMode: "auto",
 			},
 		);
 	});
@@ -3224,6 +3227,7 @@ describe("getComposerDefaults", () =>
 				bypassPermissionsAllowed: false,
 				fastMode: true,
 				fastModeBlocked: null,
+				cliFallbackMode: "auto",
 			},
 			{
 				model: null,
@@ -3236,6 +3240,7 @@ describe("getComposerDefaults", () =>
 				bypassPermissionsAllowed: false,
 				fastMode: false,
 				fastModeBlocked: null,
+				cliFallbackMode: "auto",
 			},
 		]);
 	});
@@ -3295,6 +3300,7 @@ describe("getComposerDefaults", () =>
 				bypassPermissionsAllowed: false,
 				fastMode: false,
 				fastModeBlocked: null,
+				cliFallbackMode: "auto",
 			},
 		);
 	});

@@ -22,6 +22,8 @@ const EXPECTED_ENVIRONMENT_READS = [
 const EXPECTED_INJECTED_RUNTIME_READS = [
 	// The CLI's config dir, which holds the .claude.json the permission mode consent reads and writes.
 	"src/lib/cli-global-config.ts:CLAUDE_CONFIG_DIR",
+	// The CLI skips its Auto start fallback in a remote session; the composer defaults mirror that for the home chin.
+	"src/lib/composer-state-server.ts:CLAUDE_CODE_REMOTE",
 	"src/lib/herdr/socket-path.ts:HERDR_SESSION",
 	"src/lib/herdr/socket-path.ts:HERDR_SOCKET_PATH",
 	"src/lib/herdr/socket-path.ts:HOME",

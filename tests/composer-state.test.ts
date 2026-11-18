@@ -2234,6 +2234,7 @@ describe("composer defaults for a project folder", () =>
 				bypassPermissionsAllowed: false,
 				fastMode: false,
 				fastModeBlocked: null,
+				cliFallbackMode: "auto",
 			},
 			{
 				model: null,
@@ -2246,6 +2247,7 @@ describe("composer defaults for a project folder", () =>
 				bypassPermissionsAllowed: false,
 				fastMode: false,
 				fastModeBlocked: null,
+				cliFallbackMode: "auto",
 			},
 			{
 				model: null,
@@ -2258,8 +2260,131 @@ describe("composer defaults for a project folder", () =>
 				bypassPermissionsAllowed: false,
 				fastMode: false,
 				fastModeBlocked: null,
+				cliFallbackMode: "auto",
 			},
 		]);
+	});
+
+	it("serves the CLI's no-flag fallback mode: auto unless the rollout gate, disableAutoMode or remote turns it off", async () =>
+	{
+		const disabled =
+		{
+			permissions:
+			{
+				disableAutoMode: "disable",
+			},
+		};
+		const fallback = async ({
+			user = USER_SETTINGS,
+			managed,
+			project = {},
+			config = null,
+			env = {},
+		}: {
+			user?: unknown;
+			managed?: unknown;
+			project?: Record<string, unknown>;
+			config?: Record<string, unknown> | null;
+			env?: Record<string, string>;
+		}) =>
+			(
+				await getComposerDefaults(
+					async () => Promise.resolve(user),
+					{
+						env,
+						readCliConfig: async () => Promise.resolve(config),
+						...(managed === undefined
+							? {}
+							:
+								{
+									readManagedSettings: async () => Promise.resolve(managed),
+								}),
+					},
+					projectFiles(project),
+				)
+			).cliFallbackMode;
+
+		expect(
+			{
+				noConfig: await fallback({}),
+				gateOn: await fallback(
+					{
+						config:
+						{
+							cachedGrowthBookFeatures:
+							{
+								tengu_harbor_willow: true,
+							},
+						},
+					},
+				),
+				gateOff: await fallback(
+					{
+						config:
+						{
+							cachedGrowthBookFeatures:
+							{
+								tengu_harbor_willow: false,
+							},
+						},
+					},
+				),
+				userDisabled: await fallback(
+					{
+						user: disabled,
+					},
+				),
+				userTopLevelDisabled: await fallback(
+					{
+						user:
+						{
+							disableAutoMode: "disable",
+						},
+					},
+				),
+				managedDisabled: await fallback(
+					{
+						managed: disabled,
+					},
+				),
+				projectLocalDisabled: await fallback(
+					{
+						project:
+						{
+							"settings.local.json": disabled,
+						},
+					},
+				),
+				remote: await fallback(
+					{
+						env:
+						{
+							CLAUDE_CODE_REMOTE: "1",
+						},
+					},
+				),
+				remoteFalse: await fallback(
+					{
+						env:
+						{
+							CLAUDE_CODE_REMOTE: "0",
+						},
+					},
+				),
+			},
+		).toStrictEqual(
+			{
+				noConfig: "auto",
+				gateOn: "auto",
+				gateOff: "default",
+				userDisabled: "default",
+				userTopLevelDisabled: "default",
+				managedDisabled: "default",
+				projectLocalDisabled: "default",
+				remote: "default",
+				remoteFalse: "auto",
+			},
+		);
 	});
 
 	it("serves ?cwd= only for a known project folder", async () =>
@@ -2322,6 +2447,7 @@ describe("composer defaults for a project folder", () =>
 							bypassPermissionsAllowed: false,
 							fastMode: false,
 							fastModeBlocked: null,
+							cliFallbackMode: "auto",
 						},
 					},
 					{
@@ -2352,6 +2478,7 @@ describe("composer defaults for a project folder", () =>
 							bypassPermissionsAllowed: false,
 							fastMode: false,
 							fastModeBlocked: null,
+							cliFallbackMode: "auto",
 						},
 					},
 				],

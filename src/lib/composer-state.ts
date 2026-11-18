@@ -672,6 +672,9 @@ export const ComposerServerStateResponse: z.ZodType<ComposerServerState> = z.str
 	},
 );
 
+/** The CLI's own no-flag start mode: Auto by its rollout fallback, or Manual (`default`). */
+export type CliFallbackMode = "auto" | "default";
+
 /** Launch defaults from `~/.claude/settings.json` for the home composer chin. */
 export interface ComposerDefaults
 {
@@ -691,6 +694,8 @@ export interface ComposerDefaults
 	fastMode: boolean;
 	/** Why the CLI can't use fast mode in a new session, or null. */
 	fastModeBlocked: FastModeBlocked | null;
+	/** The mode the CLI starts in when no `--permission-mode` and no settings layer gives one (CLI `wCn`). */
+	cliFallbackMode: CliFallbackMode;
 }
 
 export const ComposerDefaultsResponse: z.ZodType<ComposerDefaults> = z.strictObject(
@@ -705,5 +710,6 @@ export const ComposerDefaultsResponse: z.ZodType<ComposerDefaults> = z.strictObj
 		bypassPermissionsAllowed: z.boolean(),
 		fastMode: z.boolean(),
 		fastModeBlocked: FastModeBlockedResponse.nullable(),
+		cliFallbackMode: z.enum(["auto", "default"]),
 	},
 );

@@ -406,6 +406,7 @@ describe("AppShellFallback", () =>
 				bypassPermissionsAllowed: false,
 				fastMode: false,
 				fastModeBlocked: null,
+				cliFallbackMode: "default",
 			},
 		);
 		host.innerHTML = renderToStaticMarkup(<AppShellFallback chin={chin} />);
@@ -451,6 +452,7 @@ describe("AppShellFallback", () =>
 					bypassPermissionsAllowed: false,
 					fastMode: false,
 					fastModeBlocked: null,
+					cliFallbackMode: "default",
 				},
 			),
 		);
@@ -652,6 +654,7 @@ describe("AppShellFallback", () =>
 						bypassPermissionsAllowed: false,
 						fastMode: false,
 						fastModeBlocked: null,
+						cliFallbackMode: "default",
 					},
 				)}
 			/>,
@@ -759,6 +762,7 @@ describe("AppShellFallback dock frame", () =>
 						bypassPermissionsAllowed: false,
 						fastMode: false,
 						fastModeBlocked: null,
+						cliFallbackMode: "default",
 					},
 				)}
 			/>,

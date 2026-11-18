@@ -142,7 +142,7 @@ export interface FastModeBlockSources
 }
 
 /** The CLI's env truthiness rule. */
-function envTruthy(value: string | undefined): boolean
+export function envTruthy(value: string | undefined): boolean
 {
 	return value !== undefined && ["1", "true", "yes", "on"].includes(value.toLowerCase().trim());
 }

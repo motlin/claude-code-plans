@@ -3446,6 +3446,8 @@ const PermissionsSchema = z
 			defaultMode: z.string().optional(),
 			additionalDirectories: z.array(z.string()).optional(),
 			disableBypassPermissionsMode: z.string().optional(),
+			/** `"disable"` turns off Auto mode, and with it the CLI's Auto fallback. */
+			disableAutoMode: z.string().optional(),
 		},
 	)
 	.strict();
@@ -3538,6 +3540,8 @@ export const ClaudeSettingsSchema = z
 			enabledMcpjsonServers: z.array(z.string()).optional(),
 			skipDangerousModePermissionPrompt: z.boolean().optional(),
 			skipAutoPermissionPrompt: z.boolean().optional(),
+			/** The CLI also reads `"disable"` here, as well as under `permissions`. */
+			disableAutoMode: z.string().optional(),
 			skipWorkflowUsageWarning: z.boolean().optional(),
 			enableWorkflows: z.boolean().optional(),
 			disableWorkflows: z.boolean().optional(),
