@@ -149,6 +149,14 @@ function TreeNode({node, presentation}: {node: SubagentTreeNode; presentation: T
 				<span className="min-w-0 truncate text-xs text-primary">
 					{node.agent.description ?? node.agent.slug ?? node.agent.id}
 				</span>
+				{node.agent.workflowIsolation && (
+					<span
+						className="shrink-0 text-[10px] text-t6"
+						title={`Ran with isolation: ${node.agent.workflowIsolation}`}
+					>
+						{node.agent.workflowIsolation}
+					</span>
+				)}
 				{node.agent.workflowState === "failed" && (
 					<span className="shrink-0 text-[10px] text-danger">Failed</span>
 				)}

@@ -250,7 +250,7 @@ describe("WorkflowTaskCard", () =>
 		).toBeTruthy();
 	});
 
-	it("shows an agent's tools used as a count beside its label, listing them in the title", () =>
+	it("shows an agent's isolation and tools used beside its label, listing the tools in the title", () =>
 	{
 		const progress: WorkflowProgressEntry[] = [
 			{
@@ -260,6 +260,7 @@ describe("WorkflowTaskCard", () =>
 			},
 			{
 				...done(1, "poem-1", 0, "Draft"),
+				isolation: "worktree",
 				toolsUsed: ["Bash", "StructuredOutput"],
 			},
 			{
@@ -293,13 +294,25 @@ describe("WorkflowTaskCard", () =>
 		);
 		const rows = screen.getAllByRole("listitem").filter((row) => row.className.startsWith("contents"));
 		expect(rows.map(rowCells)).toStrictEqual([
-			["", "poem-12 tools", "Opus 5.5", "49.7k", "6s"],
+			["", "poem-1worktree2 tools", "Opus 5.5", "49.7k", "6s"],
 			["", "poem-21 tool", "Opus 5.5", "49.7k", "6s"],
 			["", "poem-3", "Opus 5.5", "49.7k", "6s"],
 		]);
 		const chip = screen.getByText("2 tools");
 		expect(chip.getAttribute("title")).toBe("Bash, StructuredOutput");
 		expect(chip.className).toBe("shrink-0 whitespace-nowrap text-ink-muted");
+		const isolation = screen.getByText("worktree");
+		expect(
+			{
+				title: isolation.getAttribute("title"),
+				className: isolation.className,
+			},
+		).toStrictEqual(
+			{
+				title: "Ran with isolation: worktree",
+				className: "shrink-0 whitespace-nowrap text-ink-muted",
+			},
+		);
 	});
 
 	it("opens a running run's phases with its live agents table and timers", () =>

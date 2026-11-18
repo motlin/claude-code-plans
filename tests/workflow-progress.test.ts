@@ -735,7 +735,7 @@ describe("endUnfinishedAgents", () =>
 
 describe("agentCells", () =>
 {
-	it("pairs each agent's label with its state, in the given order (upstream me)", () =>
+	it("pairs each agent's label with its state and isolation, in the given order (upstream me)", () =>
 	{
 		expect(
 			agentCells(
@@ -764,6 +764,7 @@ describe("agentCells", () =>
 						index: 3,
 						label: "queued-3",
 						state: "start",
+						isolation: "worktree",
 						queuedAt: 1_700_000_000_000,
 					},
 				],
@@ -787,6 +788,7 @@ describe("agentCells", () =>
 			{
 				label: "queued-3",
 				state: "pending",
+				isolation: "worktree",
 			},
 		]);
 	});

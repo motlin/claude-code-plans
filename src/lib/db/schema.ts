@@ -300,6 +300,8 @@ export const subagents = sqliteTable(
 		workflowPhase: text("workflow_phase"),
 		/** The 1-based workflow phase index: the run JSON `phaseIndex`, else the phase's first-seen order in the journal. */
 		workflowPhaseIndex: integer("workflow_phase_index"),
+		/** The script's `agent({isolation})` option, e.g. "worktree": the run JSON `isolation`. */
+		workflowIsolation: text("workflow_isolation"),
 		filePath: text("file_path").notNull(),
 		mtimeMs: integer("mtime_ms").notNull(),
 	},

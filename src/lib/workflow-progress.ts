@@ -143,20 +143,27 @@ export function agentState(entry: WorkflowAgentEntry, options?: AgentStateOption
 	return "pending";
 }
 
-/** One agent's cell in the grid: its label (the hover detail) and state. */
+/** One agent's cell in the grid: its label and isolation (the hover detail) and state. */
 export interface AgentCell
 {
 	label: string;
 	state: AgentState;
+	isolation?: string;
 }
 
-/** Upstream `me`: each agent's label and state, in the given order. */
+/** Upstream `me`: each agent's label and state, in the given order, plus the isolation upstream doesn't show. */
 export function agentCells(entries: readonly WorkflowAgentEntry[], options?: AgentStateOptions): AgentCell[]
 {
 	return entries.map((entry) => (
 	{
 		label: entry.label,
 		state: agentState(entry, options),
+		...(entry.isolation === undefined
+			? null
+			:
+				{
+					isolation: entry.isolation,
+				}),
 	}));
 }
 

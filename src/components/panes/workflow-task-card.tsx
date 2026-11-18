@@ -117,6 +117,8 @@ function AgentRow({
 {
 	const isDone = agent.state === "done";
 	const model = formatModelName(agent.model);
+	const tools = agent.toolsUsed ?? [];
+	const hasTools = tools.length > 0;
 	let time: ReactNode = null;
 	if (running && (agent.state === "progress" || agent.state === "start") && agent.startedAt !== undefined)
 	{
@@ -139,14 +141,24 @@ function AgentRow({
 					</span>
 				)}
 			</span>
-			{agent.toolsUsed !== undefined && agent.toolsUsed.length > 0 ? (
+			{hasTools || agent.isolation !== undefined ? (
 				<span className={`flex min-w-0 gap-1 ${SR_AGENT}`}>
 					<span className="truncate" title={agent.label}>
 						{agent.label}
 					</span>
-					<span className="shrink-0 whitespace-nowrap text-ink-muted" title={agent.toolsUsed.join(", ")}>
-						{agent.toolsUsed.length === 1 ? "1 tool" : `${agent.toolsUsed.length} tools`}
-					</span>
+					{agent.isolation !== undefined && (
+						<span
+							className="shrink-0 whitespace-nowrap text-ink-muted"
+							title={`Ran with isolation: ${agent.isolation}`}
+						>
+							{agent.isolation}
+						</span>
+					)}
+					{hasTools && (
+						<span className="shrink-0 whitespace-nowrap text-ink-muted" title={tools.join(", ")}>
+							{tools.length === 1 ? "1 tool" : `${tools.length} tools`}
+						</span>
+					)}
 				</span>
 			) : (
 				<span className={`truncate ${SR_AGENT}`} title={agent.label}>

@@ -933,6 +933,8 @@ export interface DbSubagent
 	workflowPhase?: string | null;
 	/** The agent's 1-based workflow phase index. */
 	workflowPhaseIndex?: number | null;
+	/** The script's `agent({isolation})` option, e.g. "worktree". */
+	workflowIsolation?: string | null;
 	filePath: string;
 	mtimeMs: number;
 }

@@ -1020,7 +1020,7 @@ describe("DB-backed subagents", () =>
 		]);
 	});
 
-	it("carries a workflow agent's run id, phase and phase index", () =>
+	it("carries a workflow agent's run id, phase, phase index and isolation", () =>
 	{
 		db.index
 			.insert(schema.subagents)
@@ -1034,6 +1034,7 @@ describe("DB-backed subagents", () =>
 					workflowRunId: "wf_x-1",
 					workflowPhase: "Diff",
 					workflowPhaseIndex: 2,
+					workflowIsolation: "worktree",
 					filePath: "/tmp/test/subagents/workflows/wf_x-1/agent-aw1.jsonl",
 					mtimeMs: 1_000,
 				},
@@ -1057,6 +1058,7 @@ describe("DB-backed subagents", () =>
 				workflowRunId: "wf_x-1",
 				workflowPhase: "Diff",
 				workflowPhaseIndex: 2,
+				workflowIsolation: "worktree",
 			},
 		]);
 	});

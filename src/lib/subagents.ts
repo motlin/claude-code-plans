@@ -50,6 +50,8 @@ export interface Subagent
 	workflowPhase?: string | null | undefined;
 	/** The agent's 1-based workflow phase index. */
 	workflowPhaseIndex?: number | null | undefined;
+	/** The script's `agent({isolation})` option, e.g. "worktree". */
+	workflowIsolation?: string | null | undefined;
 	/** The agent's state from its run's journal. */
 	workflowState?: WorkflowAgentState | undefined;
 	/** Whether the agent belongs to its run's final launch or an earlier, superseded attempt. */
@@ -145,6 +147,12 @@ export function toClientSubagent(row: DbSubagent): Subagent
 			:
 				{
 					workflowPhaseIndex: row.workflowPhaseIndex,
+				}),
+		...(row.workflowIsolation == null
+			? {}
+			:
+				{
+					workflowIsolation: row.workflowIsolation,
 				}),
 	};
 }

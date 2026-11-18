@@ -197,6 +197,7 @@ CREATE TABLE IF NOT EXISTS subagents (
   workflow_run_id TEXT,
   workflow_phase TEXT,
   workflow_phase_index INTEGER,
+  workflow_isolation TEXT,
   file_path TEXT NOT NULL,
   mtime_ms INTEGER NOT NULL
 );

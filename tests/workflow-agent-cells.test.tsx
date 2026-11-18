@@ -172,7 +172,7 @@ describe("WorkflowAgentCells", () =>
 		]);
 	});
 
-	it("tips a hovered cell with its state and agent label after 150ms", () =>
+	it("tips a hovered cell with its state and agent label, plus any isolation, after 150ms", () =>
 	{
 		const {container} = render(
 			<WorkflowAgentCells
@@ -187,6 +187,7 @@ describe("WorkflowAgentCells", () =>
 					{
 						label: "Explore b",
 						state: "running",
+						isolation: "worktree",
 					},
 					{
 						label: "Explore c",
@@ -196,7 +197,7 @@ describe("WorkflowAgentCells", () =>
 			/>,
 		);
 
-		expect(hover(container, cell(container, "1"))).toBe("Running Explore b");
+		expect(hover(container, cell(container, "1"))).toBe("Running Explore b · worktree");
 	});
 
 	it("tips the ghost cell with More agents may appear", () =>

@@ -95,12 +95,13 @@ describe("SubagentTreeEntries workflow runs", () =>
 		expect(screen.queryByText("poem-1")).toBeNull();
 	});
 
-	it('tucks superseded attempts under a collapsed "Earlier attempts (N)" disclosure and tags failed agents', () =>
+	it('tucks superseded attempts under a collapsed "Earlier attempts (N)" disclosure and tags failed and isolated agents', () =>
 	{
 		const entries = buildSubagentTree(
 			[
 				{
 					...workflowAgent("agent-a1", "poem-1", "1999-12-31T00:00:05.000Z"),
+					workflowIsolation: "worktree",
 					workflowState: "failed",
 					workflowAttempt: "final",
 				},
@@ -132,6 +133,18 @@ describe("SubagentTreeEntries workflow runs", () =>
 			{
 				text: "Failed",
 				danger: true,
+			},
+		);
+		const isolation = screen.getByText("worktree");
+		expect(
+			{
+				title: isolation.getAttribute("title"),
+				className: isolation.className,
+			},
+		).toStrictEqual(
+			{
+				title: "Ran with isolation: worktree",
+				className: "shrink-0 text-[10px] text-t6",
 			},
 		);
 		const earlier = screen.getByRole(

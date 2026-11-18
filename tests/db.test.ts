@@ -2697,6 +2697,7 @@ describe("indexer", () =>
 			workflowRunId: schema.subagents.workflowRunId,
 			workflowPhase: schema.subagents.workflowPhase,
 			workflowPhaseIndex: schema.subagents.workflowPhaseIndex,
+			workflowIsolation: schema.subagents.workflowIsolation,
 			description: schema.subagents.description,
 		};
 
@@ -2766,6 +2767,7 @@ describe("indexer", () =>
 					workflowRunId: "wf_x-1",
 					workflowPhase: "Inventory",
 					workflowPhaseIndex: null,
+					workflowIsolation: null,
 					description: "ours:shell-sidebar",
 				},
 			]);
@@ -2815,6 +2817,7 @@ describe("indexer", () =>
 								label: "diff:a",
 								agentId: "aw2",
 								state: "done",
+								isolation: "worktree",
 								phaseIndex: 2,
 								phaseTitle: "Diff",
 							},
@@ -2831,6 +2834,7 @@ describe("indexer", () =>
 					workflowRunId: "wf_x-1",
 					workflowPhase: "Diff",
 					workflowPhaseIndex: 2,
+					workflowIsolation: "worktree",
 					description: "diff:a",
 				},
 			]);
@@ -2882,6 +2886,7 @@ describe("indexer", () =>
 					workflowRunId: "wf_x-1",
 					workflowPhase: "Seed",
 					workflowPhaseIndex: 2,
+					workflowIsolation: null,
 					description: "seed",
 				},
 			]);
@@ -2940,6 +2945,7 @@ describe("indexer", () =>
 					workflowRunId: null,
 					workflowPhase: null,
 					workflowPhaseIndex: null,
+					workflowIsolation: null,
 					description: "Find files",
 				},
 			]);

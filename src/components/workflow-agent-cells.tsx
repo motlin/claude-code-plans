@@ -124,7 +124,8 @@ function CellsTooltip({
 	const state: CellState | undefined =
 		hovered === GHOST ? (hasGhost ? GHOST : undefined) : hovered === null ? undefined : cells[hovered];
 	const content = state === undefined ? summary : CELL_LABEL[state];
-	const detail = typeof hovered === "number" ? agents?.[hovered]?.label : undefined;
+	const agent = typeof hovered === "number" ? agents?.[hovered] : undefined;
+	const detail = agent?.isolation === undefined ? agent?.label : `${agent.label} · ${agent.isolation}`;
 	return (
 		<Tooltip content={content} detail={detail} delay={150} closeOnClick={false} className={tooltipClassName}>
 			<span

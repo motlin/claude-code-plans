@@ -1688,6 +1688,7 @@ async function persistSubagentIndexState(
 	const workflowRunId = workflow?.runId ?? null;
 	const workflowPhase = workflow?.phase ?? null;
 	const workflowPhaseIndex = workflow?.phaseIndex ?? null;
+	const workflowIsolation = workflow?.isolation ?? null;
 
 	const {slug, attributionAgent, resolvedModel, startedAt, finishedAt} = state;
 	const slowCommands: SlowCommandCollector = state.slowCommands;
@@ -1726,6 +1727,7 @@ async function persistSubagentIndexState(
 				workflowRunId,
 				workflowPhase,
 				workflowPhaseIndex,
+				workflowIsolation,
 				filePath,
 				mtimeMs: fileStat.mtimeMs,
 			},
@@ -1751,6 +1753,7 @@ async function persistSubagentIndexState(
 					workflowRunId,
 					workflowPhase,
 					workflowPhaseIndex,
+					workflowIsolation,
 					filePath,
 					mtimeMs: fileStat.mtimeMs,
 				},

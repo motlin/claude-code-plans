@@ -10,6 +10,8 @@ export interface WorkflowAgentInfo
 	phase: string | null;
 	phaseIndex: number | null;
 	label: string | null;
+	/** The script's `agent({isolation})` option from the run JSON, e.g. "worktree". */
+	isolation: string | null;
 }
 
 interface JournalStart
@@ -30,6 +32,7 @@ interface ProgressAgent
 	label: string | null;
 	phaseTitle: string | null;
 	phaseIndex: number | null;
+	isolation: string | null;
 }
 
 const WORKFLOW_AGENT_PATH_RE = /[/\\]subagents[/\\]workflows[/\\](wf_[^/\\]+)[/\\]agent-[^/\\]+\.jsonl$/;
@@ -138,7 +141,7 @@ function parseRunProgress(text: string): Map<string, ProgressAgent>
 	{
 		const entry = RuntimeWorkflowProgressEntrySchema.safeParse(raw);
 		if (!entry.success || entry.data.type !== "workflow_agent") continue;
-		const {agentId, label, phaseIndex, phaseTitle} = entry.data;
+		const {agentId, label, phaseIndex, phaseTitle, isolation} = entry.data;
 		if (agentId === undefined) continue;
 		agents.set(
 			agentId,
@@ -146,6 +149,7 @@ function parseRunProgress(text: string): Map<string, ProgressAgent>
 				label: stringOrNull(label),
 				phaseTitle: stringOrNull(phaseTitle),
 				phaseIndex: phaseIndex ?? null,
+				isolation: stringOrNull(isolation),
 			},
 		);
 	}
@@ -186,5 +190,6 @@ export async function readWorkflowAgentInfo(
 		phase,
 		phaseIndex: progressAgent?.phaseIndex ?? (journalPosition === -1 ? null : journalPosition + 1),
 		label: meta.description ?? start?.label ?? progressAgent?.label ?? null,
+		isolation: progressAgent?.isolation ?? null,
 	};
 }
