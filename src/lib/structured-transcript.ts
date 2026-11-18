@@ -67,14 +67,18 @@ export interface TranscriptWindowOptions
 }
 
 /**
- * Identifies which branches the whole file's chain hides. It hashes the cuts,
- * not the leaf, because the leaf moves on every appended line while the hidden
- * set only changes when a prompt forks the chain or the leaf switches branch:
- * a client comparing versions should replace its pages only then.
+ * Identifies which branches the whole file's chain hides. It hashes the cuts
+ * and retracted uuids, not the leaf, because the leaf moves on every appended
+ * line while the hidden set only changes when a prompt forks the chain, the
+ * leaf switches branch, or a record retracts rows: a client comparing versions
+ * should replace its pages only then.
  */
-export function transcriptChainVersion(cuts: readonly AbandonedCut[]): string
+export function transcriptChainVersion(cuts: readonly AbandonedCut[], retracted: readonly string[] = []): string
 {
-	const keys = cuts.map((cut) => `${cut.parentUuid}>${cut.abandonedUuid}`).toSorted();
+	const keys = [
+		...cuts.map((cut) => `${cut.parentUuid}>${cut.abandonedUuid}`),
+		...retracted.map((uuid) => `x${uuid}`),
+	].toSorted();
 	return createHash("sha1").update(keys.join("\n")).digest("hex").slice(0, 16);
 }
 
@@ -232,7 +236,7 @@ function readWindow(
 			precedingMessageCount: index.countableBefore[startIndex] ?? 0,
 			hiddenUuids,
 			cuts,
-			chainVersion: transcriptChainVersion(index.abandoned.cuts),
+			chainVersion: transcriptChainVersion(index.abandoned.cuts, index.abandoned.retracted),
 			chapters: index.chapters.filter((chapter) => index.hidden[chapter.recordIndex] !== true),
 		};
 	}

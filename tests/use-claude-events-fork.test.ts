@@ -279,6 +279,55 @@ describe("applySessionLinesAppended on a live fork", () =>
 		unsubscribe();
 	});
 
+	it("refetches the tail when a meta retry prompt retracts an already-rendered row", async () =>
+	{
+		const retry: TranscriptRecord =
+		{
+			type: "user",
+			uuid: "retry",
+			parentUuid: "a-2",
+			isSidechain: false,
+			isMeta: true,
+			turnCompanion: true,
+			retractedMessageUuids: ["a-2"],
+			timestamp: "1999-12-31T00:00:03.000Z",
+			message:
+			{
+				role: "user",
+				content: "The previous response failed to produce a valid tool call. Please retry the tool call now.",
+			},
+		};
+		const tail: TranscriptData =
+		{
+			records: [p2, a2, retry],
+			byteOffset: 4400,
+			startIndex: 12,
+			precedingMessageCount: 8,
+			hiddenUuids: ["a-2"],
+			cuts: [],
+			chainVersion: "v-retracted",
+			chapters: [],
+		};
+		const fetchSpy = vi
+			.spyOn(globalThis, "fetch")
+			.mockImplementation(async () => Promise.resolve(jsonResponse(tail)));
+		const {queryClient, unsubscribe} = observedClient(twoPages);
+
+		applySessionLinesAppended(
+			queryClient,
+			SESSION,
+			{
+				sessionId: SESSION,
+				lines: [retry],
+			},
+		);
+
+		await settle(queryClient);
+		expect(requestedPaths(fetchSpy)).toStrictEqual([`/api/sessions/${SESSION}/transcript`]);
+		expect(queryClient.getQueryData(sessionQueryKeys.transcript(SESSION))).toStrictEqual(tail);
+		unsubscribe();
+	});
+
 	it("keeps earlier pages when the refetched tail reports the same chain", async () =>
 	{
 		const p3 = prompt("p-3", "a-1", "do chapter 3");

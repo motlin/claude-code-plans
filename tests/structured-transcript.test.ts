@@ -650,6 +650,53 @@ describe("readStructuredTranscript active chain", () =>
 		expect(page.chainVersion).toBe(tail.chainVersion);
 	});
 
+	it("hides a retracted reply on an earlier page and versions the chain by the retraction", () =>
+	{
+		const retry =
+		{
+			type: "user",
+			uuid: "retry",
+			parentUuid: "f",
+			isMeta: true,
+			turnCompanion: true,
+			retractedMessageUuids: ["f"],
+			timestamp: "2026-10-20T10:01:00.000Z",
+			message:
+			{
+				role: "user",
+				content: "The previous response failed to produce a valid tool call. Please retry the tool call now.",
+			},
+		};
+		const records = [prompt("p", null), reply("f", "p"), retry, reply("r-0", "retry"), reply("r-1", "r-0")];
+		seedSession("retracted", records);
+
+		const tail = readStructuredTranscript(
+			db.index,
+			"retracted",
+			{
+				maxRecords: 2,
+			},
+		);
+		const page = readStructuredTranscript(
+			db.index,
+			"retracted",
+			{
+				before: tail.startIndex,
+				maxRecords: 2,
+			},
+		);
+
+		expect(tail.records).toStrictEqual(records.slice(3));
+		expect(tail.hiddenUuids).toStrictEqual([]);
+		expect(tail.cuts).toStrictEqual([]);
+		expect(tail.chainVersion).toBe(transcriptChainVersion([], ["f"]));
+		// The retracted reply does not count: p and the meta retry precede the tail.
+		expect(tail.precedingMessageCount).toBe(2);
+		expect(page.records).toStrictEqual(records.slice(0, 3));
+		expect(page.hiddenUuids).toStrictEqual(["f"]);
+		expect(page.chainVersion).toBe(tail.chainVersion);
+	});
+
 	it("serves a linear session with nothing hidden", () =>
 	{
 		seedSession("linear", [userMessage(0), userMessage(1)]);

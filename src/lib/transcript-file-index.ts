@@ -164,6 +164,7 @@ function build(
 		{
 			hidden: new Set(),
 			cuts: [],
+			retracted: [],
 		},
 		hidden: [],
 		chapters: [],

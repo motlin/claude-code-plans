@@ -34,6 +34,8 @@ export interface AbandonedBranches
 {
 	hidden: Set<string>;
 	cuts: AbandonedCut[];
+	/** Uuids a later record's `retractedMessageUuids` named, in file order; they are in `hidden` too. */
+	retracted: string[];
 }
 
 function stringField(record: TranscriptRecord, key: string): string | undefined
@@ -105,6 +107,7 @@ const SKELETON_FIELDS = [
 	"leafUuid",
 	"rewound",
 	"cutUuid",
+	"retractedMessageUuids",
 ] as const;
 
 /**
@@ -319,8 +322,48 @@ export function computeAbandoned(records: TranscriptRecord[]): AbandonedBranches
 			);
 		}
 	}
+	const retracted = hideRetracted(records, hidden);
 	return {
 		hidden,
 		cuts,
+		retracted,
 	};
+}
+
+/**
+ * Hides the rows a later record retracts. When a response fails to produce a
+ * valid tool call, the CLI (2.1.318) keeps the failed assistant row in the file
+ * and appends a meta retry prompt whose `retractedMessageUuids` names it;
+ * upstream evicts retracted messages. Only the named rows and the tool results
+ * answering them are hidden: the retry hangs off them and stays on the chain.
+ * Sidechain rows count too, since a subagent file is all sidechain.
+ */
+function hideRetracted(records: TranscriptRecord[], hidden: Set<string>): string[]
+{
+	const retracted: string[] = [];
+	for (const record of records)
+	{
+		const uuids = record["retractedMessageUuids"];
+		if (!Array.isArray(uuids)) continue;
+		for (const uuid of uuids)
+		{
+			if (typeof uuid === "string" && !retracted.includes(uuid)) retracted.push(uuid);
+		}
+	}
+	if (retracted.length === 0) return retracted;
+	const retractedSet = new Set(retracted);
+	for (const record of records)
+	{
+		const uuid = stringField(record, "uuid");
+		if (uuid === undefined) continue;
+		const parentUuid = stringField(record, "parentUuid");
+		const ownedToolResult =
+			parentUuid !== undefined &&
+			retractedSet.has(parentUuid) &&
+			record["type"] === "user" &&
+			record["isMeta"] !== true &&
+			!isPrompt(record);
+		if (retractedSet.has(uuid) || ownedToolResult) hidden.add(uuid);
+	}
+	return retracted;
 }

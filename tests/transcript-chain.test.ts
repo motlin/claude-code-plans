@@ -153,6 +153,7 @@ describe("computeAbandoned", () =>
 
 		expect(result).toStrictEqual(
 			{
+				retracted: [],
 				hidden: new Set(["ch2", "ch2-att1", "ch2-att2"]),
 				cuts: [
 					{
@@ -189,6 +190,7 @@ describe("computeAbandoned", () =>
 
 		expect(result).toStrictEqual(
 			{
+				retracted: [],
 				hidden: new Set([
 					"ab",
 					"ab-att1",
@@ -229,6 +231,7 @@ describe("computeAbandoned", () =>
 
 		expect(computeAbandoned(records)).toStrictEqual(
 			{
+				retracted: [],
 				hidden: new Set(),
 				cuts: [],
 			},
@@ -267,6 +270,7 @@ describe("computeAbandoned", () =>
 
 		expect(computeAbandoned(records)).toStrictEqual(
 			{
+				retracted: [],
 				hidden: new Set(),
 				cuts: [],
 			},
@@ -284,6 +288,7 @@ describe("computeAbandoned", () =>
 
 		expect(computeAbandoned(records)).toStrictEqual(
 			{
+				retracted: [],
 				hidden: new Set(),
 				cuts: [],
 			},
@@ -307,6 +312,7 @@ describe("computeAbandoned", () =>
 
 		expect(computeAbandoned(records)).toStrictEqual(
 			{
+				retracted: [],
 				hidden: new Set(),
 				cuts: [],
 			},
@@ -338,6 +344,7 @@ describe("computeAbandoned", () =>
 
 		expect(computeAbandoned(records)).toStrictEqual(
 			{
+				retracted: [],
 				hidden: new Set(["ch3", "ch3-att1", "a3"]),
 				cuts: [
 					{
@@ -368,6 +375,7 @@ describe("computeAbandoned", () =>
 
 		expect(computeAbandoned(records)).toStrictEqual(
 			{
+				retracted: [],
 				hidden: new Set(["ch2"]),
 				cuts: [
 					{
@@ -397,6 +405,7 @@ describe("computeAbandoned", () =>
 
 		expect(computeAbandoned(records)).toStrictEqual(
 			{
+				retracted: [],
 				hidden: new Set(),
 				cuts: [],
 			},
@@ -417,6 +426,7 @@ describe("computeAbandoned", () =>
 
 		expect(computeAbandoned(records)).toStrictEqual(
 			{
+				retracted: [],
 				hidden: new Set(["ch2"]),
 				cuts: [
 					{
@@ -478,6 +488,7 @@ describe("computeAbandoned with a rewind checkpoint (CLI 2.1.316)", () =>
 
 		expect(computeAbandoned(records)).toStrictEqual(
 			{
+				retracted: [],
 				hidden: new Set(["P2", "A2"]),
 				cuts: [REWOUND_CUT],
 			},
@@ -494,6 +505,7 @@ describe("computeAbandoned with a rewind checkpoint (CLI 2.1.316)", () =>
 
 		expect(computeAbandoned(records)).toStrictEqual(
 			{
+				retracted: [],
 				hidden: new Set(["P2", "A2"]),
 				cuts: [REWOUND_CUT],
 			},
@@ -517,6 +529,7 @@ describe("computeAbandoned with a rewind checkpoint (CLI 2.1.316)", () =>
 
 		expect(computeAbandoned(records)).toStrictEqual(
 			{
+				retracted: [],
 				hidden: new Set(["P2", "A2"]),
 				cuts: [
 					{
@@ -534,6 +547,7 @@ describe("computeAbandoned with a rewind checkpoint (CLI 2.1.316)", () =>
 
 		expect(computeAbandoned(records)).toStrictEqual(
 			{
+				retracted: [],
 				hidden: new Set(["P2", "A2"]),
 				cuts: [REWOUND_CUT],
 			},
@@ -560,6 +574,7 @@ describe("computeAbandoned with a rewind checkpoint (CLI 2.1.316)", () =>
 
 		expect(computeAbandoned(records)).toStrictEqual(
 			{
+				retracted: [],
 				hidden: new Set(),
 				cuts: [],
 			},
@@ -670,5 +685,90 @@ describe("chainSkeleton", () =>
 
 		expect(computeAbandoned(records.map(chainSkeleton))).toStrictEqual(computeAbandoned(records));
 		expect(computeAbandoned(records).hidden).toStrictEqual(new Set(["ch2", "a2", "t2"]));
+	});
+});
+
+/**
+ * CLI 2.1.318: when a response fails to produce a valid tool call, the CLI
+ * leaves the failed assistant row in the file and appends a meta retry prompt
+ * parented on it, whose `retractedMessageUuids` names it (subagent
+ * agent-aa2b51d55ecc91a86 L436-437). Upstream evicts retracted messages, so
+ * they leave no trace.
+ */
+function retryPrompt(uuid: string, parentUuid: string, retracted: string[], timestamp: string): Rec
+{
+	return {
+		...base("user", uuid, parentUuid, timestamp),
+		isMeta: true,
+		turnCompanion: true,
+		retractedMessageUuids: retracted,
+		message:
+		{
+			role: "user",
+			content: "The previous response failed to produce a valid tool call. Please retry the tool call now.",
+		},
+	};
+}
+
+function retractionRecords(): Rec[]
+{
+	return [
+		...chapterOneHead(),
+		prompt("p2", "s3", "do chapter 2", "2026-09-30T13:52:07.635Z"),
+		assistantToolUse("failed", "p2", "tool-bad", "2026-09-30T13:52:08.000Z", "msg_failed"),
+		toolResult("failed-result", "failed", "tool-bad", "2026-09-30T13:52:08.500Z"),
+		retryPrompt("retry", "failed-result", ["failed"], "2026-09-30T13:52:09.000Z"),
+		assistantText("a2", "retry", "Chapter 2 is ready.", "2026-09-30T13:52:10.000Z"),
+	];
+}
+
+describe("computeAbandoned with a retracted message (CLI 2.1.318)", () =>
+{
+	it("hides the retracted row and the tool results it owns, but nothing after them", () =>
+	{
+		expect(computeAbandoned(retractionRecords())).toStrictEqual(
+			{
+				hidden: new Set(["failed", "failed-result"]),
+				cuts: [],
+				retracted: ["failed"],
+			},
+		);
+	});
+
+	it("hides retracted rows in a sidechain-only subagent file", () =>
+	{
+		const records = retractionRecords().map((record) => (
+		{
+			...record,
+			isSidechain: true,
+		}));
+
+		expect(computeAbandoned(records)).toStrictEqual(
+			{
+				hidden: new Set(["failed", "failed-result"]),
+				cuts: [],
+				retracted: ["failed"],
+			},
+		);
+	});
+
+	it("changes the chain version when the retraction lands", () =>
+	{
+		const after = retractionRecords();
+		const before = after.slice(0, -2);
+		const version = (records: Rec[]) =>
+		{
+			const {cuts, retracted} = computeAbandoned(records);
+			return transcriptChainVersion(cuts, retracted);
+		};
+
+		expect(version(after)).not.toBe(version(before));
+	});
+
+	it("gives the same answer over chain skeletons", () =>
+	{
+		const records = retractionRecords();
+
+		expect(computeAbandoned(records.map(chainSkeleton))).toStrictEqual(computeAbandoned(records));
 	});
 });

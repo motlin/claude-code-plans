@@ -1196,7 +1196,7 @@ export function applyNotificationCleared(queryClient: QueryClient, payload: Noti
 /**
  * Whether appending `lines` after `cached` forks the chain: some prompt among
  * them (transcript-chain.ts rule) is not parented on the newest non-sidechain
- * record before it. Tool results and attachments never count, so parallel
+ * record before it, or some record retracts earlier rows. Tool results and attachments never count, so parallel
  * tool results hanging off an earlier assistant split merge as usual. The test
  * is deliberately loose (the CLI sometimes writes a prompt's parent a line or
  * two after it): a false positive costs one tail refetch, and the server's
@@ -1209,6 +1209,8 @@ function appendForksChain(cached: TranscriptData, lines: readonly Record<string,
 	let newest = cached.records.findLast((record) => mainUuid(record) !== undefined)?.["uuid"];
 	for (const record of lines)
 	{
+		// A retraction hides a row the cache may already hold, possibly on an earlier page.
+		if (Array.isArray(record["retractedMessageUuids"]) && record["retractedMessageUuids"].length > 0) return true;
 		const uuid = mainUuid(record);
 		if (uuid === undefined) continue;
 		const parentUuid = record["parentUuid"];
