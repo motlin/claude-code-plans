@@ -5,6 +5,7 @@ import {type KeyboardEvent, type Ref, useContext, useId, useMemo, useRef, useSta
 
 import {useShortcut} from "../../hooks/use-shortcut";
 import type {StartProject} from "../../lib/palette-start-session";
+import {folderName, folderParent, inferHome, shortenCwd} from "../../lib/folder-row-names";
 import {PLACE_CHIP_CLASS} from "../composer-tokens";
 import {overlayAttrs} from "../../lib/overlay";
 import {PathBreak} from "../ui/path-break";
@@ -14,10 +15,13 @@ import {EnvironmentBarIconOnlyContext} from "../use-environment-bar-icon-only";
 /*
  * The home composer's folder picker, copied from claude.ai/code's repository
  * picker: the environment bar's 24px place button opens a 320x360 popover above
- * it with an autofocused search field over a listbox of 24px options. Typing filters by
- * name or path, arrows move the active option, Enter or a click selects it.
- * The cloud-only "Troubleshoot GitHub connection" and "Refresh list" rows have
- * no local equivalent and are omitted.
+ * it with an autofocused search field over a listbox of 24px options. Rows follow upstream's
+ * "Choose a folder" menu (cc43287c9 `c8`): the eight most recent folders under "Recent" (the selected
+ * one pinned in), each titled by its basename with the parent folder below it on a basename collision.
+ * Typing filters every folder by absolute or `~/…` path, arrows move the active option, Enter or a
+ * click selects it. Upstream shows its search only past eight recents; local keeps it always, since
+ * it has no "Open folder…" escape hatch. The cloud-only "Troubleshoot GitHub connection" and
+ * "Refresh list" rows have no local equivalent and are omitted.
  */
 
 const POPUP_CLASS =
@@ -30,8 +34,25 @@ const POPUP_CLASS =
 const SEARCH_CLASS =
 	"-mx-[var(--cds-menu-gutter,0.25rem)] -mt-[var(--cds-menu-gutter,0.25rem)] mb-1 block w-[calc(100%+2*var(--cds-menu-gutter,0.25rem))] shrink-0 cds-reset bg-transparent border-0 border-b border-b-border outline-none focus-visible:outline-hidden px-[calc(var(--cds-pad-md)+var(--cds-menu-gutter,0.25rem))] py-2 text-body font-normal text-primary placeholder:text-ink-muted";
 
+/** Upstream's recent-folder count for the menu with no query. */
+const FOLDER_MENU_RECENT_LIMIT = 8;
+
 const OPTION_CLASS =
-	"flex h-6 shrink-0 cursor-default items-center gap-1 rounded-r5 px-2 select-none data-[highlighted]:bg-fill-ghost-hover";
+	"flex min-h-6 shrink-0 cursor-default items-center gap-1 rounded-r5 px-2 select-none data-[highlighted]:bg-fill-ghost-hover";
+
+/** Upstream's described Menu.Item (`ot`): 2.5px top and 4px bottom padding grow the row to two lines. */
+const DESCRIBED_OPTION_CLASS = `${OPTION_CLASS} py-[2.5px] pb-1`;
+
+/** Upstream's Menu.Item description at default density, `text-footnote text-muted`, unclamped. */
+const FOLDER_DESCRIPTION_CLASS = "break-words text-[12px]/[15px] text-ink-muted";
+
+/** Upstream's eight most recent folders, the selection pinned in after them when it falls outside (`Bx`). */
+function recentFolders(projects: readonly StartProject[], selected: StartProject | undefined): readonly StartProject[]
+{
+	const recent = projects.slice(0, FOLDER_MENU_RECENT_LIMIT);
+	if (selected === undefined || recent.some((p) => p.id === selected.id)) return recent;
+	return projects.some((p) => p.id === selected.id) ? [...recent, selected] : recent;
+}
 
 /**
  * Upstream's collapsed place-chip tooltip box, `max-w-[min(480px,var(--available-width))]`; the local tooltip is not
@@ -93,12 +114,19 @@ export function ProjectPicker({projects, selected, onSelect, variant = "chip", t
 	);
 
 	const needle = query.trim().toLowerCase();
+	const recent = recentFolders(projects, selected);
 	const filtered =
 		needle === ""
-			? projects
+			? recent
 			: projects.filter(
-					(p) => p.name.toLowerCase().includes(needle) || p.projectPath.toLowerCase().includes(needle),
+					(p) =>
+						p.projectPath.toLowerCase().includes(needle) ||
+						shortenCwd(p.projectPath).toLowerCase().includes(needle),
 				);
+	// Upstream names the rows being shown, so a partner the query filters out drops the description.
+	const shownPaths = filtered.map((p) => p.projectPath);
+	const home = inferHome(projects.map((p) => p.projectPath));
+	const recentLabelId = `${baseId}-recent`;
 	const lastIndex = filtered.length - 1;
 	const active = filtered[activeIndex];
 	const activeDescendant = active === undefined ? undefined : `${baseId}-${active.id}`;
@@ -111,7 +139,7 @@ export function ProjectPicker({projects, selected, onSelect, variant = "chip", t
 			setActiveIndex(
 				Math.max(
 					0,
-					projects.findIndex((p) => p.id === selected?.id),
+					recent.findIndex((p) => p.id === selected?.id),
 				),
 			);
 		}
@@ -157,6 +185,58 @@ export function ProjectPicker({projects, selected, onSelect, variant = "chip", t
 				break;
 		}
 	};
+
+	const options = filtered.map((p, index) =>
+	{
+		const isSelected = p.id === selected?.id;
+		const name = folderName(p.projectPath);
+		const parent = folderParent(p.projectPath, shownPaths, home);
+		return (
+			// oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/interactive-supports-focus -- an aria-activedescendant option: focus and arrow keys stay in the input that owns the list
+			<div
+				key={p.id}
+				id={`${baseId}-${p.id}`}
+				role="option"
+				aria-selected={isSelected}
+				title={p.projectPath}
+				data-highlighted={index === activeIndex ? "" : undefined}
+				onMouseEnter={() =>
+				{
+					setActiveIndex(index);
+				}}
+				onMouseDown={(event) =>
+				{
+					event.preventDefault();
+				}}
+				onClick={() =>
+				{
+					choose(p);
+				}}
+				className={parent === undefined ? OPTION_CLASS : DESCRIBED_OPTION_CLASS}
+			>
+				{parent === undefined ? (
+					<span data-folder-name className="min-w-0 flex-1 truncate">
+						{name}
+					</span>
+				) : (
+					<span className="flex min-w-0 flex-1 flex-col">
+						<span data-folder-name className="truncate">
+							{name}
+						</span>
+						<span data-folder-description className={FOLDER_DESCRIPTION_CLASS}>
+							{parent}
+						</span>
+					</span>
+				)}
+				{isSelected ? (
+					<Check
+						aria-hidden="true"
+						className={`size-3.5 shrink-0 text-accent-100${parent === undefined ? "" : " mt-[2.5px] self-start"}`}
+					/>
+				) : null}
+			</div>
+		);
+	});
 
 	return (
 		<Popover.Root open={open} onOpenChange={handleOpenChange}>
@@ -243,44 +323,20 @@ export function ProjectPicker({projects, selected, onSelect, variant = "chip", t
 							className="flex min-h-0 flex-1 flex-col overflow-y-auto"
 						>
 							{filtered.length === 0 ? (
-								<p className="px-2 py-1 text-ink-muted">No matching projects</p>
+								<div className="px-2 py-1 text-[12px]/[15px] text-muted-as-secondary">No matches</div>
+							) : needle === "" ? (
+								<div role="group" aria-labelledby={recentLabelId} className="flex flex-col">
+									<div
+										id={recentLabelId}
+										aria-hidden="true"
+										className="px-2 py-1 text-[12px]/[15px] font-medium text-ink-muted"
+									>
+										Recent
+									</div>
+									{options}
+								</div>
 							) : (
-								filtered.map((p, index) =>
-								{
-									const isSelected = p.id === selected?.id;
-									return (
-										// oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/interactive-supports-focus -- an aria-activedescendant option: focus and arrow keys stay in the input that owns the list
-										<div
-											key={p.id}
-											id={`${baseId}-${p.id}`}
-											role="option"
-											aria-selected={isSelected}
-											title={p.projectPath}
-											data-highlighted={index === activeIndex ? "" : undefined}
-											onMouseEnter={() =>
-											{
-												setActiveIndex(index);
-											}}
-											onMouseDown={(event) =>
-											{
-												event.preventDefault();
-											}}
-											onClick={() =>
-											{
-												choose(p);
-											}}
-											className={OPTION_CLASS}
-										>
-											<span className="min-w-0 flex-1 truncate">{p.name}</span>
-											{isSelected ? (
-												<Check
-													aria-hidden="true"
-													className="size-3.5 shrink-0 text-accent-100"
-												/>
-											) : null}
-										</div>
-									);
-								})
+								options
 							)}
 						</div>
 					</Popover.Popup>

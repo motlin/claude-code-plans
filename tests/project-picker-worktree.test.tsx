@@ -9,12 +9,12 @@ const projects = [
 	{
 		id: "a",
 		name: "alpha",
-		projectPath: "/a",
+		projectPath: "/alpha",
 	},
 	{
 		id: "b",
 		name: "beta",
-		projectPath: "/b",
+		projectPath: "/beta",
 	},
 ];
 

@@ -58,6 +58,174 @@ afterEach(() =>
 	cleanup();
 });
 
+const COLLIDING: StartProject[] = [
+	{
+		id: "fbsr",
+		name: "Factorio-FBSR",
+		projectPath: "/Users/dev/projects/Factorio-FBSR",
+	},
+	{
+		id: "bot-fbsr",
+		name: "BlueprintBot/Factorio-FBSR",
+		projectPath: "/Users/dev/projects/FactorioBlueprints/BlueprintBot/Factorio-FBSR",
+	},
+	PROJECTS[2]!,
+];
+
+const FOLDER_DETAIL_CLASS =
+	"min-w-0 max-w-max grow basis-24 truncate text-muted-as-secondary group-hover/row:text-secondary group-has-[:focus-visible]/row:text-secondary group-has-[[aria-expanded=true]]/row:text-secondary";
+
+function renderCard(projects: readonly StartProject[], selected: StartProject | undefined)
+{
+	render(
+		<StartCard
+			projects={projects}
+			selected={selected}
+			onSelect={() =>
+			{
+			}}
+		/>,
+	);
+}
+
+function folderRows()
+{
+	return screen.getAllByTestId("start-card-environment").map((row) =>
+	{
+		const detail = row.querySelector("[data-folder-detail]");
+		const describedBy = row.getAttribute("aria-describedby");
+		return {
+			tag: row.tagName,
+			text: row.textContent,
+			detail: detail?.textContent ?? null,
+			detailClass: detail?.getAttribute("class") ?? null,
+			described:
+				describedBy === null
+					? null
+					:
+						{
+							hidden: document.getElementById(describedBy)?.hasAttribute("hidden") ?? null,
+							text: document.getElementById(describedBy)?.textContent ?? null,
+						},
+			inGroupRow: row.closest(".group\\/row.relative") !== null,
+		};
+	});
+}
+
+describe("StartCard folder rows", () =>
+{
+	it("titles rows by basename and adds the parent folder to non-current rows whose basenames collide", () =>
+	{
+		renderCard(COLLIDING, COLLIDING[2]);
+
+		expect(folderRows()).toStrictEqual([
+			{
+				tag: "BUTTON",
+				text: "Factorio-FBSR~/projects",
+				detail: "~/projects",
+				detailClass: FOLDER_DETAIL_CLASS,
+				described:
+				{
+					hidden: true,
+					text: "~/projects/Factorio-FBSR",
+				},
+				inGroupRow: true,
+			},
+			{
+				tag: "BUTTON",
+				text: "Factorio-FBSR~/projects/FactorioBlueprints/BlueprintBot",
+				detail: "~/projects/FactorioBlueprints/BlueprintBot",
+				detailClass: FOLDER_DETAIL_CLASS,
+				described:
+				{
+					hidden: true,
+					text: "~/projects/FactorioBlueprints/BlueprintBot/Factorio-FBSR",
+				},
+				inGroupRow: true,
+			},
+			{
+				tag: "DIV",
+				text: "p3~/projects/p3",
+				detail: null,
+				detailClass: null,
+				described: null,
+				inGroupRow: false,
+			},
+		]);
+	});
+
+	it("gives the current row no detail even when its basename collides", () =>
+	{
+		renderCard(COLLIDING, COLLIDING[0]);
+
+		expect(folderRows().map(({tag, text, detail}) => [tag, text, detail])).toStrictEqual([
+			["DIV", "Factorio-FBSR~/projects/Factorio-FBSR", null],
+			[
+				"BUTTON",
+				"Factorio-FBSR~/projects/FactorioBlueprints/BlueprintBot",
+				"~/projects/FactorioBlueprints/BlueprintBot",
+			],
+			["BUTTON", "p3", null],
+		]);
+	});
+
+	it("disambiguates against a collision partner among the recent eight that is not shown", () =>
+	{
+		const partner: StartProject =
+		{
+			id: "other-p1",
+			name: "other/p1",
+			projectPath: "/Users/dev/other/p1",
+		};
+		renderCard([...PROJECTS, partner], undefined);
+
+		expect(folderRows().map(({text, detail}) => [text, detail])).toStrictEqual([
+			["p1~/projects", "~/projects"],
+			["p2", null],
+			["p3", null],
+		]);
+	});
+
+	it("shows the path tooltip broken after each separator", () =>
+	{
+		renderCard(PROJECTS, PROJECTS[0]);
+		vi.useFakeTimers();
+		try
+		{
+			fireEvent.pointerEnter(
+				screen.getAllByTestId("start-card-environment")[1]!.parentElement!,
+				{
+					pointerType: "mouse",
+				},
+			);
+			act(() =>
+			{
+				vi.advanceTimersByTime(1000);
+			});
+			const content = screen.getByRole("tooltip").firstElementChild!;
+			expect(
+				{
+					dir: content.getAttribute("dir"),
+					pieces: [...content.children].map((piece) => [piece.className, piece.textContent]),
+				},
+			).toStrictEqual(
+				{
+					dir: "ltr",
+					pieces: [
+						["inline-block max-w-full whitespace-pre-wrap", "~/"],
+						["inline-block max-w-full whitespace-pre-wrap", "projects/"],
+						["inline-block max-w-full whitespace-pre-wrap", "p2"],
+					],
+				},
+			);
+		}
+		finally
+		{
+			vi.useRealTimers();
+		}
+	});
+});
+
 describe("StartCard", () =>
 {
 	it("shows the top two folders plus a selected 5th in the 3rd seat, checked and static", () =>
@@ -74,14 +242,14 @@ describe("StartCard", () =>
 
 		expect(rows()).toStrictEqual([
 			{
-				text: "p1",
+				text: "p1~/projects/p1",
 				current: null,
 				title: null,
 				button: "p1",
 				check: false,
 			},
 			{
-				text: "p2",
+				text: "p2~/projects/p2",
 				current: null,
 				title: null,
 				button: "p2",
@@ -124,7 +292,7 @@ describe("StartCard", () =>
 			})),
 		).toStrictEqual([
 			{
-				text: "p1",
+				text: "p1~/projects/p1",
 				current: null,
 			},
 			{
@@ -132,7 +300,7 @@ describe("StartCard", () =>
 				current: "true",
 			},
 			{
-				text: "p3",
+				text: "p3~/projects/p3",
 				current: null,
 			},
 			{
@@ -167,7 +335,7 @@ describe("StartCard", () =>
 			},
 		).toStrictEqual(
 			{
-				row: "flex h-8 w-full min-w-0 items-center gap-2 rounded-lg px-2 text-start text-body leading-5 text-secondary-control",
+				row: "flex h-8 w-full min-w-0 items-center gap-2 rounded-lg px-2 text-start text-body leading-5",
 				children: [
 					{
 						tag: "svg",
@@ -176,7 +344,7 @@ describe("StartCard", () =>
 					},
 					{
 						tag: "SPAN",
-						className: "min-w-0 flex-1 truncate text-start text-secondary-control",
+						className: "min-w-0 flex-1 truncate text-secondary-control",
 						text: "p5",
 					},
 					{
@@ -222,15 +390,17 @@ describe("StartCard", () =>
 			{
 				row: row.className.split(" ").filter((token) => token.startsWith("text-secondary")),
 				children: [...row.children].map((child) => child.getAttribute("class")),
+				title: row.querySelector("span > span > span")?.className,
 				chooseTitle: choose.querySelector("span > span")?.className,
 			},
 		).toStrictEqual(
 			{
-				row: ["text-secondary-control"],
+				row: [],
 				children: [
 					"lucide lucide-folder size-4 shrink-0 text-secondary-control",
-					"min-w-0 flex-1 truncate text-start text-secondary-control",
+					"flex min-w-0 flex-1 items-center gap-1",
 				],
+				title: "min-w-0 max-w-full truncate text-secondary-control",
 				chooseTitle: "min-w-0 max-w-full truncate text-secondary-control",
 			},
 		);

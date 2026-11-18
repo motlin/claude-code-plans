@@ -1,8 +1,9 @@
 import {Check, ChevronDown, Folder, X, Zap} from "lucide-react";
-import {useId, useLayoutEffect, useRef, useState, type RefObject} from "react";
+import {useId, useLayoutEffect, useRef, useState, type ReactNode, type RefObject} from "react";
 
 import {useFolderModeMemory} from "../../hooks/use-folder-mode-memory";
 import {useShortcut} from "../../hooks/use-shortcut";
+import {folderName, folderParent, inferHome, shortenCwd, type FolderRowName} from "../../lib/folder-row-names";
 import {requestHomeComposerFocus, requestHomeComposerPrefill} from "../../lib/home-composer-focus";
 import
 {
@@ -14,6 +15,7 @@ import
 } from "../../lib/home-next-steps";
 import {TOUCH_REVEAL} from "../../lib/touch-reveal";
 import {POPOVER_SCROLL_BODY_CLASS, PopoverRoot, PopoverTrigger, PopoverContent} from "../ui/popover";
+import {PathBreak} from "../ui/path-break";
 import {Tooltip} from "../ui/tooltip";
 import type {StartProject} from "../../lib/palette-start-session";
 import {useHomeDraftUsed, useHomeLaunchFolder, useHomeLaunchOptions, useHomeWorktree} from "./launch-folder";
@@ -28,15 +30,15 @@ const ROW_LIMIT = 3;
 /** Upstream's start-card list: a 320px ringed surface-1 card. */
 const CARD_CLASS = "card-ring flex w-80 max-w-full shrink-0 flex-col rounded-card bg-surface-1";
 
-/** Upstream's row ink is `text-secondary-control`: primary ink under fizzy color, secondary with it off. */
-const ROW_CLASS =
-	"flex h-8 w-full min-w-0 items-center gap-2 rounded-lg px-2 text-start text-body leading-5 text-secondary-control";
+/** Upstream's recent-folder count (`M`'s default limit): basenames are disambiguated across these, not just the 3 shown. */
+const FOLDER_DISAMBIGUATION_LIMIT = 8;
 
-/** `/Users/me/x` or `/home/me/x` → `~/x`, like upstream's shortened local cwd. */
-function shortenCwd(path: string): string
-{
-	return path.replace(/^\/(?:Users|home)\/[^/]+(?=\/|$)/, "~");
-}
+/** Upstream's current row (`e5`, `X8`). */
+const CURRENT_ROW_CLASS = "flex h-8 w-full min-w-0 items-center gap-2 rounded-lg px-2 text-start text-body leading-5";
+
+/** Upstream's folder-row parent detail (`vye` + `Z8`): muted at rest, secondary on hover, keyboard focus or open. */
+const FOLDER_DETAIL_CLASS =
+	"min-w-0 max-w-max grow basis-24 truncate text-muted-as-secondary group-hover/row:text-secondary group-has-[:focus-visible]/row:text-secondary group-has-[[aria-expanded=true]]/row:text-secondary";
 
 /** The top three folders; a selection outside them takes the third seat. */
 function visibleRows(projects: readonly StartProject[], selected: StartProject | undefined): StartProject[]
@@ -104,6 +106,8 @@ function RecentEnvironments({
 })
 {
 	const rows = visibleRows(projects, selected);
+	const recentPaths = projects.slice(0, FOLDER_DISAMBIGUATION_LIMIT).map((p) => p.projectPath);
+	const home = inferHome(recentPaths);
 	// Upstream's ⌥⌘1…9 picks the Nth environment preset; locally the Nth row. Digits past the
 	// list are still claimed (preventDefault), like upstream.
 	useShortcut("select_environment", (event) =>
@@ -122,46 +126,15 @@ function RecentEnvironments({
 			}}
 			className={CARD_CLASS}
 		>
-			{rows.map((project) =>
-			{
-				const current = project.id === selected?.id;
-				const content = (
-					<>
-						<Folder aria-hidden="true" className="size-4 shrink-0 text-secondary-control" />
-						<span className="min-w-0 flex-1 truncate text-start text-secondary-control">
-							{project.name}
-						</span>
-					</>
-				);
-				return (
-					<li key={project.id} aria-current={current ? true : undefined} className="px-1 pt-0.5 first:pt-1">
-						<Tooltip content={shortenCwd(project.projectPath)} align="start" className="flex w-full">
-							{current ? (
-								<div className={ROW_CLASS}>
-									{content}
-									<span className="sr-only">{shortenCwd(project.projectPath)}</span>
-									<Check
-										data-start-card-check
-										aria-hidden="true"
-										className="size-4 shrink-0 text-primary"
-									/>
-								</div>
-							) : (
-								<button
-									type="button"
-									onClick={() =>
-									{
-										choose(project.id);
-									}}
-									className={`${ROW_CLASS} transition-colors hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus`}
-								>
-									{content}
-								</button>
-							)}
-						</Tooltip>
-					</li>
-				);
-			})}
+			{rows.map((project) => (
+				<FolderRow
+					key={project.id}
+					project={project}
+					name={rowName(project.projectPath, recentPaths, home)}
+					current={project.id === selected?.id}
+					choose={choose}
+				/>
+			))}
 			<li className="pt-1">
 				<div
 					aria-hidden="true"
@@ -182,6 +155,83 @@ function RecentEnvironments({
 				</div>
 			</li>
 		</ul>
+	);
+}
+
+/**
+ * Upstream's folder-row name for a shown row (`hxe` over `V`): its basename disambiguated across the recent eight; a
+ * selection seated from outside them keeps its bare basename.
+ */
+function rowName(path: string, recentPaths: readonly string[], home: string | undefined): FolderRowName
+{
+	return {
+		name: folderName(path),
+		parent: recentPaths.includes(path) ? folderParent(path, recentPaths, home) : undefined,
+	};
+}
+
+/**
+ * One upstream folder row: the current folder is a static checked `e5` row with no detail; another is a `$8` row
+ * button, its title the basename and its detail the parent folder on a basename collision, described by the path.
+ */
+function FolderRow({
+	project,
+	name,
+	current,
+	choose,
+}: {
+	project: StartProject;
+	name: FolderRowName;
+	current: boolean;
+	choose: (projectId: string) => void;
+})
+{
+	const whereId = useId();
+	const where = shortenCwd(project.projectPath);
+	const icon = <Folder aria-hidden="true" className="size-4 shrink-0 text-secondary-control" />;
+	return (
+		<li aria-current={current ? true : undefined} className="px-1 pt-0.5 first:pt-1">
+			{current ? (
+				<Tooltip content={<PathBreak path={where} />} align="start" className="flex w-full">
+					<div data-testid="start-card-environment" className={CURRENT_ROW_CLASS}>
+						{icon}
+						<span className="min-w-0 flex-1 truncate text-secondary-control">{name.name}</span>
+						<span className="sr-only">{where}</span>
+						<Check data-start-card-check aria-hidden="true" className="size-4 shrink-0 text-primary" />
+					</div>
+				</Tooltip>
+			) : (
+				<div className="group/row relative">
+					<Tooltip content={<PathBreak path={where} />} align="start" className="flex w-full">
+						<button
+							type="button"
+							data-testid="start-card-environment"
+							aria-describedby={whereId}
+							onClick={() =>
+							{
+								choose(project.id);
+							}}
+							className={STEP_BUTTON_CLASS}
+						>
+							{icon}
+							<RowLine
+								title={name.name}
+								detail={
+									name.parent === undefined ? null : (
+										<span data-folder-detail className={FOLDER_DETAIL_CLASS}>
+											{name.parent}
+										</span>
+									)
+								}
+							/>
+						</button>
+					</Tooltip>
+					<span id={whereId} hidden>
+						{where}
+					</span>
+				</div>
+			)}
+		</li>
 	);
 }
 
@@ -257,6 +307,22 @@ function StepSpacer()
 	);
 }
 
+/** Upstream's row line: a title and an optional detail that drops out of view when the two don't fit. */
+function RowLine({title, detail, lineAttrs}: {title: ReactNode; detail: ReactNode; lineAttrs?: Record<string, string>})
+{
+	return (
+		<span className="flex min-w-0 flex-1 items-center gap-1">
+			<span
+				{...lineAttrs}
+				className="flex h-5 min-w-0 items-baseline gap-x-2 overflow-hidden whitespace-nowrap flex-wrap"
+			>
+				<span className="min-w-0 max-w-full truncate text-secondary-control">{title}</span>
+				{detail}
+			</span>
+		</span>
+	);
+}
+
 /** `listed`: a row inside the rest popup, which drops the "Waiting" status. */
 function StepLine({
 	candidate,
@@ -268,22 +334,23 @@ function StepLine({
 }>)
 {
 	return (
-		<span className="flex min-w-0 flex-1 items-center gap-1">
-			<span
-				data-next-step-line
-				className="flex h-5 min-w-0 items-baseline gap-x-2 overflow-hidden whitespace-nowrap flex-wrap"
-			>
-				<span className="min-w-0 max-w-full truncate text-secondary-control">
+		<RowLine
+			lineAttrs={
+			{
+				"data-next-step-line": "",
+			}}
+			title={
+				<>
 					{!listed && WAITING_IDS.has(candidate.id) && (
 						<>
 							<span className="text-upstream-warning">Waiting</span>{" "}
 						</>
 					)}
 					{candidate.title}
-				</span>
-				{candidate.detail !== null && <span className={STEP_DETAIL_CLASS}>{candidate.detail}</span>}
-			</span>
-		</span>
+				</>
+			}
+			detail={candidate.detail !== null && <span className={STEP_DETAIL_CLASS}>{candidate.detail}</span>}
+		/>
 	);
 }
 
