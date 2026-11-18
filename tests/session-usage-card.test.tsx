@@ -25,6 +25,7 @@ const USAGE: UsageSummary =
 		resetsAt: NOW_S + 3 * 86_400,
 	},
 	updatedAt: null,
+	scoped: null,
 };
 
 let writeText: ReturnType<typeof vi.fn<(text: string) => Promise<void>>>;
@@ -379,6 +380,7 @@ describe("SessionUsageCard plan section", () =>
 					fiveHour: null,
 					sevenDay: null,
 					updatedAt: null,
+					scoped: null,
 				},
 			},
 		);
@@ -394,6 +396,7 @@ const NO_PLAN: UsageSummary =
 	fiveHour: null,
 	sevenDay: null,
 	updatedAt: null,
+	scoped: null,
 };
 
 function chipRows(): string[][]

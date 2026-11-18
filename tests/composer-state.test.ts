@@ -19,6 +19,7 @@ import
 	usageRingPercent,
 	usageRingSeverity,
 	withAccountLimits,
+	withComposerAccountLimits,
 } from "../src/lib/composer-state";
 import
 {
@@ -1654,6 +1655,7 @@ describe("withAccountLimits", () =>
 			resetsAt: NOW_SEC + 3 * 86_400,
 		},
 		updatedAt: "2026-09-29T08:00:00.000Z",
+		scoped: null,
 	};
 
 	it("fills a chin with no usage from the account limits, so the home ring shows Weekly 50%", () =>
@@ -1738,6 +1740,133 @@ describe("withAccountLimits", () =>
 				noSummary: contextOnly,
 			},
 		);
+	});
+
+	const scopedSummary = (fablePercent: number, resetsAt: string | null) => (
+	{
+		...summary,
+		fiveHour: null,
+		sevenDay:
+		{
+			usedPct: 46,
+			resetsAt: NOW_SEC + 3 * 86_400,
+		},
+		scoped:
+		{
+			limits: [
+				{
+					kind: "weekly_all",
+					group: "weekly",
+					percent: 46,
+					severity: "normal",
+					resets_at: new Date((NOW_SEC + 3 * 86_400) * 1000).toISOString(),
+					scope: null,
+					is_active: true,
+				},
+				{
+					kind: "weekly_scoped",
+					group: "weekly",
+					percent: fablePercent,
+					severity: "normal",
+					resets_at: resetsAt,
+					scope:
+					{
+						model:
+						{
+							id: null,
+							display_name: "Fable",
+						},
+						surface: null,
+					},
+					is_active: false,
+				},
+			],
+			shares: [],
+			fetchedAt: "2026-09-29T07:00:00.000Z",
+		},
+	});
+
+	function ring(modelId: string, fablePercent: number, resetsAt: string | null = null)
+	{
+		const usage = withAccountLimits(null, scopedSummary(fablePercent, resetsAt), modelId);
+		return {
+			scoped: usage?.scoped?.map((meter) => meter.label) ?? [],
+			percent: usageRingPercent(usage),
+			aria: formatUsageAriaLabel(usage, NOW_MS, "UTC"),
+		};
+	}
+
+	it("adds the model family's cached rows to the ring, hiding another family's", () =>
+	{
+		const reset = new Date((NOW_SEC + 2 * 86_400) * 1000).toISOString();
+		expect(
+			{
+				opus: ring("claude-opus-5-5", 0),
+				fableUnused: ring("claude-fable-1", 0),
+				fableHigher: ring("claude-fable-1", 80, reset),
+				opusHigherFable: ring("claude-opus-5-5", 80, reset),
+				fableNoReset: ring("claude-fable-1", 80),
+			},
+		).toStrictEqual(
+			{
+				opus:
+				{
+					scoped: [],
+					percent: 46,
+					aria: "Usage: Weekly · all models: 46%, Resets Fri 12:00 PM",
+				},
+				fableUnused:
+				{
+					scoped: ["Weekly · Fable"],
+					percent: 46,
+					aria: "Usage: Weekly · all models: 46%, Resets Fri 12:00 PM",
+				},
+				fableHigher:
+				{
+					scoped: ["Weekly · Fable"],
+					percent: 80,
+					aria: "Usage: Weekly · Fable: 80%, Resets Thu 12:00 PM",
+				},
+				opusHigherFable:
+				{
+					scoped: [],
+					percent: 46,
+					aria: "Usage: Weekly · all models: 46%, Resets Fri 12:00 PM",
+				},
+				fableNoReset:
+				{
+					scoped: ["Weekly · Fable"],
+					percent: 80,
+					aria: "Usage: Weekly · Fable: 80%, You haven’t used Fable yet",
+				},
+			},
+		);
+	});
+
+	it("takes the family from the composer state's model", () =>
+	{
+		const state = resolveComposerState(
+			{
+				hookPermissionMode: null,
+				jsonlPermissionMode: null,
+				settingsDefaultMode: null,
+				statuslineModel: null,
+				statuslineModelId: "claude-fable-1",
+				lastAssistantModel: null,
+				lastAssistantUsage: null,
+				lastAssistantEffort: null,
+				fastMode: false,
+				fastModeBlocked: null,
+				settingsModel: null,
+				settingsEffortLevel: null,
+				statusline: null,
+				statuslineUpdatedAt: null,
+			},
+		);
+
+		expect(
+			withComposerAccountLimits(state, scopedSummary(5, null)).usage?.scoped?.map((meter) => meter.label),
+		).toStrictEqual(["Weekly · Fable"]);
 	});
 });
 

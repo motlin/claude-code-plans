@@ -107,10 +107,10 @@
 	},
 	"client.coldHome.default.responseBytes":
 	{
-		"ceiling": 5479,
+		"ceiling": 5493,
 		"unit": "bytes",
 		"tolerance": 0,
-		"reason": "raised from 5388 (2026-11-17): GET /api/commands lists upstream's host-handled /mcp row ('Manage MCP connectors', slash-output-style-picker T3), which opens Customize › Connectors from the home composer too.",
+		"reason": "raised from 5479 (2026-11-17): GET /api/usage carries `scoped` (null without the CLI's cachedUsageUtilization), the per-model weekly rows behind Settings › Usage's This week fold and the ring's family filter (usage-week-fold-scoped-shares T1).",
 		"raisedAt": "2026-11-17"
 	},
 	"client.composer.home.slashMenu.claudeEventsConsumers":

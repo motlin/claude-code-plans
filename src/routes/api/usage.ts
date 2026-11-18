@@ -1,11 +1,15 @@
 import {createFileRoute} from "@tanstack/react-router";
 import {withMethodNotAllowed} from "../../lib/api/method-not-allowed";
 
-export async function handleUsageRequest(statuslineDirectory: string): Promise<Response>
+export async function handleUsageRequest(
+	statuslineDirectory: string,
+	homeDirectory: string,
+	nowMs: number = Date.now(),
+): Promise<Response>
 {
 	const {readLatestUsage} = await import("../../lib/usage-reader");
 	return Response.json(
-		await readLatestUsage(statuslineDirectory),
+		await readLatestUsage(statuslineDirectory, homeDirectory, nowMs),
 		{
 			headers:
 			{
@@ -23,11 +27,12 @@ export const Route = createFileRoute("/api/usage")(
 				{
 					GET: async () =>
 					{
-						const [{join}, {getCacheDir}] = await Promise.all([
+						const [{join}, {homedir}, {getCacheDir}] = await Promise.all([
 							import("node:path"),
+							import("node:os"),
 							import("../../lib/db/connection"),
 						]);
-						return handleUsageRequest(join(getCacheDir(), "statusline"));
+						return handleUsageRequest(join(getCacheDir(), "statusline"), homedir());
 					},
 				},
 			),

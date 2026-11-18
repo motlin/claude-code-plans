@@ -275,6 +275,10 @@ html[data-interface-font="dyslexic"]
 	/* Upstream --cds-bg-warning / --cds-bg-danger (Settings ▸ Usage meter tracks at ≥75% / ≥90%). */
 	--color-usage-track-warning: var(--upstream-bg-warning);
 	--color-usage-track-danger: var(--upstream-bg-danger);
+	/* Upstream's meter share overlay (palette blue-300, yellow-150 / dark:yellow-100, red-300). */
+	--color-usage-share-accent: rgb(106 171 241);
+	--color-usage-share-warning: var(--upstream-usage-share-warning);
+	--color-usage-share-danger: rgb(241 119 120);
 	--color-backdrop: var(--upstream-backdrop);
 	--color-fill-control: var(--upstream-fill-control);
 	--color-fill-ghost-hover: var(--upstream-fill-ghost-hover);
@@ -586,6 +590,8 @@ html[data-interface-font="dyslexic"]
 	/* Upstream --cds-role-warning-100 (--cds-yellow-100) / --cds-role-danger-100 (--cds-red-100). */
 	--upstream-bg-warning: #f9dca4;
 	--upstream-bg-danger: #fad6d6;
+	/* Upstream's share overlay on a warning meter: palette yellow-150 (dark: yellow-100). */
+	--upstream-usage-share-warning: rgb(249 201 103);
 	/* Upstream --brand-100 (hsl 15 54.2% 51.2%) / --oncolor-100, [data-theme=claude][data-mode=light]. */
 	--upstream-brand-100: rgb(198 97 63);
 	--upstream-oncolor-100: rgb(255 255 255);
@@ -1045,6 +1051,7 @@ html[data-interface-font="dyslexic"]
 	/* Upstream dark --cds-role-warning-800 (--cds-yellow-800) / --cds-role-danger-800 (--cds-red-800). */
 	--upstream-bg-warning: #311a00;
 	--upstream-bg-danger: #3c0e0e;
+	--upstream-usage-share-warning: rgb(249 220 164);
 
 	/* User message bubble — matches claude.ai/code: --cds-bg-user-message, the 5% alpha wash + body ink */
 	--user-msg-bg: var(--upstream-alpha-1);

@@ -3,6 +3,7 @@ import {type Statusline, StatuslineSchema} from "./api/statusline";
 import {defaultEffortFor, resolveLaunchModel} from "./launch-options";
 import {formatModelName, SYNTHETIC_MODEL} from "./model-name";
 import {formatWeeklyReset, type UsageSummary} from "./usage";
+import {type ScopedMeter, scopedEmptyCaption, visibleScopedMeters} from "./usage-family";
 import {nonEmpty} from "./non-empty";
 import type {FastModeBlocked} from "./session-fast-mode";
 
@@ -91,6 +92,8 @@ export interface ComposerUsage
 	fiveHour: RateLimitWindow | null;
 	weekly: RateLimitWindow | null;
 	updatedAt: string | null;
+	/** The account's cached per-model rows for the current model's family (`withAccountLimits`). */
+	scoped?: ScopedMeter[];
 }
 
 export interface ComposerState
@@ -365,7 +368,7 @@ export function formatContextSummary(usage: ComposerUsage | null): string
  */
 export function withComposerAccountLimits(state: ComposerState, summary: UsageSummary | undefined): ComposerState
 {
-	const usage = withAccountLimits(state.usage, summary);
+	const usage = withAccountLimits(state.usage, summary, state.modelId);
 	return usage === state.usage
 		? state
 		:
@@ -375,8 +378,34 @@ export function withComposerAccountLimits(state: ComposerState, summary: UsageSu
 			};
 }
 
-/** The usage half of `withComposerAccountLimits`. */
-export function withAccountLimits(usage: ComposerUsage | null, summary: UsageSummary | undefined): ComposerUsage | null
+/**
+ * The usage half of `withComposerAccountLimits`, plus the account's cached per-model rows that
+ * apply to `modelId`'s family (upstream's ring and popover filter).
+ */
+export function withAccountLimits(
+	usage: ComposerUsage | null,
+	summary: UsageSummary | undefined,
+	modelId?: string | null,
+): ComposerUsage | null
+{
+	const withWindows = withAccountWindows(usage, summary);
+	const scoped = visibleScopedMeters(summary?.scoped, modelId);
+	if (scoped.length === 0) return withWindows;
+	return {
+		...(withWindows ??
+		{
+			contextTokens: null,
+			contextWindowSize: null,
+			contextPercent: null,
+			fiveHour: null,
+			weekly: null,
+			updatedAt: summary?.updatedAt ?? null,
+		}),
+		scoped,
+	};
+}
+
+function withAccountWindows(usage: ComposerUsage | null, summary: UsageSummary | undefined): ComposerUsage | null
 {
 	if (summary === undefined || (summary.fiveHour === null && summary.sevenDay === null)) return usage;
 	if (usage !== null && (usage.fiveHour !== null || usage.weekly !== null)) return usage;
@@ -405,35 +434,69 @@ interface UsageLimits
 {
 	fiveHour?: Pick<RateLimitWindow, "usedPercentage"> | null;
 	weekly?: Pick<RateLimitWindow, "usedPercentage"> | null;
+	scoped?: readonly Pick<ScopedMeter, "usedPercentage">[] | undefined;
 }
 
-/** The one limit the ring summarises: the most used one, weekly on a tie, as upstream does. */
-function topLimit(usage: ComposerUsage | null):
+interface RingLimit
 {
 	label: string;
-	window: RateLimitWindow;
-} | null
+	usedPercentage: number;
+	/** Epoch seconds, or null before the window has started. */
+	resetsAt: number | null;
+	/** The reset caption while `resetsAt` is null. */
+	emptyCaption: string;
+}
+
+/**
+ * The one limit the ring summarises: the most used one, weekly on a tie with the session, as
+ * upstream does; a per-model row speaks only when it is strictly higher.
+ */
+function topLimit(usage: ComposerUsage | null): RingLimit | null
 {
-	const {weekly, fiveHour} = usage ?? {};
+	const {weekly, fiveHour, scoped = []} = usage ?? {};
+	const windowLimit = (label: string, window: RateLimitWindow): RingLimit => (
+	{
+		label,
+		usedPercentage: window.usedPercentage,
+		resetsAt: window.resetsAt,
+		emptyCaption: "Starts with your first message",
+	});
+	let top: RingLimit | null = null;
 	if (weekly && (!fiveHour || weekly.usedPercentage >= fiveHour.usedPercentage))
 	{
-		return {
-			label: WEEKLY_LABEL,
-			window: weekly,
-		};
+		top = windowLimit(WEEKLY_LABEL, weekly);
 	}
-	if (fiveHour)
-		return {
-			label: FIVE_HOUR_LABEL,
-			window: fiveHour,
-		};
-	return null;
+	else if (fiveHour)
+	{
+		top = windowLimit(FIVE_HOUR_LABEL, fiveHour);
+	}
+	for (const meter of scoped)
+	{
+		if (top === null || meter.usedPercentage > top.usedPercentage)
+		{
+			top =
+			{
+				label: meter.label,
+				usedPercentage: meter.usedPercentage,
+				resetsAt: meter.resetsAt,
+				emptyCaption: scopedEmptyCaption(meter),
+			};
+		}
+	}
+	return top;
+}
+
+function limitReset(limit: RingLimit, nowMs: number, timeZone: string | undefined): string
+{
+	return limit.resetsAt === null ? limit.emptyCaption : formatResetLabel(limit.resetsAt, nowMs, timeZone);
 }
 
 /** The ring's fill: the highest plan-limit utilisation, or null with no limits. */
 export function usageRingPercent(usage: UsageLimits | null): number | null
 {
-	const percents = [usage?.fiveHour, usage?.weekly].flatMap((window) => (window ? [window.usedPercentage] : []));
+	const percents = [usage?.fiveHour, usage?.weekly, ...(usage?.scoped ?? [])].flatMap((window) =>
+		window ? [window.usedPercentage] : [],
+	);
 	return percents.length > 0 ? Math.max(...percents) : null;
 }
 
@@ -451,7 +514,7 @@ export type UsageRingMode = "plan" | "context";
 
 export function usageRingMode(usage: ComposerUsage | null): UsageRingMode
 {
-	if (usage?.fiveHour || usage?.weekly) return "plan";
+	if (usage?.fiveHour || usage?.weekly || (usage?.scoped?.length ?? 0) > 0) return "plan";
 	return usage?.contextTokens == null ? "plan" : "context";
 }
 
@@ -494,7 +557,7 @@ export function formatUsageAriaLabel(usage: ComposerUsage | null, nowMs: number,
 	if (context !== null) return `Usage: Context ${context}`;
 	const limit = topLimit(usage);
 	if (!limit) return "Usage";
-	return `Usage: ${limit.label}: ${Math.round(limit.window.usedPercentage)}%, ${formatResetLabel(limit.window.resetsAt, nowMs, timeZone)}`;
+	return `Usage: ${limit.label}: ${Math.round(limit.usedPercentage)}%, ${limitReset(limit, nowMs, timeZone)}`;
 }
 
 /** The ring tooltip's rows: "Weekly · all models: 73%", then "Resets Tue 4:00 AM"; in context mode "Context …". */
@@ -504,10 +567,7 @@ export function formatUsageTooltipRows(usage: ComposerUsage | null, nowMs: numbe
 	if (context !== null) return [`Context ${context}`];
 	const limit = topLimit(usage);
 	if (!limit) return ["Usage"];
-	return [
-		`${limit.label}: ${Math.round(limit.window.usedPercentage)}%`,
-		formatResetLabel(limit.window.resetsAt, nowMs, timeZone),
-	];
+	return [`${limit.label}: ${Math.round(limit.usedPercentage)}%`, limitReset(limit, nowMs, timeZone)];
 }
 
 const RELATIVE_UNITS: ReadonlyArray<[Intl.RelativeTimeFormatUnit, number]> = [

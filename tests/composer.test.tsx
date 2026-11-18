@@ -1430,6 +1430,73 @@ describe("Composer", () =>
 			]);
 		});
 
+		it("lists the model family's cached weekly row after the week, captioned while unused", async () =>
+		{
+			vi.useFakeTimers(
+				{
+					now: NOW_MS,
+					toFake: ["Date"],
+				},
+			);
+			render(
+				<QueryClientProvider client={new QueryClient()}>
+					<Composer
+						variant="session"
+						draftKey="session-alice"
+						onSend={() =>
+						{
+						}}
+						chin={
+						{
+							...CHIN,
+							usage: CHIN.usage &&
+							{
+								...CHIN.usage,
+								scoped: [
+									{
+										key: "weekly_scoped-1",
+										kind: "weekly_scoped",
+										label: "Weekly · Fable",
+										usedPercentage: 0,
+										resetsAt: null,
+										modelScope: "Fable",
+										surfaceScope: undefined,
+									},
+								],
+							},
+						}}
+					/>
+				</QueryClientProvider>,
+			);
+
+			fireEvent.click(
+				screen.getByRole(
+					"button",
+					{
+						name: /^Usage:/,
+					},
+				),
+			);
+			const group = within(await screen.findByRole("dialog")).getByRole(
+				"group",
+				{
+					name: "Usage limits",
+				},
+			);
+
+			expect(
+				Array.from(group.querySelectorAll("[data-usage-row]"), (row) =>
+					[row.children[0], ...Array.from(row.children[1]?.children ?? [])]
+						.map((cell) => cell?.textContent)
+						.join(" | "),
+				),
+			).toStrictEqual([
+				"Session limit | Resets in 4 hr 11 min | 10%",
+				"Weekly · all models | Resets in 14 hr 31 min | 65%",
+				"Weekly · Fable | You haven’t used Fable yet | 0%",
+			]);
+		});
+
 		it("previews the most-used limit and its reset in a two-row tooltip on the ring", () =>
 		{
 			vi.useFakeTimers(

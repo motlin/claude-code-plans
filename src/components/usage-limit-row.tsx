@@ -1,6 +1,5 @@
 import {useId} from "react";
 
-import {formatResetLabel, type RateLimitWindow} from "../lib/composer-state";
 import {usageVariant, type UsageVariant} from "../lib/usage";
 
 /** cds Meter's `bg-fill-<variant>`; the popover pins every variant's track to alpha-2. */
@@ -71,11 +70,20 @@ export function UsageMeter({
  * alpha-2 track (inset alpha-1 ring) that names the row and describes it with the reset. The fill
  * takes upstream's `wV` severity: warning at 75%, danger at 90%.
  */
-export function UsagePopoverLimitRow({label, window}: {label: string; window: RateLimitWindow})
+export function UsagePopoverLimitRow({
+	label,
+	usedPercentage,
+	caption,
+}: {
+	label: string;
+	usedPercentage: number;
+	/** The reset ("Resets in 4 hr 11 min"), or upstream's `Kn` copy for a window that has not started. */
+	caption: string;
+})
 {
 	const labelId = useId();
 	const resetId = useId();
-	const percent = Math.round(Math.min(100, Math.max(0, window.usedPercentage)));
+	const percent = Math.round(Math.min(100, Math.max(0, usedPercentage)));
 	const variant = usageVariant(percent);
 	return (
 		<div className="flex flex-col gap-1">
@@ -84,7 +92,7 @@ export function UsagePopoverLimitRow({label, window}: {label: string; window: Ra
 					{label}
 				</span>
 				<span className="ms-auto flex items-baseline gap-1.5 tabular-nums text-muted-as-secondary">
-					<span id={resetId}>{formatResetLabel(window.resetsAt, Date.now())}</span>
+					<span id={resetId}>{caption}</span>
 					<span aria-hidden="true">{percent}%</span>
 				</span>
 			</div>

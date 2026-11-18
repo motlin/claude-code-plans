@@ -18,6 +18,7 @@ import
 	AttachmentRecordSchema as StrictAttachmentRecordSchema,
 	BridgeSessionRecordSchema as StrictBridgeSessionRecordSchema,
 	HistorySuppressionRecordSchema as StrictHistorySuppressionRecordSchema,
+	ClaudeJsonCachedUsageSchema as StrictClaudeJsonCachedUsageSchema,
 	ClaudeJsonMcpSchema as StrictClaudeJsonMcpSchema,
 	ClaudeJsonOauthAccountSchema as StrictClaudeJsonOauthAccountSchema,
 	ClaudeJsonProjectMcpSchema as StrictClaudeJsonProjectMcpSchema,
@@ -50,6 +51,7 @@ export const ApiRequestShapeRecordSchema = /* @__PURE__ */ toLenient(StrictApiRe
 export const AttachmentPayloadSchema = /* @__PURE__ */ toLenient(StrictAttachmentPayloadSchema);
 export const AttachmentRecordSchema = /* @__PURE__ */ toLenient(StrictAttachmentRecordSchema);
 export const BridgeSessionRecordSchema = /* @__PURE__ */ toLenient(StrictBridgeSessionRecordSchema);
+export const ClaudeJsonCachedUsageSchema = /* @__PURE__ */ toLenient(StrictClaudeJsonCachedUsageSchema);
 export const ClaudeJsonMcpSchema = /* @__PURE__ */ toLenient(StrictClaudeJsonMcpSchema);
 export const ClaudeJsonOauthAccountSchema = /* @__PURE__ */ toLenient(StrictClaudeJsonOauthAccountSchema);
 export const ClaudeJsonProjectMcpSchema = /* @__PURE__ */ toLenient(StrictClaudeJsonProjectMcpSchema);

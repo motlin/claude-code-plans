@@ -39,6 +39,7 @@ function summary(weekly: [number, number] | null, session: [number, number] | nu
 		fiveHour: toWindow(session),
 		sevenDay: toWindow(weekly),
 		updatedAt: new Date(NOW_MS).toISOString(),
+		scoped: null,
 	};
 }
 

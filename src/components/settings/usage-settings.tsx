@@ -1,21 +1,30 @@
 import {useQuery} from "@tanstack/react-query";
 import {RefreshCw} from "lucide-react";
-import {useId} from "react";
+import {type ReactNode, useId, useState} from "react";
+import {composerDefaultsQueryOptions} from "../../lib/api/composer-defaults";
 import {localAccountQueryOptions} from "../../lib/api/local-account";
 import {usageQueryOptions} from "../../lib/api/usage";
 import
 {
 	formatLimitCaption,
 	formatUsageUpdated,
+	matchesModelFamily,
 	meterPercent,
 	paceHeadline,
+	type ScopedUsage,
+	scopedModelName,
+	type UsageLimit,
 	usageVariant,
 	type UsageSummary,
 	type UsageVariant,
 	type UsageWindow,
+	type WeeklyShare,
+	weeklyScopedShares,
 } from "../../lib/usage";
 import {ExternalTextLink} from "../external-text-link";
 import {UsageBars} from "../usage-bars";
+import * as Collapsible from "../ui/collapsible";
+import {Icon} from "../ui/icon";
 import {Skeleton} from "../ui/skeleton";
 import {Tooltip} from "../ui/tooltip";
 import {SettingsSection} from "./settings-row";
@@ -48,18 +57,36 @@ const FILL_CLASS =
 	danger: "bg-usage-danger",
 } as const satisfies Record<UsageVariant, string>;
 
+/** Upstream's meter share overlay colours: blue-300, yellow-150 (dark yellow-100), red-300. */
+const SHARE_CLASS =
+{
+	accent: "bg-usage-share-accent",
+	warning: "bg-usage-share-warning",
+	danger: "bg-usage-share-danger",
+} as const satisfies Record<UsageVariant, string>;
+
+/** Upstream's `"share"` meter tone: the whole fill is a model's share of the week. */
+type MeterTone = "share";
+
 function UsageMeter({
 	percent,
 	variant,
 	used,
 	labelId,
+	share = 0,
+	tone,
 }: {
 	percent: number;
 	variant: UsageVariant;
 	used: string;
 	labelId: string;
+	/** The week's percent spent by model-scoped shares, painted over the fill from the inline start. */
+	share?: number;
+	tone?: MeterTone | undefined;
 })
 {
+	// Upstream's share span: as wide as the fill on a share-toned meter, else the share capped by the fill.
+	const shareWidth = tone === "share" ? percent : Math.min(share, percent);
 	return (
 		<div
 			role="meter"
@@ -71,14 +98,31 @@ function UsageMeter({
 			className={`relative h-1 w-full overflow-hidden rounded-full shadow-[inset_0_0_0_1px_var(--color-alpha-1)] ${percent === 0 ? "bg-alpha-1" : TRACK_CLASS[variant]}`}
 		>
 			{percent === 0 ? null : (
-				<div
-					data-usage-bar-fill=""
-					className={`h-full w-full rounded-full ${FILL_CLASS[variant]} transition-transform duration-200 ease-[cubic-bezier(.165,.84,.44,1)] motion-reduce:transition-none rtl:[--_meter-dir:1]`}
-					style={
-					{
-						transform: `translateX(calc(var(--_meter-dir, -1) * (100% - min(100%, max(${percent}%, 4px)))))`,
-					}}
-				/>
+				<>
+					<div
+						data-usage-bar-fill=""
+						className={`h-full w-full rounded-full ${FILL_CLASS[variant]} transition-transform duration-200 ease-[cubic-bezier(.165,.84,.44,1)] motion-reduce:transition-none rtl:[--_meter-dir:1]`}
+						style={
+						{
+							transform: `translateX(calc(var(--_meter-dir, -1) * (100% - min(100%, max(${percent}%, 4px)))))`,
+						}}
+					/>
+					{shareWidth > 0 && (
+						<span
+							aria-hidden="true"
+							data-testid="usage-meter-share"
+							// A warning or danger share-toned meter keeps the span transparent.
+							data-share={variant === "accent" || tone !== "share" ? shareWidth : 0}
+							data-usage-bar-fill=""
+							className={`absolute inset-y-0 start-0 rounded-full data-[share=0]:opacity-0 ${SHARE_CLASS[variant]}`}
+							style={
+							{
+								inlineSize: `${shareWidth}%`,
+								minInlineSize: 4,
+							}}
+						/>
+					)}
+				</>
 			)}
 		</div>
 	);
@@ -87,18 +131,22 @@ function UsageMeter({
 function UsageMeterRow({
 	label,
 	caption,
-	window,
+	usedPct,
 	dimmed = false,
+	share,
+	tone,
 }: {
-	label: string;
-	caption: string;
-	window: UsageWindow;
+	label: ReactNode;
+	caption: ReactNode;
+	usedPct: number;
 	/** Upstream's paused session row: secondary label and a half-opacity meter. */
 	dimmed?: boolean;
+	share?: number | undefined;
+	tone?: MeterTone | undefined;
 })
 {
 	const labelId = useId();
-	const percent = meterPercent(window.usedPct);
+	const percent = meterPercent(usedPct);
 	const variant = usageVariant(percent);
 	const used = `${percent}% used`;
 	return (
@@ -113,7 +161,17 @@ function UsageMeterRow({
 			</div>
 			<div className="flex min-w-48 flex-1 items-center gap-3">
 				<div className={dimmed ? "flex-1 opacity-50" : "flex-1"}>
-					<UsageMeter percent={percent} variant={variant} used={used} labelId={labelId} />
+					<UsageMeter
+						percent={percent}
+						variant={variant}
+						used={used}
+						labelId={labelId}
+						{...(share !== undefined &&
+						{
+							share,
+						})}
+						tone={tone}
+					/>
 				</div>
 				<span
 					className={`min-w-20 whitespace-nowrap text-end text-footnote ${variant === "danger" && !dimmed ? "text-danger" : "text-secondary"}`}
@@ -122,6 +180,132 @@ function UsageMeterRow({
 				</span>
 			</div>
 		</div>
+	);
+}
+
+/** A model-scoped weekly row and its slice of the week, if the cache carries one. */
+interface ScopedRow
+{
+	key: string;
+	name: string;
+	limit: UsageLimit;
+	share: WeeklyShare | undefined;
+}
+
+/** The cache's model-scoped weekly rows (upstream's `J` rows), each with its share (`Te`). */
+function scopedRows(scoped: ScopedUsage | null): ScopedRow[]
+{
+	if (scoped === null) return [];
+	const shares = new Map(
+		weeklyScopedShares(scoped.limits, scoped.shares)?.shares.map((share) => [share.limitIndex, share]),
+	);
+	return scoped.limits.flatMap((limit, index) =>
+	{
+		const name = scopedModelName(limit);
+		return name === undefined
+			? []
+			: [
+					{
+						key: `${limit.kind}-${index}`,
+						name,
+						limit,
+						share: shares.get(index),
+					},
+				];
+	});
+}
+
+/** A cached ISO reset as upstream's row caption, or "Starts with your first message" without one. */
+function scopedReset(resetsAt: string | null, nowMs: number, timeZone: string | undefined): string
+{
+	return formatLimitCaption(resetsAt === null ? Number.NaN : Date.parse(resetsAt) / 1000, nowMs, "long", timeZone);
+}
+
+/**
+ * Upstream's `Ei` "This week" fold: the week row's label toggles a panel of per-model rows. Open, the
+ * week meter paints the models' summed shares over its fill; each nested row with a share is
+ * share-toned. The open state is local and starts at `defaultOpen`.
+ */
+function WeekFold({
+	week,
+	rows,
+	defaultOpen,
+	nowMs,
+	timeZone,
+}: {
+	week: UsageWindow;
+	rows: ScopedRow[];
+	defaultOpen: boolean;
+	nowMs: number;
+	timeZone: string | undefined;
+})
+{
+	const [local, setLocal] = useState<boolean | null>(null);
+	const open = local ?? defaultOpen;
+	const shareUsed = rows.reduce((sum, row) => sum + (row.share?.used ?? 0), 0);
+	return (
+		<Collapsible.Root
+			open={open}
+			onOpenChange={setLocal}
+			className="flex flex-col"
+			data-testid="pace-week"
+			data-state={open ? "open" : "closed"}
+		>
+			<UsageMeterRow
+				label={
+					<Collapsible.Trigger hideCaret className="text-body text-primary" data-testid="pace-week-toggle">
+						This week
+						<Icon
+							name="CaretDown"
+							size="sm"
+							className={`text-secondary transition-transform motion-reduce:transition-none${open ? " rotate-180" : ""}`}
+						/>
+					</Collapsible.Trigger>
+				}
+				caption={formatLimitCaption(week.resetsAt, nowMs, "long", timeZone)}
+				usedPct={week.usedPct}
+				share={open ? shareUsed : 0}
+			/>
+			<Collapsible.Panel>
+				<div data-testid="pace-week-scoped" className="flex flex-col gap-5 pt-4">
+					{rows.map((row) => (
+						<UsageMeterRow
+							key={row.key}
+							label={row.name}
+							caption={
+								<>
+									{row.share === undefined ? null : (
+										<span className="block">Up to {row.share.allowance}% of your weekly limit</span>
+									)}
+									<span className="block">{scopedReset(row.limit.resets_at, nowMs, timeZone)}</span>
+								</>
+							}
+							usedPct={row.limit.percent}
+							tone={row.share === undefined ? undefined : "share"}
+						/>
+					))}
+				</div>
+			</Collapsible.Panel>
+		</Collapsible.Root>
+	);
+}
+
+/** Upstream's flat scoped row when there is no week to nest under: "Fable this week". */
+function FlatScopedRow({row, nowMs, timeZone}: {row: ScopedRow; nowMs: number; timeZone: string | undefined})
+{
+	const reset = row.limit.resets_at === null ? null : Date.parse(row.limit.resets_at) / 1000;
+	const resetLabel =
+		reset === null || !(reset * 1000 > nowMs) ? null : formatLimitCaption(reset, nowMs, "long", timeZone);
+	return (
+		<UsageMeterRow
+			label={`${row.name} this week`}
+			caption={
+				resetLabel === null
+					? `Separate weekly limit for ${row.name}`
+					: `Separate weekly limit for ${row.name} · ${resetLabel}`
+			}
+			usedPct={row.limit.percent}
+		/>
 	);
 }
 
@@ -134,11 +318,15 @@ interface UsagePanelProps
 	timeZone?: string | undefined;
 	refreshing: boolean;
 	onRefresh: () => void;
+	/** The default chat model; a scoped row of its family opens the "This week" fold (upstream `Ee`). */
+	defaultModel?: string | null | undefined;
 }
 
-export function UsagePanel({usage, planDetail, nowMs, timeZone, refreshing, onRefresh}: UsagePanelProps)
+export function UsagePanel({usage, planDetail, nowMs, timeZone, refreshing, onRefresh, defaultModel}: UsagePanelProps)
 {
 	const headline = paceHeadline(usage, nowMs, timeZone);
+	const scoped = scopedRows(usage.scoped);
+	const foldOpen = scoped.some((row) => matchesModelFamily(row.limit, defaultModel));
 	// Upstream's `sessionPaused`: the week is hit (usage credits never apply locally).
 	const sessionPaused = usage.sevenDay !== null && usage.sevenDay.usedPct >= 100;
 
@@ -165,7 +353,7 @@ export function UsagePanel({usage, planDetail, nowMs, timeZone, refreshing, onRe
 								</h3>
 							</div>
 						)}
-						{usage.fiveHour === null && usage.sevenDay === null ? (
+						{usage.fiveHour === null && usage.sevenDay === null && scoped.length === 0 ? (
 							<div data-settings-item="" className="py-3">
 								<p className="text-body text-secondary">
 									Usage appears after a Claude Code session reports its status line
@@ -187,11 +375,23 @@ export function UsagePanel({usage, planDetail, nowMs, timeZone, refreshing, onRe
 															timeZone,
 														)
 											}
-											window={usage.fiveHour}
+											usedPct={usage.fiveHour.usedPct}
 											dimmed={sessionPaused}
 										/>
 									)}
-									{usage.sevenDay === null ? null : (
+									{usage.sevenDay === null ? (
+										scoped.map((row) => (
+											<FlatScopedRow key={row.key} row={row} nowMs={nowMs} timeZone={timeZone} />
+										))
+									) : scoped.length > 0 ? (
+										<WeekFold
+											week={usage.sevenDay}
+											rows={scoped}
+											defaultOpen={foldOpen}
+											nowMs={nowMs}
+											timeZone={timeZone}
+										/>
+									) : (
 										<UsageMeterRow
 											label="This week"
 											caption={formatLimitCaption(
@@ -200,7 +400,7 @@ export function UsagePanel({usage, planDetail, nowMs, timeZone, refreshing, onRe
 												"long",
 												timeZone,
 											)}
-											window={usage.sevenDay}
+											usedPct={usage.sevenDay.usedPct}
 										/>
 									)}
 								</div>
@@ -286,6 +486,7 @@ export function UsageSettings()
 {
 	const usageQuery = useQuery(usageQueryOptions);
 	const {data: account} = useQuery(localAccountQueryOptions);
+	const {data: defaults} = useQuery(composerDefaultsQueryOptions);
 
 	if (usageQuery.data === undefined)
 	{
@@ -303,6 +504,7 @@ export function UsageSettings()
 			nowMs={usageQuery.dataUpdatedAt}
 			refreshing={usageQuery.isFetching}
 			onRefresh={() => void usageQuery.refetch()}
+			defaultModel={defaults?.model}
 		/>
 	);
 }

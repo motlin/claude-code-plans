@@ -23,6 +23,7 @@ function spent(resetsAt = RESETS_AT): UsageSummary
 		},
 		sevenDay: null,
 		updatedAt: null,
+		scoped: null,
 	};
 }
 
@@ -35,6 +36,7 @@ const CLEAR: UsageSummary =
 	},
 	sevenDay: null,
 	updatedAt: null,
+	scoped: null,
 };
 
 beforeEach(() =>

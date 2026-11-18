@@ -3786,6 +3786,64 @@ export const ClaudeJsonOauthAccountSchema = z
 	)
 	.strict();
 
+/** One row of the usage endpoint's `limits[]`, as the CLI caches it. */
+const UsageLimitSchema = z.strictObject(
+	{
+		kind: z.string(),
+		group: z.string(),
+		percent: z.number(),
+		resets_at: z.string().nullable(),
+		severity: z.string(),
+		is_active: z.boolean(),
+		scope: z
+			.strictObject(
+				{
+					model: z
+						.strictObject(
+							{
+								display_name: z.string(),
+								id: z.string().nullable().optional(),
+							},
+						)
+						.nullish(),
+					surface: z
+						.strictObject(
+							{
+								display_name: z.string(),
+							},
+						)
+						.nullish(),
+				},
+			)
+			.nullish(),
+	},
+);
+
+/** One `weekly_scoped_shares[]` entry: a model's slice of the weekly limit. */
+const WeeklyScopedShareSchema = z.strictObject(
+	{
+		limit_index: z.number(),
+		used_percent_of_weekly: z.number(),
+		allowance_percent_of_weekly: z.number(),
+	},
+);
+
+// ~/.claude.json `cachedUsageUtilization`: the CLI's copy of the usage endpoint's body, written on
+// every successful usage fetch. The body churns, so callers pick `limits` and
+// `weekly_scoped_shares` out of `utilization` first, then parse that projection.
+export const ClaudeJsonCachedUsageSchema = z.strictObject(
+	{
+		fetchedAtMs: z.number(),
+		accountUuid: z.string().optional(),
+		utilization: z.strictObject(
+			{
+				limits: z.array(UsageLimitSchema).nullish(),
+				weekly_scoped_shares: z.array(WeeklyScopedShareSchema).nullish(),
+			},
+		),
+	},
+);
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------

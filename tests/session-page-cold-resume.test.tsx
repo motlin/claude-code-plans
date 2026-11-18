@@ -224,6 +224,7 @@ function seededQueryClient(seed: Seed)
 			},
 			sevenDay: null,
 			updatedAt: new Date().toISOString(),
+			scoped: null,
 		},
 	);
 	if (seed.state !== undefined)

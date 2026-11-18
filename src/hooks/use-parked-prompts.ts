@@ -466,4 +466,5 @@ const emptyUsage: UsageSummary =
 	fiveHour: null,
 	sevenDay: null,
 	updatedAt: "",
+	scoped: null,
 };

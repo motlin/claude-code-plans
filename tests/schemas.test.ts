@@ -24,7 +24,9 @@ import
 	SessionRegistryFileSchema,
 	ClaudeSettingsSchema,
 	ContextMirrorFileSchema,
+	ClaudeJsonCachedUsageSchema,
 } from "../src/lib/schemas";
+import {pickCachedUsage} from "../src/lib/usage-reader";
 import
 {
 	BashInputSchema,
@@ -5863,5 +5865,26 @@ describe("ClaudeSettingsSchema fast mode and advisor", () =>
 				advisorModel: "opus",
 			},
 		);
+	});
+});
+
+describe("ClaudeJsonCachedUsageSchema against disk", () =>
+{
+	it("validates the limits and shares the CLI cached in ~/.claude.json", () =>
+	{
+		let raw: unknown;
+		try
+		{
+			raw = JSON.parse(readFileSync(join(homedir(), ".claude.json"), "utf-8"));
+		}
+		catch
+		{
+			return;
+		}
+		const cache = (raw as Record<string, unknown> | null)?.["cachedUsageUtilization"];
+		if (typeof cache !== "object" || cache === null) return;
+
+		const result = ClaudeJsonCachedUsageSchema.safeParse(pickCachedUsage(cache as Record<string, unknown>));
+		expect(result.success ? [] : result.error.issues).toStrictEqual([]);
 	});
 });

@@ -27,21 +27,70 @@ const RATE_LIMITS =
 	},
 };
 
+/** Fri Nov 6 2026 12:00 UTC: inside the week that resets Tue Nov 10 08:00 UTC. */
+const NOW_MS = Date.UTC(2026, 10, 6, 12);
+const ACCOUNT_UUID = "alice-account";
+const WEEK_RESETS_AT = "2026-11-10T08:00:00.395665+00:00";
+
+/** The live usage body's limits on 2026-11-06: the weekly limit and a Fable-only weekly limit. */
+const LIVE_LIMITS = [
+	{
+		kind: "weekly_all",
+		group: "weekly",
+		percent: 45,
+		severity: "normal",
+		resets_at: WEEK_RESETS_AT,
+		scope: null,
+		is_active: true,
+	},
+	{
+		kind: "weekly_scoped",
+		group: "weekly",
+		percent: 0,
+		severity: "normal",
+		resets_at: WEEK_RESETS_AT,
+		scope:
+		{
+			model:
+			{
+				id: null,
+				display_name: "Fable",
+			},
+			surface: null,
+		},
+		is_active: false,
+	},
+];
+
+const LIVE_SHARES = [
+	{
+		limit_index: 1,
+		used_percent_of_weekly: 0,
+		allowance_percent_of_weekly: 50,
+	},
+];
+
 let directory: string;
+let home: string;
 
 beforeEach(async () =>
 {
 	directory = await mkdtemp(join(tmpdir(), "api-usage-"));
+	home = await mkdtemp(join(tmpdir(), "api-usage-home-"));
 });
 
 afterEach(async () =>
 {
-	await rm(
-		directory,
-		{
-			recursive: true,
-			force: true,
-		},
+	await Promise.all(
+		[directory, home].map(async (path) =>
+			rm(
+				path,
+				{
+					recursive: true,
+					force: true,
+				},
+			),
+		),
 	);
 });
 
@@ -52,9 +101,45 @@ async function writeStatusline(name: string, json: unknown, mtimeSeconds: number
 	await utimes(filePath, mtimeSeconds, mtimeSeconds);
 }
 
+async function writeClaudeJson(json: unknown): Promise<void>
+{
+	await writeFile(join(home, ".claude.json"), typeof json === "string" ? json : JSON.stringify(json));
+}
+
+function claudeJson(cache: Record<string, unknown>, accountUuid = ACCOUNT_UUID): unknown
+{
+	return {
+		numStartups: 3,
+		oauthAccount:
+		{
+			accountUuid,
+		},
+		cachedUsageUtilization:
+		{
+			fetchedAtMs: NOW_MS - 60_000,
+			accountUuid: ACCOUNT_UUID,
+			...cache,
+		},
+	};
+}
+
+/** The cached body as the CLI stores it: the live limits and shares among the other keys. */
+const LIVE_UTILIZATION =
+{
+	five_hour: null,
+	seven_day:
+	{
+		utilization: 45,
+		resets_at: WEEK_RESETS_AT,
+	},
+	extra_usage: null,
+	limits: LIVE_LIMITS,
+	weekly_scoped_shares: LIVE_SHARES,
+};
+
 async function requestUsage(statuslineDirectory: string): Promise<unknown>
 {
-	const response = await handleUsageRequest(statuslineDirectory);
+	const response = await handleUsageRequest(statuslineDirectory, home, NOW_MS);
 	expect(response.status).toBe(200);
 	expect(response.headers.get("Cache-Control")).toBe("private, max-age=0, must-revalidate");
 	return response.json();
@@ -104,6 +189,7 @@ describe("GET /api/usage", () =>
 					resetsAt: 1_790_300_000,
 				},
 				updatedAt: new Date(1_700_000_100_000).toISOString(),
+				scoped: null,
 			},
 		);
 	});
@@ -149,6 +235,7 @@ describe("GET /api/usage", () =>
 					resetsAt: 1_794_297_600,
 				},
 				updatedAt: new Date(1_700_000_100_000).toISOString(),
+				scoped: null,
 			},
 		);
 	});
@@ -178,6 +265,7 @@ describe("GET /api/usage", () =>
 				fiveHour: null,
 				sevenDay: null,
 				updatedAt: new Date(1_700_000_100_000).toISOString(),
+				scoped: null,
 			},
 		);
 	});
@@ -204,6 +292,7 @@ describe("GET /api/usage", () =>
 				},
 				sevenDay: null,
 				updatedAt: new Date(1_700_000_000_000).toISOString(),
+				scoped: null,
 			},
 		);
 	});
@@ -233,6 +322,7 @@ describe("GET /api/usage", () =>
 					resetsAt: 1_790_300_000,
 				},
 				updatedAt: new Date(1_700_000_000_000).toISOString(),
+				scoped: null,
 			},
 		);
 	});
@@ -244,9 +334,179 @@ describe("GET /api/usage", () =>
 			fiveHour: null,
 			sevenDay: null,
 			updatedAt: null,
+			scoped: null,
 		};
 		expect(await requestUsage(directory)).toStrictEqual(empty);
 		expect(await requestUsage(join(directory, "missing"))).toStrictEqual(empty);
+	});
+
+	it("adds the model-scoped weekly rows and shares cached in ~/.claude.json", async () =>
+	{
+		await writeStatusline(
+			"session.json",
+			{
+				rate_limits: RATE_LIMITS,
+			},
+			1_700_000_000,
+		);
+		await writeClaudeJson(
+			claudeJson(
+				{
+					utilization: LIVE_UTILIZATION,
+				},
+			),
+		);
+
+		expect(await requestUsage(directory)).toStrictEqual(
+			{
+				fiveHour:
+				{
+					usedPct: 16,
+					resetsAt: 1_790_000_000,
+				},
+				sevenDay:
+				{
+					usedPct: 66,
+					resetsAt: 1_790_300_000,
+				},
+				updatedAt: new Date(1_700_000_000_000).toISOString(),
+				scoped:
+				{
+					limits: LIVE_LIMITS,
+					shares: LIVE_SHARES,
+					fetchedAt: new Date(NOW_MS - 60_000).toISOString(),
+				},
+			},
+		);
+	});
+
+	it.each([
+		{
+			name: "another account's cache",
+			json: claudeJson(
+				{
+					utilization: LIVE_UTILIZATION,
+				},
+				"bob-account",
+			),
+		},
+		{
+			name: "a cache from a previous week",
+			json: claudeJson(
+				{
+					utilization:
+					{
+						...LIVE_UTILIZATION,
+						limits: LIVE_LIMITS.map((limit) => (
+						{
+							...limit,
+							resets_at: "2026-11-03T08:00:00+00:00",
+						})),
+					},
+				},
+			),
+		},
+		{
+			name: "a cache fetched in the future",
+			json: claudeJson(
+				{
+					fetchedAtMs: NOW_MS + 60_000,
+					utilization: LIVE_UTILIZATION,
+				},
+			),
+		},
+		{
+			name: "a cache without a weekly_all row",
+			json: claudeJson(
+				{
+					utilization:
+					{
+						...LIVE_UTILIZATION,
+						limits: LIVE_LIMITS.slice(1),
+					},
+				},
+			),
+		},
+		{
+			name: "no cached usage",
+			json:
+			{
+				oauthAccount:
+				{
+					accountUuid: ACCOUNT_UUID,
+				},
+			},
+		},
+		{
+			name: "a malformed cache",
+			json: claudeJson(
+				{
+					utilization:
+					{
+						limits: "soon",
+					},
+				},
+			),
+		},
+		{
+			name: "malformed JSON",
+			json: "{not json",
+		},
+	])("leaves scoped null for $name", async ({json}) =>
+	{
+		await writeStatusline(
+			"session.json",
+			{
+				rate_limits: RATE_LIMITS,
+			},
+			1_700_000_000,
+		);
+		await writeClaudeJson(json);
+
+		expect(await requestUsage(directory)).toStrictEqual(
+			{
+				fiveHour:
+				{
+					usedPct: 16,
+					resetsAt: 1_790_000_000,
+				},
+				sevenDay:
+				{
+					usedPct: 66,
+					resetsAt: 1_790_300_000,
+				},
+				updatedAt: new Date(1_700_000_000_000).toISOString(),
+				scoped: null,
+			},
+		);
+	});
+
+	it("reads the cache when neither the account nor the cache names an account uuid", async () =>
+	{
+		const cache =
+		{
+			fetchedAtMs: NOW_MS - 60_000,
+			utilization: LIVE_UTILIZATION,
+		};
+		await writeClaudeJson(
+			{
+				cachedUsageUtilization: cache,
+			},
+		);
+
+		expect(await requestUsage(directory)).toStrictEqual(
+			{
+				fiveHour: null,
+				sevenDay: null,
+				updatedAt: null,
+				scoped:
+				{
+					limits: LIVE_LIMITS,
+					shares: LIVE_SHARES,
+					fetchedAt: new Date(NOW_MS - 60_000).toISOString(),
+				},
+			},
+		);
 	});
 
 	it("validates with the strict client response schema", async () =>
@@ -266,6 +526,13 @@ describe("GET /api/usage", () =>
 				},
 			),
 		).toThrow("Invalid input: expected string, received undefined");
+		await writeClaudeJson(
+			claudeJson(
+				{
+					utilization: LIVE_UTILIZATION,
+				},
+			),
+		);
 		expect(UsageSummaryResponse.parse(await requestUsage(directory))).toStrictEqual(
 			{
 				fiveHour:
@@ -279,6 +546,12 @@ describe("GET /api/usage", () =>
 					resetsAt: 1_790_300_000,
 				},
 				updatedAt: new Date(1_700_000_000_000).toISOString(),
+				scoped:
+				{
+					limits: LIVE_LIMITS,
+					shares: LIVE_SHARES,
+					fetchedAt: new Date(NOW_MS - 60_000).toISOString(),
+				},
 			},
 		);
 	});
@@ -303,6 +576,7 @@ function weekly(usedPct: number, fiveHour: UsageSummary["fiveHour"] = null): Usa
 			resetsAt: WEEK_RESET_MS / 1000,
 		},
 		updatedAt: null,
+		scoped: null,
 	};
 }
 
@@ -398,6 +672,7 @@ describe("paceHeadline", () =>
 				},
 				sevenDay: null,
 				updatedAt: null,
+				scoped: null,
 			},
 			nowMs: edt(23, 4),
 			expected: null,
@@ -409,6 +684,7 @@ describe("paceHeadline", () =>
 				fiveHour: null,
 				sevenDay: null,
 				updatedAt: null,
+				scoped: null,
 			},
 			nowMs: edt(23, 4),
 			expected: null,

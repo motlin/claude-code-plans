@@ -6,7 +6,7 @@ import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import {UsagePanel, UsageSettings} from "../src/components/settings/usage-settings";
 import {apiFetch} from "../src/lib/api/client";
 import {usageQueryOptions} from "../src/lib/api/usage";
-import {formatUsageUpdated} from "../src/lib/usage";
+import {formatUsageUpdated, type ScopedUsage, type UsageSummary} from "../src/lib/usage";
 
 const NOW_MS = Date.UTC(2026, 8, 28, 12, 0);
 const NOW_SECONDS = NOW_MS / 1000;
@@ -148,6 +148,7 @@ describe("UsagePanel", () =>
 						resetsAt: NOW_SECONDS + 21 * 3_600,
 					},
 					updatedAt: new Date(NOW_MS - 5_000).toISOString(),
+					scoped: null,
 				}}
 				planDetail="Max (20x)"
 				nowMs={NOW_MS}
@@ -249,6 +250,7 @@ describe("UsagePanel", () =>
 						resetsAt: NOW_SECONDS + 21 * 3_600,
 					},
 					updatedAt: new Date(NOW_MS).toISOString(),
+					scoped: null,
 				}}
 				planDetail="Max (20x)"
 				nowMs={NOW_MS}
@@ -326,6 +328,7 @@ describe("UsagePanel", () =>
 						resetsAt: NOW_SECONDS + 21 * 3_600,
 					},
 					updatedAt: new Date(NOW_MS).toISOString(),
+					scoped: null,
 				}}
 				nowMs={NOW_MS}
 				timeZone="UTC"
@@ -376,6 +379,7 @@ describe("UsagePanel", () =>
 						resetsAt: NOW_SECONDS - 60,
 					},
 					updatedAt: new Date(NOW_MS).toISOString(),
+					scoped: null,
 				}}
 				nowMs={NOW_MS}
 				timeZone="UTC"
@@ -407,6 +411,7 @@ describe("UsagePanel", () =>
 						resetsAt: NOW_SECONDS + 21 * 3_600,
 					},
 					updatedAt: new Date(NOW_MS).toISOString(),
+					scoped: null,
 				}}
 				nowMs={NOW_MS}
 				timeZone="UTC"
@@ -442,6 +447,7 @@ describe("UsagePanel", () =>
 					},
 					sevenDay: null,
 					updatedAt: new Date(NOW_MS).toISOString(),
+					scoped: null,
 				}}
 				nowMs={NOW_MS}
 				timeZone="UTC"
@@ -468,6 +474,7 @@ describe("UsagePanel", () =>
 					fiveHour: null,
 					sevenDay: null,
 					updatedAt: null,
+					scoped: null,
 				}}
 				nowMs={NOW_MS}
 				timeZone="UTC"
@@ -501,6 +508,7 @@ describe("UsagePanel", () =>
 						resetsAt: NOW_SECONDS + 21 * 3_600,
 					},
 					updatedAt: new Date(NOW_MS - 5 * 60_000).toISOString(),
+					scoped: null,
 				}}
 				nowMs={NOW_MS}
 				timeZone="UTC"
@@ -563,6 +571,7 @@ describe("UsagePanel", () =>
 					fiveHour: null,
 					sevenDay: null,
 					updatedAt: null,
+					scoped: null,
 				}}
 				nowMs={NOW_MS}
 				timeZone="UTC"
@@ -591,6 +600,536 @@ describe("UsagePanel", () =>
 				},
 			).tagName,
 		).toBe("A");
+	});
+});
+
+// The live 2026-11-06 usage body: weekly 45% plus a Fable-only weekly row with a 50% allowance,
+// both resetting Tue Nov 10 3:00 AM in New York.
+const FOLD_NOW_MS = Date.UTC(2026, 10, 6, 12);
+const FOLD_ZONE = "America/New_York";
+const FOLD_RESETS_AT = "2026-11-10T08:00:00.395665+00:00";
+
+function foldScoped({
+	used = 0,
+	fablePercent = 0,
+	shares = true,
+}:
+{
+	used?: number;
+	fablePercent?: number;
+	shares?: boolean;
+} = {}): ScopedUsage
+{
+	return {
+		limits: [
+			{
+				kind: "weekly_all",
+				group: "weekly",
+				percent: 45,
+				severity: "normal",
+				resets_at: FOLD_RESETS_AT,
+				scope: null,
+				is_active: true,
+			},
+			{
+				kind: "weekly_scoped",
+				group: "weekly",
+				percent: fablePercent,
+				severity: "normal",
+				resets_at: FOLD_RESETS_AT,
+				scope:
+				{
+					model:
+					{
+						id: null,
+						display_name: "Fable",
+					},
+					surface: null,
+				},
+				is_active: false,
+			},
+		],
+		shares: shares
+			? [
+					{
+						limit_index: 1,
+						used_percent_of_weekly: used,
+						allowance_percent_of_weekly: 50,
+					},
+				]
+			: [],
+		fetchedAt: new Date(FOLD_NOW_MS - 60_000).toISOString(),
+	};
+}
+
+function foldUsage(scoped: ScopedUsage | null, sevenDay = true): UsageSummary
+{
+	return {
+		fiveHour: null,
+		sevenDay: sevenDay
+			?
+				{
+					usedPct: 45,
+					resetsAt: Date.parse(FOLD_RESETS_AT) / 1000,
+				}
+			: null,
+		updatedAt: null,
+		scoped,
+	};
+}
+
+function renderFold(usage: UsageSummary, defaultModel?: string | null)
+{
+	return render(
+		<UsagePanel
+			usage={usage}
+			nowMs={FOLD_NOW_MS}
+			timeZone={FOLD_ZONE}
+			refreshing={false}
+			onRefresh={() =>
+			{
+			}}
+			defaultModel={defaultModel}
+		/>,
+	);
+}
+
+function foldState()
+{
+	const fold = screen.getByTestId("pace-week");
+	const toggle = screen.getByTestId("pace-week-toggle");
+	const panel = screen.queryByTestId("pace-week-scoped");
+	return {
+		state: fold.getAttribute("data-state"),
+		expanded: toggle.getAttribute("aria-expanded"),
+		controlsPanel: toggle.hasAttribute("aria-controls")
+			? toggle.getAttribute("aria-controls") === panel?.parentElement?.id
+			: null,
+		caretRotated: toggle.querySelector("svg")?.classList.contains("rotate-180") ?? null,
+		panel: panel === null ? null : panel.className,
+	};
+}
+
+function rowText(row: Element)
+{
+	const caption = row.querySelector(".text-footnote.text-secondary");
+	return {
+		label: row.querySelector("[id]")?.textContent,
+		caption: [...(caption?.querySelectorAll("span.block") ?? [])].map((span) => span.textContent),
+		used: row.querySelector("[role=meter]")?.getAttribute("aria-valuetext"),
+	};
+}
+
+function weekShare()
+{
+	const meter = screen.getByRole(
+		"meter",
+		{
+			name: "This week",
+		},
+	);
+	const span = meter.querySelector<HTMLElement>("[data-testid=usage-meter-share]");
+	return span === null
+		? null
+		:
+			{
+				share: span.getAttribute("data-share"),
+				inlineSize: span.style.inlineSize,
+			};
+}
+
+describe("UsagePanel This week fold", () =>
+{
+	it("starts closed with the toggle as the week row's label", () =>
+	{
+		renderFold(foldUsage(foldScoped()));
+
+		const toggle = screen.getByTestId("pace-week-toggle");
+		expect(
+			{
+				...foldState(),
+				tag: toggle.tagName,
+				type: toggle.getAttribute("type"),
+				text: toggle.textContent,
+				className: toggle.className,
+				caret: toggle.querySelector("svg")?.getAttribute("class"),
+				root: screen.getByTestId("pace-week").className,
+				meterNamed: screen
+					.getByRole(
+						"meter",
+						{
+							name: "This week",
+						},
+					)
+					.getAttribute("aria-valuetext"),
+			},
+		).toStrictEqual(
+			{
+				state: "closed",
+				expanded: "false",
+				controlsPanel: null,
+				caretRotated: false,
+				panel: null,
+				tag: "BUTTON",
+				type: "button",
+				text: "This week",
+				className:
+					"cds-reset group/clp inline-flex w-fit items-center gap-1.5 border-0 select-none outline-none focus-visible:outline-hidden font-sans font-control-regular hover:text-primary transition-shadow duration-[60ms] focus-visible:shadow-focus rounded data-[disabled]:opacity-40 data-[disabled]:pointer-events-none text-body text-primary",
+				caret: expect.stringContaining("text-secondary transition-transform") as string,
+				root: "flex flex-col",
+				meterNamed: "45% used",
+			},
+		);
+	});
+
+	it("opens to one nested Fable row with its allowance and long reset", () =>
+	{
+		renderFold(foldUsage(foldScoped()));
+		fireEvent.click(screen.getByTestId("pace-week-toggle"));
+
+		const rows = screen.getByTestId("pace-week-scoped").querySelectorAll("[data-usage-row]");
+		expect(
+			{
+				...foldState(),
+				rows: [...rows].map(rowText),
+			},
+		).toStrictEqual(
+			{
+				state: "open",
+				expanded: "true",
+				controlsPanel: true,
+				caretRotated: true,
+				panel: "flex flex-col gap-5 pt-4",
+				rows: [
+					{
+						label: "Fable",
+						caption: ["Up to 50% of your weekly limit", "Resets Tuesday 3:00 AM"],
+						used: "0% used",
+					},
+				],
+			},
+		);
+	});
+
+	it("toggles closed and open again from the focused toggle, keeping focus", () =>
+	{
+		renderFold(foldUsage(foldScoped()));
+		const toggle = screen.getByTestId("pace-week-toggle");
+		toggle.focus();
+
+		fireEvent.click(toggle);
+		const opened = foldState().state;
+		fireEvent.click(toggle);
+		const closed = foldState().state;
+
+		expect(
+			{
+				opened,
+				closed,
+				focused: document.activeElement === toggle,
+			},
+		).toStrictEqual(
+			{
+				opened: "open",
+				closed: "closed",
+				focused: true,
+			},
+		);
+	});
+
+	it("captions a nested row without a share with its reset only", () =>
+	{
+		renderFold(
+			foldUsage(
+				foldScoped(
+					{
+						shares: false,
+					},
+				),
+			),
+		);
+		fireEvent.click(screen.getByTestId("pace-week-toggle"));
+
+		expect(
+			[...screen.getByTestId("pace-week-scoped").querySelectorAll("[data-usage-row]")].map(rowText),
+		).toStrictEqual([
+			{
+				label: "Fable",
+				caption: ["Resets Tuesday 3:00 AM"],
+				used: "0% used",
+			},
+		]);
+	});
+
+	it("keeps today's flat week row without scoped rows", () =>
+	{
+		renderFold(foldUsage(null));
+
+		expect(
+			{
+				fold: screen.queryByTestId("pace-week"),
+				toggle: screen.queryByTestId("pace-week-toggle"),
+				week: screen.getByText("This week").tagName,
+				caption: screen.getByText("Resets Tuesday 3:00 AM").className,
+			},
+		).toStrictEqual(
+			{
+				fold: null,
+				toggle: null,
+				week: "SPAN",
+				caption: "text-footnote text-secondary",
+			},
+		);
+	});
+
+	it("shows a flat Fable this week row when there is no week to nest under", () =>
+	{
+		renderFold(foldUsage(foldScoped(), false));
+
+		expect(
+			{
+				fold: screen.queryByTestId("pace-week"),
+				rows: [...document.querySelectorAll("[data-usage-row]")].map((row) => (
+				{
+					label: row.querySelector("[id]")?.textContent,
+					caption: row.querySelector(".text-footnote.text-secondary")?.textContent,
+				})),
+			},
+		).toStrictEqual(
+			{
+				fold: null,
+				rows: [
+					{
+						label: "Fable this week",
+						caption: "Separate weekly limit for Fable · Resets Tuesday 3:00 AM",
+					},
+				],
+			},
+		);
+	});
+
+	it("paints the models' used share over the week meter only while open", () =>
+	{
+		renderFold(
+			foldUsage(
+				foldScoped(
+					{
+						used: 10,
+						fablePercent: 20,
+					},
+				),
+			),
+		);
+		const closed = weekShare();
+		fireEvent.click(screen.getByTestId("pace-week-toggle"));
+		const opened = weekShare();
+		const nested = screen
+			.getByTestId("pace-week-scoped")
+			.querySelector("[data-testid=usage-meter-share]")
+			?.getAttribute("data-share");
+		fireEvent.click(screen.getByTestId("pace-week-toggle"));
+
+		expect(
+			{
+				closed,
+				opened,
+				nested,
+				reclosed: weekShare(),
+			},
+		).toStrictEqual(
+			{
+				closed: null,
+				opened:
+				{
+					share: "10",
+					inlineSize: "10%",
+				},
+				nested: "20",
+				reclosed: null,
+			},
+		);
+	});
+
+	it.each([
+		{
+			model: "claude-fable-1",
+			state: "open",
+		},
+		{
+			model: "mythos",
+			state: "open",
+		},
+		{
+			model: "opus",
+			state: "closed",
+		},
+		{
+			model: null,
+			state: "closed",
+		},
+	])("opens by default for the $model default model: $state", ({model, state}) =>
+	{
+		renderFold(foldUsage(foldScoped()), model);
+
+		expect(screen.getByTestId("pace-week").getAttribute("data-state")).toBe(state);
+	});
+
+	it("keeps the user's choice across new usage data", () =>
+	{
+		const {rerender} = renderFold(foldUsage(foldScoped()), "claude-fable-1");
+		fireEvent.click(screen.getByTestId("pace-week-toggle"));
+		rerender(
+			<UsagePanel
+				usage={foldUsage(
+					foldScoped(
+						{
+							used: 5,
+						},
+					),
+				)}
+				nowMs={FOLD_NOW_MS + 300_000}
+				timeZone={FOLD_ZONE}
+				refreshing={false}
+				onRefresh={() =>
+				{
+				}}
+				defaultModel="claude-fable-1"
+			/>,
+		);
+
+		expect(screen.getByTestId("pace-week").getAttribute("data-state")).toBe("closed");
+	});
+});
+
+describe("UsagePanel meter share overlay", () =>
+{
+	function meterSpans(usedPct: number, scoped: ScopedUsage | null)
+	{
+		cleanup();
+		renderFold(
+			{
+				...foldUsage(scoped),
+				sevenDay:
+				{
+					usedPct,
+					resetsAt: Date.parse(FOLD_RESETS_AT) / 1000,
+				},
+			},
+			"claude-fable-1",
+		);
+		const meter = screen.getByRole(
+			"meter",
+			{
+				name: "This week",
+			},
+		);
+		const span = meter.querySelector<HTMLElement>("[data-testid=usage-meter-share]");
+		return {
+			children: meter.children.length,
+			span:
+				span === null
+					? null
+					:
+						{
+							share: span.getAttribute("data-share"),
+							className: span.className,
+							inlineSize: span.style.inlineSize,
+							minInlineSize: span.style.minInlineSize,
+							hidden: span.getAttribute("aria-hidden"),
+						},
+		};
+	}
+
+	it("draws the share span capped by the fill, and nothing at 0%", () =>
+	{
+		expect(
+			{
+				share20: meterSpans(
+					45,
+					foldScoped(
+						{
+							used: 20,
+						},
+					),
+				),
+				share0: meterSpans(45, foldScoped()),
+				capped: meterSpans(
+					30,
+					foldScoped(
+						{
+							used: 40,
+						},
+					),
+				).span?.inlineSize,
+				empty: meterSpans(
+					0,
+					foldScoped(
+						{
+							used: 20,
+						},
+					),
+				),
+			},
+		).toStrictEqual(
+			{
+				share20:
+				{
+					children: 2,
+					span:
+					{
+						share: "20",
+						className:
+							"absolute inset-y-0 start-0 rounded-full data-[share=0]:opacity-0 bg-usage-share-accent",
+						inlineSize: "20%",
+						minInlineSize: "4px",
+						hidden: "true",
+					},
+				},
+				share0:
+				{
+					children: 1,
+					span: null,
+				},
+				capped: "30%",
+				empty:
+				{
+					children: 0,
+					span: null,
+				},
+			},
+		);
+	});
+
+	it("hides a share-toned warning meter's span", () =>
+	{
+		renderFold(
+			foldUsage(
+				foldScoped(
+					{
+						used: 10,
+						fablePercent: 80,
+					},
+				),
+			),
+			"claude-fable-1",
+		);
+		const span = screen
+			.getByTestId("pace-week-scoped")
+			.querySelector<HTMLElement>("[data-testid=usage-meter-share]");
+
+		expect(
+			{
+				share: span?.getAttribute("data-share"),
+				className: span?.className,
+				inlineSize: span?.style.inlineSize,
+			},
+		).toStrictEqual(
+			{
+				share: "0",
+				className: "absolute inset-y-0 start-0 rounded-full data-[share=0]:opacity-0 bg-usage-share-warning",
+				inlineSize: "80%",
+			},
+		);
 	});
 });
 

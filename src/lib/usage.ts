@@ -1,5 +1,6 @@
 import {z} from "zod";
 import {assertNever} from "./assert-never";
+import {nonEmpty} from "./non-empty";
 
 /**
  * Settings ▸ Usage: the plan's rate-limit windows as the newest Claude Code
@@ -13,12 +14,64 @@ export interface UsageWindow
 	resetsAt: number;
 }
 
+/** One row of the usage endpoint's `limits[]`, as the CLI caches it in `~/.claude.json`. */
+export interface UsageLimit
+{
+	kind: string;
+	group: string;
+	percent: number;
+	/** ISO, or null before the window has started. */
+	resets_at: string | null;
+	severity: string;
+	is_active: boolean;
+	scope?:
+		|
+		  {
+				model?:
+					|
+					  {
+							display_name: string;
+							id?: string | null | undefined;
+					  }
+					| null
+					| undefined;
+				surface?:
+					|
+					  {
+							display_name: string;
+					  }
+					| null
+					| undefined;
+		  }
+		| null
+		| undefined;
+}
+
+/** One `weekly_scoped_shares[]` entry: a model's slice of the weekly limit. */
+export interface WeeklyScopedShareInput
+{
+	limit_index: number;
+	used_percent_of_weekly: number;
+	allowance_percent_of_weekly: number;
+}
+
+/** The per-model weekly rows the CLI last fetched from the usage endpoint. */
+export interface ScopedUsage
+{
+	limits: UsageLimit[];
+	shares: WeeklyScopedShareInput[];
+	/** ISO time the CLI fetched them. */
+	fetchedAt: string;
+}
+
 export interface UsageSummary
 {
 	fiveHour: UsageWindow | null;
 	sevenDay: UsageWindow | null;
 	/** ISO mtime of the statusline the windows came from. */
 	updatedAt: string | null;
+	/** Scoped rows and shares from the CLI's cached usage body, or null without a fresh cache. */
+	scoped: ScopedUsage | null;
 }
 
 const UsageWindowSchema = z.strictObject(
@@ -28,11 +81,60 @@ const UsageWindowSchema = z.strictObject(
 	},
 );
 
+const UsageLimitResponse = z.strictObject(
+	{
+		kind: z.string(),
+		group: z.string(),
+		percent: z.number(),
+		resets_at: z.string().nullable(),
+		severity: z.string(),
+		is_active: z.boolean(),
+		scope: z
+			.strictObject(
+				{
+					model: z
+						.strictObject(
+							{
+								display_name: z.string(),
+								id: z.string().nullable().optional(),
+							},
+						)
+						.nullish(),
+					surface: z
+						.strictObject(
+							{
+								display_name: z.string(),
+							},
+						)
+						.nullish(),
+				},
+			)
+			.nullish(),
+	},
+);
+
+const ScopedUsageResponse = z.strictObject(
+	{
+		limits: z.array(UsageLimitResponse),
+		shares: z.array(
+			z.strictObject(
+				{
+					limit_index: z.number(),
+					used_percent_of_weekly: z.number(),
+					allowance_percent_of_weekly: z.number(),
+				},
+			),
+		),
+		fetchedAt: z.string(),
+	},
+);
+
 export const UsageSummaryResponse: z.ZodType<UsageSummary> = z.strictObject(
 	{
 		fiveHour: UsageWindowSchema.nullable(),
 		sevenDay: UsageWindowSchema.nullable(),
 		updatedAt: z.string().nullable(),
+		scoped: ScopedUsageResponse.nullable(),
 	},
 );
 
@@ -41,7 +143,107 @@ export const EMPTY_USAGE: UsageSummary =
 	fiveHour: null,
 	sevenDay: null,
 	updatedAt: null,
+	scoped: null,
 };
+
+/** Upstream's `J`: a `weekly_scoped` row's trimmed model name, or undefined. */
+export function scopedModelName(limit: UsageLimit): string | undefined
+{
+	if (limit.kind !== "weekly_scoped") return undefined;
+	return nonEmpty(limit.scope?.model?.display_name.trim());
+}
+
+export interface WeeklyShare
+{
+	limitIndex: number;
+	used: number;
+	allowance: number;
+}
+
+/** Upstream's `we`: a non-negative integer. */
+function isIndex(value: unknown): value is number
+{
+	return typeof value === "number" && Number.isInteger(value) && value >= 0;
+}
+
+/** Upstream's `q`: a finite, non-negative number. */
+function isPercent(value: unknown): value is number
+{
+	return typeof value === "number" && Number.isFinite(value) && value >= 0;
+}
+
+/**
+ * Upstream's `Te`: each model's slice of the weekly limit, in limit order, with the used parts
+ * capped together by the weekly percent. Null without a `weekly_all` row or a valid share.
+ */
+export function weeklyScopedShares(
+	limits: readonly UsageLimit[] | null | undefined,
+	shares: readonly WeeklyScopedShareInput[] | null | undefined,
+):
+{
+	weeklyAllIndex: number;
+	shares: WeeklyShare[];
+} | null
+{
+	if (!limits || !shares || shares.length === 0) return null;
+	const weeklyAllIndex = limits.findIndex((limit) => limit.kind === "weekly_all");
+	if (weeklyAllIndex < 0) return null;
+	const weeklyPercent = limits[weeklyAllIndex]?.percent;
+	if (weeklyPercent === undefined || !Number.isFinite(weeklyPercent)) return null;
+	const weekly = Math.max(0, Math.min(100, weeklyPercent));
+	const seen = new Set<number>();
+	const kept: WeeklyShare[] = [];
+	for (const entry of shares)
+	{
+		const index = entry.limit_index;
+		if (
+			!isIndex(index) ||
+			!isPercent(entry.used_percent_of_weekly) ||
+			!isPercent(entry.allowance_percent_of_weekly) ||
+			entry.allowance_percent_of_weekly === 0 ||
+			seen.has(index)
+		)
+		{
+			continue;
+		}
+		const target = limits[index];
+		if (target === undefined || scopedModelName(target) === undefined) continue;
+		seen.add(index);
+		const allowance = Math.min(100, Math.round(entry.allowance_percent_of_weekly));
+		kept.push(
+			{
+				limitIndex: index,
+				used: Math.min(Math.round(entry.used_percent_of_weekly), weekly, allowance),
+				allowance,
+			},
+		);
+	}
+	if (kept.length === 0) return null;
+	kept.sort((left, right) => left.limitIndex - right.limitIndex);
+	let remaining = weekly;
+	for (const entry of kept)
+	{
+		entry.used = Math.min(entry.used, remaining);
+		remaining -= entry.used;
+	}
+	return {
+		weeklyAllIndex,
+		shares: kept,
+	};
+}
+
+/**
+ * Upstream's `Ee`: the scoped row names the model's family ("claude-fable-1" → "fable"), and a
+ * mythos model counts as Fable. Bare "claude"/"anthropic" ids and missing models never match.
+ */
+export function matchesModelFamily(limit: UsageLimit, modelId: string | null | undefined): boolean
+{
+	const name = scopedModelName(limit)?.toLowerCase();
+	if (!modelId || !name) return false;
+	const family = /^(?:claude-)?([a-z]+)/.exec(modelId.toLowerCase())?.[1];
+	if (!family || family === "claude" || family === "anthropic") return false;
+	return name.includes(family) || (family === "mythos" && name.includes("fable"));
+}
 
 const SEVEN_DAY_MS = 7 * 86_400_000;
 

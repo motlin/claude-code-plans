@@ -20,6 +20,7 @@ import
 	type ComposerUsage,
 	contextRingPercent,
 	FIVE_HOUR_LABEL,
+	formatResetLabel,
 	formatUsageAriaLabel,
 	formatUsageTooltipRows,
 	USAGE_RING_CIRCUMFERENCE,
@@ -28,8 +29,10 @@ import
 	usageRingPercent,
 	type UsageRingSeverity,
 	usageRingSeverity,
+	type RateLimitWindow,
 	WEEKLY_LABEL,
 } from "../lib/composer-state";
+import {scopedEmptyCaption} from "../lib/usage-family";
 import
 {
 	type EffortLevel,
@@ -120,22 +123,26 @@ function UsagePopoverBody({
 })
 {
 	const {data: account} = useQuery(localAccountQueryOptions);
+	const now = Date.now();
+	const windowRow = (key: string, label: string, window: RateLimitWindow) => (
+	{
+		key,
+		label,
+		usedPercentage: window.usedPercentage,
+		caption: formatResetLabel(window.resetsAt, now),
+	});
+	// Upstream's `Gn`: the session and week, then the cached per-model rows of the model's family.
 	const limits = [
-		usage?.fiveHour
-			?
-				{
-					label: FIVE_HOUR_LABEL,
-					window: usage.fiveHour,
-				}
-			: null,
-		usage?.weekly
-			?
-				{
-					label: WEEKLY_LABEL,
-					window: usage.weekly,
-				}
-			: null,
-	].filter((limit) => limit !== null);
+		...(usage?.fiveHour ? [windowRow("session", FIVE_HOUR_LABEL, usage.fiveHour)] : []),
+		...(usage?.weekly ? [windowRow("weekly_all", WEEKLY_LABEL, usage.weekly)] : []),
+		...(usage?.scoped ?? []).map((meter) => (
+		{
+			key: meter.key,
+			label: meter.label,
+			usedPercentage: meter.usedPercentage,
+			caption: meter.resetsAt === null ? scopedEmptyCaption(meter) : formatResetLabel(meter.resetsAt, now),
+		})),
+	];
 	const planDetail = account?.planDetail;
 	return (
 		<>
@@ -171,9 +178,10 @@ function UsagePopoverBody({
 									<div className="flex flex-col gap-2 px-3 pb-1">
 										{limits.map((limit) => (
 											<UsagePopoverLimitRow
-												key={limit.label}
+												key={limit.key}
 												label={limit.label}
-												window={limit.window}
+												usedPercentage={limit.usedPercentage}
+												caption={limit.caption}
 											/>
 										))}
 									</div>

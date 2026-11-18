@@ -411,6 +411,7 @@ describe("HomeComposer", () =>
 						resetsAt: now / 1000 + 6 * 24 * 3600,
 					},
 					updatedAt: new Date(now).toISOString(),
+					scoped: null,
 				},
 				{
 					updatedAt: now,
