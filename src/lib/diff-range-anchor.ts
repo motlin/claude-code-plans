@@ -234,3 +234,44 @@ export function shouldSwallowGutterAdd(
 	guard.current = null;
 	return true;
 }
+
+/** The parts of pierre's `onLineNumberClick` props that upstream's `Gu` reads. */
+export interface LineNumberClick
+{
+	event:
+	{
+		metaKey: boolean;
+		ctrlKey: boolean;
+		composedPath: () => readonly unknown[];
+	};
+	lineNumber: number;
+	annotationSide: DiffSide;
+}
+
+/** A composed-path node that can carry attributes (upstream `O(t)?.hasAttribute`). */
+function hasAttributes(node: unknown): node is Pick<Element, "hasAttribute">
+{
+	return (
+		typeof node === "object" && node !== null && "hasAttribute" in node && typeof node.hasAttribute === "function"
+	);
+}
+
+/** Upstream `Uu`: the click went through the gutter "+" slot. */
+function inGutterUtilitySlot(path: readonly unknown[]): boolean
+{
+	return path.some((node) => hasAttributes(node) && node.hasAttribute("data-gutter-utility-slot"));
+}
+
+/**
+ * Upstream `Gu`: the new file's line a ⌘/Ctrl+click on a line number opens, or null for a plain click or one through
+ * the gutter "+". A deletions-side number maps to the new file with `oldToNewLine` (upstream `Hu`).
+ */
+export function lineNumberOpenLine(
+	meta: FileDiffMetadata,
+	{event, lineNumber, annotationSide}: LineNumberClick,
+): number | null
+{
+	if (!event.metaKey && !event.ctrlKey) return null;
+	if (inGutterUtilitySlot(event.composedPath())) return null;
+	return annotationSide === "deletions" ? oldToNewLine(meta, lineNumber) : lineNumber;
+}

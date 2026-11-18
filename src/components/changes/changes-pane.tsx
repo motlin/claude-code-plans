@@ -667,6 +667,7 @@ function LazyDiffFile({
 	collapsed,
 	onCollapsedChange,
 	onOpenFile,
+	onOpenFileAtLine,
 	headerMenu,
 	mark,
 	annotations,
@@ -680,6 +681,7 @@ function LazyDiffFile({
 	collapsed: boolean;
 	onCollapsedChange: (collapsed: boolean) => void;
 	onOpenFile: (() => void) | undefined;
+	onOpenFileAtLine: ((line: number) => void) | undefined;
 	headerMenu: ReactNode;
 	mark: DiffFileMark | undefined;
 	annotations: readonly DiffFileAnnotation[] | undefined;
@@ -750,6 +752,7 @@ function LazyDiffFile({
 							onOpenFile,
 						}
 					: {})}
+				onOpenFileAtLine={onOpenFileAtLine}
 				headerMenu={headerMenu}
 				headerMenuButton={menuButton}
 				mark={mark}
@@ -802,6 +805,7 @@ function ChangesFile({
 	collapsed,
 	onCollapsedChange,
 	onOpenFile,
+	onOpenFileAtLine,
 	headerMenu,
 	fetchContext,
 	annotations,
@@ -814,6 +818,7 @@ function ChangesFile({
 	collapsed: boolean;
 	onCollapsedChange: (collapsed: boolean) => void;
 	onOpenFile: (() => void) | undefined;
+	onOpenFileAtLine: ((line: number) => void) | undefined;
 	headerMenu: ReactNode;
 	fetchContext: DiffFetchContext | undefined;
 	annotations: readonly DiffFileAnnotation[] | undefined;
@@ -846,6 +851,7 @@ function ChangesFile({
 							onOpenFile,
 						}
 					: {})}
+				onOpenFileAtLine={onOpenFileAtLine}
 				headerMenu={headerMenu}
 				headerMenuButton={menuButton}
 				mark={mark}
@@ -875,6 +881,7 @@ function ChangesFile({
 				collapsed={collapsed}
 				onCollapsedChange={onCollapsedChange}
 				onOpenFile={onOpenFile}
+				onOpenFileAtLine={onOpenFileAtLine}
 				headerMenu={headerMenu}
 				mark={mark}
 				annotations={annotations}
@@ -1240,7 +1247,8 @@ export interface ChangesPaneViewProps
 	controls: ReactNode;
 	moveHandle?: ReactNode;
 	onRefresh: () => void;
-	onOpenFile?: (path: string) => void;
+	/** Opens a file in the Files pane, at `line` of the new file when given (a ⌘/Ctrl+click on a line number). */
+	onOpenFile?: (path: string, line?: number) => void;
 	/** Enables lazy loading of files whose patch was too large to inline. */
 	fetchContext?: DiffFetchContext;
 	/** The selected scope, a formatted `SessionDiffScope` (`branch`, `uncommitted`, `session`, `commit:<sha>`). */
@@ -1939,6 +1947,13 @@ export function ChangesPaneView({
 													onOpenFile(file.path);
 												}
 											: undefined;
+									const fileLineOpener =
+										onOpenFile && !cannotOpen
+											? (line: number) =>
+												{
+													onOpenFile(file.path, line);
+												}
+											: undefined;
 									const headerMenu =
 										sessionId === undefined ? undefined : (
 											<ChangesFileMenu
@@ -1976,6 +1991,7 @@ export function ChangesPaneView({
 												}));
 											}}
 											onOpenFile={fileOpener}
+											onOpenFileAtLine={fileLineOpener}
 											headerMenu={headerMenu}
 											fetchContext={fetchContext}
 											whole={whole}
@@ -2460,7 +2476,7 @@ export function ChangesPane({
 			onCloseFindings={review.close}
 			sessionId={sessionId}
 			cwd={cwd}
-			onOpenFile={(path) =>
+			onOpenFile={(path, line) =>
 			{
 				const root = diffQuery.data?.root;
 				if (root !== undefined)
@@ -2468,6 +2484,12 @@ export function ChangesPane({
 						sessionId,
 						{
 							path: resolveAbsoluteDiffPath(root, path),
+							...(line === undefined
+								? {}
+								:
+									{
+										line,
+									}),
 						},
 					);
 			}}

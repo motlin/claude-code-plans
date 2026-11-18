@@ -2517,6 +2517,66 @@ describe("Changes pane line-number range comments (upstream c44d00c7f pd openDra
 	});
 });
 
+describe("Changes pane ⌘/Ctrl+click line number (upstream c44d00c7f Gu, gate __gb__2858289023)", () =>
+{
+	it("opens the file at the clicked line, mapping a deletions number to the new file, only with ⌘ or Ctrl", async () =>
+	{
+		const onOpenFile = vi.fn<(path: string, line?: number) => void>();
+		const {container} = render(
+			<SettingsProvider>
+				<ToastProvider>
+					<ChangesPaneView
+						diff={DIFF}
+						scopes={undefined}
+						controls={null}
+						onRefresh={() =>
+						{
+						}}
+						onOpenFile={onOpenFile}
+						scope="uncommitted"
+						sessionId={SESSION}
+						cwd="/repo"
+					/>
+				</ToastProvider>
+			</SettingsProvider>,
+		);
+		const number = (type: string, line: number) =>
+		{
+			const cell = container
+				.querySelector("diffs-container")
+				?.shadowRoot?.querySelector(`[data-line-type="${type}"][data-column-number="${line}"]`);
+			if (!cell) throw new Error(`no ${type} number ${line} yet`);
+			return cell;
+		};
+		await waitFor(() => number("change-addition", 3));
+
+		fireEvent.click(number("change-addition", 3));
+		fireEvent.click(
+			number("change-addition", 3),
+			{
+				metaKey: true,
+			},
+		);
+		fireEvent.click(
+			number("change-deletion", 2),
+			{
+				ctrlKey: true,
+			},
+		);
+		fireEvent.click(
+			number("context", 4),
+			{
+				metaKey: true,
+			},
+		);
+		expect(onOpenFile.mock.calls).toStrictEqual([
+			["src/greet.ts", 3],
+			["src/greet.ts", 3],
+			["src/greet.ts", 4],
+		]);
+	});
+});
+
 describe("diffSideSnippet", () =>
 {
 	it("returns a side's lines in the range without their diff markers, or undefined outside the diff", () =>

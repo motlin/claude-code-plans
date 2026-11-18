@@ -5,6 +5,7 @@ import
 {
 	anchorSpan,
 	isMultiLine,
+	lineNumberOpenLine,
 	oldToNewLine,
 	selectionTarget,
 	shouldSwallowGutterAdd,
@@ -288,5 +289,82 @@ describe("shouldSwallowGutterAdd (upstream pd hoverAdd guard)", () =>
 			),
 		]).toStrictEqual([false, false, true, false]);
 		expect(guard.current).toBeNull();
+	});
+});
+
+describe("lineNumberOpenLine (upstream Gu)", () =>
+{
+	const click = (
+		keys:
+		{
+			metaKey?: boolean;
+			ctrlKey?: boolean;
+		},
+		lineNumber: number,
+		annotationSide: "additions" | "deletions",
+		path: readonly unknown[] = [],
+	) => (
+	{
+		event:
+		{
+			metaKey: keys.metaKey === true,
+			ctrlKey: keys.ctrlKey === true,
+			composedPath: () => path,
+		},
+		lineNumber,
+		annotationSide,
+	});
+
+	it("opens only on a ⌘/Ctrl click outside the gutter slot, mapping a deletions number to the new file", () =>
+	{
+		// The gutter "+" sits in a `[data-gutter-utility-slot]` element on the click's composed path.
+		const slot =
+		{
+			hasAttribute: (name: string) => name === "data-gutter-utility-slot",
+		};
+		expect([
+			lineNumberOpenLine(META, click({}, 3, "additions")),
+			lineNumberOpenLine(
+				META,
+				click(
+					{
+						metaKey: true,
+					},
+					3,
+					"additions",
+				),
+			),
+			lineNumberOpenLine(
+				META,
+				click(
+					{
+						ctrlKey: true,
+					},
+					3,
+					"deletions",
+				),
+			),
+			lineNumberOpenLine(
+				META,
+				click(
+					{
+						metaKey: true,
+					},
+					2,
+					"deletions",
+				),
+			),
+			lineNumberOpenLine(
+				META,
+				click(
+					{
+						metaKey: true,
+					},
+					3,
+					"additions",
+					[slot],
+				),
+			),
+		]).toStrictEqual([null, 3, 4, 3, null]);
 	});
 });

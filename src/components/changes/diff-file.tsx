@@ -49,9 +49,11 @@ import
 	type GutterAddGuard,
 	anchorSpan,
 	isMultiLine,
+	lineNumberOpenLine,
 	selectionTarget,
 	shouldSwallowGutterAdd,
 } from "../../lib/diff-range-anchor";
+import {LINE_NUMBER_OPENS_FILE} from "../../lib/diff-line-number-open";
 import {useResolvedTheme} from "../theme-context";
 
 export type {DiffStyle};
@@ -77,6 +79,8 @@ export interface DiffFileProps
 	collapsed?: boolean;
 	onCollapsedChange?: (collapsed: boolean) => void;
 	onOpenFile?: () => void;
+	/** Opens the file at a new-file line: a ⌘/Ctrl+click on a line number (upstream `Gu`, `LINE_NUMBER_OPENS_FILE`). */
+	onOpenFileAtLine?: ((line: number) => void) | undefined;
 	/** The file menu (`DiffFileMenuItems`) the header's right-click opens. */
 	headerMenu?: ReactNode;
 	/** Adds the header's "…" More actions dropdown for `headerMenu` (see `diffFileMenuButtonShown`). */
@@ -605,6 +609,7 @@ export function DiffFile({
 	collapsed: controlledCollapsed,
 	onCollapsedChange,
 	onOpenFile,
+	onOpenFileAtLine,
 	headerMenu,
 	headerMenuButton = false,
 	mark,
@@ -626,6 +631,7 @@ export function DiffFile({
 			onRendered,
 			fileDiff,
 			onRequestChanges,
+			onOpenFileAtLine,
 			diffStyle,
 		},
 	);
@@ -636,6 +642,7 @@ export function DiffFile({
 		onRendered,
 		fileDiff,
 		onRequestChanges,
+		onOpenFileAtLine,
 		diffStyle,
 	};
 	// Upstream `nf`/`Kt` drag state: the library's live range while a line-number drag is under way.
@@ -723,6 +730,7 @@ export function DiffFile({
 	);
 
 	const commenting = onRequestChanges !== undefined;
+	const opensAtLine = LINE_NUMBER_OPENS_FILE && onOpenFileAtLine !== undefined;
 	const options = useMemo<FileDiffOptions<ReactNode, undefined>>(() =>
 	{
 		const drawRails = railsPostRender(commenting);
@@ -758,6 +766,17 @@ export function DiffFile({
 				const target = selectionTarget(current.fileDiff, range, current.diffStyle === "split");
 				if (target !== null) current.onRequestChanges?.(target);
 			},
+			...(opensAtLine
+				?
+					{
+						onLineNumberClick: (click) =>
+						{
+							const current = loader.current;
+							const line = lineNumberOpenLine(current.fileDiff, click);
+							if (line !== null) current.onOpenFileAtLine?.(line);
+						},
+					}
+				: {}),
 			// c44d00c7f Kt/qt: upstream always inlines gaps of up to 3 lines once the whole file is known.
 			collapsedContextThreshold: 3,
 			// The cds FileDiff gate (`Va`): expandUnchanged only for a diff that is whole or can be loaded.
@@ -797,6 +816,7 @@ export function DiffFile({
 		wordDiff,
 		collapsed,
 		commenting,
+		opensAtLine,
 		gutterGuard,
 		panels,
 		expandUnchanged,
