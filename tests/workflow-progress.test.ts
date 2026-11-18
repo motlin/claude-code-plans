@@ -759,6 +759,13 @@ describe("agentCells", () =>
 							state: "start",
 						},
 					),
+					{
+						type: "workflow_agent",
+						index: 3,
+						label: "queued-3",
+						state: "start",
+						queuedAt: 1_700_000_000_000,
+					},
 				],
 				{
 					now: 90_001,
@@ -775,6 +782,10 @@ describe("agentCells", () =>
 			},
 			{
 				label: "agent-2",
+				state: "pending",
+			},
+			{
+				label: "queued-3",
 				state: "pending",
 			},
 		]);

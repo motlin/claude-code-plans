@@ -3486,6 +3486,32 @@ describe("system record lines", () =>
 			]);
 		});
 
+		it("turns a background-launch record into a line naming the agent it started", () =>
+		{
+			const records = [
+				info(
+					"Started in the background: summarize the parser tests and list the ga…",
+					{
+						isMeta: false,
+						level: "info",
+						launchedAgentId: "asummarize-the-p-1a2b3c4d5e6f7a8b",
+						uuid: "bg-1",
+						timestamp: "2026-11-09T03:04:08.237Z",
+					},
+				),
+			];
+			expect(processTranscript(records).lines).toStrictEqual([
+				{
+					type: "background-launch",
+					description: "summarize the parser tests and list the ga…",
+					agentId: "agent-asummarize-the-p-1a2b3c4d5e6f7a8b",
+					uuid: "bg-1",
+					timestamp: "2026-11-09T03:04:08.237Z",
+					lineIndex: 0,
+				},
+			]);
+		});
+
 		it("keeps warning, defaults a missing or unknown level to notice, and skips info", () =>
 		{
 			const lines = (record: unknown) => processTranscript([record]).lines;

@@ -33,6 +33,7 @@ import
 } from "./schemas";
 import {autoModeDenial} from "./auto-mode-denial";
 import {stripAnsi} from "./ansi-codes";
+import {toSubagentSessionId} from "./subagents";
 import {recapText} from "./recap-text";
 import {isInterruptedToolResult} from "./tool-interruption";
 import {capDetails, parseHookMessage} from "./hook-prompt-block";
@@ -228,6 +229,21 @@ const ContinuedInLineSchema = z.object(
 		type: z.literal("continued-in"),
 		continuedInSessionId: z.string(),
 		timestamp: z.string(),
+		lineIndex: z.number(),
+	},
+);
+
+/**
+ * A background agent the session launched, from an `informational` "Started in the background: …" record
+ * carrying `launchedAgentId`; `agentId` is the launched agent's subagent session id.
+ */
+const BackgroundLaunchLineSchema = z.object(
+	{
+		type: z.literal("background-launch"),
+		description: z.string(),
+		agentId: z.string(),
+		uuid: z.string().optional(),
+		timestamp: z.string().optional(),
 		lineIndex: z.number(),
 	},
 );
@@ -497,6 +513,7 @@ export const RenderedLineSchema = z.discriminatedUnion("type", [
 	ArtifactLinkLineSchema,
 	ArtifactWatchLineSchema,
 	ContinuedInLineSchema,
+	BackgroundLaunchLineSchema,
 	QueuedTaskNotificationLineSchema,
 	QueuedPromptLineSchema,
 	AttachmentLineSchema,
@@ -635,6 +652,9 @@ const NOTICE_SUBTYPES: ReadonlySet<string> = new Set([
 	"memory_saved",
 	"model_consent_fallback",
 ]);
+
+/** The CLI's lead-in on a background-launch record's text, ahead of the launched agent's description. */
+const BACKGROUND_LAUNCH_PREFIX = /^Started in the background:\s*/;
 
 function subtypeNotice(
 	record: Extract<
@@ -1850,6 +1870,20 @@ function* processRecordBatchSteps(
 				const preventContinuation = record.preventContinuation === true;
 				if (typeof content !== "string" || record.isSidechain === true) continue;
 				const text = stripAnsi(content);
+				if (record.launchedAgentId !== undefined)
+				{
+					const launch: z.infer<typeof BackgroundLaunchLineSchema> =
+					{
+						type: "background-launch",
+						description: text.trim().replace(BACKGROUND_LAUNCH_PREFIX, ""),
+						agentId: toSubagentSessionId(record.launchedAgentId),
+						lineIndex,
+					};
+					if (uuid !== undefined) launch.uuid = uuid;
+					if (record.timestamp !== undefined) launch.timestamp = record.timestamp;
+					sessionLines.push(launch);
+					continue;
+				}
 				const parsedHook = parseHookMessage(text);
 				if (preventContinuation && parsedHook?.kind === "stopped")
 				{
