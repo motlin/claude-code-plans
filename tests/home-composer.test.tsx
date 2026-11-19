@@ -503,6 +503,8 @@ describe("HomeComposer", () =>
 				placeClass: place?.className,
 				placeButton: place?.querySelector("[role=combobox]")?.getAttribute("aria-label"),
 				placeButtonClass: place?.querySelector("[role=combobox]")?.className,
+				placeLabelWrapperClass: place?.querySelector("[role=combobox] > span:last-child")?.className,
+				placeLabelClass: place?.querySelector("[role=combobox] > span:last-child > span")?.className,
 				rowItems: [
 					place?.textContent,
 					...[...(row?.lastElementChild?.children ?? [])].map((child) => child.textContent),
@@ -517,7 +519,10 @@ describe("HomeComposer", () =>
 				placeClass: "flex items-center gap-1 @max-[28.75rem]:basis-full",
 				placeButton: "Folder: it's",
 				placeButtonClass:
-					"flex h-6 max-w-[240px] min-w-0 items-center gap-1 comfortable:gap-2 rounded-r6 px-1.5 text-body text-secondary-control transition-colors hover:bg-fill-ghost-hover hover:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus",
+					"flex h-6 shrink items-center gap-1 comfortable:gap-2 rounded-r6 px-1.5 text-body text-secondary-control transition-colors hover:bg-fill-ghost-hover hover:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus",
+				placeLabelWrapperClass: "flex min-w-0 max-w-64 items-center gap-xs",
+				placeLabelClass:
+					"line-clamp-1 min-w-[5ch] text-start break-all whitespace-normal supports-[min-width:calc-size(auto,size)]:min-w-[calc-size(max-content,min(size,5ch))]",
 				rowItems: [
 					"it'sHeadlessRun without a terminal: the app owns the CLI and drives it over stream-json",
 					"Opus 4.8 Medium",

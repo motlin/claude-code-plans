@@ -140,4 +140,17 @@ export const ENVIRONMENT_BAR_NOTE_CLASS = "flex min-w-0 items-baseline gap-1.5 w
 
 /** Upstream's environment-bar place button: a 24px ghost control with a 16px icon, its label gap 8px at comfortable. */
 export const PLACE_CHIP_CLASS =
-	"flex h-6 max-w-[240px] min-w-0 items-center gap-1 comfortable:gap-2 rounded-r6 px-1.5 text-body text-secondary-control transition-colors hover:bg-fill-ghost-hover hover:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
+	"flex h-6 shrink items-center gap-1 comfortable:gap-2 rounded-r6 px-1.5 text-body text-secondary-control transition-colors hover:bg-fill-ghost-hover hover:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
+
+/**
+ * The expanded place chip's label wrapper (upstream's `flex min-w-0 max-w-64 items-center gap-xs`): it caps the
+ * label at 16rem and lets it shrink.
+ */
+export const PLACE_CHIP_LABEL_WRAPPER_CLASS = "flex min-w-0 max-w-64 items-center gap-xs";
+
+/**
+ * The place chip's label (upstream's `qq`): one clamped line that stops shrinking at 5ch (or its own width when
+ * shorter), so a narrow bar overflows and collapses the chip to its icon instead of truncating the label away.
+ */
+export const PLACE_CHIP_LABEL_CLASS =
+	"line-clamp-1 min-w-[5ch] text-start break-all whitespace-normal supports-[min-width:calc-size(auto,size)]:min-w-[calc-size(max-content,min(size,5ch))]";

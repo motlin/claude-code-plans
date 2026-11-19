@@ -6,7 +6,7 @@ import {type KeyboardEvent, type Ref, useContext, useId, useMemo, useRef, useSta
 import {useShortcut} from "../../hooks/use-shortcut";
 import type {StartProject} from "../../lib/palette-start-session";
 import {folderName, folderParent, inferHome, shortenCwd} from "../../lib/folder-row-names";
-import {PLACE_CHIP_CLASS} from "../composer-tokens";
+import {PLACE_CHIP_CLASS, PLACE_CHIP_LABEL_CLASS, PLACE_CHIP_LABEL_WRAPPER_CLASS} from "../composer-tokens";
 import {overlayAttrs} from "../../lib/overlay";
 import {PathBreak} from "../ui/path-break";
 import {Tooltip} from "../ui/tooltip";
@@ -281,7 +281,9 @@ export function ProjectPicker({projects, selected, onSelect, variant = "chip", t
 								className={`${placeIconMargins(iconOnly, selected === undefined)} size-4 shrink-0`}
 							/>
 						</span>
-						<span className={iconOnly ? "sr-only" : "truncate"}>{placeLabel}</span>
+						<span className={iconOnly ? "sr-only" : PLACE_CHIP_LABEL_WRAPPER_CLASS}>
+							<span className={PLACE_CHIP_LABEL_CLASS}>{placeLabel}</span>
+						</span>
 					</Popover.Trigger>
 				</Tooltip>
 			)}

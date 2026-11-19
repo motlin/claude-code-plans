@@ -151,7 +151,7 @@ describe("ProjectPicker in an expanded environment bar", () =>
 				title: "/Users/craig/x",
 				ariaLabel: "Folder: x",
 				iconClass: "lucide lucide-folder ms-0.5 me-0.5 size-4 shrink-0",
-				labelClass: "truncate",
+				labelClass: "flex min-w-0 max-w-64 items-center gap-xs",
 				tooltip: null,
 			},
 		);
