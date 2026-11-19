@@ -7,11 +7,11 @@ import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {SettingsProvider} from "../src/components/settings-provider";
 import {DEFAULTS} from "../src/components/settings-context";
 import {Sidebar} from "../src/components/sidebar/Sidebar";
-import {readSidebarState, useSidebarState} from "../src/lib/sidebar-store";
+import {readSidebarState, useSidebarState, writeSidebarState} from "../src/lib/sidebar-store";
 import {applicationSettingsQueryOptions} from "../src/lib/api/application-settings";
 import {approvalsQueryOptions} from "../src/lib/api/approvals";
 import {notificationsQueryOptions} from "../src/lib/api/notifications";
-import {activeSessionsQueryOptions} from "../src/lib/api/sessions";
+import {activeSessionsQueryOptions, recentSessionsInfiniteQueryOptions} from "../src/lib/api/sessions";
 import {installLocalStorage} from "./fake-storage";
 import {NAV_SECTIONS} from "../src/lib/nav-sections";
 import {ToastProvider} from "../src/components/toast";
@@ -49,6 +49,19 @@ function seedQueryClient(): QueryClient
 		},
 	);
 	queryClient.setQueryData(activeSessionsQueryOptions(DEFAULTS.activeTimeoutSec * 1000).queryKey, []);
+	// An empty Recents feed, so the list settles on the stored row count instead of whatever a fetch returns.
+	queryClient.setQueryData(
+		recentSessionsInfiniteQueryOptions().queryKey,
+		{
+			pages: [
+				{
+					sessions: [],
+					nextCursor: null,
+				},
+			],
+			pageParams: [null],
+		},
+	);
 	queryClient.setQueryData(
 		applicationSettingsQueryOptions.queryKey,
 		{
@@ -134,6 +147,14 @@ describe("sidebar resize handle", () =>
 	beforeEach(() =>
 	{
 		installLocalStorage();
+		// The sidebar writes a changed Recents row count 2s after its list settles, a real timer the mount starts.
+		// Stored up front, the count never changes, so that write cannot land while a test reads the stored state.
+		writeSidebarState(
+			{
+				...readSidebarState(),
+				recentsRowCount: 0,
+			},
+		);
 		vi.spyOn(navigator, "userAgent", "get").mockReturnValue(MAC_UA);
 	});
 
@@ -295,6 +316,7 @@ describe("sidebar resize handle", () =>
 					collapsed: true,
 					collapsedFamilies: [],
 					collapsedGroups: [],
+					recentsRowCount: 0,
 					width: 288,
 				},
 				separator: null,

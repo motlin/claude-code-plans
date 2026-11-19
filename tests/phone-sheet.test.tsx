@@ -22,7 +22,7 @@ import {ToastProvider} from "../src/components/toast";
 import {applicationSettingsQueryOptions} from "../src/lib/api/application-settings";
 import {approvalsQueryOptions} from "../src/lib/api/approvals";
 import {notificationsQueryOptions} from "../src/lib/api/notifications";
-import {activeSessionsQueryOptions} from "../src/lib/api/sessions";
+import {activeSessionsQueryOptions, recentSessionsInfiniteQueryOptions} from "../src/lib/api/sessions";
 import {NAV_SECTIONS} from "../src/lib/nav-sections";
 import
 {
@@ -66,6 +66,19 @@ function seedQueryClient(): QueryClient
 		},
 	);
 	queryClient.setQueryData(activeSessionsQueryOptions(DEFAULTS.activeTimeoutSec * 1000).queryKey, []);
+	// An empty Recents feed, so the list settles on the stored row count instead of whatever a fetch returns.
+	queryClient.setQueryData(
+		recentSessionsInfiniteQueryOptions().queryKey,
+		{
+			pages: [
+				{
+					sessions: [],
+					nextCursor: null,
+				},
+			],
+			pageParams: [null],
+		},
+	);
 	queryClient.setQueryData(
 		applicationSettingsQueryOptions.queryKey,
 		{
@@ -258,6 +271,14 @@ afterEach(() =>
 beforeEach(() =>
 {
 	installLocalStorage();
+	// The sidebar writes a changed Recents row count 2s after its list settles, a real timer the mount starts.
+	// Stored up front, the count never changes, so that write cannot land while a test compares the stored state.
+	writeSidebarState(
+		{
+			...readSidebarState(),
+			recentsRowCount: 0,
+		},
+	);
 });
 
 describe("density scopes", () =>
