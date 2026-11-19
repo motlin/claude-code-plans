@@ -3,6 +3,7 @@
 import {cleanup, fireEvent, render, within} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {SessionChat} from "../src/components/session-chat";
+import {type PeerSender, type PeerSenders, PeerSendersContext} from "../src/components/peer-senders-context";
 import {parsePeerMessage} from "../src/lib/agent-message";
 import {processTranscript} from "../src/lib/transcript";
 import type {Subagent} from "../src/lib/subagents";
@@ -334,6 +335,56 @@ describe("parsePeerMessage", () =>
 	{
 		expect(parsePeerMessage("just a prompt", {})).toBeNull();
 	});
+
+	it("reads a relayed agent message (upstream Ds/Os): an agent id, a clean name, and never an encoded body", () =>
+	{
+		const relayed = (from: string, encoded = false) =>
+			[
+				`<cross-session-message from="uds:/tmp/cc-socks/1.sock" from-name="klass-48"${encoded ? ' encoded="1"' : ""}>`,
+				`<\\agent-message from="${from}">`,
+				"hi",
+				"<\\/agent-message>",
+				"</cross-session-message>",
+			].join("\n");
+		const base =
+		{
+			kind: "peer",
+			from: "uds:/tmp/cc-socks/1.sock",
+			name: "klass-48",
+			stamped: false,
+			subagent: false,
+			handback: false,
+		};
+
+		expect(
+			{
+				agentId: parsePeerMessage(relayed("a0123456789abcdef"), {}),
+				named: parsePeerMessage(relayed("reviewer"), {}),
+				encoded: parsePeerMessage(relayed("reviewer", true), {})?.relayedAgent,
+				noOrigin: parsePeerMessage(relayed("reviewer"), undefined)?.relayedAgent,
+			},
+		).toStrictEqual(
+			{
+				agentId:
+				{
+					...base,
+					relayedAgent: {},
+					body: "hi",
+				},
+				named:
+				{
+					...base,
+					relayedAgent:
+					{
+						name: "reviewer",
+					},
+					body: "hi",
+				},
+				encoded: undefined,
+				noOrigin: undefined,
+			},
+		);
+	});
 });
 
 describe("Message from subagent rows", () =>
@@ -355,48 +406,19 @@ describe("Message from subagent rows", () =>
 		);
 	});
 
-	it("renders a queued_command hand-back as a collapsible Message from row in Verbose mode, its body plain text", () =>
+	it("renders a queued_command hand-back in Verbose mode as a Message from row forced open, its body plain text", () =>
 	{
 		const container = renderLines([queuedCommandRecord(AGENT_MESSAGE)], [], "verbose");
 
-		const collapsed = rowState(container);
-		fireEvent.click(
-			within(container).getByRole(
-				"button",
-				{
-					name: "Show message from subagent",
-				},
-			),
-		);
-		const expanded = rowState(container);
-
-		expect(
+		expect(rowState(container)).toStrictEqual(
 			{
-				collapsed,
-				expanded,
-			},
-		).toStrictEqual(
-			{
-				collapsed:
-				{
-					text: true,
-					label: "Show message from subagent",
-					expanded: "false",
-					strong: null,
-					literal: false,
-					rawTag: false,
-					frame: false,
-				},
-				expanded:
-				{
-					text: true,
-					label: "Hide message from subagent",
-					expanded: "true",
-					strong: null,
-					literal: true,
-					rawTag: false,
-					frame: false,
-				},
+				text: true,
+				label: "Hide message from subagent",
+				expanded: "true",
+				strong: null,
+				literal: true,
+				rawTag: false,
+				frame: false,
 			},
 		);
 	});
@@ -719,6 +741,155 @@ describe("Received message from rows", () =>
 				from: "From: workflowy-5c",
 				body: "Reminder fired: oxfmt-next-line 0.75.0 is 24h old.\nAll **47** projects pin 0.75.0.",
 				bubbles: 0,
+			},
+		);
+	});
+
+	it("opens every peer row in Verbose (upstream's expand-all) and ignores the toggle there", () =>
+	{
+		const container = renderLines([metaUserRecord(CROSS_SESSION_PROMPT, CROSS_SESSION_ORIGIN)], [], "verbose");
+		const toggle = within(container).getByRole(
+			"button",
+			{
+				name: "Hide message from workflowy-5c",
+			},
+		);
+		const before = toggle.getAttribute("aria-expanded");
+		fireEvent.click(toggle);
+
+		expect(
+			{
+				before,
+				after: toggle.getAttribute("aria-expanded"),
+				body: senderState(container).body,
+			},
+		).toStrictEqual(
+			{
+				before: "true",
+				after: "true",
+				body: "Reminder fired: oxfmt-next-line 0.75.0 is 24h old.\nAll **47** projects pin 0.75.0.",
+			},
+		);
+	});
+
+	it("shows a relayed agent's line above the content: Sent by a subagent, or Agent: {name}", () =>
+	{
+		const prompt = (from: string) =>
+			CROSS_SESSION_PROMPT.replace(
+				CROSS_SESSION_BODY,
+				[`<\\agent-message from="${from}">`, "hi", "<\\/agent-message>"].join("\n"),
+			);
+		const lines = (container: HTMLElement) =>
+			[...container.querySelectorAll("[data-find-included] p")].map((p) => p.textContent);
+		const anonymous = lines(
+			renderLines([metaUserRecord(prompt("a0123456789abcdef"), CROSS_SESSION_ORIGIN)], [], "verbose"),
+		);
+		cleanup();
+		const named = lines(renderLines([metaUserRecord(prompt("reviewer"), CROSS_SESSION_ORIGIN)], [], "verbose"));
+
+		expect(
+			{
+				anonymous,
+				named,
+			},
+		).toStrictEqual(
+			{
+				anonymous: ["Sent by a subagent", "hi"],
+				named: ["Agent: reviewer", "hi"],
+			},
+		);
+	});
+
+	it("names and links a known sender session by its title (upstream bt), plain when it is this session", () =>
+	{
+		const openSession = vi.fn<(sessionId: string) => void>();
+		const lookups: (readonly [string, string | undefined])[] = [];
+		const sendersFor = (sender: PeerSender | undefined): PeerSenders => (
+		{
+			hostSessionId: "S1",
+			lookup: (from, sentAt) =>
+			{
+				lookups.push([from, sentAt]);
+				return sender;
+			},
+			openSession,
+		});
+		const renderWith = (sender: PeerSender | undefined, origin: unknown) =>
+		{
+			const {lines, toolResultMap} = processTranscript([metaUserRecord(CROSS_SESSION_PROMPT, origin)]);
+			const senders = sendersFor(sender);
+			return render(
+				<PeerSendersContext.Provider value={senders}>
+					<SessionChat
+						sessionId="S1"
+						lines={lines}
+						toolResultMap={toolResultMap}
+						subagents={[]}
+						shouldScrollToEnd={false}
+						transcriptMode="verbose"
+					/>
+				</PeerSendersContext.Provider>,
+			).container;
+		};
+		const {name: _name, ...unstamped} = CROSS_SESSION_ORIGIN;
+
+		const other = renderWith(
+			{
+				sessionId: "S2",
+				title: "Fix login",
+			},
+			unstamped,
+		);
+		const link = other.querySelector("[data-peer-message-from] button:not([aria-expanded])");
+		if (link instanceof HTMLElement) fireEvent.click(link);
+		const linked =
+		{
+			...senderState(other),
+			link: link?.className,
+		};
+		cleanup();
+		const host = renderWith(
+			{
+				sessionId: "S1",
+				title: "Fix login",
+			},
+			CROSS_SESSION_ORIGIN,
+		);
+		const plain =
+		{
+			...senderState(host),
+			link: host.querySelector("[data-peer-message-from] button:not([aria-expanded])")?.className,
+		};
+
+		expect(
+			{
+				linked,
+				plain,
+				opened: openSession.mock.calls,
+				lookups: lookups.slice(0, 1),
+			},
+		).toStrictEqual(
+			{
+				linked:
+				{
+					verb: "Received message from",
+					subject: "Fix login",
+					from: null,
+					body: "Reminder fired: oxfmt-next-line 0.75.0 is 24h old.\nAll **47** projects pin 0.75.0.",
+					bubbles: 0,
+					link: "cds-reset text-link-inherit min-w-0 truncate text-primary",
+				},
+				plain:
+				{
+					verb: "Received message from",
+					subject: "Fix login",
+					from: null,
+					body: "Reminder fired: oxfmt-next-line 0.75.0 is 24h old.\nAll **47** projects pin 0.75.0.",
+					bubbles: 0,
+					link: undefined,
+				},
+				opened: [["S2"]],
+				lookups: [["uds:/tmp/cc-socks/45145.sock", "2026-09-18T16:47:16.203Z"]],
 			},
 		);
 	});

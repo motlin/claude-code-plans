@@ -32,8 +32,18 @@ export interface PeerMessage
 	/** Text the subagent wrote above the hand-back frame, shown as a warning line. */
 	handbackNote?: string;
 	deliveredWhile?: "idle" | "working";
+	/**
+	 * A cross-session body that relays one of the sender's agents' messages (upstream `relayedAgent`): named when
+	 * the agent has a clean name, empty for an anonymous subagent id.
+	 */
+	relayedAgent?: RelayedAgent;
 	/** The message text, without the envelope, preamble, footer or hand-back frame. */
 	body: string;
+}
+
+export interface RelayedAgent
+{
+	name?: string;
 }
 
 /** The record origin of a delivered peer message, or undefined for any other origin. */
@@ -80,6 +90,15 @@ const ATTRIBUTE = /([\w-]+)="([^"]*)"/g;
 const AGENT_ID = /^a(?:[\w-]{1,63}-)?[0-9a-f]{16}$/;
 const HANDBACK_FRAME = /^\[Subagent hand-back\][^\n]*$/m;
 const HARNESS_INDENT = "  ";
+/** Upstream `ws`: a backslash-escaped agent-message envelope, the whole of a cross-session body. */
+const RELAYED_AGENT_MESSAGE = /^<\\(~?)agent-message from="([^"<>\n]*)">\n([\s\S]*)\n<\\\1\/agent-message>$/;
+/** Upstream `Es`: an anonymous subagent's id. */
+const RELAYED_SUBAGENT_ID = /^a[0-9a-f]{16}$/;
+/** Names that are ids rather than names (upstream `K` drops these). */
+const ID_LIKE_NAME =
+	/^(?:a(?:[\w-]{1,63}-)?[0-9a-f]{16}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|uds:.*)$/i;
+/** An envelope still inside the relayed text, escaped (`~` stands for a nested backslash) or not. */
+const NESTED_ENVELOPE = /<\\?\/?(?:agent-message|cross-session-message|teammate-message)[\s>]/;
 
 function attributes(raw: string): Map<string, string>
 {
@@ -113,6 +132,43 @@ function splitHandback(inner: string):
 		}),
 		report: dedent(inner.slice(frame.index + frame[0].length)),
 	};
+}
+
+/** Upstream `K`: a displayable sender name, or undefined for an empty or id-like one. */
+export function displayName(name: string | undefined): string | undefined
+{
+	const trimmed = name?.trim();
+	return trimmed === undefined || trimmed === "" || ID_LIKE_NAME.test(trimmed) ? undefined : trimmed;
+}
+
+/**
+ * Upstream `Ds`/`Os`: a cross-session body that is exactly one escaped `<\\agent-message from="X">` envelope
+ * relays that agent's message. Only a peer record's plain (not encoded) body counts.
+ */
+function relayedAgentOf(body: string):
+{
+	agent: RelayedAgent;
+	content: string;
+} | null
+{
+	const [, , from, inner] = RELAYED_AGENT_MESSAGE.exec(body) ?? [];
+	if (from === undefined || inner === undefined || NESTED_ENVELOPE.test(inner.replaceAll("~", "\\"))) return null;
+	const content = inner.trim();
+	if (RELAYED_SUBAGENT_ID.test(from))
+		return {
+			agent: {},
+			content,
+		};
+	return displayName(from) === from
+		?
+			{
+				agent:
+				{
+					name: from,
+				},
+				content,
+			}
+		: null;
 }
 
 /** Upstream `Io`: a peer record's text without its lead-in line and safety footer. */
@@ -185,14 +241,19 @@ export function parsePeerMessage(text: string, origin: PeerOrigin | undefined): 
 		};
 	if (tag === "cross-session-message")
 	{
-		const body = attrs.get("encoded") === "1" ? decodeXmlEntities(trimmed) : trimmed;
+		const encoded = attrs.get("encoded") === "1";
+		const relayed = origin === undefined || encoded ? null : relayedAgentOf(trimmed);
 		return {
 			kind: "peer",
 			from: attrs.get("from") ?? "unknown",
 			...named(stampedName ?? [attrs.get("from-name"), attrs.get("name")].find((name) => name !== "")),
 			handback: false,
 			...shared,
-			body,
+			...(relayed !== null &&
+			{
+				relayedAgent: relayed.agent,
+			}),
+			body: relayed?.content ?? (encoded ? decodeXmlEntities(trimmed) : trimmed),
 		};
 	}
 	const handback =

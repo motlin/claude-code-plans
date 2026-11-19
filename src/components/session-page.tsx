@@ -305,6 +305,7 @@ import {countMessageRecords} from "../lib/message-count";
 import {linesHaveWorkflowCall} from "../lib/workflow-name";
 import {getSubagentLifecycleKey, extractPendingSubagents, type ActiveSubagent} from "../lib/subagents";
 import {processTranscript} from "../lib/transcript";
+import {PeerSendersProvider} from "./peer-senders-provider";
 import {backgroundTasksFacts, extractBackgroundTasks} from "../lib/background-tasks";
 import {extractOutputFiles, homeOf, mentionOutputFiles} from "../lib/session-outputs";
 import {createSessionCommands} from "../lib/session-commands";
@@ -3271,125 +3272,141 @@ function SessionView({
 																									.length
 																							}
 																						>
-																							<SessionChat
+																							<PeerSendersProvider
 																								sessionId={sessionId}
 																								lines={processed.lines}
-																								measurementSource={
-																									transcript.records
-																								}
-																								measurementLayout={JSON.stringify(
-																									[
-																										settings.showDebug,
-																										settings.interfaceFont,
-																										settings.transcriptTextSize,
-																										settings.codeFont,
-																										settings.transcriptWidth,
-																									],
-																								)}
-																								toolResultMap={
-																									processed.toolResultMap
-																								}
-																								rewindCuts={
-																									chainProcessed.cutsByReplacement
-																								}
-																								rewoundUuids={
-																									hiddenUuids
-																								}
-																								allowedImageRoots={
-																									data.imageRoots
-																								}
-																								subagents={subagents}
-																								{...(workflowRuns ===
-																								undefined
-																									? null
-																									:
+																							>
+																								<SessionChat
+																									sessionId={
+																										sessionId
+																									}
+																									lines={
+																										processed.lines
+																									}
+																									measurementSource={
+																										transcript.records
+																									}
+																									measurementLayout={JSON.stringify(
+																										[
+																											settings.showDebug,
+																											settings.interfaceFont,
+																											settings.transcriptTextSize,
+																											settings.codeFont,
+																											settings.transcriptWidth,
+																										],
+																									)}
+																									toolResultMap={
+																										processed.toolResultMap
+																									}
+																									rewindCuts={
+																										chainProcessed.cutsByReplacement
+																									}
+																									rewoundUuids={
+																										hiddenUuids
+																									}
+																									allowedImageRoots={
+																										data.imageRoots
+																									}
+																									subagents={
+																										subagents
+																									}
+																									{...(workflowRuns ===
+																									undefined
+																										? null
+																										:
+																											{
+																												workflowRuns,
+																											})}
+																									showThinking={
+																										transcriptFlags.showThinking
+																									}
+																									showTools={
+																										transcriptFlags.showTools
+																									}
+																									showPassedHooks={
+																										transcriptFlags.showPassedHooks
+																									}
+																									showHookWarnings={
+																										transcriptFlags.showHookWarnings
+																									}
+																									showHookErrors={
+																										transcriptFlags.showHookErrors
+																									}
+																									showSystemBanners={
+																										transcriptFlags.showSystemBanners
+																									}
+																									showCompactSummaries={
+																										transcriptFlags.showCompactSummaries
+																									}
+																									showTranscriptOnly={
+																										transcriptFlags.showTranscriptOnly
+																									}
+																									transcriptMode={
+																										transcriptMode
+																									}
+																									sessionLive={sessionProcessLive(
 																										{
-																											workflowRuns,
-																										})}
-																								showThinking={
-																									transcriptFlags.showThinking
-																								}
-																								showTools={
-																									transcriptFlags.showTools
-																								}
-																								showPassedHooks={
-																									transcriptFlags.showPassedHooks
-																								}
-																								showHookWarnings={
-																									transcriptFlags.showHookWarnings
-																								}
-																								showHookErrors={
-																									transcriptFlags.showHookErrors
-																								}
-																								showSystemBanners={
-																									transcriptFlags.showSystemBanners
-																								}
-																								showCompactSummaries={
-																									transcriptFlags.showCompactSummaries
-																								}
-																								showTranscriptOnly={
-																									transcriptFlags.showTranscriptOnly
-																								}
-																								transcriptMode={
-																									transcriptMode
-																								}
-																								sessionLive={sessionProcessLive(
-																									{
-																										hookActive:
-																											isActive,
-																										summaryState:
-																											sessionSummaryState,
-																									},
-																								)}
-																								turnInProgress={
-																									workingMarkerState.status !==
-																									"idle"
-																								}
-																								archived={data.archived}
-																								permissionWaitToolUseId={
-																									permissionWaitId
-																								}
-																								queuedCallIds={
-																									queuedCallIds
-																								}
-																								onSendNow={
-																									requestSendNowInterrupt
-																								}
-																								onFocusComposer={
-																									focusSessionComposer
-																								}
-																								sideChatAvailable={true}
-																								initialScrollKey={
-																									initialScrollKey
-																								}
-																								scrollContentRef={
-																									scrollAnchorRef
-																								}
-																								shouldScrollToEnd={
-																									restoredScrollPosition ===
+																											hookActive:
+																												isActive,
+																											summaryState:
+																												sessionSummaryState,
+																										},
+																									)}
+																									turnInProgress={
+																										workingMarkerState.status !==
+																										"idle"
+																									}
+																									archived={
+																										data.archived
+																									}
+																									permissionWaitToolUseId={
+																										permissionWaitId
+																									}
+																									queuedCallIds={
+																										queuedCallIds
+																									}
+																									onSendNow={
+																										requestSendNowInterrupt
+																									}
+																									onFocusComposer={
+																										focusSessionComposer
+																									}
+																									sideChatAvailable={
+																										true
+																									}
+																									initialScrollKey={
+																										initialScrollKey
+																									}
+																									scrollContentRef={
+																										scrollAnchorRef
+																									}
+																									shouldScrollToEnd={
+																										restoredScrollPosition ===
+																											undefined &&
+																										locationHash ===
+																											""
+																									}
+																									summary={aiSummary}
+																									{...(slashCommands ===
+																									undefined
+																										? {}
+																										:
+																											{
+																												slashCommands,
+																											})}
+																									{...(errorRecovery !==
 																										undefined &&
-																									locationHash === ""
-																								}
-																								summary={aiSummary}
-																								{...(slashCommands ===
-																								undefined
-																									? {}
-																									:
-																										{
-																											slashCommands,
-																										})}
-																								{...(errorRecovery !==
-																									undefined &&
-																								{
-																									errorRecovery,
-																								})}
-																								staleCompact={
-																									staleCompact
-																								}
-																								renderClientRowCard={
-																									renderClientRowCard
-																								}
-																							/>
+																									{
+																										errorRecovery,
+																									})}
+																									staleCompact={
+																										staleCompact
+																									}
+																									renderClientRowCard={
+																										renderClientRowCard
+																									}
+																								/>
+																							</PeerSendersProvider>
 																						</TranscriptRevisionContext.Provider>
 																					</LiveStatusSourcesProvider>
 																				</FindLoadRestContext.Provider>

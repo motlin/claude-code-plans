@@ -5,9 +5,11 @@
  * characters behind Show more. Its fallback (c01e7498d `AE`) is the bordered card for an envelope
  * the parser could not read.
  */
-import {useState} from "react";
+import {useContext, useState} from "react";
 
-import type {PeerMessage} from "../lib/agent-message";
+import {displayName, type PeerMessage, type RelayedAgent} from "../lib/agent-message";
+import {type PeerSender, type PeerSenders, PeerSendersContext} from "./peer-senders-context";
+import {TranscriptModeContext} from "./transcript-mode-context";
 import {Icon} from "./ui/icon";
 import {UserInlineText} from "./user-plain-text";
 
@@ -28,10 +30,6 @@ const GHOST_XXS_CLASS =
 
 /** Upstream `Bt`: names that would read as one of the row's own placeholder subjects. */
 const PLACEHOLDER_SUBJECTS = new Set(["teamlead", "teammate", "subagent", "anothersession"]);
-/** Names that are ids rather than names (upstream `K` drops these). */
-const ID_LIKE =
-	/^(?:a(?:[\w-]{1,63}-)?[0-9a-f]{16}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|uds:.*)$/i;
-
 function normalizedName(name: string): string
 {
 	return name
@@ -42,21 +40,17 @@ function normalizedName(name: string): string
 		.replaceAll(/[^\p{L}\p{N}]+/gu, "");
 }
 
-/** Upstream `K`: a displayable sender name, or undefined for an empty or id-like one. */
-function displayName(name: string | undefined): string | undefined
-{
-	const trimmed = name?.trim();
-	return trimmed === undefined || trimmed === "" || ID_LIKE.test(trimmed) ? undefined : trimmed;
-}
-
 /** Upstream `ns`: a subagent's message. */
 function fromSubagent(message: PeerMessage): boolean
 {
 	return message.subagent || message.handback;
 }
 
-/** Upstream `It`: the row's verb and subject. */
-function peerRowCopy(message: PeerMessage):
+/** Upstream `sp`: the row's verb and subject; a known sender session's title replaces the stamped name. */
+function peerRowCopy(
+	message: PeerMessage,
+	title: string | undefined,
+):
 {
 	verb: string;
 	subject: string;
@@ -67,6 +61,11 @@ function peerRowCopy(message: PeerMessage):
 		return {
 			verb,
 			subject: "a teammate",
+		};
+	if (title !== undefined)
+		return {
+			verb,
+			subject: title,
 		};
 	// Upstream `es`/`Vt`: only a stamped, non-subagent name heads the row, and never a placeholder word.
 	const stamped = message.stamped && !fromSubagent(message) ? displayName(message.name) : undefined;
@@ -123,6 +122,44 @@ function PeerContent({content}: {content: string})
 	);
 }
 
+/** Upstream `Dt`: who relayed the message, an anonymous subagent or a named agent. */
+function RelayedAgentLine({agent}: {agent: RelayedAgent})
+{
+	return (
+		<p data-find-omitted="" className={`${PEER_LINE_CLASS} text-secondary`}>
+			{agent.name === undefined ? (
+				"Sent by a subagent"
+			) : (
+				<>
+					Agent: <bdi>{agent.name}</bdi>
+				</>
+			)}
+		</p>
+	);
+}
+
+/**
+ * Upstream `vp`: the sender's session and title. A title that reads as one of the row's placeholder subjects
+ * is dropped, like upstream drops one that is not an explicit title.
+ */
+function usePeerSender(
+	message: PeerMessage,
+	sentAt: string | undefined,
+):
+{
+	sender: PeerSender | undefined;
+	senders: PeerSenders | null;
+}
+{
+	const senders = useContext(PeerSendersContext);
+	const found = message.kind === "peer" ? senders?.lookup(message.from, sentAt) : undefined;
+	const sender = found !== undefined && !PLACEHOLDER_SUBJECTS.has(normalizedName(found.title)) ? found : undefined;
+	return {
+		sender,
+		senders,
+	};
+}
+
 /** Upstream `Zt`: a hand-back's note, drawn as a warning. */
 function HandbackNote({note}: {note: string})
 {
@@ -137,15 +174,26 @@ function HandbackNote({note}: {note: string})
 }
 
 /**
- * Upstream's collapsible peer row: collapsed by default, opened only by its chevron button
- * (the header itself does not toggle).
+ * Upstream's collapsible peer row (c3453114c `bt`): collapsed by default, opened only by its chevron button
+ * (the header itself does not toggle), and forced open by Verbose, the transcript's expand-all. A sender
+ * session the app knows heads the row by its title, as a link unless it is this session.
  */
-export function PeerMessageRow({message}: {message: PeerMessage})
+export function PeerMessageRow({message, sentAt}: {message: PeerMessage; sentAt?: string | undefined})
 {
-	const [open, setOpen] = useState(false);
-	const {verb, subject} = peerRowCopy(message);
+	const forcedOpen = useContext(TranscriptModeContext) === "verbose";
+	const [toggled, setOpen] = useState(false);
+	const open = forcedOpen || toggled;
+	const {sender, senders} = usePeerSender(message, sentAt);
+	const {verb, subject} = peerRowCopy(message, sender?.title);
 	const from = fromName(message);
-	const showFrom = from !== undefined && from !== subject;
+	// Upstream `Tt`: no From line once the sender's title is known.
+	const showFrom = from !== undefined && from !== subject && sender === undefined;
+	const link = sender !== undefined && senders !== null && sender.sessionId !== senders.hostSessionId;
+	const subjectText = (
+		<bdi className="[&:where(:root[dir=rtl]_*)]:[direction:inherit] [&:where(:root[dir=rtl]_*)]:[unicode-bidi:plaintext]">
+			{subject}
+		</bdi>
+	);
 	return (
 		<div
 			data-find-omitted=""
@@ -154,18 +202,28 @@ export function PeerMessageRow({message}: {message: PeerMessage})
 		>
 			<div className="relative group/tool flex self-start max-w-full items-center py-0 gap-0.75 text-start rounded-sm text-body text-secondary">
 				<span className={`shrink-0 whitespace-nowrap ${MUTED_LABEL_CLASS}`}>{verb}</span>
-				<span className="min-w-0 truncate text-primary">
-					<bdi className="[&:where(:root[dir=rtl]_*)]:[direction:inherit] [&:where(:root[dir=rtl]_*)]:[unicode-bidi:plaintext]">
-						{subject}
-					</bdi>
-				</span>
+				{link ? (
+					<button
+						type="button"
+						data-cds="TextLink"
+						onClick={() =>
+						{
+							senders.openSession(sender.sessionId);
+						}}
+						className="cds-reset text-link-inherit min-w-0 truncate text-primary"
+					>
+						{subjectText}
+					</button>
+				) : (
+					<span className="min-w-0 truncate text-primary">{subjectText}</span>
+				)}
 				<button
 					type="button"
 					aria-label={open ? `Hide message from ${subject}` : `Show message from ${subject}`}
 					aria-expanded={open}
 					onClick={() =>
 					{
-						setOpen((was) => !was);
+						if (!forcedOpen) setOpen((was) => !was);
 					}}
 					className="-m-0.75 flex shrink-0 cursor-pointer rounded-sm p-0.75 focus-visible:outline-hidden hide-focus-ring focus-visible:shadow-focus"
 				>
@@ -191,6 +249,7 @@ export function PeerMessageRow({message}: {message: PeerMessage})
 								From: <bdi>{from}</bdi>
 							</p>
 						)}
+						{message.relayedAgent !== undefined && <RelayedAgentLine agent={message.relayedAgent} />}
 						{message.handbackNote !== undefined && <HandbackNote note={message.handbackNote} />}
 						<PeerContent content={message.body} />
 					</div>

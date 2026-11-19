@@ -127,6 +127,8 @@ const MessageLineSchema = z.object(
 				},
 			)
 			.optional(),
+		/** The record's origin is `human`: typed by the user, so never a peer envelope (upstream `ks`). */
+		humanOrigin: z.literal(true).optional(),
 		scheduledTaskId: z.string().optional(),
 		wakeupSource: WakeupSourceSchema.optional(),
 		queuePriority: z.literal("later").optional(),
@@ -2096,12 +2098,13 @@ function* processRecordBatchSteps(
 				processedLine.queuePriority = record.queuePriority;
 			}
 			if (record.textNotTyped === true) processedLine.textNotTyped = true;
-			// Most user records carry a human origin; only a peer's is read.
 			if (typeof record.origin === "object" && record.origin["kind"] === "peer")
 			{
 				const peerOrigin = peerOriginOf(record.origin);
 				if (peerOrigin !== undefined) processedLine.peerOrigin = peerOrigin;
 			}
+			if (typeof record.origin === "object" && record.origin["kind"] === "human")
+				processedLine.humanOrigin = true;
 			if (record.turnOrigin !== undefined && record.turnOrigin !== "human")
 			{
 				processedLine.turnOrigin = record.turnOrigin;

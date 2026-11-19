@@ -521,28 +521,54 @@ describe("SessionChat user bubbles as plain text", () =>
 		);
 	});
 
-	it("draws an origin-less teammate message as upstream's Message from a teammate card", () =>
+	it("draws an origin-less teammate message as upstream's Message from a teammate card, but not a human-typed one", () =>
 	{
-		const container = renderRecords([
-			prompt(
-				'Another Claude session sent a message:\n<teammate-message teammate_id="fix-ordered-map-indexed" color="cyan">\n{"type":"idle_notification"}\n</teammate-message>\n\nThis came from another Claude session.',
-			),
-		]);
+		const text =
+			'Another Claude session sent a message:\n<teammate-message teammate_id="fix-ordered-map-indexed" color="cyan">\n{"type":"idle_notification"}\n</teammate-message>\n\nThis came from another Claude session.';
+		const container = renderRecords([prompt(text)]);
 		const card = container.querySelector("[data-peer-card] > div");
+		const carded =
+		{
+			bubbles: container.querySelectorAll(".user-message-bubble").length,
+			card: card?.className,
+			header: card?.firstElementChild?.textContent,
+			body: Array.from(card?.querySelectorAll("p") ?? [], (p) => p.textContent),
+		};
+		cleanup();
+		// Upstream `ks` leaves a line with a human origin to the user bubble, even when it quotes the envelope.
+		const typed = renderRecords([
+			{
+				...(prompt(text) as object),
+				origin:
+				{
+					kind: "human",
+				},
+			},
+		]);
 
 		expect(
 			{
-				bubbles: container.querySelectorAll(".user-message-bubble").length,
-				card: card?.className,
-				header: card?.firstElementChild?.textContent,
-				body: Array.from(card?.querySelectorAll("p") ?? [], (p) => p.textContent),
+				carded,
+				typed:
+				{
+					bubbles: typed.querySelectorAll(".user-message-bubble").length,
+					cards: typed.querySelectorAll("[data-peer-card]").length,
+				},
 			},
 		).toStrictEqual(
 			{
-				bubbles: 0,
-				card: "flex w-full flex-col gap-1 rounded-r6 border border-alpha-2 bg-alpha-1 p-p5 comfortable:p-p6",
-				header: "Message from a teammate",
-				body: ["Another Claude session sent a message:\nThis came from another Claude session."],
+				carded:
+				{
+					bubbles: 0,
+					card: "flex w-full flex-col gap-1 rounded-r6 border border-alpha-2 bg-alpha-1 p-p5 comfortable:p-p6",
+					header: "Message from a teammate",
+					body: ["Another Claude session sent a message:\nThis came from another Claude session."],
+				},
+				typed:
+				{
+					bubbles: 1,
+					cards: 0,
+				},
 			},
 		);
 	});

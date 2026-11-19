@@ -823,7 +823,7 @@ function AttachmentContent({
 				typeof attachment.prompt === "string"
 					? parsePeerMessage(attachment.prompt, peerOriginOf(attachment.origin))
 					: null;
-			if (peerMessage !== null) return <PeerMessageRow message={peerMessage} />;
+			if (peerMessage !== null) return <PeerMessageRow message={peerMessage} sentAt={attachment.timestamp} />;
 			const queuedRelative = formatRelativeTimestamp(attachment.timestamp);
 			const queuedAbsolute = formatTimestamp(attachment.timestamp);
 			return (

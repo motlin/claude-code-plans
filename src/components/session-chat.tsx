@@ -134,6 +134,7 @@ import {HardBlockHostContext} from "./hard-block-host";
 import {MessageBlockedCard} from "./message-blocked-card";
 import {useOptionalPaneHost} from "./panes/pane-host-context";
 import type {TranscriptMode} from "../lib/transcript-mode";
+import {TranscriptModeContext} from "./transcript-mode-context";
 import {hmrPersist} from "../lib/hmr-persist";
 import {foldsIntoToolRun} from "../lib/hook-notice-copy";
 import type {MessageSessionLine, SessionLine, SessionContentBlock, ToolResultInfo} from "../lib/sessions";
@@ -344,7 +345,6 @@ const ReviewCardsContext = createContext<ReviewCards>(
 /** Each workflow run keyed by its latest launch's tool_use id; earlier launches of a resumed run have settled. */
 const WorkflowRunsContext = createContext<ReadonlyMap<string, SessionWorkflowRun>>(new Map());
 
-const TranscriptModeContext = createContext<TranscriptMode>("normal");
 interface SendNowHandlers
 {
 	sendNow: ((entryId: string) => Promise<void>) | undefined;
@@ -1814,6 +1814,8 @@ interface PeerNotice
 	kind: "peer";
 	lineIndex: number;
 	message: PeerMessage;
+	/** When the line arrived, for resolving the sender's session. */
+	sentAt: string | undefined;
 	/** It arrived before the group's first tool call. */
 	leads: boolean;
 }
@@ -2412,7 +2414,7 @@ function FoldedNoticeRow({notice}: {notice: FoldedNotice})
 		case "task":
 			return <BackgroundNoticeRow notice={notice} />;
 		case "peer":
-			return <PeerMessageRow message={notice.message} />;
+			return <PeerMessageRow message={notice.message} sentAt={notice.sentAt} />;
 		case "hook":
 			return <StopHookMarker line={notice.line} />;
 		case "claude-notice":
@@ -3588,6 +3590,7 @@ function buildSessionListEntries(
 				kind: "peer",
 				lineIndex: line.lineIndex,
 				message,
+				sentAt: lineTimestamp(line),
 				leads: true,
 			};
 		return repromptsIntoTools(index) && line.type === "user"
@@ -5741,8 +5744,15 @@ function classifyUserContent(line: MessageSessionLine): UserContentKind
 	// The CLI injects peer messages as meta user lines, so a user quoting the envelope stays text.
 	if (line.isMeta === true && parsePeerMessage(text, line.peerOrigin) !== null) return "peer-message";
 
-	// Older CLIs wrote teammate messages as plain, origin-less user lines; upstream's `ks` cards them.
-	if (line.isMeta !== true && line.peerOrigin === undefined && TEAMMATE_ELEMENT.test(text)) return "peer-card";
+	// Older CLIs wrote teammate messages as plain, origin-less user lines; upstream's `ks` cards them, but never
+	// a human-typed line quoting the envelope.
+	if (
+		line.isMeta !== true &&
+		line.peerOrigin === undefined &&
+		line.humanOrigin !== true &&
+		TEAMMATE_ELEMENT.test(text)
+	)
+		return "peer-card";
 
 	// Document attachments are always user-initiated, even when isMeta is set —
 	// otherwise an isMeta line is either stop-hook feedback or a slash-command body.
@@ -5877,7 +5887,7 @@ function UserEntry({
 				turnKey={line.turnKey ?? line.uuid}
 				trailing={
 					<div className="flex flex-col gap-1 w-full">
-						<PeerMessageRow message={message} />
+						<PeerMessageRow message={message} sentAt={line.timestamp} />
 					</div>
 				}
 			/>
@@ -9310,7 +9320,11 @@ function ToolCallSummary({
 									<StopHookMarker key={`notice-${notice.lineIndex}`} line={notice.line} />
 								))}
 								{leadingPeers.map((notice) => (
-									<PeerMessageRow key={`notice-${notice.lineIndex}`} message={notice.message} />
+									<PeerMessageRow
+										key={`notice-${notice.lineIndex}`}
+										message={notice.message}
+										sentAt={notice.sentAt}
+									/>
 								))}
 								{coalesceSameTarget(calls).map((item) =>
 									"kind" in item ? (
@@ -9353,7 +9367,11 @@ function ToolCallSummary({
 									),
 								)}
 								{trailingPeers.map((notice) => (
-									<PeerMessageRow key={`notice-${notice.lineIndex}`} message={notice.message} />
+									<PeerMessageRow
+										key={`notice-${notice.lineIndex}`}
+										message={notice.message}
+										sentAt={notice.sentAt}
+									/>
 								))}
 								{claudeNotices.map((notice) => (
 									<ClaudeCodeNoticeSteps key={`notice-${notice.lineIndex}`} notice={notice} />
