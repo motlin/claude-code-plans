@@ -1,22 +1,12 @@
 import {vi} from "vite-plus/test";
-
-interface EvaluatedModule
-{
-	promise: unknown;
-	exports: unknown;
-	evaluated: boolean;
-	importers: Set<string>;
-}
+import {forgetMockModules, type ModuleGraph} from "./mock-module-graph";
 
 declare global
 {
 	/** Vitest's per-worker state, whose module graph vi.resetModules resets. */
 	var __vitest_worker__:
 	{
-		evaluatedModules:
-		{
-			idToModuleMap: Map<string, EvaluatedModule>;
-		};
+		evaluatedModules: ModuleGraph;
 	};
 }
 
@@ -28,11 +18,4 @@ vi.resetModules();
 
 // vi.resetModules keeps evaluated mock modules, so a file mocking a path an earlier file mocked would get that file's
 // factory result. Forget them too, as isolation does.
-for (const [id, node] of globalThis.__vitest_worker__.evaluatedModules.idToModuleMap)
-{
-	if (!id.startsWith("mock:")) continue;
-	node.promise = undefined;
-	node.exports = undefined;
-	node.evaluated = false;
-	node.importers.clear();
-}
+forgetMockModules(globalThis.__vitest_worker__.evaluatedModules);
