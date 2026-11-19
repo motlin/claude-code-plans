@@ -18,6 +18,7 @@ import {createPortal} from "react-dom";
 import {Maximize2, Minimize2, X} from "lucide-react";
 
 import {useShortcut, useShortcutKeys} from "../../hooks/use-shortcut";
+import {FIZZY_LAKE_PANELS} from "../../lib/fizzy-lake";
 import {codeSurfaceStyle} from "./code-surface";
 import {PaneChromeHeader} from "./deferred-pane-status";
 import {PANE_CLOSE_CONTROL_CLASS, PaneHeaderRow} from "./pane-header-row";
@@ -1252,7 +1253,8 @@ function StackView({
 		<div
 			ref={ref}
 			data-tile-stack={stack.direction}
-			// Upstream's tiles viewport switches to `data-tiles-line` whenever its panels layout holds a pane.
+			// Upstream's tiles viewport is `data-tiles-line` (shared-20 `pU(true)`) under the panels flag, with the chat
+			// alone too; without panels local falls back to line mode only once a pane opens.
 			{...(isRoot
 				?
 					{
@@ -1260,7 +1262,7 @@ function StackView({
 						"data-tiles-mounted": String(host.mountedCount),
 					}
 				: {})}
-			{...(isRoot && tileIdsOf(stack).length > 1
+			{...(isRoot && (FIZZY_LAKE_PANELS || tileIdsOf(stack).length > 1)
 				?
 					{
 						"data-tiles-line": "",
@@ -1360,11 +1362,11 @@ function NodeView({
 	{
 		const hidden = host.hidden.has("chat");
 		// Upstream's line-mode tile shell (shared-20 `it`): 8px at the bottom, and 8px on a side the chat touches
-		// without a gutter attribute. Not on a phone until a live 390px read shows upstream insets there.
-		const gutters = layered ? chatGutters(host.flowRoot) : null;
+		// without a gutter attribute, so the chat alone is `0 0 8 8` with its end bleeding. Not on a phone until a
+		// live 390px read shows upstream insets there.
+		const gutters = lineShell(host) ? chatGutters(host.flowRoot) : null;
 		// Upstream's `.tiles-shell[data-tile-overflow-anchor]`: pinned to the chat's outer edge at the full slot
-		// width but never under 320px, so a narrower slot slides the shell under the neighbouring pane. The chat
-		// alone keeps the shell as `display: contents`.
+		// width but never under 320px, so a narrower slot slides the shell under the neighbouring pane.
 		const anchor = leftEdgeTiles(host.flowRoot).has("chat") ? "left" : "right";
 		// Upstream `vFe`/ca67f2c9d: under a drawn overlay the chat carries the shift vars and its shell is clipped.
 		const drawn = host.overlay?.drawn ?? null;
@@ -1723,13 +1725,19 @@ const BELOW_WIDE_ROW_STYLE =
 	top: "var(--wide-title-row-h)",
 } as const satisfies CSSProperties;
 
+/** Whether the chat gets upstream's line-mode shell: on desktop under panels, else once a pane shares the layout. */
+function lineShell(host: InternalHost): boolean
+{
+	return !host.phone && (FIZZY_LAKE_PANELS || tileIdsOf(host.layout.root).length > 1);
+}
+
 /** The chat tile's content: its Move grip (once a pane shares the row) above the transcript. */
 function ChatTileContent({host, chat}: {host: InternalHost; chat: ReactNode})
 {
 	const tiles = tileIdsOf(host.flowRoot).length;
-	const layered = !host.phone && tileIdsOf(host.layout.root).length > 1;
+	const line = lineShell(host);
 	const root = host.flowRoot;
-	const attributes = useMemo(() => chatGutterAttributes(layered ? chatGutters(root) : null), [layered, root]);
+	const attributes = useMemo(() => chatGutterAttributes(line ? chatGutters(root) : null), [line, root]);
 	// Upstream `Fp` keeps the chat's drag handle in the chat, below the spacer the lifted header leaves.
 	const belowRow = host.under !== null && host.wideRow?.overChat === true;
 	return (

@@ -329,10 +329,11 @@ describe("TileHost", () =>
 		unregisterFiles();
 	});
 
-	it("enters upstream's flat line mode once a pane opens: no radius or shadow, primary-ink header buttons", () =>
+	it("is in upstream's flat line mode with the chat alone and keeps it once a pane opens: no radius or shadow, primary-ink header buttons", () =>
 	{
 		renderHost("session-a");
-		expect(document.querySelector("[data-tiles-line]")).toBeNull();
+		// Under the panels flag upstream's viewport is `data-tiles-line` with the chat alone too (bare /code included).
+		expect(document.querySelector("[data-tile-stack]")?.hasAttribute("data-tiles-line")).toBe(true);
 		openTestPane();
 
 		const root = screen.getByText("Test pane body").closest("section[data-pane-root]");
@@ -3238,16 +3239,24 @@ describe("TileHost line-mode chat shell inset (upstream shared-20 it / cc43287c9
 		unregisterFiles();
 	});
 
-	it("keeps the chat alone without the shell inset while line mode stays pane-gated", () =>
+	it("insets the chat alone 8px from the bottom and the sidebar and bleeds its end, like upstream's line mode", () =>
 	{
 		renderInset();
 
-		expect(shellState()).toMatchObject(
+		expect(shellState()).toStrictEqual(
 			{
-				padding: "",
+				padding: "0px 0px 8px 8px",
 				start: null,
-				end: null,
-				mirrored: "{}",
+				end: "bleed",
+				tilesPadding: "8px",
+				ground: "var(--color-page)",
+				groundFill: true,
+				mirrored: JSON.stringify(
+					{
+						"data-chat-gutter-end": "bleed",
+					},
+				),
+				pane: undefined,
 			},
 		);
 	});
@@ -3290,7 +3299,7 @@ describe("TileHost line-mode chat shell inset (upstream shared-20 it / cc43287c9
 		).toStrictEqual(
 			{
 				lineMode: true,
-				alone: false,
+				alone: true,
 			},
 		);
 	});
@@ -3461,15 +3470,15 @@ describe("TileHost titlebar bleed over the chat shell inset (upstream shared-41 
 		unregisterFiles();
 	});
 
-	it("leaves the chat alone (card mode) without the bleed", () =>
+	it("bleeds the start and zeroes the bleeding end when the chat is alone in line mode", () =>
 	{
 		renderBleed();
 
 		expect(bleed()).toStrictEqual(
 			{
-				bleeds: false,
+				bleeds: true,
 				startZero: false,
-				endZero: false,
+				endZero: true,
 			},
 		);
 	});
@@ -3785,11 +3794,32 @@ describe("TileHost min-floor resolver (upstream ca67f2c9d walkResolvedFlexes / t
 		);
 	});
 
-	it("renders the chat alone without the overflow shell", () =>
+	it("anchors the chat alone's overflow shell left, as upstream's line-mode viewport does", () =>
 	{
 		renderFloor();
 
-		expect(shell()).toBe(null);
+		expect(
+			{
+				shell: shell(),
+				layers: layers(),
+			},
+		).toStrictEqual(
+			{
+				shell:
+				{
+					anchor: "left",
+					classes: ["absolute", "inset-y-0", "w-full", "min-w-[320px]"],
+					left: "0px",
+					right: "",
+					overflowMin: "320px",
+				},
+				layers:
+				{
+					chat: ["@container/tile-slot", "z-0"],
+					files: [],
+				},
+			},
+		);
 	});
 });
 
