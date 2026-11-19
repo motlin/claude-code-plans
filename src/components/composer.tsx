@@ -396,6 +396,8 @@ interface ComposerProps
 	bypassPermissionsAllowed?: boolean | undefined;
 	/** What the Mode menu's Default / Recommended badges read. */
 	modeBadges?: ModeBadgeSettings | undefined;
+	/** The home draft's Auto lock for its picked model (`ChinLaunchControls.autoLockNote`). */
+	autoLockNote?: string | null | undefined;
 	/** The session's or chosen folder's working directory, which a Bypass consent and mode pick are remembered for. */
 	permissionCwd?: string | undefined;
 	/** A Mode menu pick, remembered for `permissionCwd`'s folder (upstream's per-folder mode memory). */
@@ -1211,6 +1213,7 @@ export function Composer({
 	slashEnvironment,
 	bypassPermissionsAllowed = false,
 	modeBadges,
+	autoLockNote,
 	permissionCwd,
 	onPermissionModePick,
 	launchOptions: heldLaunchOptions,
@@ -3430,6 +3433,7 @@ export function Composer({
 						},
 			bypassPermissionsAllowed,
 			modeBadges,
+			autoLockNote,
 			permissionWorkspace: consentWorkspaceKey(permissionCwd),
 			onPermissionModePick,
 			tryAutoCoach,
@@ -3443,6 +3447,7 @@ export function Composer({
 		modelFlyout,
 		bypassPermissionsAllowed,
 		modeBadges,
+		autoLockNote,
 		permissionCwd,
 		onPermissionModePick,
 		tryAutoCoach,

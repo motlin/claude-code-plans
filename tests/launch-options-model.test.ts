@@ -1,6 +1,7 @@
 import {describe, expect, it} from "vite-plus/test";
 import
 {
+	autoModeLockNote,
 	buildLaunchFlags,
 	CLI_DEFAULT_MODEL,
 	defaultEffortFor,
@@ -741,5 +742,39 @@ describe("defaultEffortFor", () =>
 	])("$model -> $expected", ({model, expected}) =>
 	{
 		expect(defaultEffortFor(model)).toBe(expected);
+	});
+});
+
+describe("autoModeLockNote (upstream's catalog lock and kw rule)", () =>
+{
+	it("locks Auto for Haiku 4.5 and pre-4.6 Claude 4 ids, but not for aliases or 4.6+", () =>
+	{
+		expect(
+			{
+				haiku45: autoModeLockNote("claude-haiku-4-5-20251001"),
+				haikuAlias: autoModeLockNote("haiku"),
+				opus46: autoModeLockNote("claude-opus-4-6"),
+				sonnet45: autoModeLockNote("claude-sonnet-4-5"),
+				sonnet4: autoModeLockNote("claude-sonnet-4"),
+				opus40: autoModeLockNote("claude-opus-4-0"),
+				dated: autoModeLockNote("claude-sonnet-4-20250514[1m]"),
+				claude3: autoModeLockNote("claude-3-7-sonnet-20250219"),
+				opus48Long: autoModeLockNote("claude-opus-4-8[1m]"),
+				opus5: autoModeLockNote("claude-opus-5"),
+			},
+		).toStrictEqual(
+			{
+				haiku45: "Requires Claude 4.6 or newer",
+				haikuAlias: null,
+				opus46: null,
+				sonnet45: "Requires Claude 4.6 or newer",
+				sonnet4: "Requires Claude 4.6 or newer",
+				opus40: "Requires Claude 4.6 or newer",
+				dated: "Requires Claude 4.6 or newer",
+				claude3: "Requires Claude 4.6 or newer",
+				opus48Long: null,
+				opus5: null,
+			},
+		);
 	});
 });

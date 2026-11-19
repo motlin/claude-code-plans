@@ -175,4 +175,42 @@ describe("modeMenuItems badges (upstream's ar/or over the permission rows)", () 
 			},
 		]);
 	});
+
+	it("moves a model-locked Auto to a disabled last row, after Bypass, carrying the lock note, and drops its Recommended badge", () =>
+	{
+		const note = "Requires Claude 4.6 or newer";
+		const rows = modeMenuItems(
+			true,
+			{
+				defaultMode: null,
+				current: "acceptEdits",
+			},
+			note,
+		);
+		expect(
+			{
+				rows: rows.map((item) => [item.id, item.disabled ?? false, item.badge ?? null]),
+				last: rows.at(-1),
+			},
+		).toStrictEqual(
+			{
+				rows: [
+					["default", false, null],
+					["acceptEdits", false, null],
+					["plan", false, null],
+					["bypassPermissions", false, null],
+					["auto", true, null],
+				],
+				last:
+				{
+					id: "auto",
+					label: "Auto",
+					description: "Claude handles permission decisions",
+					warning: false,
+					disabled: true,
+					disabledReason: note,
+				},
+			},
+		);
+	});
 });

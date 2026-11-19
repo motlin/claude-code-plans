@@ -20,8 +20,9 @@ import {buildClaudeCopyCommand} from "../../lib/claude-launch-command";
 import {writeClipboardText} from "../../lib/clipboard";
 import {usageQueryOptions} from "../../lib/api/usage";
 import {resolveComposerState, withComposerAccountLimits} from "../../lib/composer-state";
-import {buildLaunchFlags, type LaunchOptions} from "../../lib/launch-options";
-import {folderChoice, folderModeKey} from "../../lib/folder-permission-mode";
+import {buildLaunchFlags, type LaunchOptions, LaunchPermissionModeSchema} from "../../lib/launch-options";
+import {clampToAvailable, folderChoice, folderModeKey} from "../../lib/folder-permission-mode";
+import {launchPermissionModeLabels} from "../../lib/schema-choices";
 import {autoDefaultOfferQueryOptions} from "../../lib/api/auto-default-offer";
 import {autoModeSetupQueryOptions} from "../../lib/api/auto-mode-setup";
 import type {TryAutoCoachOffer} from "../../lib/try-auto-coach";
@@ -199,10 +200,20 @@ export function HomeComposer({
 		[project, folderGone],
 	);
 	const pendingGroup = usePendingLaunchGroup();
-	const {draftMode, folderModes, defaults, folderDefaults, bypassPermissionsAllowed} = useHomeDraftMode(
-		project?.projectPath,
-	);
 	const launchDraft = useHomeLaunchOptions(project?.projectPath);
+	const
+	{
+		draftMode,
+		folderModes,
+		defaults,
+		folderDefaults,
+		bypassPermissionsAllowed,
+		settled,
+		autoLockNote,
+		available,
+		effectiveMode,
+	} = useHomeDraftMode(project?.projectPath, launchDraft.options);
+	useAutoGateDemotedToast(settled ? effectiveMode : null, autoLockNote);
 	const modeBadges = useModeBadges(project?.projectPath, folderModes.modes);
 	const {data: autoDefaultOffer} = useQuery(autoDefaultOfferQueryOptions);
 	// The Auto dialogs decide once, so they wait for the folder and its project settings.
@@ -368,14 +379,18 @@ export function HomeComposer({
 			return;
 		}
 		// The remembered mode goes on the command line only when the CLI wouldn't start in it by itself.
+		const permissionMode =
+			launchOptions.permissionMode === undefined
+				? draftMode.launchFlag
+				: clampToAvailable(launchOptions.permissionMode, available);
 		const withMode =
-			launchOptions.permissionMode === undefined && draftMode.launchFlag !== undefined
-				?
+			permissionMode === undefined
+				? launchOptions
+				:
 					{
 						...launchOptions,
-						permissionMode: draftMode.launchFlag,
-					}
-				: launchOptions;
+						permissionMode,
+					};
 		const args = [
 			...buildLaunchFlags(
 				worktree.useWorktree
@@ -559,6 +574,7 @@ export function HomeComposer({
 				subscribePrefill={onHomeComposerPrefillRequest}
 				bypassPermissionsAllowed={bypassPermissionsAllowed}
 				modeBadges={modeBadges}
+				autoLockNote={autoLockNote}
 				permissionCwd={project?.projectPath}
 				mentionFolder={project?.projectPath}
 				mentionCwd={project?.projectPath}
@@ -583,4 +599,32 @@ export function HomeComposer({
 			)}
 		</div>
 	);
+}
+
+/**
+ * Upstream's draft auto-gate demotion warning (c4a83c53b `Mr`): when the draft's effective mode leaves Auto because the
+ * picked model can't run it, a warning names the mode it switched to. `mode` is null until the draft's defaults
+ * settle, and the first settled mode is only recorded, so a page that loads already clamped stays silent. Upstream's
+ * second branch (id `4wXZUI`, "Auto mode isn’t the default for the selected model…") is gated on `FG(modelId)`, which
+ * returns a constant false, so it is dormant and left out.
+ */
+function useAutoGateDemotedToast(mode: string | null, autoLockNote: string | null): void
+{
+	const toast = useToast();
+	const prevRef = useRef<string | null>(null);
+	useEffect(() =>
+	{
+		const prev = prevRef.current;
+		prevRef.current = mode;
+		if (prev !== "auto" || mode === null || mode === "auto" || autoLockNote === null) return;
+		const next = LaunchPermissionModeSchema.safeParse(mode);
+		if (!next.success) return;
+		toast(
+			{
+				kind: "warning",
+				message: `Auto mode isn’t available for the selected model. Switched to ${launchPermissionModeLabels[next.data]}.`,
+				uniqueKey: "epitaxy-auto-gate-demoted",
+			},
+		);
+	}, [mode, autoLockNote, toast]);
 }

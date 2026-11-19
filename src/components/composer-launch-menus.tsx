@@ -84,6 +84,7 @@ export function ModeMenu({
 	currentLabel,
 	bypassPermissionsAllowed,
 	badges,
+	autoLockNote = null,
 	workspace,
 	onSelect,
 	surface,
@@ -96,6 +97,8 @@ export function ModeMenu({
 	bypassPermissionsAllowed: boolean;
 	/** The settings default and Recommended gate behind upstream's Default / Recommended row badges. */
 	badges?: ModeBadgeSettings | undefined;
+	/** Why the picked model can't run Auto (`autoModeLockNote`): its row moves last, disabled, with this tooltip. */
+	autoLockNote?: string | null | undefined;
 	/** The consent workspace key (`consentWorkspaceKey`), or "" before a folder is known. */
 	workspace: string;
 	onSelect: (mode: LaunchPermissionMode) => void;
@@ -149,11 +152,19 @@ export function ModeMenu({
 								...badges,
 								current,
 							},
+							autoLockNote,
 						).map((item, index) => (
 							<MenuRadioItem
 								key={item.id}
 								value={item.id}
-								{...(bar
+								{...(item.disabled === true
+									?
+										{
+											disabled: true,
+											disabledReason: item.disabledReason,
+										}
+									: {})}
+								{...(bar || item.disabled === true
 									? {}
 									:
 										{

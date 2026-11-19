@@ -119,8 +119,8 @@ export function useHomeNextSteps(): NextStepsListProps | undefined
 	const {data: folderPr} = useQuery(homeFolderPrQueryOptions(folder, folderPrBranch(git, worktree.enabled)));
 	const {used, opening} = useHomeDraftUsed();
 	// The auto-mode row reads the mode the chin shows: its pick, else the folder memory or settings default.
-	const {draftMode, settled: modeSettled} = useHomeDraftMode(folder);
 	const {options: launchOptions} = useHomeLaunchOptions(folder);
+	const {effectiveMode, settled: modeSettled} = useHomeDraftMode(folder, launchOptions);
 	const {data: autoModeSetup} = useQuery(autoModeSetupQueryOptions(folder));
 	const latched = useRef<NextStepsListProps | undefined>(undefined);
 	const answeredIds = useAnsweredSessionIds();
@@ -193,7 +193,7 @@ export function useHomeNextSteps(): NextStepsListProps | undefined
 							folder,
 							// Upstream gates only this row on `permission.settled`, not the whole list.
 							settled: modeSettled && autoModeSetup !== undefined,
-							mode: launchOptions.permissionMode ?? draftMode.mode,
+							mode: effectiveMode,
 							autoIsDefault: autoModeSetup?.autoModeIsDefault === true,
 							autoModeSetupComplete: autoModeSetup?.setupComplete === true,
 							launching,

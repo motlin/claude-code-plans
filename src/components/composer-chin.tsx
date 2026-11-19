@@ -47,7 +47,9 @@ import
 	modelMenuValue,
 	withModel,
 	type ModeBadgeSettings,
+	offeredModes,
 } from "../lib/launch-options";
+import {clampToAvailable} from "../lib/folder-permission-mode";
 import {settingsModelMenu} from "../lib/retry-model-items";
 import {useShortcutKeys} from "../hooks/use-shortcut";
 import {effortLevelLabels} from "../lib/schema-choices";
@@ -377,6 +379,8 @@ export interface ChinLaunchControls
 	bypassPermissionsAllowed: boolean;
 	/** What the Mode menu's Default / Recommended badges read. */
 	modeBadges?: ModeBadgeSettings | undefined;
+	/** The home draft's Auto lock for its picked model (`autoModeLockNote`); a pick of Auto shows clamped while set. */
+	autoLockNote?: string | null | undefined;
 	/** The folder the Bypass ack is kept for (`consentWorkspaceKey`), or "" before one is known. */
 	permissionWorkspace: string;
 	/** A Mode menu pick that passed the consent guard, for the folder's remembered mode. */
@@ -550,10 +554,16 @@ export const ComposerChin = memo(function ComposerChin({
 			onOpenMenuChange(open ? menu : null);
 		},
 	});
-	const modeLabel =
-		launchOptions.permissionMode === undefined
-			? (state.mode?.label ?? "Manual")
-			: modeTriggerLabel(launchOptions.permissionMode);
+	const autoLockNote = launch.autoLockNote ?? null;
+	// Upstream's derived demotion: the stored pick keeps Auto, so a model that runs Auto brings it back.
+	const modePick =
+		launchOptions.permissionMode === undefined || autoLockNote === null
+			? launchOptions.permissionMode
+			: clampToAvailable(
+					launchOptions.permissionMode,
+					offeredModes(launch.bypassPermissionsAllowed, autoLockNote),
+				);
+	const modeLabel = modePick === undefined ? (state.mode?.label ?? "Manual") : modeTriggerLabel(modePick);
 	const modelText = launchOptions.model === undefined ? state.model : modelLabel(launchOptions.model);
 	// Upstream's environment baseline; locally the settings.json model is what a pick overrides.
 	const settingsModel = modelMenuValue(state.settingsModelId) ?? state.settingsModelId;
@@ -605,10 +615,11 @@ export const ComposerChin = memo(function ComposerChin({
 		<ModeMenu
 			{...menuProps("mode")}
 			surface={surface}
-			current={launchOptions.permissionMode ?? state.mode?.id ?? "default"}
+			current={modePick ?? state.mode?.id ?? "default"}
 			currentLabel={modeLabel}
 			bypassPermissionsAllowed={launch.bypassPermissionsAllowed}
 			badges={launch.modeBadges}
+			autoLockNote={autoLockNote}
 			workspace={launch.permissionWorkspace}
 			onSelect={(permissionMode) =>
 			{
@@ -662,7 +673,7 @@ export const ComposerChin = memo(function ComposerChin({
 				</div>
 			)}
 			{/* Downloaded only once a Manual pick makes the mark eligible; it unmounts when the pick moves on. */}
-			{surface === "bar" && tryAutoCoachEligible(launchOptions.permissionMode, launch.tryAutoCoach) && (
+			{surface === "bar" && tryAutoCoachEligible(modePick, launch.tryAutoCoach) && (
 				<Suspense fallback={null}>
 					<LazyTryAutoCoachMark eligible anchor={modeSlot} />
 				</Suspense>

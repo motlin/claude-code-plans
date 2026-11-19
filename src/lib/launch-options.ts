@@ -99,6 +99,9 @@ export interface ModeMenuItem
 	warning: boolean;
 	/** Upstream's inline mode badge: the settings default (`ar`) or the Recommended Auto row (`or`). */
 	badge?: "default" | "recommended";
+	/** A row on show but not on offer (upstream's `{disabled: true, tooltip}` permission item), with why. */
+	disabled?: true;
+	disabledReason?: string;
 }
 
 /** What the Mode menu's badges read: the settings default mode, and whether Auto may be recommended. */
@@ -125,11 +128,33 @@ export function modeTriggerLabel(mode: LaunchPermissionMode): string
 	return mode === "bypassPermissions" ? "Bypass" : launchPermissionModeLabels[mode];
 }
 
+/** Upstream's `NA` tooltip for a model the generic Auto rule rejects, and the catalog's Haiku 4.5 note. */
+const AUTO_REQUIRES_NEWER_MODEL = "Requires Claude 4.6 or newer";
+
+/** Catalog rows marked `auto_permission_mode:"unavailable"` (live 2026-11-10: only Haiku 4.5). */
+const AUTO_UNAVAILABLE_MODELS: ReadonlySet<string> = new Set(["claude-haiku-4-5-20251001"]);
+
+/** Upstream's `kw`: Claude 3 and Claude 4 ids before 4.6 (`-4`, `-4-0`…`-4-5`, dated `-4-YYYYMMDD`). */
+const PRE_AUTO_CLAUDE_4 = /claude-[a-z]+-4(?:$|-(?:[0-5](?!\d)|\d{8}))/;
+
+/**
+ * Why Auto isn't offered for `model` (a menu value, alias or full id), or null when it is: upstream's catalog row note,
+ * else its generic `kw` rule. A custom-provider or organization reason has no local data.
+ */
+export function autoModeLockNote(model: string): string | null
+{
+	const id = splitLongContext(fullModelId(model)).bare.toLowerCase();
+	if (AUTO_UNAVAILABLE_MODELS.has(id) || id.includes("claude-3-") || PRE_AUTO_CLAUDE_4.test(id))
+		return AUTO_REQUIRES_NEWER_MODEL;
+	return null;
+}
+
 /**
  * Mode menu rows for a local session: Auto · Manual · Accept edits · Plan (+ Bypass when allowed). With `badges`, the
  * rows carry upstream's `or(ar(rows, n === r ? -1 : n), r)`: Recommended on Auto when it isn't current, and Default on
  * the settings default mode's row unless that is the Recommended row. Upstream's other Recommended gates (a model
- * that requires auto, a CLI too old to switch modes, the managed mode ceiling) have no local data.
+ * that requires auto, a CLI too old to switch modes, the managed mode ceiling) have no local data. With an
+ * `autoLockNote` (`autoModeLockNote`), Auto leaves the offered rows and is appended last, disabled, with the note.
  */
 export function modeMenuItems(
 	bypassPermissionsAllowed: boolean,
@@ -137,29 +162,53 @@ export function modeMenuItems(
 	{
 		current?: string;
 	},
+	autoLockNote: string | null = null,
 ): ModeMenuItem[]
 {
 	const ids = LaunchPermissionModeSchema.options.filter(
-		(id) => id !== "bypassPermissions" || bypassPermissionsAllowed,
+		(id) => (id !== "bypassPermissions" || bypassPermissionsAllowed) && (id !== "auto" || autoLockNote === null),
 	);
 	const recommended =
 		badges !== undefined && badges.recommendAuto !== false && badges.current !== "auto" && ids.includes("auto")
 			? "auto"
 			: undefined;
 	const defaultMode = badges?.defaultMode === recommended ? undefined : badges?.defaultMode;
-	return ids.map((id) =>
+	const rows = ids.map((id) =>
 	{
-		const item: ModeMenuItem =
-		{
-			id,
-			label: launchPermissionModeLabels[id],
-			description: MODE_DESCRIPTIONS[id],
-			warning: id === "bypassPermissions",
-		};
+		const item = modeMenuItem(id);
 		if (id === recommended) item.badge = "recommended";
 		else if (id === defaultMode) item.badge = "default";
 		return item;
 	});
+	if (autoLockNote !== null)
+	{
+		rows.push(
+			{
+				...modeMenuItem("auto"),
+				disabled: true,
+				disabledReason: autoLockNote,
+			},
+		);
+	}
+	return rows;
+}
+
+function modeMenuItem(id: LaunchPermissionMode): ModeMenuItem
+{
+	return {
+		id,
+		label: launchPermissionModeLabels[id],
+		description: MODE_DESCRIPTIONS[id],
+		warning: id === "bypassPermissions",
+	};
+}
+
+/** The modes a draft may start in: the Mode menu's enabled rows (`clampToAvailable`'s `available`). */
+export function offeredModes(bypassPermissionsAllowed: boolean, autoLockNote: string | null): LaunchPermissionMode[]
+{
+	return modeMenuItems(bypassPermissionsAllowed, undefined, autoLockNote)
+		.filter((item) => item.disabled !== true)
+		.map((item) => item.id);
 }
 
 /**

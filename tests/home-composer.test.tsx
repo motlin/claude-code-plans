@@ -3079,6 +3079,276 @@ describe("HomeComposer", () =>
 				expect(modeReadout()).toBe("Manual");
 			});
 		});
+
+		describe("Auto gated by the picked model (upstream's auto-gate demotion)", () =>
+		{
+			const DEMOTED = "Auto mode isn’t available for the selected model. Switched to Accept edits.";
+
+			/** The folder's settings read, so the draft's mode settles (upstream's `permission.settled`). */
+			function seedFolderDefaults(queryClient: QueryClient)
+			{
+				queryClient.setQueryData(
+					composerFolderDefaultsQueryOptions(HERE).queryKey,
+					{
+						model: null,
+						effortLevel: null,
+						defaultMode: null,
+						defaultModeManaged: false,
+						repoDefaultMode: null,
+						modelManaged: false,
+						availableModels: null,
+						bypassPermissionsAllowed: false,
+						fastMode: false,
+						fastModeBlocked: null,
+						cliFallbackMode: "default",
+					},
+				);
+			}
+
+			async function pickModel(name: string, more = false)
+			{
+				fireEvent.click(
+					screen.getByRole(
+						"button",
+						{
+							name: /^Model:/,
+						},
+					),
+				);
+				let menu = await screen.findByRole("menu");
+				if (more)
+				{
+					const subTrigger = within(menu).getByRole(
+						"menuitem",
+						{
+							name: /More models/,
+						},
+					);
+					fireEvent.pointerEnter(
+						subTrigger,
+						{
+							pointerType: "mouse",
+						},
+					);
+					fireEvent.mouseEnter(subTrigger);
+					fireEvent.pointerMove(
+						subTrigger,
+						{
+							pointerType: "mouse",
+						},
+					);
+					fireEvent.mouseMove(subTrigger);
+					await waitFor(() =>
+					{
+						expect(screen.getAllByRole("menu")).toHaveLength(2);
+					});
+					menu = screen.getAllByRole("menu")[1]!;
+				}
+				fireEvent.click(
+					within(menu).getByRole(
+						"menuitemradio",
+						{
+							name,
+						},
+					),
+				);
+				await waitFor(() =>
+				{
+					expect(screen.queryByRole("menu")).toBeNull();
+				});
+			}
+
+			function toastTexts(): string[]
+			{
+				return Array.from(
+					screen
+						.getByRole(
+							"region",
+							{
+								name: "Notifications",
+							},
+						)
+						.querySelectorAll("[data-toast]"),
+					(toast) => toast.textContent,
+				);
+			}
+
+			it("demotes Auto to Accept edits for Haiku 4.5 with one warning toast, disables the Auto row last, launches in acceptEdits, and restores Auto silently for Opus", async () =>
+			{
+				await renderApp(
+					"/",
+					"claude-opus-4-8[1m]",
+					seedFolderDefaults,
+					false,
+					{
+						defaultMode: "auto",
+					},
+				);
+				await waitFor(() =>
+				{
+					expect(modeReadout()).toBe("Auto");
+				});
+
+				await pickModel("Haiku 4.5", true);
+				const demotedReadout = modeReadout();
+				const toast = (await findToast()).textContent;
+				fireEvent.click(
+					screen.getByRole(
+						"button",
+						{
+							name: /^Permissions: /,
+						},
+					),
+				);
+				const rows = within(await screen.findByRole("menu")).getAllByRole("menuitemradio");
+				const autoRow = rows.at(-1)!;
+				const menuRows = rows.map((row) => [
+					row.querySelector("[data-menu-item-label]")?.textContent,
+					row.getAttribute("aria-checked"),
+					row.getAttribute("aria-disabled") ?? "false",
+				]);
+				const reason = document.getElementById(autoRow.getAttribute("aria-describedby") ?? "")?.textContent;
+				fireEvent.keyDown(
+					screen.getByRole("menu"),
+					{
+						key: "Escape",
+					},
+				);
+				await waitFor(() =>
+				{
+					expect(screen.queryByRole("menu")).toBeNull();
+				});
+
+				await pickModel("Opus 5.5");
+				const restoredReadout = modeReadout();
+				await pickModel("Haiku 4.5", true);
+				await waitFor(() =>
+				{
+					expect(modeReadout()).toBe("Accept edits");
+				});
+				const toastsAfterSecondDemotion = toastTexts();
+				await typePrompt("hello");
+				fireEvent.click(
+					screen.getByRole(
+						"button",
+						{
+							name: "Send",
+						},
+					),
+				);
+				await waitFor(() =>
+				{
+					expect(launchCalls.length).toBe(1);
+				});
+
+				expect(
+					{
+						demotedReadout,
+						toast,
+						menuRows,
+						reason,
+						restoredReadout,
+						toastsAfterSecondDemotion,
+						launch: launchBody(launchCalls[0]),
+					},
+				).toStrictEqual(
+					{
+						demotedReadout: "Accept edits",
+						toast: DEMOTED,
+						menuRows: [
+							["Manual", "false", "false"],
+							["Accept edits", "true", "false"],
+							["Plan", "false", "false"],
+							["Auto", "false", "true"],
+						],
+						reason: "Requires Claude 4.6 or newer",
+						restoredReadout: "Auto",
+						toastsAfterSecondDemotion: [DEMOTED],
+						launch:
+						{
+							cwd: HERE,
+							prompt: "hello",
+							args: ["--permission-mode", "acceptEdits", "--model", "claude-haiku-4-5-20251001"],
+						},
+					},
+				);
+			});
+
+			it("demotes an explicit Auto pick too, but shows no toast from Manual", async () =>
+			{
+				let shared: HomeLaunchOptions | undefined;
+				function StartCardProbe()
+				{
+					const {selected} = useHomeLaunchFolder();
+					shared = useHomeLaunchOptions(selected?.projectPath);
+					return null;
+				}
+				await renderApp(
+					"/",
+					"claude-opus-4-8[1m]",
+					seedFolderDefaults,
+					false,
+					{
+						defaultMode: null,
+					},
+					(dock) => (
+						<HomeLaunchFolderProvider>
+							<StartCardProbe />
+							{dock}
+						</HomeLaunchFolderProvider>
+					),
+				);
+				act(() =>
+				{
+					shared?.setPermissionMode("auto");
+				});
+				await waitFor(() =>
+				{
+					expect(modeReadout()).toBe("Auto");
+				});
+				await pickModel("Haiku 4.5", true);
+				const fromAuto = modeReadout();
+				const toast = (await findToast()).textContent;
+				await pickModel("Opus 5.5");
+				await pickMode(/^Manual/);
+				await pickModel("Haiku 4.5", true);
+
+				expect(
+					{
+						fromAuto,
+						toast,
+						fromManual: modeReadout(),
+						toasts: toastTexts(),
+					},
+				).toStrictEqual(
+					{
+						fromAuto: "Accept edits",
+						toast: DEMOTED,
+						fromManual: "Manual",
+						toasts: [DEMOTED],
+					},
+				);
+			});
+
+			it("clamps silently when the page loads with Haiku 4.5 and an Auto default", async () =>
+			{
+				await renderApp(
+					"/",
+					"claude-haiku-4-5-20251001",
+					seedFolderDefaults,
+					false,
+					{
+						defaultMode: "auto",
+					},
+				);
+				await waitFor(() =>
+				{
+					expect(modeReadout()).toBe("Accept edits");
+				});
+
+				expect(toastTexts()).toStrictEqual([]);
+			});
+		});
 	});
 
 	it("focuses the composer on ⇧⌘O while already home", async () =>
