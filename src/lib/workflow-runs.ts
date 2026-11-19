@@ -110,6 +110,8 @@ export const WorkflowJournalEventSchema = z.discriminatedUnion("type", [
 			// Whether the agent's result carried content read from another person's artifact.
 			foreignArtifactContent: z.boolean().optional(),
 			toolsUsed: z.array(z.string()).optional(),
+			// The parent session the agent ran under.
+			sessionId: z.string().optional(),
 		},
 	),
 	z.strictObject(
@@ -136,6 +138,7 @@ export const WorkflowAgentMetaSchema = z.strictObject(
 		requestNonInteractive: z.boolean().optional(),
 		model: z.string().optional(),
 		pickedEffortModel: z.string().optional(),
+		inWorkflowRun: z.boolean().optional(),
 	},
 );
 

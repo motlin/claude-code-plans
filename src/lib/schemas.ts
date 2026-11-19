@@ -800,6 +800,8 @@ export const AssistantRecordSchema = z
 			failedResponseHadNoToolCall: z.boolean().optional(),
 			apiErrorStatus: z.union([z.number(), z.string()]).optional(),
 			apiError: z.string().optional(),
+			// The API's error `type`, e.g. "rate_limit_error".
+			apiErrorType: z.string().optional(),
 			apiErrorParams: z
 				.object(
 					{
@@ -1140,6 +1142,8 @@ const DeferredToolsDeltaAttachmentPayload = z
 								name: z.string(),
 								errorCode: z.string().optional(),
 								error: z.string().optional(),
+								// When the CLI will retry the connection, e.g. "on_reach".
+								willRetry: z.string().optional(),
 							},
 						)
 						.strict(),
@@ -2085,6 +2089,8 @@ export const CompactMetadataSchema = z
 			durationMs: z.number().optional(),
 			precomputed: z.boolean().optional(),
 			preCompactDiscoveredTools: z.array(z.string()).optional(),
+			// Organization UUIDs the session used before compaction.
+			preCompactOrganizations: z.array(z.string()).optional(),
 			preCompactArtifactReadVersions: z
 				.array(
 					z

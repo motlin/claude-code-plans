@@ -733,6 +733,7 @@ describe("SystemRecordSchema", () =>
 				postTokens: 35371,
 				durationMs: 270,
 				precomputed: true,
+				preCompactOrganizations: ["ebd7baee-3a2c-46e1-af14-6a59738c0e21"],
 			},
 		};
 
@@ -2956,6 +2957,7 @@ describe("JsonlRecordSchema observed 2026-09 transcript fields", () =>
 							name: "imcp",
 							errorCode: "CONNECT_TIMEOUT",
 							error: "timed out",
+							willRetry: "on_reach",
 						},
 					],
 					runsAgainNames: ["ReadNotifications"],
@@ -3710,6 +3712,7 @@ describe("JsonlRecordSchema observed 2026-09 transcript fields", () =>
 			isApiErrorMessage: true,
 			streamCutCause: "stream_suspended",
 			failedResponseHadNoToolCall: true,
+			apiErrorType: "rate_limit_error",
 		};
 
 		expect(JsonlRecordSchema.parse(record)).toStrictEqual(record);

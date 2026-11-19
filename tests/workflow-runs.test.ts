@@ -1112,6 +1112,7 @@ describe("workflow schemas", () =>
 				clean: true,
 			},
 			toolsUsed: ["Bash", "StructuredOutput"],
+			sessionId: "d15b4a45-86b3-4f9c-b2a7-2d80771fc0d0",
 		};
 		expect(WorkflowJournalEventSchema.parse(event)).toStrictEqual(event);
 	});
@@ -1128,6 +1129,7 @@ describe("workflow schemas", () =>
 			requestShape: "foreground",
 			requestNonInteractive: false,
 			model: "sonnet",
+			inWorkflowRun: true,
 		};
 		expect(WorkflowAgentMetaSchema.parse(meta)).toStrictEqual(meta);
 	});
