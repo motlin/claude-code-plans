@@ -611,3 +611,98 @@ it("cancels a pending lookup and ignores its late answer after leaving the subag
 		},
 	);
 });
+
+// The alias branch returns synchronously, so the click's reload commits the resolved title and the head-title
+// invalidate never fires; session.$id needed staleReloadMode "blocking" for the same pattern.
+it("runs the loader once more, not twice, when a click lands on a hover-preloaded alias visit", async () =>
+{
+	const original = SubagentsRoute.options.loader;
+	const loader = original as unknown as
+		| ((...args: unknown[]) => unknown)
+		|
+		  {
+				handler: (...args: unknown[]) => unknown;
+				staleReloadMode?: unknown;
+		  };
+	const handler = typeof loader === "function" ? loader : loader.handler;
+	const runs = vi.fn<(...args: unknown[]) => unknown>(handler);
+	SubagentsRoute.update(
+		{
+			loader:
+				typeof loader === "function"
+					? runs
+					:
+						{
+							...loader,
+							handler: runs,
+						},
+		} as never,
+	);
+	try
+	{
+		const {router, finish} = await setup(
+			{
+				initial: "/session/local-charlie-300",
+			},
+		);
+		const target =
+		{
+			to: "/session/$id/subagents",
+			params:
+			{
+				id: ALIAS,
+			},
+		} as const;
+		// Hover: the preload's loader runs before the alias resolves, so its snapshot carries the generic title.
+		await act(async () => router.preloadRoute(target as never));
+		act(() =>
+		{
+			finish(
+				Response.json(
+					{
+						sessionId: ALICE,
+					},
+				),
+			);
+		});
+		await act(async () => router.navigate(target as never));
+		await screen.findByRole(
+			"heading",
+			{
+				name: "Subagents (2)",
+			},
+		);
+		await waitFor(() =>
+		{
+			expect(renderedPageTitle()).toBe("Subagents - local-al");
+		});
+		expect(
+			{
+				loaderRuns: runs.mock.calls.length,
+				titles: runs.mock.results.map((result) => result.value),
+				title: renderedPageTitle(),
+			},
+		).toStrictEqual(
+			{
+				loaderRuns: 2,
+				titles: [
+					{
+						title: "Subagents",
+					},
+					{
+						title: "Subagents - local-al",
+					},
+				],
+				title: "Subagents - local-al",
+			},
+		);
+	}
+	finally
+	{
+		SubagentsRoute.update(
+			{
+				loader: original,
+			} as never,
+		);
+	}
+});
