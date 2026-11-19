@@ -923,11 +923,107 @@ describe("SessionPage dock composition", () =>
 						},
 					) !== null,
 				blocked: document.querySelector('[data-testid="code-working-line"] [data-state="blocked"]') !== null,
+				present: document.querySelector('[data-testid="code-working-line"]') !== null,
 			},
 		).toStrictEqual(
 			{
 				card: true,
 				blocked: false,
+				present: false,
+			},
+		);
+	});
+	it("draws upstream's blocked line in the tail chrome below a transcript question card when this page watched the turn reach it", async () =>
+	{
+		let client: QueryClient | undefined;
+		const listed = (state: string) => (
+		{
+			pages: [
+				{
+					sessions: [
+						{
+							id: SESSION_ID,
+							state,
+						},
+					],
+					nextCursor: null,
+				},
+			],
+			pageParams: [null],
+		});
+		await renderSessionPage(
+			detail,
+			[],
+			(queryClient) =>
+			{
+				client = queryClient;
+				seedUsage(queryClient);
+				queryClient.setQueryData(recentSessionsInfiniteQueryOptions().queryKey, listed("working") as never);
+			},
+			[
+				{
+					type: "assistant",
+					uuid: "a1",
+					sessionId: SESSION_ID,
+					timestamp: "2026-09-28T10:00:01.000Z",
+					message:
+					{
+						role: "assistant",
+						content: [
+							{
+								type: "tool_use",
+								id: "toolu_question",
+								name: "AskUserQuestion",
+								input:
+								{
+									questions: [
+										{
+											question: "Ship it?",
+											options: [
+												{
+													label: "Yes",
+												},
+												{
+													label: "No",
+												},
+											],
+										},
+									],
+								},
+							},
+						],
+					},
+				},
+			],
+		);
+		act(() =>
+		{
+			client?.setQueryData(recentSessionsInfiniteQueryOptions().queryKey, listed("waiting") as never);
+		});
+		await flush();
+		const card = screen.getByRole(
+			"group",
+			{
+				name: "Ship it?",
+			},
+		);
+		const lines = document.querySelectorAll('[data-testid="code-working-line"]');
+		const line = lines[0];
+		expect(
+			{
+				lines: lines.length,
+				blocked:
+					line?.querySelector('[data-cds="TurnStatus"][data-state="blocked"]')?.getAttribute("title") ?? null,
+				inChrome: line?.closest('[data-testid="transcript-tail-chrome"]') !== null,
+				followsCard:
+					line !== undefined && (card.compareDocumentPosition(line) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
+			},
+		).toStrictEqual(
+			{
+				lines: 1,
+				blocked: "Needs your input",
+				inChrome: true,
+				followsCard: true,
 			},
 		);
 	});
@@ -1326,31 +1422,50 @@ describe("SessionPage dock composition", () =>
 			},
 		);
 	});
-	it("keeps the working line after an inline permission card, outside the transcript rows", async () =>
+	it("draws no working line after an inline permission card in a page that did not watch the turn, as upstream's fresh tab", async () =>
 	{
+		await renderSessionPage(detail, [], seedWaiting(true), waitingBashRecords());
+		expect(
+			{
+				card: document.querySelector("[data-inline-permission]") !== null,
+				lines: document.querySelectorAll('[data-testid="code-working-line"]').length,
+			},
+		).toStrictEqual(
+			{
+				card: true,
+				lines: 0,
+			},
+		);
+	});
+	it("keeps the blocked working line after an inline permission card, outside the transcript rows, in a page that watched the turn", async () =>
+	{
+		let client: QueryClient | undefined;
+		const listed = (state: string, awaitingPermission: boolean) => (
+		{
+			pages: [
+				{
+					sessions: [
+						{
+							id: SESSION_ID,
+							state,
+							awaitingPermission,
+						},
+					],
+					nextCursor: null,
+				},
+			],
+			pageParams: [null],
+		});
 		await renderSessionPage(
 			detail,
 			[],
 			(queryClient) =>
 			{
+				client = queryClient;
 				seedUsage(queryClient);
 				queryClient.setQueryData(
 					recentSessionsInfiniteQueryOptions().queryKey,
-					{
-						pages: [
-							{
-								sessions: [
-									{
-										id: SESSION_ID,
-										state: "waiting",
-										awaitingPermission: true,
-									},
-								],
-								nextCursor: null,
-							},
-						],
-						pageParams: [null],
-					} as never,
+					listed("working", false) as never,
 				);
 			},
 			[
@@ -1378,11 +1493,17 @@ describe("SessionPage dock composition", () =>
 				},
 			],
 		);
+		act(() =>
+		{
+			client?.setQueryData(recentSessionsInfiniteQueryOptions().queryKey, listed("waiting", true) as never);
+		});
+		await flush();
 		const line = document.querySelector('[data-testid="code-working-line"]');
 		const card = document.querySelector("[data-inline-permission]");
 		expect(
 			{
 				lines: document.querySelectorAll('[data-testid="code-working-line"]').length,
+				blocked: line?.querySelector('[data-state="blocked"]') !== null,
 				inRow: line?.closest('[data-testid="transcript-row"]') !== null,
 				followsCard:
 					card !== null &&
@@ -1392,6 +1513,7 @@ describe("SessionPage dock composition", () =>
 		).toStrictEqual(
 			{
 				lines: 1,
+				blocked: true,
 				inRow: false,
 				followsCard: true,
 			},
@@ -1480,7 +1602,8 @@ describe("SessionPage dock composition", () =>
 					outlet?.querySelector("[data-turn-mark-box] [data-standalone-tool-row] [data-cds=WorkingMark]") !==
 					null,
 				homeEmpty: home?.childElementCount,
-				lineBesideOutlet: line?.parentElement === grid,
+				// A page that did not watch the turn draws no working line under the card; the grid keeps only the outlet.
+				lines: line === null ? 0 : 1,
 				gridClass: grid?.className,
 				chrome: [chrome?.getAttribute("data-testid"), chrome?.className],
 				cardInStickySlot: card?.closest("[data-testid=transcript-trailing-slot]")?.className.includes("sticky"),
@@ -1492,7 +1615,7 @@ describe("SessionPage dock composition", () =>
 				cardClass: "empty:hidden",
 				carried: true,
 				homeEmpty: 0,
-				lineBesideOutlet: true,
+				lines: 0,
 				gridClass:
 					"grid grid-cols-[minmax(0,1fr)] gap-y-[var(--chat-turn-gap,15px)] [&>*]:min-w-0 [&>:empty]:invisible [&>:empty]:[grid-area:1/1] [&>[data-quiet]]:[grid-area:1/1] [&>[data-turn-mark-outlet]]:[grid-area:1/1]",
 				chrome: [
@@ -2622,7 +2745,7 @@ describe("SessionPage dock composition", () =>
 				return {
 					working: root?.getAttribute("data-turn-working"),
 					status: root?.querySelector("[role=status]")?.textContent,
-					blocked: root?.querySelector('[data-state="blocked"]') !== null,
+					blocked: root !== null && root.querySelector('[data-state="blocked"]') !== null,
 				};
 			};
 			const before = line();
@@ -2663,7 +2786,7 @@ describe("SessionPage dock composition", () =>
 				{
 					before:
 					{
-						working: "false",
+						working: undefined,
 						status: undefined,
 						blocked: false,
 					},

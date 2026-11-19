@@ -24,6 +24,7 @@ import
 	turnTokenEstimate,
 	turnTokenUsage,
 	workingLineAnnouncement,
+	workingLineUnderCard,
 	workingLineWaitsOnUser,
 	workingMarkerState,
 	workingMarkerText,
@@ -3020,5 +3021,31 @@ describe("WorkingMarker smoothed token count", () =>
 		stubReducedMotion(false);
 		render(<WorkingMarker state={WORKING_7S} sessionKey="s" tokens={1000} tokenFirstAt={at(6)} quiet />);
 		expect(vi.getTimerCount()).toStrictEqual(0);
+	});
+});
+
+describe("workingLineUnderCard", () =>
+{
+	it("draws no line under a live card unless this page watched the turn, which gets the blocked line", () =>
+	{
+		const cases: Parameters<typeof workingLineUnderCard>[0][] = [
+			{
+				cardShown: false,
+				respondingHere: false,
+			},
+			{
+				cardShown: false,
+				respondingHere: true,
+			},
+			{
+				cardShown: true,
+				respondingHere: false,
+			},
+			{
+				cardShown: true,
+				respondingHere: true,
+			},
+		];
+		expect(cases.map((signals) => workingLineUnderCard(signals))).toStrictEqual([null, null, "none", "blocked"]);
 	});
 });

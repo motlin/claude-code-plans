@@ -47,6 +47,7 @@ import {TranscriptActionsProvider} from "./transcript-actions-provider";
 import {TurnUndoSendContext} from "./turn-undo-send-context";
 import {useSessionFork} from "../hooks/use-session-fork";
 import {useLimitAutoResume} from "../hooks/use-limit-auto-resume";
+import {useRespondingHere} from "../hooks/use-responding-here";
 import {ArchivedComposerNote} from "./archived-composer-note";
 import {Composer, type ComposerRewindState} from "./composer";
 import type {UsageRingContext} from "./usage-popover-context";
@@ -125,6 +126,7 @@ import
 	tailMarkerQuiet,
 	toolLabelSince,
 	turnTokenUsage,
+	workingLineUnderCard,
 	workingLineWaitsOnUser,
 	type WorkingLineToolLabel,
 } from "../lib/working-marker";
@@ -1546,30 +1548,25 @@ function SessionView({
 			? (sessionSummary?.dialogOpenAt ?? null)
 			: null,
 	);
+	// A sent hook question's card stays as its receipt, but the turn no longer waits on it.
+	const cardWaitsOnUser =
+		pendingPermission !== null ||
+		transcriptQuestionCard ||
+		(hookQuestionCardShown && !hookQuestionSent) ||
+		inlinePlanId !== null ||
+		dockedPlan !== null ||
+		urlElicitationCard !== null;
+	const liveCardShown = cardWaitsOnUser || hookQuestionCardShown;
 	// The working line's "Needs your input" replaces the dock's waiting notice, as upstream shows only the former.
 	const workingLineWaits = workingLineWaitsOnUser(
 		{
 			awaitingPermission: awaitingPermission && !answeredHeld,
 			sessionState: displaySummaryState,
-			cardShown:
-				pendingPermission !== null ||
-				transcriptQuestionCard ||
-				hookQuestionCardShown ||
-				inlinePlanId !== null ||
-				dockedPlan !== null ||
-				urlElicitationCard !== null,
+			cardShown: liveCardShown,
 		},
 	);
 	// Upstream's `hasLiveApproval`: a card this tab draws keeps the row in Needs input over a Mark as completed ack.
-	useLiveApproval(
-		sessionId,
-		pendingPermission !== null ||
-			transcriptQuestionCard ||
-			hookQuestionCardShown ||
-			inlinePlanId !== null ||
-			dockedPlan !== null ||
-			urlElicitationCard !== null,
-	);
+	useLiveApproval(sessionId, liveCardShown);
 	const hookQuestionToolUseId = hookQuestion?.toolUseId;
 	const answerHookQuestion = useCallback(
 		async (answers: Array<QuestionAnswer | null>) =>
@@ -2619,12 +2616,28 @@ function SessionView({
 	// Upstream's "sending" phase lasts until the prompt reaches the transcript, or a sent answer's result lands.
 	const promptSending =
 		liveHerdrPrompt.state.phase === "sending" || liveHerdrPrompt.state.phase === "sent" || questionSent;
+	// Upstream's `isResponding` gate on the line under a live card: blocked in the page that watched the turn, else none.
+	const respondingHere = useRespondingHere(
+		sessionId,
+		{
+			status: workingMarkerState.status,
+			sessionState: displaySummaryState,
+			sending: promptSending,
+		},
+	);
+	const underCard = workingLineUnderCard(
+		{
+			cardShown: cardWaitsOnUser,
+			respondingHere,
+		},
+	);
+	const lineWaits = workingLineWaits || underCard === "blocked";
 	const workingLine = useCallback(
 		(inline: boolean, bare = false) => (
 			<WorkingMarker
 				state={workingMarkerState}
 				quiet={workingLineQuiet}
-				waitingOnUser={workingLineWaits}
+				waitingOnUser={lineWaits}
 				runningTasks={runningTaskCount}
 				inline={inline}
 				bare={bare}
@@ -2639,7 +2652,7 @@ function SessionView({
 		[
 			workingMarkerState,
 			workingLineQuiet,
-			workingLineWaits,
+			lineWaits,
 			runningTaskCount,
 			promptSending,
 			turnTokens,
@@ -2669,8 +2682,11 @@ function SessionView({
 		},
 	);
 	// Upstream `busyLineBelowTailSlot`: the line moves into the tail chrome's grid below the card or plan box.
-	const lineBelowTailSlot = planHolds || (workingLineFollowsTranscript && cardHoldsTail);
-	const lineAfterTranscript = workingLineFollowsTranscript || planHolds;
+	// The blocked line under a live card sits in that grid too, after the card, wherever the card is drawn.
+	const lineBelowTailSlot = planHolds || (workingLineFollowsTranscript && cardHoldsTail) || underCard === "blocked";
+	const lineAfterTranscript = workingLineFollowsTranscript || planHolds || underCard === "blocked";
+	// Upstream's fresh tab draws no line at all under a live card.
+	const lineShown = underCard !== "none";
 	// Upstream `aDe`'s `yieldFor`: the line below the tail slot takes the mark when no row is carried there.
 	const lineTakesMark = lineBelowTailSlot && turnResponding && markedRow === false;
 	const lineYieldId = useId();
@@ -2679,8 +2695,8 @@ function SessionView({
 		[turnMarkStore, lineYieldId, lineTakesMark],
 	);
 	const transcriptTail = useMemo(
-		() => (lineAfterTranscript ? null : workingLine(true)),
-		[lineAfterTranscript, workingLine],
+		() => (lineAfterTranscript || !lineShown ? null : workingLine(true)),
+		[lineAfterTranscript, lineShown, workingLine],
 	);
 	const [tailActions] = useState(createTailActionsOutlet);
 	// An inline card in the trailing slot: the working line moves into the tail chrome below it.
@@ -2696,9 +2712,9 @@ function SessionView({
 				className={`grid grid-cols-[minmax(0,1fr)] gap-y-[var(--chat-turn-gap,15px)] [&>*]:min-w-0 [&>:empty]:invisible [&>:empty]:[grid-area:1/1] [&>[data-quiet]]:[grid-area:1/1] [&>[data-turn-mark-outlet]]:[grid-area:1/1]${planHolds ? " [&>[data-turn-working=true]:not(.invisible)]:[grid-area:1/1] [&:has(>[data-turn-working=true]:not(.invisible))>[data-turn-mark-outlet]]:invisible" : ""}`}
 			>
 				{markedRow !== false && <TurnMarkOutlet className="empty:hidden" underPlan={markedRow === "plan"} />}
-				{workingLine(false, true)}
+				{lineShown && workingLine(false, true)}
 			</div>
-		) : cardsShown ? (
+		) : cardsShown && lineShown ? (
 			workingLine(false)
 		) : undefined
 	) : undefined;
@@ -3689,7 +3705,10 @@ function SessionView({
 											actionsOutletRef={tailActions.set}
 											chrome={tailChrome}
 										/>
-										{lineAfterTranscript && tailChrome === undefined && workingLine(false)}
+										{lineAfterTranscript &&
+											lineShown &&
+											tailChrome === undefined &&
+											workingLine(false)}
 
 										<SideChat sessionId={sessionId} messageCount={data.messageCount} />
 									</div>

@@ -290,6 +290,24 @@ export function workingLineWaitsOnUser({
 }
 
 /**
+ * The working line under a live inline card: upstream hides the transcript loader for any live card
+ * (`hideLoader: vs`), so the tail grid's line (`Vt`) mounts only while the tab is responding, as the blocked
+ * "Needs your input" line. `null` when no card is shown, so the usual line rules apply.
+ */
+export function workingLineUnderCard({
+	cardShown,
+	respondingHere,
+}: Readonly<
+{
+	cardShown: boolean;
+	respondingHere: boolean;
+}>): "none" | "blocked" | null
+{
+	if (!cardShown) return null;
+	return respondingHere ? "blocked" : "none";
+}
+
+/**
  * A row's running words handed to the working line when the row cannot hold
  * the mark (upstream's `toolLabel`/`toolLabelUnspoken`/`toolLabelSince`).
  * `unspoken` words come from a grouped step, so the line announces them;
