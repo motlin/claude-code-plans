@@ -3,7 +3,11 @@ import type {ReactNode} from "react";
 import type {ThemedToken} from "@shikijs/core";
 import {useHighlightedLines} from "../../hooks/use-shiki";
 import type {ToolRendererProps} from "./types";
-import {AnsiText, CopyButton, PolicyDenialReason, SecretRevealButton} from "./shared";
+import {stripAnsi} from "../../lib/ansi-codes";
+import {visibleMultiline} from "../../lib/visible-text";
+import {commandNeedsFrame} from "../../lib/code-tile";
+import {CommandCodeTile, CommandFrame} from "../code-tile";
+import {AnsiText, PolicyDenialReason, SecretRevealButton, ToolBodyCopyButton} from "./shared";
 import {useSecretReveal} from "./use-secret-reveal";
 import {TOOL_OUTPUT_REGION} from "./tool-output-region";
 import {getMcpRenderer} from "./mcp-registry";
@@ -112,30 +116,32 @@ export function BashRenderer({toolCall, nested = false}: ToolRendererProps)
 		return <McpCliBashRenderer toolCall={toolCall} server={mcpServer} tool={mcpTool} />;
 	}
 
-	const shownCommand = secrets.show(command);
-	const copyText = resultContent ? `${shownCommand}\n${secrets.show(resultContent)}` : shownCommand;
+	// Upstream `Cm`: a policy-blocked command shows its invisible and control characters (`SO`).
+	const maskedCommand = secrets.show(command);
+	const shownCommand = blocked ? visibleMultiline(maskedCommand) : maskedCommand;
+	// Upstream `Dm`: the prompt and command, a blank line, then the output without its ANSI codes.
+	const copyText = [command ? `$ ${shownCommand}` : "", resultContent ? stripAnsi(secrets.show(resultContent)) : ""]
+		.filter(Boolean)
+		.join("\n\n");
 
-	// Upstream's two-layer card: the prompt and command sit in an inner white
-	// code card at 12/17 mono with the copy control in a rail over its top-right
-	// corner; the output follows at the same size. Nested in a grouped card the
-	// copy button already sits beside the body, so the card keeps even padding.
+	// Upstream `tl`: the command in the shared code tile, with the Copy (after the local secrets Reveal) in the
+	// tile's first-line action column; a long command scrolls in the 10.5-line Command frame.
 	const body = (
 		<>
 			{command && (
-				<div
-					data-bash-code-card=""
-					className={`epitaxy-diff relative rounded-r6 bg-surface-1 dark:bg-surface-2 dark:ring-1 dark:ring-white/10 py-p3 pl-p6 ${nested ? "pr-p6" : "pr-[32px]"} text-[length:var(--code-size,12px)]/[var(--code-leading,17px)]`}
-				>
-					<HighlightedCommand command={shownCommand} />
-					{!nested && (
-						<div className="pointer-events-none absolute inset-y-0 right-[3px]">
-							<div className="pointer-events-auto sticky top-0 flex pt-px">
-								<SecretRevealButton {...secrets} size="xs" />
-								<CopyButton text={copyText} size="xs" />
-							</div>
-						</div>
-					)}
-				</div>
+				<CommandCodeTile
+					command={shownCommand}
+					lang="bash"
+					action={
+						<>
+							<SecretRevealButton {...secrets} size="xs" />
+							<ToolBodyCopyButton compact text={() => copyText} />
+						</>
+					}
+					codeFrame={
+						commandNeedsFrame(shownCommand) ? (file) => <CommandFrame>{file}</CommandFrame> : undefined
+					}
+				/>
 			)}
 			{resultContent && (
 				<div
@@ -150,26 +156,26 @@ export function BashRenderer({toolCall, nested = false}: ToolRendererProps)
 		</>
 	);
 
-	// Nested in a grouped card: no card chrome, so the "Bash" header disappears
-	// and the copy button sits beside the body instead of above it.
+	// Nested in a grouped card (upstream `Q`): no card chrome, so the "Bash" header disappears; only an
+	// output-only body puts its Copy beside the body, as the tile holds it otherwise.
 	if (nested)
 	{
 		return (
 			<>
 				<div className="flex-1 min-w-0 flex flex-col gap-g6 font-mono">{body}</div>
-				<SecretRevealButton {...secrets} />
-				<CopyButton text={copyText} />
+				{!command && <SecretRevealButton {...secrets} />}
+				{!command && <ToolBodyCopyButton text={copyText} />}
 			</>
 		);
 	}
 
 	return (
 		<>
-			{/* Header: "Bash" label; the copy button lives in the code card */}
+			{/* Header: "Bash" label; the copy button lives in the code tile */}
 			<div className="flex items-center px-p6 py-p5">
 				<span className="flex-1 text-body text-secondary">Bash</span>
 				{!command && <SecretRevealButton {...secrets} />}
-				{!command && <CopyButton text={copyText} />}
+				{!command && <ToolBodyCopyButton text={copyText} />}
 			</div>
 
 			<div className="flex flex-col gap-g6 px-p6 pb-p8 font-mono">{body}</div>

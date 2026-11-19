@@ -1,4 +1,4 @@
-import {type ReactNode, useCallback, useContext, useMemo, useState} from "react";
+import {type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState} from "react";
 import {ansiPartStyle, parseAnsiCodes} from "../../lib/ansi-codes";
 import {maskSecrets, maskUrlSecrets, secretToggleLabel} from "../../lib/secret-mask";
 import {paramValueText} from "../../lib/param-value-text";
@@ -481,6 +481,104 @@ export function CopyButton({
 					className={`inline-flex ${size === "xs" ? "size-5" : "size-6"} items-center justify-center border-0 cursor-default select-none rounded-r4 text-secondary hover:text-primary hover:bg-t2 transition-colors`}
 				>
 					{copied ? <CheckIcon size={iconSize} /> : <CopyIcon size={iconSize} />}
+				</button>
+			</Tooltip>
+		</div>
+	);
+}
+
+/** Upstream `he`: the tool-body Copy's hover reveal on its `group/body`, at upstream's fast-in, snap-out timing. */
+const TOOL_BODY_COPY_REVEAL =
+	"opacity-0 group-hover/body:opacity-100 focus-within:opacity-100 transition-opacity duration-fast ease-snap group-hover/body:duration-snap group-hover/body:delay-100 group-has-[:focus-visible]/body:duration-snap focus-within:duration-snap starting:opacity-0 motion-reduce:transition-none pointer-coarse:transition-none [@media(hover:none)]:transition-none";
+
+/** Upstream's ghost icon-only cds Button, at the xs control scale (`data-size="xs"`) or the density control height. */
+const TOOL_BODY_COPY_BUTTON =
+	"inline-flex shrink-0 cursor-pointer items-center justify-center text-plain-secondary outline-none hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus transition-colors hover:bg-fill-ghost-hover hover:text-primary";
+const TOOL_BODY_COPY_SIZE =
+{
+	xs: "size-[var(--cds-h-control--xs)] rounded-[var(--cds-radius--xs)]",
+	base: "h-control w-control rounded-[var(--upstream-radius)]",
+} as const;
+
+/** Upstream `ge`'s copied / failed hold. */
+const TOOL_BODY_COPY_RESET_MS = 1200;
+
+type CopyState = "copied" | "failed" | null;
+
+/**
+ * Upstream `ge`: a tool body's Copy, a ghost icon-only cds Button that reads `text` lazily, shows Check "Copied"
+ * or Warning "Couldn’t copy" for 1200ms and never takes focus on mouse down. Hover-revealed on a `group/body`
+ * unless `alwaysVisible`.
+ */
+export function ToolBodyCopyButton({
+	text,
+	compact = false,
+	alwaysVisible = false,
+}: {
+	text: string | (() => string);
+	compact?: boolean;
+	alwaysVisible?: boolean;
+})
+{
+	const [state, setState] = useState<CopyState>(null);
+	const timer = useRef<number | undefined>(undefined);
+	const attempt = useRef(0);
+	useEffect(
+		() => () =>
+		{
+			attempt.current += 1;
+			window.clearTimeout(timer.current);
+		},
+		[],
+	);
+
+	const handleClick = useCallback(() =>
+	{
+		const value = typeof text === "function" ? text() : text;
+		attempt.current += 1;
+		const current = attempt.current;
+		const settle = (next: Exclude<CopyState, null>) =>
+		{
+			if (current !== attempt.current) return;
+			setState(next);
+			window.clearTimeout(timer.current);
+			timer.current = window.setTimeout(() =>
+			{
+				setState(null);
+			}, TOOL_BODY_COPY_RESET_MS);
+		};
+		navigator.clipboard.writeText(value).then(
+			() =>
+			{
+				settle("copied");
+			},
+			() =>
+			{
+				settle("failed");
+			},
+		);
+	}, [text]);
+
+	const label = state === "copied" ? "Copied" : state === "failed" ? "Couldn\u2019t copy" : "Copy";
+	const icon = state === "copied" ? "Check" : state === "failed" ? "Warning" : "Copy";
+	return (
+		<div className={alwaysVisible ? "shrink-0" : TOOL_BODY_COPY_REVEAL}>
+			<Tooltip content={label}>
+				<button
+					type="button"
+					data-cds="Button"
+					data-cds-icon-only=""
+					data-cds-ghost=""
+					data-size={compact ? "xs" : undefined}
+					aria-label={label}
+					onMouseDown={(event) =>
+					{
+						event.preventDefault();
+					}}
+					onClick={handleClick}
+					className={`${TOOL_BODY_COPY_BUTTON} ${TOOL_BODY_COPY_SIZE[compact ? "xs" : "base"]}`}
+				>
+					<Icon name={icon} size={compact ? "auto-sm" : "auto"} />
 				</button>
 			</Tooltip>
 		</div>

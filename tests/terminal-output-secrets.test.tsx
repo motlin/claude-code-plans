@@ -7,6 +7,15 @@ import {ReadRenderer} from "../src/components/tool-renderers/read-renderer";
 import {AnsiText, TerminalOutput} from "../src/components/tool-renderers/shared";
 import type {ClientToolCall} from "../src/components/tool-renderers/types";
 
+/** The code tile's lazily loaded pierre File, as a bare `diffs-container` holding its code. */
+vi.mock("../src/components/code-tile-file", async () =>
+{
+	const {createElement} = await import("react");
+	return {
+		CodeTileFile: ({code}: {code: string}) => createElement("diffs-container", null, code),
+	};
+});
+
 const useHighlightedLines = vi.hoisted(() => vi.fn<(code: string, language: string | null) => null>(() => null));
 vi.mock("../src/hooks/use-shiki", () => (
 {
@@ -123,7 +132,7 @@ describe("BashRenderer secrets", () =>
 		sourceUuid: "uuid-secret",
 	};
 
-	it("masks command and output, with a Reveal toggle before Copy in the card rail", () =>
+	it("masks command and output, with a Reveal toggle before Copy in the tile's action column", () =>
 	{
 		const writeText = vi.fn<Clipboard["writeText"]>(async () => Promise.resolve());
 		Object.defineProperty(
@@ -138,7 +147,7 @@ describe("BashRenderer secrets", () =>
 			},
 		);
 		const {container} = render(<BashRenderer toolCall={call} />);
-		const card = container.querySelector("[data-bash-code-card]")!;
+		const card = container.querySelector(".epitaxy-code-card")!;
 		const state = () => (
 		{
 			command: card.querySelector(".select-none")!.parentElement!.textContent,
@@ -171,8 +180,8 @@ describe("BashRenderer secrets", () =>
 					railButtons: ["Hide 3 secrets", "Copy"],
 				},
 				copies: [
-					[`echo ${MASKED_AWS}\n${MASKED_AWS}\ntoken=${MASKED_GH}`],
-					[`echo ${FAKE_AWS}\n${FAKE_AWS}\ntoken=${FAKE_GH}`],
+					[`$ echo ${MASKED_AWS}\n\n${MASKED_AWS}\ntoken=${MASKED_GH}`],
+					[`$ echo ${FAKE_AWS}\n\n${FAKE_AWS}\ntoken=${FAKE_GH}`],
 				],
 			},
 		);

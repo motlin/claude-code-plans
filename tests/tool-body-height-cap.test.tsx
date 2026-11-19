@@ -10,6 +10,15 @@ import {ReadRenderer} from "../src/components/tool-renderers/read-renderer";
 import {WriteRenderer} from "../src/components/tool-renderers/write-renderer";
 import type {ClientToolCall} from "../src/components/tool-renderers/types";
 
+/** The code tile's lazily loaded pierre File, as a bare `diffs-container` holding its code. */
+vi.mock("../src/components/code-tile-file", async () =>
+{
+	const {createElement} = await import("react");
+	return {
+		CodeTileFile: ({code}: {code: string}) => createElement("diffs-container", null, code),
+	};
+});
+
 vi.mock("../src/components/tool-renderers/inline-diff", () => (
 {
 	InlineDiff: () => <div data-testid="diff-view" />,

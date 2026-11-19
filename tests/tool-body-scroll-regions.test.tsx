@@ -11,6 +11,15 @@ import type {ClientToolCall} from "../src/components/tool-renderers/types";
 import {processTranscript} from "../src/lib/transcript";
 import {TOUCH_REVEAL} from "../src/lib/touch-reveal";
 
+/** The code tile's lazily loaded pierre File, as a bare `diffs-container` holding its code. */
+vi.mock("../src/components/code-tile-file", async () =>
+{
+	const {createElement} = await import("react");
+	return {
+		CodeTileFile: ({code}: {code: string}) => createElement("diffs-container", null, code),
+	};
+});
+
 vi.mock("../src/components/settings-context", () => (
 {
 	useSettings: () => (
@@ -20,6 +29,11 @@ vi.mock("../src/components/settings-context", () => (
 			showDebug: false,
 		},
 	}),
+}));
+/** The settings stub carries no code themes, so the code tile keeps its fallback background. */
+vi.mock("../src/hooks/use-code-theme-background", () => (
+{
+	useCodeThemeBackground: () => undefined,
 }));
 vi.mock("../src/lib/hmr-persist", () => (
 {
@@ -504,7 +518,7 @@ describe("CopyButton", () =>
 		);
 	});
 
-	it("uses the xs size in the Bash command card", () =>
+	it("uses the xs size for the Copy in the Bash code tile's action column", () =>
 	{
 		const {container} = render(
 			<BashRenderer
@@ -517,14 +531,19 @@ describe("CopyButton", () =>
 				)}
 			/>,
 		);
-		const card = container.querySelector<HTMLElement>("[data-bash-code-card]")!;
+		const action = container.querySelector<HTMLElement>(".epitaxy-code-card > .flex.h-\\[1lh\\]")!;
+		const button = action.querySelector("button[aria-label='Copy']");
 
-		expect(buttonShape(card)).toStrictEqual(
+		expect(
 			{
+				size: button?.getAttribute("data-size"),
+				className: button?.className,
+			},
+		).toStrictEqual(
+			{
+				size: "xs",
 				className:
-					"inline-flex size-5 items-center justify-center border-0 cursor-default select-none rounded-r4 text-secondary hover:text-primary hover:bg-t2 transition-colors",
-				iconWidth: "12",
-				iconHeight: "12",
+					"inline-flex shrink-0 cursor-pointer items-center justify-center text-plain-secondary outline-none hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus transition-colors hover:bg-fill-ghost-hover hover:text-primary size-[var(--cds-h-control--xs)] rounded-[var(--cds-radius--xs)]",
 			},
 		);
 	});

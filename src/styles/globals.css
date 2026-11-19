@@ -2032,6 +2032,20 @@ input.cds-input::-webkit-search-cancel-button
 	transition-duration: 60ms;
 }
 
+/* Upstream's cds `duration-snap` (--cds-dur-snap, 0.12s): the tool-body Copy's hover-in fade. */
+@utility duration-snap
+{
+	--tw-duration: var(--cds-dur-snap);
+	transition-duration: var(--cds-dur-snap);
+}
+
+/* Upstream's cds `ease-snap` (--cds-ease-snap). */
+@utility ease-snap
+{
+	--tw-ease: var(--cds-ease-snap);
+	transition-timing-function: var(--cds-ease-snap);
+}
+
 /* Upstream's `.text-code` carries the mono face along with the code size and leading; the size and leading
    come from the `--text-code` theme token, this adds the family. */
 @utility text-code

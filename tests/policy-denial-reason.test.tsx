@@ -8,6 +8,15 @@ import {BlockedCallContext} from "../src/components/tool-renderers/blocked-call-
 import {KeyValueCard, PolicyDenialReason} from "../src/components/tool-renderers/shared";
 import type {ClientToolCall} from "../src/components/tool-renderers/types";
 
+/** The code tile's lazily loaded pierre File, as a bare `diffs-container` holding its code. */
+vi.mock("../src/components/code-tile-file", async () =>
+{
+	const {createElement} = await import("react");
+	return {
+		CodeTileFile: ({code}: {code: string}) => createElement("diffs-container", null, code),
+	};
+});
+
 vi.mock("../src/hooks/use-shiki", () => (
 {
 	useHighlightedLines: () => null,
@@ -185,9 +194,8 @@ describe("blocked tool bodies", () =>
 		expect(
 			{
 				output: container.querySelector("[data-bash-output]"),
-				children: Array.from(
-					column.children,
-					(child) => child.getAttribute("data-bash-code-card") ?? child.className,
+				children: Array.from(column.children, (child) =>
+					child.classList.contains("epitaxy-code-card") ? "tile" : child.className,
 				),
 				important: container.textContent.includes("IMPORTANT:"),
 				reason: column.lastElementChild?.textContent,
@@ -195,7 +203,7 @@ describe("blocked tool bodies", () =>
 		).toStrictEqual(
 			{
 				output: null,
-				children: ["", ROOT_CLASS],
+				children: ["tile", ROOT_CLASS],
 				important: false,
 				reason: "Blocked by auto mode: [Credential Materialization]",
 			},

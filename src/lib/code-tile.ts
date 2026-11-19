@@ -22,3 +22,14 @@ export function normalizeTileCode(code: string): string
 {
 	return code.replace(/\r?\n$/, "").replace(/\r(?!\n)/g, "␍");
 }
+
+/** Upstream `Y_`: a command longer than this many characters scrolls in a frame. */
+const FRAMED_COMMAND_CHARS = 300;
+/** Upstream's line limit beside `Y_`: a command with more lines scrolls in a frame. */
+const FRAMED_COMMAND_LINES = 10;
+
+/** Upstream `hv`: whether a command is long enough to scroll inside `CommandFrame`. */
+export function commandNeedsFrame(command: string): boolean
+{
+	return command.length > FRAMED_COMMAND_CHARS || command.split("\n").length > FRAMED_COMMAND_LINES;
+}

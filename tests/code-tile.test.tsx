@@ -5,8 +5,8 @@ import {resolve} from "node:path";
 import {cleanup, render, screen} from "@testing-library/react";
 import {createElement, use} from "react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
-import {CodeTile, CommandCodeTile} from "../src/components/code-tile";
-import {CODE_TILE_CSS, normalizeTileCode} from "../src/lib/code-tile";
+import {CodeTile, CommandCodeTile, CommandFrame} from "../src/components/code-tile";
+import {CODE_TILE_CSS, commandNeedsFrame, normalizeTileCode} from "../src/lib/code-tile";
 import {tileLanguage} from "../src/lib/code-tile-language";
 import {DEFAULT_CODE_THEMES} from "../src/lib/code-themes";
 
@@ -222,6 +222,64 @@ describe("CodeTile (upstream `el`)", () =>
 				dir: null,
 				children: ["min-w-0 flex-1", "flex h-[1lh] shrink-0 items-center"],
 				action: '<button type="button">c</button>',
+			},
+		);
+	});
+});
+
+describe("commandNeedsFrame (upstream `hv`)", () =>
+{
+	it("frames a command over 300 characters or over 10 lines", () =>
+	{
+		expect([
+			commandNeedsFrame("x".repeat(300)),
+			commandNeedsFrame("x".repeat(301)),
+			commandNeedsFrame(Array(10).fill("a").join("\n")),
+			commandNeedsFrame(Array(11).fill("a").join("\n")),
+		]).toStrictEqual([false, true, false, true]);
+	});
+});
+
+describe("CommandCodeTile codeFrame (upstream `gv` > `_v`)", () =>
+{
+	it("wraps the File in the 10.5-line Command scroll group and keeps the action after the code", async () =>
+	{
+		render(
+			<CommandCodeTile
+				command="ls"
+				action={<button type="button">c</button>}
+				codeFrame={(file) => <CommandFrame>{file}</CommandFrame>}
+			/>,
+		);
+		const root = await tileRoot();
+		const frame = root.children[1]?.firstElementChild;
+		expect(
+			{
+				childCount: root.children.length,
+				frame:
+				{
+					role: frame?.getAttribute("role"),
+					label: frame?.getAttribute("aria-label"),
+					tabIndex: frame?.getAttribute("tabindex"),
+					className: frame?.className,
+					holdsFile: frame?.querySelector("[data-testid=file]") !== null,
+				},
+				action: root.children[2]?.className,
+				actionHtml: root.children[2]?.innerHTML,
+			},
+		).toStrictEqual(
+			{
+				childCount: 3,
+				frame:
+				{
+					role: "group",
+					label: "Command",
+					tabIndex: "0",
+					className: "max-h-[calc(var(--code-leading,var(--upstream-leading-code))*10.5)] overflow-y-auto",
+					holdsFile: true,
+				},
+				action: "flex h-[1lh] shrink-0 items-center",
+				actionHtml: '<button type="button">c</button>',
 			},
 		);
 	});

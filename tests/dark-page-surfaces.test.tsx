@@ -8,6 +8,15 @@ import {SESSION_STICKY_HEADER_CLASS} from "../src/components/titlebar-classes";
 import {BashRenderer} from "../src/components/tool-renderers/bash-renderer";
 import {UsagePaceBand} from "../src/components/usage-pace-banner";
 
+/** The code tile's lazily loaded pierre File, as a bare `diffs-container` holding its code. */
+vi.mock("../src/components/code-tile-file", async () =>
+{
+	const {createElement} = await import("react");
+	return {
+		CodeTileFile: ({code}: {code: string}) => createElement("diffs-container", null, code),
+	};
+});
+
 vi.mock("../src/hooks/use-shiki", () => (
 {
 	useHighlightedLines: () => null,
@@ -38,7 +47,7 @@ describe("upstream's measured dark surfaces and inks (wave 90)", () =>
 		);
 	});
 
-	it("rings the Bash command card on surface-2 in dark", () =>
+	it("draws the Bash command on the code tile's theme background, with no dark-only surface override", () =>
 	{
 		const {container} = render(
 			<BashRenderer
@@ -59,10 +68,10 @@ describe("upstream's measured dark surfaces and inks (wave 90)", () =>
 
 		expect(
 			container
-				.querySelector("[data-bash-code-card]")
+				.querySelector(".epitaxy-code-card")
 				?.className.split(" ")
 				.filter((name) => name.startsWith("dark:")),
-		).toStrictEqual(["dark:bg-surface-2", "dark:ring-1", "dark:ring-white/10"]);
+		).toStrictEqual([]);
 	});
 
 	it("draws the pace band's used and reset detail in muted ink in dark", () =>

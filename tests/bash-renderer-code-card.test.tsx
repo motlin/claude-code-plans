@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
-import {cleanup, render} from "@testing-library/react";
+import {act, cleanup, fireEvent, render} from "@testing-library/react";
+import {createElement} from "react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import {BashRenderer} from "../src/components/tool-renderers/bash-renderer";
 import type {ClientToolCall} from "../src/components/tool-renderers/types";
@@ -10,7 +11,23 @@ vi.mock("../src/hooks/use-shiki", () => (
 	useHighlightedLines: () => null,
 }));
 
+/** The tile's pierre `File`, drawn as a bare `diffs-container` holding the code it was given. */
+vi.mock("@pierre/diffs/react", async (importOriginal) => (
+{
+	...(await importOriginal<typeof import("@pierre/diffs/react")>()),
+	File: ({
+		file,
+	}: {
+		file:
+		{
+			contents: string;
+		};
+	}) => createElement("diffs-container", null, file.contents),
+}));
+
 afterEach(cleanup);
+
+const CARD = "epitaxy-diff epitaxy-code-card rounded-lg flex overflow-clip px-md py-xs text-code";
 
 const CALL: ClientToolCall =
 {
@@ -27,13 +44,14 @@ const CALL: ClientToolCall =
 
 function layout(container: HTMLElement)
 {
-	const card = container.querySelector("[data-bash-code-card]");
+	const card = container.querySelector(".epitaxy-code-card");
 	const output = container.querySelector("[data-bash-output]");
 	return {
 		body: card?.parentElement?.className,
 		card: card?.className,
-		cardText: card?.querySelector(".select-none")?.parentElement?.textContent,
-		copyInCard: card?.querySelector("button[aria-label='Copy']") !== null,
+		cardText: card?.textContent,
+		action: card?.lastElementChild?.className,
+		copyInAction: card?.lastElementChild?.querySelector("button[aria-label='Copy']") !== null,
 		output: output?.className,
 		outputText: output?.textContent,
 	};
@@ -41,7 +59,7 @@ function layout(container: HTMLElement)
 
 describe("BashRenderer code card", () =>
 {
-	it("wraps the prompt and command in upstream's white 12/17 code card with the copy rail inside", () =>
+	it("draws the prompt and command in the shared code tile with the Copy in its first-line action column", () =>
 	{
 		const {container} = render(<BashRenderer toolCall={CALL} />);
 
@@ -65,28 +83,125 @@ describe("BashRenderer code card", () =>
 				},
 				label: "flex-1 text-body text-secondary",
 				body: "flex flex-col gap-g6 px-p6 pb-p8 font-mono",
-				card: "epitaxy-diff relative rounded-r6 bg-surface-1 dark:bg-surface-2 dark:ring-1 dark:ring-white/10 py-p3 pl-p6 pr-[32px] text-[length:var(--code-size,12px)]/[var(--code-leading,17px)]",
-				cardText: "$ git status",
-				copyInCard: true,
+				card: CARD,
+				cardText: "$\u{a0}git status",
+				action: "flex h-[1lh] shrink-0 items-center",
+				copyInAction: true,
 				output: "epitaxy-code-size max-h-[400px] overflow-y-auto whitespace-pre-wrap break-all text-[length:var(--code-size,12px)]/[var(--code-leading,17px)] text-secondary",
 				outputText: "nothing to commit",
 			},
 		);
 	});
 
-	it("uses the same card inside a grouped row, keeping the copy button beside the body", () =>
+	it("uses the same tile inside a grouped row, with the Copy still inside it", () =>
 	{
 		const {container} = render(<BashRenderer toolCall={CALL} nested />);
 
 		expect(layout(container)).toStrictEqual(
 			{
 				body: "flex-1 min-w-0 flex flex-col gap-g6 font-mono",
-				card: "epitaxy-diff relative rounded-r6 bg-surface-1 dark:bg-surface-2 dark:ring-1 dark:ring-white/10 py-p3 pl-p6 pr-p6 text-[length:var(--code-size,12px)]/[var(--code-leading,17px)]",
-				cardText: "$ git status",
-				copyInCard: false,
+				card: CARD,
+				cardText: "$\u{a0}git status",
+				action: "flex h-[1lh] shrink-0 items-center",
+				copyInAction: true,
 				output: "epitaxy-code-size max-h-[400px] overflow-y-auto whitespace-pre-wrap break-all text-[length:var(--code-size,12px)]/[var(--code-leading,17px)] text-secondary",
 				outputText: "nothing to commit",
 			},
 		);
+	});
+	it("scrolls a command over 300 characters in the Command frame, but not a short multi-line one", () =>
+	{
+		const framed = (command: string, nested: boolean) =>
+		{
+			const {container} = render(
+				<BashRenderer
+					toolCall={
+					{
+						...CALL,
+						input:
+						{
+							command,
+						},
+					}}
+					nested={nested}
+				/>,
+			);
+			const found = container.querySelector(".epitaxy-code-card [role=group][aria-label=Command]") !== null;
+			cleanup();
+			return found;
+		};
+		expect([framed("x".repeat(301), false), framed("x".repeat(301), true), framed("a\nb\nc", false)]).toStrictEqual(
+			[true, true, false],
+		);
+	});
+
+	it("copies upstream's `$ command`, a blank line, then the output without ANSI codes", async () =>
+	{
+		const writeText = vi.fn<Clipboard["writeText"]>(async () => Promise.resolve());
+		Object.defineProperty(
+			navigator,
+			"clipboard",
+			{
+				value:
+				{
+					writeText,
+				},
+				configurable: true,
+			},
+		);
+		const copy = async (call: ClientToolCall) =>
+		{
+			const {container} = render(<BashRenderer toolCall={call} />);
+			fireEvent.click(container.querySelector("button[aria-label='Copy']")!);
+			await act(async () =>
+			{
+				await Promise.resolve();
+			});
+			cleanup();
+		};
+		await copy(CALL);
+		const {result: _result, ...noResult} = CALL;
+		await copy(noResult);
+		await copy(
+			{
+				...CALL,
+				result: "$ git status\n\u001b[31mred\u001b[0m",
+			},
+		);
+		expect(writeText.mock.calls).toStrictEqual([
+			["$ git status\n\nnothing to commit"],
+			["$ git status"],
+			["$ git status\n\nred"],
+		]);
+	});
+
+	it("shows a policy-blocked command's invisible characters, and leaves an unblocked one raw", () =>
+	{
+		const command = "rm\u200B -rf x";
+		const tileText = (blocked: boolean) =>
+		{
+			const {container} = render(
+				<BashRenderer
+					toolCall={
+					{
+						...CALL,
+						input:
+						{
+							command,
+						},
+						...(blocked
+							?
+								{
+									blocked: true,
+								}
+							: {}),
+					}}
+				/>,
+			);
+			const text = container.querySelector(".epitaxy-code-card > .min-w-0")?.textContent;
+			cleanup();
+			return text;
+		};
+		expect([tileText(true), tileText(false)]).toStrictEqual(["rm[U+200B] -rf x", command]);
 	});
 });
