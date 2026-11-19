@@ -319,6 +319,7 @@ function attachmentDetailSections(
 		]);
 	}
 	if (attachment.type === "fork_briefing") return textSection("Briefing", attachment.text);
+	if (attachment.type === "critical_system_reminder") return textSection("Reminder", attachment.content);
 	if (attachment.type === "session_context")
 	{
 		return [
@@ -329,6 +330,8 @@ function attachmentDetailSections(
 	if (attachment.type === "deferred_tools_delta")
 	{
 		const surfaced = attachment.surfacedDefinitions ?? [];
+		const readded = attachment.readdedNames ?? [];
+		const runsAgain = attachment.runsAgainNames ?? [];
 		const removedByBlock = attachment.removedByBlock ?? [];
 		const failed = attachment.failedMcpServers ?? [];
 		const needsAuth = attachment.needsAuthMcpServers ?? [];
@@ -343,6 +346,8 @@ function attachmentDetailSections(
 					return summary ? `${tool.name}: ${summary}` : tool.name;
 				}),
 			),
+			...linesSection(`Available again (${readded.length})`, readded),
+			...linesSection(`Can run again (${runsAgain.length})`, runsAgain),
 			...linesSection(`Removed by block (${removedByBlock.length})`, removedByBlock),
 			...linesSection(`Failed MCP servers (${failed.length})`, failed.map(failedServerLine)),
 			...linesSection(`Needs sign-in (${needsAuth.length})`, needsAuth),

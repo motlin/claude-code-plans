@@ -1141,7 +1141,7 @@ describe("AttachmentBanner", () =>
 			).toStrictEqual([["Surfaced tools (2)", "mcp__docs__guide: Docs guides.\nmcp__docs__write"]]);
 		});
 
-		it("lists the deferred tools a block removed", () =>
+		it("lists the deferred tools available again, able to run again, and removed by a block", () =>
 		{
 			expect(
 				detailSections(
@@ -1149,9 +1149,15 @@ describe("AttachmentBanner", () =>
 						type: "deferred_tools_delta",
 						removedNames: ["mcp__docs__batch", "mcp__docs__guide", "mcp__docs__query"],
 						removedByBlock: ["mcp__docs__batch", "mcp__docs__guide"],
+						readdedNames: ["FetchInboxMessage", "SendUserFile"],
+						runsAgainNames: ["ReadNotifications"],
 					},
 				),
-			).toStrictEqual([["Removed by block (2)", "mcp__docs__batch\nmcp__docs__guide"]]);
+			).toStrictEqual([
+				["Available again (2)", "FetchInboxMessage\nSendUserFile"],
+				["Can run again (1)", "ReadNotifications"],
+				["Removed by block (2)", "mcp__docs__batch\nmcp__docs__guide"],
+			]);
 		});
 
 		it("lists failed MCP servers with their error code and error, and servers that need sign-in", () =>
@@ -1271,6 +1277,18 @@ describe("AttachmentBanner", () =>
 					},
 				),
 			).toStrictEqual([]);
+		});
+
+		it("shows a critical system reminder's content", () =>
+		{
+			expect(
+				detailSections(
+					{
+						type: "critical_system_reminder",
+						content: "<artifact-content-authored-by-others/>",
+					},
+				),
+			).toStrictEqual([["Reminder", "<artifact-content-authored-by-others/>"]]);
 		});
 
 		it("puts the type-specific details before the rendered reminder", () =>
