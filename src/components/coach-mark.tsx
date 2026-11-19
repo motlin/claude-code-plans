@@ -20,6 +20,7 @@ export function CoachMark({
 	action,
 	icon = HAND_ICON,
 	side = "right",
+	align = "center",
 	className = "max-w-[280px]",
 	onDismiss,
 	onClose,
@@ -35,6 +36,7 @@ export function CoachMark({
 	};
 	icon?: ReactNode;
 	side?: "top" | "right" | "bottom" | "left";
+	align?: "start" | "center" | "end";
 	/** The card's width cap; upstream callers such as the try-auto mark pass their own (`max-w-xs`). */
 	className?: string;
 	onDismiss: () => void;
@@ -55,7 +57,7 @@ export function CoachMark({
 				<Popover.Positioner
 					anchor={anchor}
 					side={side}
-					align="center"
+					align={align}
 					sideOffset={12}
 					className="z-[110] [filter:drop-shadow(0_8px_24px_rgb(0_0_0/0.16))_drop-shadow(0_2px_6px_rgb(0_0_0/0.12))]"
 				>

@@ -1,6 +1,6 @@
 import {useQuery} from "@tanstack/react-query";
 import {Folder, PanelLeft, Search} from "lucide-react";
-import {type ReactNode, type RefObject, useCallback, useEffect, useRef, useState} from "react";
+import {type ReactNode, type Ref, type RefObject, useCallback, useEffect, useRef, useState} from "react";
 
 import {useFilesTreeCanFit} from "../../hooks/use-files-tree-can-fit";
 import {useShortcut, useShortcutKeys} from "../../hooks/use-shortcut";
@@ -13,8 +13,11 @@ import {onFileOpenRequest, takePendingFileOpen} from "../../lib/file-open-reques
 import type {FileRef} from "../../lib/file-refs";
 import {loadFileTabs, saveFileTabs} from "../../lib/pane-layout";
 import {isAnotherOverlayOpen} from "../../lib/overlay";
+import {usePhoneSheet} from "../../lib/use-phone-sheet";
 import type {SessionFiles} from "../../lib/session-files";
 import {FILE_TAB_SIZES, normalizeFileTabSize} from "../../lib/file-preview";
+import {CoachMark} from "../coach-mark";
+import {useCoachMarkSeen} from "../../hooks/use-coach-mark-seen";
 import {ConfirmDialog} from "../confirm-dialog";
 import {FileTypeIconSetContext, useActiveFileTypeIconSet} from "../file-type-icon-set-context";
 import type {ContentMatchOpenOptions} from "../files/content-search-results";
@@ -57,13 +60,20 @@ import
 } from "./session-file-sources";
 import {SessionFilesList} from "./session-files-list";
 
-function TreeToggle({shown, onToggle}: {shown: boolean; onToggle: () => void})
+/** The Files tree coach mark's seen flag (upstream's `epitaxy_files_tree_nux`). */
+export const FILES_TREE_COACH_MARK_KEY = "ccb.coachmark.filesTree";
+
+/** Upstream's shared-120 `f7`: the PDF and Office viewers keep the files tree coach mark hidden. */
+const COACH_MARK_HIDDEN_PATH = /\.(pdf|docx?|pptx?|xlsx?)$/i;
+
+function TreeToggle({ref, shown, onToggle}: {ref?: Ref<HTMLButtonElement>; shown: boolean; onToggle: () => void})
 {
 	const keys = useShortcutKeys("toggle_changes_file_list");
 	const label = shown ? "Hide file tree" : "Show file tree";
 	return (
 		<Tooltip content={label} shortcut={keys.keys}>
 			<button
+				ref={ref}
 				type="button"
 				aria-pressed={shown}
 				aria-label={label}
@@ -353,7 +363,8 @@ function WorkspaceOrSessionList({
  * The pane's open tabs, persisted per session in the pane layout store once
  * hydrated. The layout store drops them when the Files pane closes.
  */
-function useFileTabs(sessionId: string | undefined): [FileTabsState, (action: FileTabsAction) => void]
+/** The pane's tabs, their dispatch, and whether the stored tab set has been restored yet. */
+function useFileTabs(sessionId: string | undefined): [FileTabsState, (action: FileTabsAction) => void, boolean]
 {
 	const {settings} = useSettings();
 	const previewTabs = settings.filesPreviewTabs;
@@ -415,7 +426,8 @@ function useFileTabs(sessionId: string | undefined): [FileTabsState, (action: Fi
 		[previewTabs],
 	);
 
-	return [entry.key === key ? entry.tabs : EMPTY_FILE_TABS, dispatch];
+	const restored = entry.key === key;
+	return [restored ? entry.tabs : EMPTY_FILE_TABS, dispatch, restored];
 }
 
 /**
@@ -549,17 +561,35 @@ export function FilesPaneView({chrome, sessionId, cwd, sessionFiles, unscannedRe
 {
 	const host = usePaneHost();
 	const iconSet = useActiveFileTypeIconSet();
-	const [treeShown, setTreeShown] = useState(true);
+	// Upstream's filesTreeShown, false outside a pop-out; filesTreePeek is the transient tree beside a file opened
+	// from the tree column or revealed in it, cleared by any explicit show or hide.
+	const [treeShown, setTreeShown] = useState(false);
+	const [treePeek, setTreePeek] = useState(false);
+	const treeOn = treeShown || treePeek;
 	// Upstream's filesTreeHiddenWhileEmpty: the toggle's hide while no tab is open, reset by any open.
 	const [hiddenWhileEmpty, setHiddenWhileEmpty] = useState(false);
 	// Upstream's treeReturnPath: the file a narrow pane swapped for the full-width tree.
 	const [treeReturnPath, setTreeReturnPath] = useState<string | null>(null);
 	const bodyRef = useRef<HTMLDivElement>(null);
-	const canFit = useFilesTreeCanFit(bodyRef);
+	const measuredRef = useRef(false);
+	// The file beside which a filter focus peeked the tree before the first measurement, assuming the pane fit.
+	const replayFilterFocusRef = useRef<string | null>(null);
+	const canFit = useFilesTreeCanFit(bodyRef, (fits) =>
+	{
+		measuredRef.current = true;
+		// Upstream's first-measure replay: a filter focus that peeked the tree beside a file, in a pane too narrow
+		// for it, swaps the file for the full-width tree instead.
+		if (!fits && openPath !== null && openPath === replayFilterFocusRef.current && treeOn)
+		{
+			showTreeOverTabs();
+			setFocusRequest((request) => request + 1);
+		}
+		replayFilterFocusRef.current = null;
+	});
 	const [focusRequest, setFocusRequest] = useState(0);
 	const [mode, setMode] = useState<FilesListMode>("workspace");
 	const [query, setQuery] = useState("");
-	const [fileTabs, dispatchTabs] = useFileTabs(sessionId);
+	const [fileTabs, dispatchTabs, tabsRestored] = useFileTabs(sessionId);
 	const editGuard = useEditGuard(fileTabs, dispatchTabs);
 	const dispatchFileTabs = editGuard.dispatch;
 	const openPath = fileTabs.active;
@@ -579,22 +609,41 @@ export function FilesPaneView({chrome, sessionId, cwd, sessionFiles, unscannedRe
 	>(null);
 	const treeOnRight = useFileColumnOnRight();
 	const [shownPath, setShownPath] = useState(openPath);
-	if (shownPath !== openPath)
+	const [shownRestored, setShownRestored] = useState(tabsRestored);
+	if (shownPath !== openPath || shownRestored !== tabsRestored)
 	{
 		setShownPath(openPath);
+		setShownRestored(tabsRestored);
+		// Upstream's `El`: the first file opened while the tree fills a fitting pane keeps the tree beside it. A
+		// restored tab set is not an open, so it doesn't peek.
+		const opened = shownRestored && shownPath === null && openPath !== null;
+		if (opened && canFit && !hiddenWhileEmpty && !treeOn) setTreePeek(true);
 		if (openPath !== null) setHiddenWhileEmpty(false);
 	}
 	// Upstream's Wk: under 400px the pane shows the tree OR the file, never both.
 	const fileShown = openPath !== null;
 	const hiddenEmpty = hiddenWhileEmpty && fileTabs.tabs.length === 0;
-	const treeFits = canFit && (!fileShown || treeShown);
+	const treeFits = canFit && (!fileShown || treeOn);
 	const treeIsShown = fileShown ? treeFits : !hiddenEmpty;
-	const treeBesideFile = fileShown && treeShown;
-	const treePressed = fileShown ? canFit && treeShown : !hiddenEmpty;
+	const treeBesideFile = fileShown && treeOn;
+	const treePressed = fileShown ? canFit && treeOn : !hiddenEmpty;
+	const [treeToggleButton, setTreeToggleButton] = useState<HTMLButtonElement | null>(null);
+	const phone = usePhoneSheet();
+	const coachMark = useCoachMarkSeen(FILES_TREE_COACH_MARK_KEY);
+	// Upstream's wk: a file open in a fitting pane with the tree hidden, off a phone and outside the PDF/Office viewers.
+	const coachMarkOpen =
+		openPath !== null &&
+		canFit &&
+		!treeOn &&
+		!phone &&
+		!COACH_MARK_HIDDEN_PATH.test(openPath) &&
+		!coachMark.hidden &&
+		treeToggleButton !== null;
 
 	/** Upstream's showFilesTreeOverTabs: the file gives way to the full-width tree and is remembered. */
 	function showTreeOverTabs(): void
 	{
+		setTreePeek(false);
 		setTreeReturnPath(openPath);
 		dispatchFileTabs(
 			{
@@ -603,9 +652,13 @@ export function FilesPaneView({chrome, sessionId, cwd, sessionFiles, unscannedRe
 		);
 	}
 
-	/** Upstream's c51596d2b `Q`: the tree toggle, shortcut, menu item and handles all land here. */
-	function toggleTree(): void
+	/**
+	 * Upstream's c51596d2b `rt`: the tree toggle, shortcut, menu item, handles and coach mark all land here. Any
+	 * route but the coach mark's own action retires the coach mark (`q(J)`).
+	 */
+	function toggleTree(via: "coachmark" | "other" = "other"): void
 	{
+		if (via !== "coachmark") coachMark.markSeen();
 		if (!fileShown)
 		{
 			const target = fileTabs.tabs.find((tab) => tab.path === treeReturnPath) ?? fileTabs.tabs.at(-1);
@@ -620,11 +673,20 @@ export function FilesPaneView({chrome, sessionId, cwd, sessionFiles, unscannedRe
 					path: target.path,
 				},
 			);
-			if (canFit) setTreeShown(false);
+			// Accounted for here, so the open doesn't peek: upstream's activate peeks and the hide below clears it.
+			setShownPath(target.path);
+			if (canFit) setTreeVisible(false);
 			return;
 		}
-		if (canFit) setTreeShown((shown) => !shown);
+		if (canFit) setTreeVisible(!treeOn);
 		else showTreeOverTabs();
+	}
+
+	/** Upstream's setFilesTreeShown: an explicit show or hide always ends a peek. */
+	function setTreeVisible(shown: boolean): void
+	{
+		setTreeShown(shown);
+		setTreePeek(false);
 	}
 
 	function setTreePressed(pressed: boolean): void
@@ -715,6 +777,22 @@ export function FilesPaneView({chrome, sessionId, cwd, sessionFiles, unscannedRe
 		},
 	);
 
+	// ⇧⌘F opened the pane: once the stored tabs are back, reveal the tree and focus its filter, as upstream's
+	// focusFilesTreeFilter does at open. Before the first measurement it assumes the pane fits; see the replay above.
+	const pendingFilterFocusRef = useRef(false);
+	useEffect(() =>
+	{
+		pendingFilterFocusRef.current = consumePendingFilterFocus();
+	}, []);
+	useEffect(() =>
+	{
+		if (!tabsRestored || !pendingFilterFocusRef.current) return;
+		pendingFilterFocusRef.current = false;
+		replayFilterFocusRef.current = measuredRef.current ? null : openPath;
+		goToFileOrSearch();
+		// oxlint-disable-next-line react-hooks/exhaustive-deps -- once, when the stored tabs land; the ref guards re-runs
+	}, [tabsRestored]);
+
 	const goToFileKeys = useShortcutKeys("go_to_file_in_changes");
 	useShortcut(
 		"go_to_file_in_changes",
@@ -729,11 +807,6 @@ export function FilesPaneView({chrome, sessionId, cwd, sessionFiles, unscannedRe
 			priority: 1,
 		},
 	);
-
-	useEffect(() =>
-	{
-		if (consumePendingFilterFocus()) filterRef.current?.focus();
-	}, []);
 
 	useEffect(() =>
 	{
@@ -772,7 +845,8 @@ export function FilesPaneView({chrome, sessionId, cwd, sessionFiles, unscannedRe
 	{
 		setHiddenWhileEmpty(false);
 		if (fileShown && !canFit) showTreeOverTabs();
-		else setTreeShown(true);
+		// Upstream peeks rather than flipping the shown preference.
+		else if (fileShown && !treeShown) setTreePeek(true);
 	}
 
 	function goToFileOrSearch(): void
@@ -791,7 +865,34 @@ export function FilesPaneView({chrome, sessionId, cwd, sessionFiles, unscannedRe
 				}}
 				title={
 					<div className="relative flex min-w-0 flex-1 items-center gap-1">
-						<TreeToggle shown={treePressed} onToggle={toggleTree} />
+						<TreeToggle
+							ref={setTreeToggleButton}
+							shown={treePressed}
+							onToggle={() =>
+							{
+								toggleTree();
+							}}
+						/>
+						<CoachMark
+							open={coachMarkOpen}
+							anchor={treeToggleButton}
+							side="bottom"
+							align="end"
+							className="max-w-xs"
+							title="Browse the project beside your file"
+							message="Show the file tree to jump between files without leaving this pane. Files you open line up here as tabs."
+							action={
+							{
+								label: "Show file tree",
+								onClick: () =>
+								{
+									coachMark.markSeen();
+									toggleTree("coachmark");
+								},
+							}}
+							onDismiss={coachMark.markSeen}
+							onClose={coachMark.close}
+						/>
 						{fileTabs.tabs.length === 0 ? (
 							<span data-pane-title className="truncate text-pane text-secondary select-none">
 								Files

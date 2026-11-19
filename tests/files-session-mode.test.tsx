@@ -4,7 +4,8 @@ import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
-import {FilesPaneView} from "../src/components/panes/files-pane";
+import {FILES_TREE_COACH_MARK_KEY, FilesPaneView} from "../src/components/panes/files-pane";
+import {setPendingFilterFocus} from "../src/components/panes/files-filter-focus";
 import {FilesPaneShortcut} from "../src/components/panes/files-pane-shortcut";
 import
 {
@@ -1363,9 +1364,10 @@ describe("Files pane narrower than 400px", () =>
 					preview: false,
 					empty: false,
 				},
+				// Swapping to the tree over tabs ended the peek, so the file comes back alone.
 				back:
 				{
-					tree: narrow.tree,
+					tree: ["hidden"],
 					separators: 0,
 					toggle: ["Show file tree", "false"],
 					viewer: true,
@@ -1409,7 +1411,7 @@ describe("Files pane narrower than 400px", () =>
 		);
 	});
 
-	it("with no file open the tree fills the pane, and picking a file shows it with the tree still mounted", async () =>
+	it("with no file open the tree fills the pane, and picking a file shows it with the tree still mounted but hidden", async () =>
 	{
 		const observers = installWidthObservers();
 		fileContents.set(AGENT, "export const agent = 1;\n");
@@ -1422,11 +1424,7 @@ describe("Files pane narrower than 400px", () =>
 		expect(
 			{
 				empty,
-				opened:
-				{
-					...opened,
-					tree: opened.tree?.includes("@max-[400px]/files-body:hidden"),
-				},
+				opened,
 			},
 		).toStrictEqual(
 			{
@@ -1441,7 +1439,7 @@ describe("Files pane narrower than 400px", () =>
 				},
 				opened:
 				{
-					tree: true,
+					tree: ["hidden"],
 					separators: 0,
 					toggle: ["Show file tree", "false"],
 					viewer: true,
@@ -1474,6 +1472,316 @@ describe("Files pane narrower than 400px", () =>
 				viewer: true,
 				preview: true,
 				empty: false,
+			},
+		);
+	});
+});
+
+describe("Files tree peek, coach mark and first-measure replay", () =>
+{
+	const AGENT = "/home/alice/example/agent.ts";
+	const COACH_TITLE = "Browse the project beside your file";
+
+	beforeEach(() =>
+	{
+		fileContents.set(AGENT, "export const agent = 1;\n");
+	});
+
+	function treeState(pane: HTMLElement)
+	{
+		const toggle = within(pane).getByRole(
+			"button",
+			{
+				name: /file tree$/,
+			},
+		);
+		const tree = pane.querySelector<HTMLElement>("[data-files-tree]");
+		return {
+			tree:
+				tree === null
+					? null
+					: tree.classList.contains("hidden")
+						? "hidden"
+						: tree.classList.contains("flex-1")
+							? "fill"
+							: "beside",
+			toggle: [toggle.getAttribute("aria-label"), toggle.getAttribute("aria-pressed")],
+			viewer: pane.querySelector(".cm-content") !== null,
+		};
+	}
+
+	function coachMark(): HTMLElement | null
+	{
+		return document.querySelector<HTMLElement>('[data-cds="CoachMark"]');
+	}
+
+	async function waitForViewer(pane: HTMLElement): Promise<void>
+	{
+		await waitFor(() =>
+		{
+			expect(pane.querySelector(".cm-content")).not.toBeNull();
+		});
+	}
+
+	/** Pins agent.ts, then remounts the still-open pane so the tab comes back restored. */
+	async function restoreAgentTab(): Promise<HTMLElement>
+	{
+		const first = await openPane();
+		fireEvent.doubleClick(await treeFile(first, "agent.ts"));
+		await flush();
+		cleanup();
+		unregister();
+		const pane = await openPane(
+			{
+				toggle: false,
+			},
+		);
+		await waitForViewer(pane);
+		return pane;
+	}
+
+	function clickToggle(pane: HTMLElement): void
+	{
+		fireEvent.click(
+			within(pane).getByRole(
+				"button",
+				{
+					name: /file tree$/,
+				},
+			),
+		);
+	}
+
+	it("a file opened from the no-file tree column peeks the tree beside it; the toggle hides it and the next open peeks again", async () =>
+	{
+		const pane = await openPane();
+		fireEvent.click(await treeFile(pane, "agent.ts"));
+		await waitForViewer(pane);
+		const peek = treeState(pane);
+		clickToggle(pane);
+		const hidden = treeState(pane);
+		fireEvent.click(
+			within(pane).getByRole(
+				"button",
+				{
+					name: "Close agent.ts",
+				},
+			),
+		);
+		await flush();
+		fireEvent.click(await treeFile(pane, "agent.ts"));
+		await waitForViewer(pane);
+
+		expect(
+			{
+				peek,
+				hidden,
+				again: treeState(pane),
+			},
+		).toStrictEqual(
+			{
+				peek:
+				{
+					tree: "beside",
+					toggle: ["Hide file tree", "true"],
+					viewer: true,
+				},
+				hidden:
+				{
+					tree: "hidden",
+					toggle: ["Show file tree", "false"],
+					viewer: true,
+				},
+				again:
+				{
+					tree: "beside",
+					toggle: ["Hide file tree", "true"],
+					viewer: true,
+				},
+			},
+		);
+	});
+
+	it("a restored file opens with the tree hidden and the coach mark, whose action shows the tree and retires it", async () =>
+	{
+		const pane = await restoreAgentTab();
+		const before = treeState(pane);
+		const mark = await waitFor(() =>
+		{
+			const found = coachMark();
+			if (found === null) throw new Error("no coach mark");
+			return found;
+		});
+		const content = mark.textContent;
+		fireEvent.click(
+			within(mark).getByRole(
+				"button",
+				{
+					name: "Show file tree",
+				},
+			),
+		);
+		await flush();
+
+		expect(
+			{
+				before,
+				content,
+				after: treeState(pane),
+				seen: localStorage.getItem(FILES_TREE_COACH_MARK_KEY),
+			},
+		).toStrictEqual(
+			{
+				before:
+				{
+					tree: "hidden",
+					toggle: ["Show file tree", "false"],
+					viewer: true,
+				},
+				content:
+					"Browse the project beside your fileShow the file tree to jump between files without leaving this pane. Files you open line up here as tabs.Show file tree",
+				after:
+				{
+					tree: "beside",
+					toggle: ["Hide file tree", "true"],
+					viewer: true,
+				},
+				seen: "true",
+			},
+		);
+	});
+
+	it("any other tree toggle retires the coach mark for good", async () =>
+	{
+		const pane = await restoreAgentTab();
+		await waitFor(() =>
+		{
+			expect(within(document.body).queryByText(COACH_TITLE)).not.toBeNull();
+		});
+		clickToggle(pane);
+		clickToggle(pane);
+		await flush();
+
+		expect(
+			{
+				state: treeState(pane),
+				mark: within(document.body).queryByText(COACH_TITLE),
+				seen: localStorage.getItem(FILES_TREE_COACH_MARK_KEY),
+			},
+		).toStrictEqual(
+			{
+				state:
+				{
+					tree: "hidden",
+					toggle: ["Show file tree", "false"],
+					viewer: true,
+				},
+				mark: null,
+				seen: "true",
+			},
+		);
+	});
+
+	it("keeps the coach mark closed in a pane narrower than 400px", async () =>
+	{
+		const observers = installWidthObservers();
+		const pane = await restoreAgentTab();
+		act(() =>
+		{
+			observers.resize(360);
+		});
+		await flush();
+
+		expect(
+			{
+				state: treeState(pane),
+				mark: within(document.body).queryByText(COACH_TITLE),
+			},
+		).toStrictEqual(
+			{
+				state:
+				{
+					tree: "hidden",
+					toggle: ["Show file tree", "false"],
+					viewer: true,
+				},
+				mark: null,
+			},
+		);
+	});
+
+	it("replays a pending filter focus on a narrow first measure: the restored file gives way to the full-width tree", async () =>
+	{
+		const observers = installWidthObservers();
+		const first = await openPane();
+		fireEvent.doubleClick(await treeFile(first, "agent.ts"));
+		await flush();
+		cleanup();
+		unregister();
+		setPendingFilterFocus(true);
+		const pane = await openPane(
+			{
+				toggle: false,
+			},
+		);
+		act(() =>
+		{
+			observers.resize(360);
+		});
+		await flush();
+
+		expect(
+			{
+				state: treeState(pane),
+				focused: document.activeElement?.getAttribute("aria-label"),
+			},
+		).toStrictEqual(
+			{
+				state:
+				{
+					tree: "fill",
+					toggle: ["Hide file tree", "true"],
+					viewer: false,
+				},
+				focused: "Filter files",
+			},
+		);
+	});
+
+	it("a pending filter focus in a pane that fits peeks the tree beside the restored file", async () =>
+	{
+		const observers = installWidthObservers();
+		const first = await openPane();
+		fireEvent.doubleClick(await treeFile(first, "agent.ts"));
+		await flush();
+		cleanup();
+		unregister();
+		setPendingFilterFocus(true);
+		const pane = await openPane(
+			{
+				toggle: false,
+			},
+		);
+		act(() =>
+		{
+			observers.resize(500);
+		});
+		await waitForViewer(pane);
+
+		expect(
+			{
+				state: treeState(pane),
+				focused: document.activeElement?.getAttribute("aria-label"),
+			},
+		).toStrictEqual(
+			{
+				state:
+				{
+					tree: "beside",
+					toggle: ["Hide file tree", "true"],
+					viewer: true,
+				},
+				focused: "Filter files",
 			},
 		);
 	});

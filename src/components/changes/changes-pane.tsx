@@ -82,6 +82,7 @@ import
 	useReviewFindingsState,
 } from "../../lib/review-findings-store";
 import {CoachMark} from "../coach-mark";
+import {useCoachMarkSeen} from "../../hooks/use-coach-mark-seen";
 import {OpenInSubmenu, ShowInFinderItem} from "../files/file-actions-menu";
 import {FileColumnPositionSubmenu} from "../files/file-column-position-menu";
 import {useFileColumnOnRight} from "../files/file-column-side";
@@ -526,47 +527,6 @@ interface DiffViewOptions
 	diffStyle: Settings["diffStyle"];
 	wordWrap: boolean;
 	wordDiff: boolean;
-}
-
-function readCoachMarkSeen(key: string): boolean
-{
-	try
-	{
-		return localStorage.getItem(key) === "true";
-	}
-	catch
-	{
-		return false;
-	}
-}
-
-/**
- * A one-time coach mark's seen flag, persisted in localStorage under `key`.
- * `closed` hides it for this mount only (an outside click), without marking it seen.
- */
-function useCoachMarkSeen(key: string)
-{
-	const [seen, setSeen] = useState(() => readCoachMarkSeen(key));
-	const [closed, setClosed] = useState(false);
-	return {
-		hidden: seen || closed,
-		markSeen: () =>
-		{
-			setSeen(true);
-			try
-			{
-				localStorage.setItem(key, "true");
-			}
-			catch
-			{
-				// Storage unavailable: the tip stays dismissed for this mount.
-			}
-		},
-		close: () =>
-		{
-			setClosed(true);
-		},
-	};
 }
 
 function ShowFilesToggle({
