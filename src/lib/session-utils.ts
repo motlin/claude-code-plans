@@ -391,12 +391,13 @@ export function extractSessionTitle(
 }
 
 /**
- * The tools upstream gives their own group-header segment. Every other tool --
- * Skill, ToolSearch, MCP tools, the Task* family, Artifact, a SendMessage to a
- * named recipient -- is named by its own group words ("loaded tools", "ran skill
- * 2 times", "messaged @lead") after the categories; only a call with a benign
- * error still folds into "used N tools". A SendMessage to a session address is
- * the `peer` category, chosen by `peerSendKey`.
+ * The tools upstream gives their own group-header segment by name alone. Every
+ * other tool -- Skill, ToolSearch, MCP tools, the Task* family, a SendMessage to
+ * a named recipient -- is named by its own group words ("loaded tools", "ran
+ * skill 2 times", "messaged @lead") after the categories; only a call with a
+ * benign error still folds into "used N tools". `categorize` adds the categories
+ * that depend on the call: a SendMessage to a session address (`peer`), an
+ * Artifact read or write, a worktree move, and a sent notification.
  */
 const CATEGORY_BY_TOOL =
 {
@@ -414,9 +415,17 @@ const CATEGORY_BY_TOOL =
 	Agent: "agent",
 	Task: "agent",
 	TodoWrite: "todo",
+	ExitPlanMode: "plan",
 } as const;
 
-type ToolCategory = (typeof CATEGORY_BY_TOOL)[keyof typeof CATEGORY_BY_TOOL] | "peer";
+type ToolCategory =
+	| (typeof CATEGORY_BY_TOOL)[keyof typeof CATEGORY_BY_TOOL]
+	| "peer"
+	| "artifact_read"
+	| "artifact_write"
+	| "worktree_enter"
+	| "worktree_exit"
+	| "notification";
 
 interface SegmentLabel
 {
@@ -503,6 +512,42 @@ const CATEGORY_LABELS: Record<ToolCategory, SegmentLabel> =
 		verb: "Messaged",
 		one: "another session",
 		many: "{n} other sessions",
+	},
+	plan:
+	{
+		verb: "Proposed",
+		one: "a plan",
+		many: "a plan",
+	},
+	artifact_read:
+	{
+		verb: "Read",
+		one: "an artifact",
+		many: "{n} artifacts",
+	},
+	artifact_write:
+	{
+		verb: "Updated",
+		one: "an artifact",
+		many: "{n} artifacts",
+	},
+	worktree_enter:
+	{
+		verb: "Moved to",
+		one: "a worktree",
+		many: "{n} worktrees",
+	},
+	worktree_exit:
+	{
+		verb: "Left",
+		one: "the worktree",
+		many: "{n} worktrees",
+	},
+	notification:
+	{
+		verb: "Sent",
+		one: "a notification",
+		many: "{n} notifications",
 	},
 };
 
@@ -654,11 +699,67 @@ export function diffStatsForCall(call: ToolCallLike):
 /** An MCP tool whose method is exactly `read` (Claude Docs' read), which upstream counts as reading a file. */
 const MCP_READ_TOOL = /^mcp__.+__read$/;
 
+/** The Artifact actions upstream counts as updating an artifact (shared-p-m-0 `Zv`). */
+const ARTIFACT_WRITE_ACTIONS: ReadonlySet<unknown> = new Set([
+	"write_db",
+	"upload_asset",
+	"delete_asset",
+	"reply",
+	"resolve",
+	"live-edit",
+	"sync",
+]);
+
+/** The Artifact actions upstream counts as reading an artifact (shared-p-m-0 `oa`). */
+const ARTIFACT_READ_ACTIONS: ReadonlySet<unknown> = new Set([
+	"read",
+	"read_file",
+	"list_files",
+	"read_db",
+	"read_asset",
+	"list_assets",
+	"read_page_data",
+	"comments",
+	"capabilities",
+	"verify",
+	"room_send",
+]);
+
+/** A PushNotification result that reports nothing went out. */
+const NOTIFICATION_NOT_SENT = /not sent/i;
+
+/**
+ * The categories that depend on the call, not just its tool (c24951e9f `ge`,
+ * `K`, `_e`): an Artifact action, a worktree move that succeeded, and a
+ * notification that went out.
+ */
+function callCategory(call: ToolCallLike): ToolCategory | null
+{
+	switch (call.name)
+	{
+		case "Artifact":
+		{
+			const action = call.input["action"];
+			if (ARTIFACT_WRITE_ACTIONS.has(action)) return "artifact_write";
+			return ARTIFACT_READ_ACTIONS.has(action) ? "artifact_read" : null;
+		}
+		case "EnterWorktree":
+			return call.isError === true ? null : "worktree_enter";
+		case "ExitWorktree":
+			return call.isError === true ? null : "worktree_exit";
+		case "PushNotification":
+			return call.isError === true || NOTIFICATION_NOT_SENT.test(call.result ?? "") ? null : "notification";
+		default:
+			return null;
+	}
+}
+
 function categorize(call: ToolCallLike): ToolCategory | null
 {
 	if (MCP_READ_TOOL.test(call.name)) return "read";
 	if (peerSendKey(call) !== undefined) return "peer";
-	return isKeyOf(CATEGORY_BY_TOOL, call.name) ? CATEGORY_BY_TOOL[call.name] : null;
+	if (isKeyOf(CATEGORY_BY_TOOL, call.name)) return CATEGORY_BY_TOOL[call.name];
+	return callCategory(call);
 }
 
 export function formatToolName(toolName: string): string
@@ -919,12 +1020,26 @@ function categorizeWithWrites(calls: ToolCallLike[]): (ToolCategory | null)[]
 			firstWriteType.set(path, writeType);
 		}
 	}
-	return calls.map((call) =>
+	const cats = calls.map((call) =>
 	{
 		const cat = categorize(call);
 		const path = filePathOf(call);
 		return cat === "write" && path !== null && firstWriteType.get(path) === "update" ? "edit" : cat;
 	});
+	// Upstream counts a read of an artifact the group also updates as part of that update.
+	const updated = new Set(calls.filter((_call, i) => cats[i] === "artifact_write").map(artifactKey));
+	return cats.map((cat, i) =>
+	{
+		const call = calls[i];
+		return cat === "artifact_read" && call !== undefined && updated.has(artifactKey(call)) ? "artifact_write" : cat;
+	});
+}
+
+/** The artifact a call acts on (c24951e9f `be`): its URL, else the call itself. */
+function artifactKey(call: ToolCallLike): string
+{
+	const url = call.input["url"];
+	return typeof url === "string" ? `artifact:${url}` : `id:${call.id ?? ""}`;
 }
 
 /**
@@ -964,6 +1079,9 @@ type CallOutcome = "succeeded" | "failed" | "stopped" | "blocked";
  */
 function callKey(call: ToolCallLike, index: number): string
 {
+	if (call.name === "Artifact" && typeof call.input["url"] === "string") return artifactKey(call);
+	const worktree = call.name === "EnterWorktree" ? call.input["path"] : undefined;
+	if (typeof worktree === "string") return `worktree:${worktree}`;
 	const path = filePathOf(call);
 	if (path !== null) return `path:${path}`;
 	return call.id === undefined ? `index:${index}` : `id:${call.id}`;
@@ -1370,7 +1488,12 @@ function buildSummarySegments(
 		// Upstream counts each session address once, however many sends it took.
 		const address = peerSendKey(call);
 		const key = address === undefined ? callKey(call, index) : `peer:${address}`;
-		byKey.set(key, mergeOutcome(byKey.get(key), outcome));
+		// A read folded into its artifact's update brings no outcome of its own.
+		if (cat === "artifact_write" && categorize(call) === "artifact_read")
+		{
+			if (!byKey.has(key)) byKey.set(key, undefined);
+		}
+		else byKey.set(key, mergeOutcome(byKey.get(key), outcome));
 		// A failed edit changed nothing, so upstream leaves it out of the totals.
 		if (isMutation(cat) && call.isError !== true)
 		{

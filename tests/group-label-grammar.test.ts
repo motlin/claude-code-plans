@@ -180,7 +180,96 @@ describe("group label: tool categories", () =>
 		},
 		{
 			calls: [tool("ExitPlanMode"), tool("Agent"), tool("Task")],
-			expected: "Ran 2 agents, proposed plan",
+			expected: "Proposed a plan, ran 2 agents",
+		},
+		{
+			calls: [
+				{
+					...tool("PushNotification"),
+					result: "Notification sent",
+				},
+				bash(),
+			],
+			expected: "Sent a notification, ran a command",
+		},
+		{
+			calls: [
+				tool(
+					"Artifact",
+					{
+						action: "read",
+						url: "https://claude.ai/artifact/a",
+					},
+				),
+				tool(
+					"Artifact",
+					{
+						action: "read_db",
+						url: "https://claude.ai/artifact/b",
+					},
+				),
+				tool(
+					"Artifact",
+					{
+						action: "read",
+						url: "https://claude.ai/artifact/a",
+					},
+				),
+			],
+			expected: "Read 2 artifacts",
+		},
+		{
+			calls: [
+				tool(
+					"Artifact",
+					{
+						action: "read",
+						url: "https://claude.ai/artifact/a",
+					},
+				),
+				tool(
+					"Artifact",
+					{
+						action: "write_db",
+						url: "https://claude.ai/artifact/a",
+					},
+				),
+				tool("Artifact"),
+			],
+			expected: "Updated an artifact, published artifact",
+		},
+		{
+			calls: [
+				tool(
+					"EnterWorktree",
+					{
+						path: "/repo/.worktrees/a",
+					},
+				),
+				bash(),
+				tool(
+					"ExitWorktree",
+					{
+						action: "keep",
+					},
+				),
+			],
+			expected: "Moved to a worktree, ran a command, left the worktree",
+		},
+		{
+			calls: [
+				{
+					...tool(
+						"EnterWorktree",
+						{
+							name: "a",
+						},
+					),
+					isError: true,
+				},
+				bash(),
+			],
+			expected: "Ran a command, creating a worktree, 1 failed",
 		},
 		{
 			calls: [tool("PowerShell"), bash()],

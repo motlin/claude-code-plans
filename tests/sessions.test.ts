@@ -1411,7 +1411,7 @@ describe("summarizeToolCallsStructured", () =>
 		]);
 	});
 
-	it("gives TodoWrite its own segment and names the rest, ExitPlanMode included, by their group words", () =>
+	it("gives TodoWrite and ExitPlanMode their own segments and names the rest by their group words", () =>
 	{
 		expect(
 			{
@@ -1480,8 +1480,8 @@ describe("summarizeToolCallsStructured", () =>
 				],
 				exitPlanMode: [
 					{
-						verb: "Proposed plan 2 times",
-						rest: "",
+						verb: "Proposed",
+						rest: "a plan",
 					},
 				],
 				cronCreate: [

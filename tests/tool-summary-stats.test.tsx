@@ -219,7 +219,7 @@ describe("SendMessage in a group header", () =>
 
 describe("ExitPlanMode in a summary", () =>
 {
-	it("reads its group words, though upstream never groups ExitPlanMode", () =>
+	it("reads its own category, though upstream never groups ExitPlanMode", () =>
 	{
 		expect(
 			summarizeToolCalls([
@@ -231,7 +231,7 @@ describe("ExitPlanMode in a summary", () =>
 					},
 				},
 			]),
-		).toBe("proposed plan");
+		).toBe("proposed a plan");
 	});
 });
 
