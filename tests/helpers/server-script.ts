@@ -78,6 +78,8 @@ export function isolatedServerEnv(
 		XDG_CACHE_HOME: join(run.runDir, "cache"),
 		SERVER_TITLE: run.title,
 		SERVER_ENTRY_MATCH: run.entryMatch,
+		// tests/fixtures/fake-server.mjs exits once this process is gone, so an aborted run leaves no server behind.
+		FAKE_SERVER_OWNER_PID: String(process.pid),
 		...overrides,
 	};
 }
@@ -493,5 +495,72 @@ export function processUsage(label: string, pid: number | undefined): string
 	catch
 	{
 		return `${label} pid ${String(pid)}: gone`;
+	}
+}
+
+/** PIDs of every process whose command line names the run's directory: whatever server.sh launched for it. */
+export function serverProcesses(run: ServerScriptRun): number[]
+{
+	try
+	{
+		return execFileSync(
+			"pgrep",
+			["-f", escapeRegExp(run.runDir)],
+			{
+				encoding: "utf8",
+				timeout: 10_000,
+			},
+		)
+			.trim()
+			.split("\n")
+			.map(Number)
+			.filter((pid) => pid !== process.pid)
+			.toSorted((a, b) => a - b);
+	}
+	catch (error)
+	{
+		// pgrep exits 1 when nothing matches.
+		if (errorField(error, "status") === 1)
+		{
+			return [];
+		}
+		throw error;
+	}
+}
+
+/**
+ * SIGKILLs every process launched for the run, with its process group (server.sh starts the server as its own group
+ * leader), and waits until none is left. Test teardown calls it whether or not server.sh stop succeeded.
+ */
+export async function killServerProcesses(run: ServerScriptRun, timeoutMs = 10_000): Promise<void>
+{
+	const pids = serverProcesses(run);
+	for (const pid of pids)
+	{
+		for (const target of [-pid, pid])
+		{
+			try
+			{
+				process.kill(target, "SIGKILL");
+			}
+			catch
+			{
+				// Not a group leader, or already gone.
+			}
+		}
+	}
+	const deadline = Date.now() + timeoutMs;
+	let survivors = serverProcesses(run);
+	while (survivors.length > 0)
+	{
+		if (Date.now() > deadline)
+		{
+			throw new Error(`Processes for ${run.runDir} survived SIGKILL: ${survivors.join(", ")}`);
+		}
+		await new Promise((resolveWait) =>
+		{
+			setTimeout(resolveWait, 50);
+		});
+		survivors = serverProcesses(run);
 	}
 }

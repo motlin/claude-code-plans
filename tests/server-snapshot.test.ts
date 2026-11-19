@@ -1,4 +1,4 @@
-import {execFileSync} from "node:child_process";
+import {execFileSync, spawn} from "node:child_process";
 import {cpSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync} from "node:fs";
 import {join} from "node:path";
 import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
@@ -6,10 +6,12 @@ import
 {
 	reservePort,
 	isolatedServerEnv,
+	killServerProcesses,
 	newServerScriptRun,
 	portOwners,
 	projectRoot,
 	runServerScript,
+	serverProcesses,
 	type ServerScriptRun,
 } from "./helpers/server-script";
 
@@ -124,17 +126,109 @@ beforeEach(async () =>
 
 // Sized for stop's own worst case on a loaded machine: SIGTERM, up to STOP_GRACE_SECONDS (10s) of waiting, then
 // SIGKILL, with pgrep and netstat each slow under load. The 10s hook default is shorter than the grace period alone.
+// A stop that fails (a lookup timing out on a loaded machine) must not leave the server behind: whatever happens,
+// every process launched for this run is killed before its directory goes.
+async function teardown(stopEnv: NodeJS.ProcessEnv = env): Promise<void>
+{
+	try
+	{
+		await runServerScript(
+			"stop",
+			{
+				env: stopEnv,
+				timeoutMs: 75_000,
+			},
+		);
+	}
+	finally
+	{
+		await killServerProcesses(serverRun);
+		rmSync(
+			runDir,
+			{
+				recursive: true,
+				force: true,
+			},
+		);
+	}
+}
+
 afterEach(async () =>
 {
-	await run("stop");
-	rmSync(
-		runDir,
-		{
-			recursive: true,
-			force: true,
-		},
-	);
+	await teardown();
 }, 60_000);
+
+describe("server-snapshot teardown", () =>
+{
+	it("leaves no server running when server.sh stop fails", async () =>
+	{
+		await run("start");
+		const stubDir = join(runDir, "failing-pgrep");
+		mkdirSync(stubDir);
+		writeFileSync(
+			join(stubDir, "pgrep"),
+			"#!/bin/bash\nexit 2\n",
+			{
+				mode: 0o755,
+			},
+		);
+		const failing = await teardown(
+			{
+				...env,
+				PATH: `${stubDir}:${env["PATH"] ?? ""}`,
+			},
+		).then(
+			() => "stopped",
+			(error: unknown) => (error instanceof Error ? error.message.split("\n")[0] : String(error)),
+		);
+
+		expect(
+			{
+				failing,
+				running: serverProcesses(serverRun),
+			},
+		).toStrictEqual(
+			{
+				failing: "server.sh stop failed",
+				running: [],
+			},
+		);
+	}, 150_000);
+
+	// No teardown runs when the test process itself dies (a Ctrl-C, a killed worker), so the server watches for that.
+	it("the server exits once the test process that launched it is gone", async () =>
+	{
+		const owner = spawn("sleep", ["60"]);
+		env =
+		{
+			...env,
+			FAKE_SERVER_OWNER_PID: String(owner.pid),
+		};
+		await run("start");
+		const started = serverProcesses(serverRun).length;
+		owner.kill("SIGKILL");
+		const deadline = Date.now() + 10_000;
+		while (serverProcesses(serverRun).length > 0 && Date.now() < deadline)
+		{
+			await new Promise((resolveWait) =>
+			{
+				setTimeout(resolveWait, 100);
+			});
+		}
+
+		expect(
+			{
+				started,
+				running: serverProcesses(serverRun),
+			},
+		).toStrictEqual(
+			{
+				started: 1,
+				running: [],
+			},
+		);
+	}, 150_000);
+});
 
 describe("scripts/server.sh snapshots", () =>
 {

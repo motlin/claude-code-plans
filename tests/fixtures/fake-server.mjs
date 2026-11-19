@@ -26,3 +26,24 @@ setTimeout(() =>
 		console.log(`listening on ${port}`);
 	});
 }, listenDelayMs);
+
+// Exits once the test process that launched it is gone. Teardown never runs in a test process that was killed or
+// interrupted, and server.sh detaches the server, so without this it would run until reboot.
+const ownerPid = Number(process.env["FAKE_SERVER_OWNER_PID"] ?? 0);
+if (ownerPid > 0)
+{
+	setInterval(() =>
+	{
+		try
+		{
+			process.kill(ownerPid, 0);
+		}
+		catch (error)
+		{
+			if (error.code !== "EPERM")
+			{
+				process.exit(0);
+			}
+		}
+	}, 200);
+}
