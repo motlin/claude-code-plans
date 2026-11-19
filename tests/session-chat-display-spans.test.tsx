@@ -225,6 +225,23 @@ function blur()
 	focus(outside);
 	outside.remove();
 }
+/**
+ * Runs the frame the tests' stubbed requestAnimationFrame (a 0ms timer) schedules after an event.
+ * Base UI requests its focus frame from a microtask its layout effect queued, so that microtask must
+ * run before this wait's own timer is queued; otherwise the frame lands after the wait and only runs
+ * first when both timers expire in the same millisecond.
+ */
+async function nextFrame()
+{
+	await act(async () =>
+	{
+		await Promise.resolve();
+		await new Promise((resolve) =>
+		{
+			setTimeout(resolve, 0);
+		});
+	});
+}
 
 describe("assistant display-span actions", () =>
 {
@@ -1736,13 +1753,7 @@ describe("assistant display-span actions", () =>
 				shiftKey: true,
 			},
 		);
-		await act(async () =>
-		{
-			await new Promise((resolve) =>
-			{
-				setTimeout(resolve, 0);
-			});
-		});
+		await nextFrame();
 		const menu = screen.getByRole("menu");
 		const opened =
 		{
@@ -1755,13 +1766,7 @@ describe("assistant display-span actions", () =>
 				key: "Escape",
 			},
 		);
-		await act(async () =>
-		{
-			await new Promise((resolve) =>
-			{
-				setTimeout(resolve, 0);
-			});
-		});
+		await nextFrame();
 		const escaped =
 		{
 			closedMenus: screen.queryAllByRole("menu").length,
@@ -1773,13 +1778,7 @@ describe("assistant display-span actions", () =>
 				key: "ContextMenu",
 			},
 		);
-		await act(async () =>
-		{
-			await new Promise((resolve) =>
-			{
-				setTimeout(resolve, 0);
-			});
-		});
+		await nextFrame();
 		fireEvent.keyDown(
 			screen.getByRole("menu"),
 			{
@@ -1800,13 +1799,7 @@ describe("assistant display-span actions", () =>
 				key: "Enter",
 			},
 		);
-		await act(async () =>
-		{
-			await new Promise((resolve) =>
-			{
-				setTimeout(resolve, 0);
-			});
-		});
+		await nextFrame();
 		expect(
 			{
 				opened,
@@ -1892,13 +1885,7 @@ describe("assistant display-span actions", () =>
 					},
 				);
 			}
-			await act(async () =>
-			{
-				await new Promise((resolve) =>
-				{
-					setTimeout(resolve, 0);
-				});
-			});
+			await nextFrame();
 			const menu = screen.getByRole("menu");
 			const openedWithMenuFocus = menu.contains(document.activeElement);
 			if (scenario === "pointer origin")
@@ -1940,13 +1927,7 @@ describe("assistant display-span actions", () =>
 					),
 				);
 			}
-			await act(async () =>
-			{
-				await new Promise((resolve) =>
-				{
-					setTimeout(resolve, 0);
-				});
-			});
+			await nextFrame();
 			expect(
 				{
 					openedWithMenuFocus,
