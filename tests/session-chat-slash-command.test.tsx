@@ -234,6 +234,55 @@ describe("SessionChat isMeta slash-command bodies", () =>
 	});
 });
 
+const STACKED_FIRST =
+{
+	type: "user",
+	uuid: "user-stacked-1",
+	stackedOriginalInput: "/git:rebase-all /build:test-all",
+	message:
+	{
+		role: "user",
+		content: "<command-message>git:rebase-all</command-message>\n<command-name>/git:rebase-all</command-name>",
+	},
+};
+
+const STACKED_EXPANSION =
+{
+	type: "user",
+	uuid: "user-stacked-2",
+	stackedExpansion: true,
+	message:
+	{
+		role: "user",
+		content: "<command-message>build:test-all</command-message>\n<command-name>/build:test-all</command-name>",
+	},
+};
+
+describe("SessionChat stacked slash commands", () =>
+{
+	it.each(["normal", "thinking", "verbose"] as const)("shows the typed stack as one prompt in %s mode", (mode) =>
+	{
+		const container = renderRecords(
+			[STACKED_FIRST, SKILL_BODY, STACKED_EXPANSION],
+			{
+				transcriptMode: mode,
+			},
+		);
+
+		expect(
+			{
+				bubbles: userBubbleTexts(container),
+				chips: chipSummary(container).map((chip) => chip.label),
+			},
+		).toStrictEqual(
+			{
+				bubbles: ["/git:rebase-all /build:test-all"],
+				chips: ["git:rebase-all"],
+			},
+		);
+	});
+});
+
 describe("SessionChat slash-command chip", () =>
 {
 	it("turns a leading /loop in prompt text into an accent chip followed by the rest of the text", () =>

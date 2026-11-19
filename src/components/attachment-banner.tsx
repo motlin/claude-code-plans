@@ -346,7 +346,11 @@ function attachmentDetailSections(
 					return summary ? `${tool.name}: ${summary}` : tool.name;
 				}),
 			),
-			...linesSection(`Available again (${readded.length})`, readded),
+			// causeNeutral: the CLI told the model these were announced earlier, not that a server reconnected.
+			...linesSection(
+				`Available again${attachment.causeNeutral === true ? ", announced earlier" : ""} (${readded.length})`,
+				readded,
+			),
 			...linesSection(`Can run again (${runsAgain.length})`, runsAgain),
 			...linesSection(`Removed by block (${removedByBlock.length})`, removedByBlock),
 			...linesSection(`Failed MCP servers (${failed.length})`, failed.map(failedServerLine)),

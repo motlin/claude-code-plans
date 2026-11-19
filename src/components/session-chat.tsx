@@ -5751,6 +5751,9 @@ function classifyUserContent(line: MessageSessionLine): UserContentKind
 		return "slash-command-body";
 	}
 
+	// A later command of a stacked prompt ("/a /b"): the stack's first line already shows the typed input.
+	if (line.stackedExpansion === true) return "slash-command-body";
+
 	if (typeof content === "string")
 	{
 		if (parseCommandBlock(content)) return "command";
@@ -6909,6 +6912,15 @@ function CommandEntry({line, sessionId}: {line: MessageSessionLine; sessionId: s
 				}
 			}
 		}
+	}
+
+	// A stacked prompt ("/a /b") shows what was typed; its later commands render nothing of their own.
+	const stacked =
+		line.stackedOriginalInput === undefined ? null : splitLeadingSlashCommand(line.stackedOriginalInput);
+	if (stacked !== null)
+	{
+		cmdName = stacked.name;
+		cmdArgs = stacked.rest;
 	}
 
 	const name = cmdName.replace(/^\//, "");

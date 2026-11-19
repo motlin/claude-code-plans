@@ -1160,6 +1160,19 @@ describe("AttachmentBanner", () =>
 			]);
 		});
 
+		it("labels cause-neutral re-announced tools as announced earlier rather than reconnected", () =>
+		{
+			expect(
+				detailSections(
+					{
+						type: "deferred_tools_delta",
+						readdedNames: ["mcp__docs__batch", "mcp__docs__guide"],
+						causeNeutral: true,
+					},
+				),
+			).toStrictEqual([["Available again, announced earlier (2)", "mcp__docs__batch\nmcp__docs__guide"]]);
+		});
+
 		it("lists failed MCP servers with their error code and error, and servers that need sign-in", () =>
 		{
 			expect(

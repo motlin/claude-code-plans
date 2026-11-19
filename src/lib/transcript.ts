@@ -131,6 +131,10 @@ const MessageLineSchema = z.object(
 		queuePriority: z.literal("later").optional(),
 		/** The `queueOrigin.displayName` of an Artifact watch whose end this task-notification announces. */
 		artifactWatchEnded: z.string().optional(),
+		/** The raw input ("/a /b") of a stacked slash-command prompt, on the stack's first command line. */
+		stackedOriginalInput: z.string().optional(),
+		/** A later command line the CLI expanded from a stacked prompt; the first line already shows it. */
+		stackedExpansion: z.boolean().optional(),
 		isApiErrorMessage: z.boolean().optional(),
 		/** The `api-request` this line's run of records came from; only the run's first line carries it. */
 		requestRef: z.string().optional(),
@@ -2045,6 +2049,11 @@ function* processRecordBatchSteps(
 		{
 			if (record.isMeta === true) processedLine.isMeta = true;
 			if (record.isCompactSummary === true) processedLine.isCompactSummary = true;
+			if (record.stackedOriginalInput !== undefined)
+			{
+				processedLine.stackedOriginalInput = record.stackedOriginalInput;
+			}
+			if (record.stackedExpansion === true) processedLine.stackedExpansion = true;
 			if (record.isVisibleInTranscriptOnly === true) processedLine.isVisibleInTranscriptOnly = true;
 			if (record.promptSource !== undefined && record.promptSource !== "typed")
 			{
