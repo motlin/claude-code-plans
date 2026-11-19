@@ -1,8 +1,10 @@
-import {type MouseEvent, type ReactNode, useCallback, useEffect, useRef, useState} from "react";
+import {getSingularPatch} from "@pierre/diffs";
+import {type MouseEvent, type ReactNode, useCallback, useEffect, useMemo, useRef, useState} from "react";
 
 import {writeClipboardText} from "../../lib/clipboard";
 import {attachContext} from "../../lib/context-attach";
 import {type DiffSide, openDiffCommentDraft} from "../../lib/diff-comments";
+import {anchorSpan} from "../../lib/diff-range-anchor";
 import {detectLanguage} from "../../lib/diff-utils";
 import {useToast} from "../toast-context";
 import {SELECTION_BAR_CLASS, SelectionBarButton} from "../transcript-selection-bar";
@@ -315,9 +317,21 @@ function usePendingChip()
 /**
  * The Changes pane body's right-click menu, as on claude.ai/code:
  * Attach as context · Add comment · ─ · Copy ⌘C.
+ * `patch` is the file's shown diff, which anchors comments as line-number drags do (upstream `pd` `anchorSpan`).
  */
-export function DiffContextMenu({sessionId, path, children}: {sessionId: string; path: string; children: ReactNode})
+export function DiffContextMenu({
+	sessionId,
+	path,
+	patch,
+	children,
+}: {
+	sessionId: string;
+	path: string;
+	patch: string | null;
+	children: ReactNode;
+})
 {
+	const fileDiff = useMemo(() => (patch === null ? null : getSingularPatch(patch)), [patch]);
 	const [target, setTarget] = useState<DiffLineSelection | null>(null);
 	const [chip, setChip] = useState<SelectionChip | null>(null);
 	const toast = useToast();
@@ -332,13 +346,15 @@ export function DiffContextMenu({sessionId, path, children}: {sessionId: string;
 	function comment(lines: DiffLineSelection)
 	{
 		const lang = detectLanguage(path);
+		// Old-side lines wholly in unchanged context anchor on the new side; their text is the same there.
+		const anchored = fileDiff === null ? lines : anchorSpan(fileDiff, lines.line, lines.endLine, lines.side);
 		openDiffCommentDraft(
 			sessionId,
 			{
 				path,
-				side: lines.side,
-				line: lines.line,
-				endLine: lines.endLine,
+				side: anchored.side,
+				line: anchored.line,
+				endLine: anchored.endLine,
 				...(lines.text === ""
 					? {}
 					:

@@ -1,11 +1,11 @@
 import type {FileDiffMetadata, SelectedLineRange} from "@pierre/diffs";
 
+import type {DiffSide} from "./diff-comments";
+
 /**
  * Where a Changes pane comment anchors for a line-number drag or a gutter "+", ported from upstream claude.ai/code
  * c44d00c7f (`ld`, `ud`, `dd`, `md`, `fd`, `Hu` and the `pd` hook's `anchorSpan`/`selectionEnd`/`hoverAdd`).
  */
-
-export type DiffSide = "additions" | "deletions";
 
 /** A comment target: lines `line`..`endLine` on one side. */
 export interface AnchoredRange

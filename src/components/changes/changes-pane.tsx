@@ -2032,7 +2032,11 @@ export function ChangesPaneView({
 											{sessionId === undefined ? (
 												changesFile
 											) : (
-												<DiffContextMenu sessionId={sessionId} path={file.path}>
+												<DiffContextMenu
+													sessionId={sessionId}
+													path={file.path}
+													patch={shownPatch}
+												>
 													{changesFile}
 												</DiffContextMenu>
 											)}

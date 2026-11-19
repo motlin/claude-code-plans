@@ -140,6 +140,60 @@ function renderPane(
 	);
 }
 
+/** Renders the Changes pane in split view: the stored style, and a ResizeObserver reporting a 900px-wide pane. */
+function stubWideSplitView(): void
+{
+	localStorage.setItem("ccp-diff-style", "split");
+	class WideObserver
+	{
+		constructor(private readonly callback: ResizeObserverCallback)
+		{
+		}
+		observe(target: Element)
+		{
+			this.callback(
+				[
+					{
+						target,
+						contentRect: new DOMRect(0, 0, 900, 600),
+						borderBoxSize: [
+							{
+								inlineSize: 900,
+								blockSize: 600,
+							},
+						],
+						contentBoxSize: [
+							{
+								inlineSize: 900,
+								blockSize: 600,
+							},
+						],
+					} as unknown as ResizeObserverEntry,
+				],
+				this,
+			);
+		}
+		unobserve()
+		{
+		}
+		disconnect()
+		{
+		}
+	}
+	vi.stubGlobal("ResizeObserver", WideObserver);
+}
+
+/** The rendered split diff's shadow root, once both columns are painted. */
+async function splitRoot(container: HTMLElement): Promise<ShadowRoot>
+{
+	return waitFor(() =>
+	{
+		const found = container.querySelector("diffs-container")?.shadowRoot;
+		if (!found?.querySelector("[data-additions] [data-line]")) throw new Error("split diff not rendered yet");
+		return found;
+	});
+}
+
 function commentCard(container: HTMLElement, slot: string): HTMLElement | null
 {
 	return container.querySelector<HTMLElement>(`[slot="${slot}"] [data-line-comment]`);
@@ -1323,6 +1377,34 @@ describe("Changes pane right-click menu", () =>
 		expect(commentCard(container, "annotation-additions-3")).not.toBeNull();
 	});
 
+	it("anchors Add comment on an old-side unchanged line on the new side (upstream pd anchorSpan)", async () =>
+	{
+		stubWideSplitView();
+		const {container} = renderPane();
+		const root = await splitRoot(container);
+		const row = root.querySelector('[data-deletions] [data-line-type="context"][data-line="3"]');
+		if (row === null) throw new Error("no old-side context row 3");
+		fireEvent.contextMenu(row);
+		fireEvent.click(
+			await screen.findByRole(
+				"menuitem",
+				{
+					name: "Add comment on line 3",
+				},
+			),
+		);
+
+		expect(getDiffComments(SESSION).drafts.map(({id: _id, ...draft}) => draft)).toStrictEqual([
+			{
+				path: "src/greet.ts",
+				side: "additions",
+				line: 4,
+				snippet: "}",
+				lang: "typescript",
+			},
+		]);
+	});
+
 	it("focuses the new card's textarea after Add comment, not the menu's trigger", async () =>
 	{
 		const {container} = renderPane();
@@ -1359,7 +1441,7 @@ describe("Changes pane right-click menu", () =>
 
 describe("Changes pane selection Add comment chip", () =>
 {
-	type RowType = "change-addition" | "change-deletion";
+	type RowType = "change-addition" | "change-deletion" | "context";
 
 	/** The rendered diff's shadow root and its `diffs-container` host. */
 	async function diffRoot(container: HTMLElement): Promise<ShadowRoot>
@@ -1822,53 +1904,51 @@ describe("Changes pane selection Add comment chip", () =>
 		]);
 	});
 
+	it("anchors a selection of old-side unchanged lines on the new side, and leaves removed lines on the old (upstream pd anchorSpan)", async () =>
+	{
+		stubWideSplitView();
+		const {container} = renderPane();
+		const root = await splitRoot(container);
+		const commentOn = async (row: Element) =>
+		{
+			fakeSelection(root, row, row);
+			fireEvent.mouseUp(row);
+			fireEvent.click(
+				await screen.findByRole(
+					"button",
+					{
+						name: /^Add comment on line \d/,
+					},
+				),
+			);
+		};
+		// Old line 3, the closing brace, is new line 4.
+		await commentOn(rowAt(root, "context", 3, "deletions"));
+		await commentOn(rowAt(root, "change-deletion", 2, "deletions"));
+
+		expect(getDiffComments(SESSION).drafts.map(({id: _id, ...draft}) => draft)).toStrictEqual([
+			{
+				path: "src/greet.ts",
+				side: "additions",
+				line: 4,
+				snippet: "}",
+				lang: "typescript",
+			},
+			{
+				path: "src/greet.ts",
+				side: "deletions",
+				line: 2,
+				snippet: '  return "hi " + name;',
+				lang: "typescript",
+			},
+		]);
+	});
+
 	it("shows no chip for a split selection across both columns", async () =>
 	{
-		localStorage.setItem("ccp-diff-style", "split");
-		class WideObserver
-		{
-			constructor(private readonly callback: ResizeObserverCallback)
-			{
-			}
-			observe(target: Element)
-			{
-				this.callback(
-					[
-						{
-							target,
-							contentRect: new DOMRect(0, 0, 900, 600),
-							borderBoxSize: [
-								{
-									inlineSize: 900,
-									blockSize: 600,
-								},
-							],
-							contentBoxSize: [
-								{
-									inlineSize: 900,
-									blockSize: 600,
-								},
-							],
-						} as unknown as ResizeObserverEntry,
-					],
-					this,
-				);
-			}
-			unobserve()
-			{
-			}
-			disconnect()
-			{
-			}
-		}
-		vi.stubGlobal("ResizeObserver", WideObserver);
+		stubWideSplitView();
 		const {container} = renderPane();
-		const root = await waitFor(() =>
-		{
-			const found = container.querySelector("diffs-container")?.shadowRoot;
-			if (!found?.querySelector("[data-additions] [data-line]")) throw new Error("split diff not rendered yet");
-			return found;
-		});
+		const root = await splitRoot(container);
 		const focus = rowAt(root, "change-addition", 3, "additions");
 		fakeSelection(root, rowAt(root, "change-deletion", 2, "deletions"), focus);
 		fireEvent.mouseUp(focus);
