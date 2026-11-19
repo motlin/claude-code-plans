@@ -8,6 +8,8 @@ import type {StartProject} from "../../lib/palette-start-session";
 import {folderName, folderParent, inferHome, shortenCwd} from "../../lib/folder-row-names";
 import {PLACE_CHIP_CLASS, PLACE_CHIP_LABEL_CLASS, PLACE_CHIP_LABEL_WRAPPER_CLASS} from "../composer-tokens";
 import {overlayAttrs} from "../../lib/overlay";
+import {useDensity} from "../ui/density-context";
+import {MENU_HEADER_CLASS} from "../ui/menu";
 import {PathBreak} from "../ui/path-break";
 import {Tooltip} from "../ui/tooltip";
 import {EnvironmentBarIconOnlyContext} from "../use-environment-bar-icon-only";
@@ -40,11 +42,17 @@ const FOLDER_MENU_RECENT_LIMIT = 8;
 const OPTION_CLASS =
 	"flex min-h-6 shrink-0 cursor-default items-center gap-1 rounded-r5 px-2 select-none data-[highlighted]:bg-fill-ghost-hover";
 
-/** Upstream's described Menu.Item (`ot`): 2.5px top and 4px bottom padding grow the row to two lines. */
-const DESCRIBED_OPTION_CLASS = `${OPTION_CLASS} py-[2.5px] pb-1`;
+/**
+ * Upstream's described Menu.Item (`ot`): the body line centred in a control-height row on top, and the
+ * (h-control − body size − footnote leading + footnote size) / 2 bottom pad, 2.5px / 4px at compact (40.5px).
+ */
+const DESCRIBED_OPTION_CLASS = `${OPTION_CLASS} py-[calc((var(--cds-h-control)-var(--upstream-leading-body))/2)] pb-[calc((var(--cds-h-control)-var(--upstream-text-body)-var(--upstream-leading-footnote)+var(--upstream-text-footnote))/2)]`;
 
-/** Upstream's Menu.Item description at default density, `text-footnote text-muted`, unclamped. */
-const FOLDER_DESCRIPTION_CLASS = "break-words text-[12px]/[15px] text-ink-muted";
+/**
+ * Upstream's Menu.Item description, `text-footnote text-muted`, unclamped; inside a popup upstream's muted is
+ * the fizzy secondary (local `--menu-muted`, `rgba(255,255,255,0.57)` dark).
+ */
+const FOLDER_DESCRIPTION_CLASS = "break-words text-footnote text-[var(--menu-muted)]";
 
 /** Upstream's eight most recent folders, the selection pinned in after them when it falls outside (`Bx`). */
 function recentFolders(projects: readonly StartProject[], selected: StartProject | undefined): readonly StartProject[]
@@ -103,6 +111,8 @@ export function ProjectPicker({projects, selected, onSelect, variant = "chip", t
 	const listboxId = `${baseId}-listbox`;
 	const searchRef = useRef<HTMLInputElement>(null);
 	const [open, setOpen] = useState(false);
+	/* Upstream's cds Portal copies the opener's density, so the popup's body/footnote type and control height follow it. */
+	const density = useDensity();
 	const [query, setQuery] = useState("");
 	const [activeIndex, setActiveIndex] = useState(0);
 	const iconOnly = useContext(EnvironmentBarIconOnlyContext);
@@ -292,6 +302,7 @@ export function ProjectPicker({projects, selected, onSelect, variant = "chip", t
 					side={variant === "choose" ? "bottom" : "top"}
 					align={variant === "choose" ? "center" : "start"}
 					sideOffset={6}
+					data-density={density}
 					className="z-[130] outline-none"
 				>
 					<Popover.Popup
@@ -325,14 +336,10 @@ export function ProjectPicker({projects, selected, onSelect, variant = "chip", t
 							className="flex min-h-0 flex-1 flex-col overflow-y-auto"
 						>
 							{filtered.length === 0 ? (
-								<div className="px-2 py-1 text-[12px]/[15px] text-muted-as-secondary">No matches</div>
+								<div className="px-2 py-1 text-footnote text-muted-as-secondary">No matches</div>
 							) : needle === "" ? (
 								<div role="group" aria-labelledby={recentLabelId} className="flex flex-col">
-									<div
-										id={recentLabelId}
-										aria-hidden="true"
-										className="px-2 py-1 text-[12px]/[15px] font-medium text-ink-muted"
-									>
+									<div id={recentLabelId} aria-hidden="true" className={MENU_HEADER_CLASS}>
 										Recent
 									</div>
 									{options}

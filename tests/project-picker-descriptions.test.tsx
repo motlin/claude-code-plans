@@ -4,6 +4,7 @@ import {cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, describe, expect, it} from "vite-plus/test";
 
 import {ProjectPicker} from "../src/components/home/project-picker";
+import {DensityProvider} from "../src/components/ui/density";
 import type {StartProject} from "../src/lib/palette-start-session";
 
 const COLLIDING: StartProject[] = [
@@ -36,7 +37,7 @@ const TEN: StartProject[] = Array.from(
 	}),
 );
 
-const FOLDER_DESCRIPTION_CLASS = "break-words text-[12px]/[15px] text-ink-muted";
+const FOLDER_DESCRIPTION_CLASS = "break-words text-footnote text-[var(--menu-muted)]";
 
 afterEach(() =>
 {
@@ -46,13 +47,15 @@ afterEach(() =>
 function openPicker(projects: readonly StartProject[], selected?: StartProject)
 {
 	render(
-		<ProjectPicker
-			projects={projects}
-			selected={selected}
-			onSelect={() =>
-			{
-			}}
-		/>,
+		<DensityProvider density="compact">
+			<ProjectPicker
+				projects={projects}
+				selected={selected}
+				onSelect={() =>
+				{
+				}}
+			/>
+		</DensityProvider>,
 	);
 	fireEvent.click(screen.getByRole("combobox"));
 	return screen.getByRole(
@@ -153,6 +156,7 @@ describe("ProjectPicker folder rows", () =>
 
 		expect(
 			{
+				density: described!.closest("[data-density]")?.getAttribute("data-density"),
 				description: described!.querySelector("[data-folder-description]")?.getAttribute("class"),
 				described: described!.className.split(" ").filter((token) => /^(?:min-)?h-|^p[btxy]?-/.test(token)),
 				plain: screen
@@ -163,8 +167,14 @@ describe("ProjectPicker folder rows", () =>
 			},
 		).toStrictEqual(
 			{
+				density: "compact",
 				description: FOLDER_DESCRIPTION_CLASS,
-				described: ["min-h-6", "px-2", "py-[2.5px]", "pb-1"],
+				described: [
+					"min-h-6",
+					"px-2",
+					"py-[calc((var(--cds-h-control)-var(--upstream-leading-body))/2)]",
+					"pb-[calc((var(--cds-h-control)-var(--upstream-text-body)-var(--upstream-leading-footnote)+var(--upstream-text-footnote))/2)]",
+				],
 				plain: ["min-h-6", "px-2"],
 				wrapper: "flex min-w-0 flex-1 flex-col",
 			},
@@ -245,7 +255,7 @@ describe("ProjectPicker Recent group", () =>
 			},
 		).toStrictEqual(
 			{
-				className: "px-2 py-1 text-[12px]/[15px] text-muted-as-secondary",
+				className: "px-2 py-1 text-footnote text-muted-as-secondary",
 				tag: "DIV",
 				group: null,
 			},
