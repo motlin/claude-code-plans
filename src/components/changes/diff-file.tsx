@@ -669,6 +669,17 @@ export function DiffFile({
 			document.removeEventListener("pointerup", clear);
 		};
 	}, [dragging]);
+	// A retry still waiting when the file unmounts parks instead of reading a file nothing will show. It starts true
+	// because pierre, a child, loads from its own effects before this one runs; the effect re-arms it on a remount.
+	const mounted = useRef(true);
+	useEffect(() =>
+	{
+		mounted.current = true;
+		return () =>
+		{
+			mounted.current = false;
+		};
+	}, []);
 	const canLoad = loadFileSides !== undefined;
 	// Upstream `Cn`/`Tn`: one load per fileDiff, so a remount (new metrics) doesn't read the file again.
 	const loadDiffFiles = useMemo(() =>
@@ -682,7 +693,8 @@ export function DiffFile({
 				async (fresh) =>
 				{
 					const current = loader.current;
-					if (current.fileDiff !== target || current.loadFileSides === undefined) return "park";
+					if (!mounted.current || current.fileDiff !== target || current.loadFileSides === undefined)
+						return "park";
 					const sides = await current.loadFileSides(fresh);
 					if (loader.current.fileDiff !== target) return "park";
 					const files = toLoadedFiles(
@@ -697,7 +709,7 @@ export function DiffFile({
 				},
 				() =>
 				{
-					if (loader.current.fileDiff === target) loader.current.onLoaderGaveUp?.();
+					if (mounted.current && loader.current.fileDiff === target) loader.current.onLoaderGaveUp?.();
 				},
 			);
 			loadedFiles.set(target, loading);

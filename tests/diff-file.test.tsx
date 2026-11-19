@@ -4,6 +4,7 @@ import {act, cleanup, fireEvent, render, renderHook, screen, waitFor} from "@tes
 import {afterEach, beforeAll, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {FileTypeIconSetContext} from "../src/components/file-type-icon-set-context";
 import {DiffFile, DiffFileHeader} from "../src/components/changes/diff-file";
+import type {FileSides} from "../src/components/changes/diff-file-lines";
 import {DiffFileMenuItems} from "../src/components/changes/diff-file-menu";
 import {diffFileMenuButtonShown, isSyntheticDiffRow} from "../src/components/changes/diff-file-menu-gate";
 import {ToastProvider} from "../src/components/toast";
@@ -1067,6 +1068,40 @@ describe("DiffFile lazy full-file context (upstream c44d00c7f qt/Kt, Cn, bd, xn,
 		{
 			expect(separators(shadowRootOf(plain.container))).toHaveLength(2);
 		});
+	});
+
+	// A retry that outlived its file read into whatever fetch the next test file had stubbed.
+	it("stops retrying an unreadable file once it unmounts", async () =>
+	{
+		vi.useFakeTimers(
+			{
+				toFake: ["setTimeout", "clearTimeout"],
+			},
+		);
+		try
+		{
+			const load = vi.fn<(fresh: boolean) => Promise<FileSides>>(async (_fresh: boolean) =>
+				Promise.resolve(
+					{
+						oldText: null,
+						newText: null,
+					},
+				),
+			);
+			const view = render(<DiffFile patch={TWO_HUNK_PATCH} loadFileSides={load} expandUnchanged />);
+			await vi.waitFor(() =>
+			{
+				expect(load).toHaveBeenCalledTimes(1);
+			});
+			view.unmount();
+			await vi.advanceTimersByTimeAsync(130_000);
+
+			expect(load.mock.calls).toStrictEqual([[false]]);
+		}
+		finally
+		{
+			vi.useRealTimers();
+		}
 	});
 });
 
