@@ -175,14 +175,7 @@ transcript-prose-root-size *args: install
 build-storybook: install
     vp run build-storybook
 
-# Apply safe Fallow fixes locally, then reject remaining dead code
-fallow: _fallow-fix fallow-check
-
-[private]
-_fallow-fix: install
-    {{ if ci == "" { "vp run fallow" } else { "true" } }}
-
-# vp run fallow:ci
+# Fail on dead code and duplicate exports. Check only: `fallow fix` would silence duplicates with blanket ignoreExports rules
 fallow-check: install
     vp run fallow:ci
 
@@ -192,7 +185,7 @@ pre-commit: install
 
 # Run all pre-commit checks
 [arg("quick", long, value="true", help="Skip tests")]
-verify quick="": (check "--quiet") format _fallow-fix _verify-read-only (_verify-test quick)
+verify quick="": (check "--quiet") format _verify-read-only (_verify-test quick)
     @echo "All pre-commit checks passed!"
 
 # Read-only gates, once the fixers have rewritten the tree. Pre-commit's own fixers can run here too: they fail the run whenever they rewrite a file
@@ -200,7 +193,7 @@ verify quick="": (check "--quiet") format _fallow-fix _verify-read-only (_verify
 [private]
 _verify-read-only: _build-bundle fallow-check _verify-pre-commit
 
-# `format` already formatted and `_fallow-fix` already applied Fallow's fixes
+# `format` already formatted, and `fallow-check` already runs in parallel
 [private]
 _verify-pre-commit: install
     SKIP=oxfmt,fallow pre-commit run --all-files

@@ -42,7 +42,7 @@ repos:
         types: [file]
       - id: fallow
         name: fallow
-        entry: pnpm run fallow --base HEAD
+        entry: pnpm run fallow:ci --base HEAD
         language: system
         pass_filenames: false
         types: [file]

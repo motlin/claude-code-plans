@@ -25,10 +25,6 @@
 		"eslint-plugin-storybook",
 	],
 	"ignoreExports": [
-		{
-			"file": "src/components/markdown-article.module.css",
-			"exports": ["*"],
-		},
 		// Named by the gitignored src/routeTree.gen.ts, which fallow skips; tsc's declaration check (TS4023) needs it exported.
 		{
 			"file": "src/routes/artifacts.tsx",
@@ -123,21 +119,22 @@
 			"file": "src/lib/settings-fields.ts",
 			"exports": ["OBJECT_EDITORS", "COVERED_SETTINGS_KEYS"],
 		},
+		// Test-only __testing hooks: several modules export the same name, which duplicate-exports flags.
 		{
 			"file": "src/lib/update-dedupe.ts",
-			"exports": ["*"],
+			"exports": ["__testing"],
 		},
 		{
 			"file": "src/lib/watcher.ts",
-			"exports": ["*"],
+			"exports": ["__testing"],
 		},
 		{
 			"file": "src/lib/herdr/availability.ts",
-			"exports": ["*"],
+			"exports": ["__testing"],
 		},
 		{
 			"file": "src/lib/herdr/subscribe.ts",
-			"exports": ["*"],
+			"exports": ["__testing"],
 		},
 		{
 			"file": "src/lib/local-account.ts",

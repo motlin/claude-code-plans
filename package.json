@@ -14,7 +14,6 @@
 		"oxlint:ci": "vp lint . --format github",
 		"fmt": "oxfmt-next-line",
 		"fmt:ci": "oxfmt-next-line --check",
-		"fallow": "fallow fix --yes --no-create-config",
 		"fallow:ci": "fallow dead-code",
 		"mcp": "tsx mcp-server/index.ts",
 		"test": "node node_modules/vitest/dist/cli.js",

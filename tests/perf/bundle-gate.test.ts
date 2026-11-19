@@ -84,7 +84,7 @@ describe("bundle byte gate", () =>
 			},
 		).toStrictEqual(
 			{
-				verify: ["check --quiet", "format", "_fallow-fix", "_verify-read-only", "_verify-test quick"],
+				verify: ["check --quiet", "format", "_verify-read-only", "_verify-test quick"],
 				readOnly: ["_build-bundle", "fallow-check", "_verify-pre-commit"],
 				readOnlyRunsInParallel: true,
 				// No tsc here: `check` type-checks (typeCheck: true) after regenerating src/routeTree.gen.ts itself.
