@@ -542,5 +542,73 @@ describe("MermaidFence (upstream EpitaxyMermaidFence)", () =>
 				},
 			);
 		});
+
+		it("marks the shown diagram as a document figure at its ceiled drawn width, clearing it for the source", () =>
+		{
+			const measure = Element.prototype.getBoundingClientRect;
+			vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (this: Element)
+			{
+				return this.localName === "svg" ? new DOMRect(0, 0, 812.3, 240) : measure.call(this);
+			});
+			const figure = (container: HTMLElement) =>
+			{
+				const root = container.querySelector<HTMLElement>("[data-testid=epitaxy-mermaid-fence]")!;
+				return {
+					width: root.style.getPropertyValue("--figure-width"),
+					figure: root.getAttribute("data-document-figure"),
+				};
+			};
+			const {container} = fence(createDiagramLightboxStore());
+			const drawing = figure(container);
+			report("success");
+			const drawn = figure(container);
+			fireEvent.click(container.querySelector("[data-testid=epitaxy-mermaid-fence-view]")!);
+			const source = figure(container);
+			cleanup();
+			const failedFence = fence(createDiagramLightboxStore()).container;
+			report("error");
+			const failed = figure(failedFence);
+			cleanup();
+			const transcript = fence().container;
+			report("success");
+			expect(
+				{
+					drawing,
+					drawn,
+					source,
+					failed,
+					transcript: figure(transcript),
+				},
+			).toStrictEqual(
+				{
+					drawing:
+					{
+						width: "",
+						figure: null,
+					},
+					drawn:
+					{
+						width: "813px",
+						figure: "",
+					},
+					source:
+					{
+						width: "",
+						figure: null,
+					},
+					failed:
+					{
+						width: "",
+						figure: null,
+					},
+					transcript:
+					{
+						width: "",
+						figure: null,
+					},
+				},
+			);
+			vi.restoreAllMocks();
+		});
 	});
 });

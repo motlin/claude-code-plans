@@ -4709,6 +4709,36 @@ html[data-reduce-motion="true"] [data-cds="ShimmerText"][data-shimmer-mode="fall
 	--code-leading: initial;
 }
 
+/* Upstream c3fde7009 document figure: a mermaid diagram (`useFigureWidth` sets `--figure-width`) grows past the
+   column into the end gutter, then the start gutter, never narrower than the column and never bleeding inside
+   li/blockquote/dd. Local has no `.epitaxy-document-column` gutter math yet (document-column-measure), so the bleed
+   is 0px and the figure stays at the column width. `--cds-surface-panel` is upstream `var(--cds-surface-2)`. */
+.epitaxy-document-prose
+{
+	--document-bleed: 0px;
+	--document-bleed-start: var(--document-bleed);
+}
+.epitaxy-document-prose [data-document-figure]
+{
+	--document-figure: calc(var(--figure-width) + 2rem + 1px);
+	--document-figure-start: var(--document-bleed-start, var(--document-bleed));
+	box-sizing: border-box;
+	width: min(var(--document-figure), 100% + var(--document-figure-start) + var(--document-bleed));
+	min-width: 100%;
+	margin-inline-start: calc(
+		-1 * max(0px, min(var(--document-figure-start), var(--document-figure) - 100% - var(--document-bleed)))
+	);
+}
+.epitaxy-document-prose [data-document-figure] [data-mermaid]
+{
+	background-color: var(--color-surface-2);
+}
+.epitaxy-document-prose :is(li, blockquote, dd) [data-document-figure]
+{
+	width: auto;
+	margin-inline-start: 0;
+}
+
 /* Upstream [data-mode=dark|light] .epitaxy-root diffs-container: the code tile's token font rules
    (CODE_TILE_CSS) read the current mode's weight/decoration and skip the other mode's. */
 .dark diffs-container

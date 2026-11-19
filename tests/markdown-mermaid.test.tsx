@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import {readFileSync} from "node:fs";
 import {cleanup, render} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import {MarkdownArticle} from "../src/components/markdown-article";
@@ -82,5 +83,20 @@ describe("mermaid islands in MarkdownArticle", () =>
 				codeBlocks: 1,
 			},
 		);
+	});
+
+	it("lets a document figure bleed past the column with upstream c3fde7009's rules, on the panel surface", () =>
+	{
+		const styles = readFileSync("src/styles/globals.css", "utf8")
+			.replaceAll(/\s+/g, " ")
+			.replaceAll("( ", "(")
+			.replaceAll(" )", ")");
+		const rules = [
+			".epitaxy-document-prose [data-document-figure] { --document-figure: calc(var(--figure-width) + 2rem + 1px); --document-figure-start: var(--document-bleed-start, var(--document-bleed)); box-sizing: border-box; width: min(var(--document-figure), 100% + var(--document-figure-start) + var(--document-bleed)); min-width: 100%; margin-inline-start: calc(-1 * max(0px, min(var(--document-figure-start), var(--document-figure) - 100% - var(--document-bleed)))); }",
+			".epitaxy-document-prose [data-document-figure] [data-mermaid] { background-color: var(--color-surface-2); }",
+			".epitaxy-document-prose :is(li, blockquote, dd) [data-document-figure] { width: auto; margin-inline-start: 0; }",
+			".epitaxy-document-prose { --document-bleed: 0px; --document-bleed-start: var(--document-bleed); }",
+		];
+		expect(rules.filter((rule) => !styles.includes(rule))).toStrictEqual([]);
 	});
 });

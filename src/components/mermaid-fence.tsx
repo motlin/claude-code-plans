@@ -2,6 +2,7 @@ import
 {
 	type ReactNode,
 	type Ref,
+	type RefObject,
 	type TransitionEvent,
 	useCallback,
 	useContext,
@@ -25,7 +26,7 @@ import {Tooltip} from "./ui/tooltip";
  * success; View source fades back to the code block. A drawing that fails upstream's post-draw audit (secrets, even
  * split across labels, or glyph-bending styles) is withheld: the code block shows at once, with no note and no fade.
  * Under a document lightbox store (document prose) the toolbar moves into a row above the diagram with Expand.
- * Left out here, as separate features: the document figure width and in-page find.
+ * There it also marks the shown diagram as a document figure (`useFigureWidth`). Left out here: in-page find.
  */
 
 /** Upstream's note above a failed diagram (`GVQKxz`), shown on every render error. */
@@ -254,6 +255,42 @@ function ignore(): void
 {
 }
 
+/**
+ * Upstream `Ce`: under a document lightbox store, the shown diagram marks the fence root as a document figure at its
+ * drawn width (ceiled), which the `.epitaxy-document-prose [data-document-figure]` rules bleed into the gutters.
+ */
+function useFigureWidth({
+	rootRef,
+	layerRefs,
+	shown,
+	code,
+	mode,
+}: {
+	rootRef: RefObject<HTMLDivElement | null>;
+	layerRefs: RefObject<Record<LayerName, HTMLDivElement | null>>;
+	shown: boolean;
+	code: string;
+	mode: string;
+})
+{
+	useLayoutEffect(() =>
+	{
+		const root = rootRef.current;
+		if (!root) return;
+		const drawing = shown ? findDrawing(layerRefs.current.diagram) : null;
+		if (drawing)
+		{
+			root.style.setProperty("--figure-width", `${Math.ceil(drawing.getBoundingClientRect().width)}px`);
+			root.setAttribute("data-document-figure", "");
+		}
+		else
+		{
+			root.style.removeProperty("--figure-width");
+			root.removeAttribute("data-document-figure");
+		}
+	}, [rootRef, layerRefs, shown, code, mode]);
+}
+
 interface Swap
 {
 	showing: LayerName;
@@ -414,6 +451,15 @@ export function MermaidFence({
 
 	const showNote = status === "error";
 	const rootRef = useRef<HTMLDivElement>(null);
+	useFigureWidth(
+		{
+			rootRef,
+			layerRefs,
+			shown: lightbox !== null && showing === "diagram" && success,
+			code,
+			mode,
+		},
+	);
 	const stackRef = useRef<HTMLDivElement>(null);
 	const lastStackTop = useRef(0);
 	const restHeight = useRef(0);
