@@ -4916,12 +4916,19 @@ describe("Composer + menu Connectors submenu", () =>
 			),
 		);
 		const menu = await screen.findByRole("menu");
-		const trigger = await within(menu).findByRole(
-			"menuitem",
-			{
-				name: /^Connectors/,
-			},
-		);
+		// The submenu is a lazy chunk whose Suspense fallback is a disabled "Connectors" row; a cold import under load
+		// is still pending here, and ArrowRight on that fallback opens nothing. Wait for the real, enabled trigger.
+		const trigger = await waitFor(() =>
+		{
+			const candidate = within(menu).getByRole(
+				"menuitem",
+				{
+					name: /^Connectors/,
+				},
+			);
+			expect(candidate.getAttribute("aria-disabled")).toBeNull();
+			return candidate;
+		});
 		act(() =>
 		{
 			trigger.focus();
