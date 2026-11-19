@@ -45,6 +45,23 @@ function insertedText(event: InputEvent): string
 }
 
 /**
+ * Types `text` into a controlled textarea at its caret. setRangeText skips React's value tracker, so the
+ * dispatched `input` event reads as a change and onChange sees it like a real keystroke.
+ */
+export function insertAtCaret(textarea: HTMLTextAreaElement, text: string): void
+{
+	textarea.setRangeText(text, textarea.selectionStart, textarea.selectionEnd, "end");
+	textarea.dispatchEvent(
+		new Event(
+			"input",
+			{
+				bubbles: true,
+			},
+		),
+	);
+}
+
+/**
  * Upstream's global type-to-focus: a printable key pressed outside any editable field moves focus into the
  * active composer and types the character there at its caret. Dictated, composed or pasted text inserted with
  * no editable focus (no keydown at all) takes the same route. The insert goes through `setRangeText`
@@ -74,16 +91,7 @@ export function useTypeToFocus(
 		{
 			textarea.focus();
 			if (onRoutedTextRef.current?.(text) === true) return;
-			// setRangeText skips React's value tracker, so the input event reads as a change.
-			textarea.setRangeText(text, textarea.selectionStart, textarea.selectionEnd, "end");
-			textarea.dispatchEvent(
-				new Event(
-					"input",
-					{
-						bubbles: true,
-					},
-				),
-			);
+			insertAtCaret(textarea, text);
 		};
 		// A composition whose text a beforeinput already routed must not insert again on compositionend.
 		let compositionRouted = false;

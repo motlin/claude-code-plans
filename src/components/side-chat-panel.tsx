@@ -1,9 +1,12 @@
 import {useNavigate} from "@tanstack/react-router";
-import {ArrowUp, Check, Copy, ExternalLink, GitBranch, PanelRight, Square, Trash2, X} from "lucide-react";
-import {type ReactNode, useEffect, useRef, useState} from "react";
+import {ArrowUp, Check, Copy, ExternalLink, GitBranch, Info, PanelRight, Square, Trash2, X} from "lucide-react";
+import {type KeyboardEvent, type ReactNode, useEffect, useRef, useState} from "react";
 
+import {useBandEnter} from "../hooks/use-band-enter";
 import {useShortcutKeys} from "../hooks/use-shortcut";
+import {insertAtCaret} from "../hooks/use-type-to-focus";
 import {writeClipboardText} from "../lib/clipboard";
+import {isButtonish, isEditableTarget, isInModalLayer} from "../lib/shortcuts/match";
 import
 {
 	askSideChat,
@@ -37,6 +40,12 @@ const ANSWER_ACTION_CLASS =
 
 export type SideChatVariant = "floating" | "docked" | "popout";
 
+/** Upstream `$M`'s reset commands: typed as the question, they clear the thread instead of asking. */
+const RESET_COMMAND = /^\/(?:clear|reset|new)(?:\s|$)/i;
+
+const EMPTY_NOTE =
+	"Chat about this session without touching the main thread. Claude sees the full context, and nothing here is added to the session.";
+
 /** The side chat's header, context strip, Q/A thread and input, shared by every variant. */
 export function SideChatPanel({
 	sessionId,
@@ -59,6 +68,8 @@ export function SideChatPanel({
 	const shortcut = useShortcutKeys("toggle_side_chat");
 	const inputRef = useRef<HTMLTextAreaElement>(null);
 	const listRef = useRef<HTMLOListElement>(null);
+	// The empty-state note fades in as upstream's epitaxy-band-enter when /clear brings it back.
+	const bandSlot = useBandEnter<HTMLDivElement>();
 	const [draft, setDraft] = useState("");
 	const pendingEntry = entries.find((entry) => entry.status === "pending");
 	const pending = pendingEntry !== undefined;
@@ -80,149 +91,226 @@ export function SideChatPanel({
 	function send()
 	{
 		const question = draft.trim();
+		if (RESET_COMMAND.test(question))
+		{
+			setDraft("");
+			clearSideChat(sessionId);
+			return;
+		}
 		if (question === "" || pending) return;
 		setDraft("");
 		void askSideChat(sessionId, question);
 	}
 
-	return (
+	/**
+	 * Upstream `$M`'s key capture: Escape stops a reply that is still working and
+	 * otherwise closes the side chat; a printable key pressed on a non-editable
+	 * spot in the pane types into the input.
+	 */
+	function onKeyDownCapture(event: KeyboardEvent<HTMLDivElement>)
+	{
+		const target = event.target instanceof Element ? event.target : null;
+		if (event.nativeEvent.isComposing || isInModalLayer(target)) return;
+		if (event.key === "Escape")
+		{
+			event.preventDefault();
+			event.stopPropagation();
+			if (pendingEntry !== undefined && pendingEntry.stopping !== true)
+				void stopEntry(sessionId, pendingEntry.id);
+			else closeSideChat(sessionId);
+			return;
+		}
+		const input = inputRef.current;
+		if (event.key.length !== 1 || event.metaKey || event.ctrlKey || event.altKey || event.defaultPrevented) return;
+		if (input === null || isEditableTarget(target)) return;
+		if (event.key === " " && isButtonish(target)) return;
+		event.preventDefault();
+		input.focus();
+		insertAtCaret(input, event.key);
+	}
+
+	const thread =
+		entries.length > 0 ? (
+			<ol
+				ref={listRef}
+				className={
+					variant === "docked"
+						? "flex-1 min-h-0 overflow-y-auto flex flex-col gap-[var(--chat-turn-gap)] px-lg pt-md pb-[24px]"
+						: "flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-3"
+				}
+			>
+				{entries.map((entry) => (
+					<SideChatItem key={entry.id} sessionId={sessionId} entry={entry} />
+				))}
+			</ol>
+		) : variant === "docked" ? (
+			<div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-md pb-sm">
+				<div
+					role="note"
+					className="flex gap-[5px] w-full p-[8px] rounded-r7 bg-alpha-1 items-start min-h-[calc(var(--cds-h-control)+16px)] py-[calc((var(--cds-h-control)+16px-1lh)/2)] text-body band-enter mt-auto shrink-0"
+				>
+					<span className="flex h-[1lh] shrink-0 items-center">
+						<Info className="size-3.5 text-muted-as-secondary" aria-hidden="true" />
+					</span>
+					<div className="flex min-w-0 flex-1 flex-wrap gap-x-sm gap-y-sm items-start">
+						<div className="min-w-0 max-w-full flex-auto">
+							<span className="block text-muted-as-secondary text-pretty select-text">{EMPTY_NOTE}</span>
+						</div>
+					</div>
+				</div>
+			</div>
+		) : (
+			variant === "popout" && <div className="flex-1" />
+		);
+
+	const composer = (
 		<div
-			data-side-session-pane=""
-			className="flex min-h-0 flex-1 flex-col"
-			onKeyDownCapture={(event) =>
-			{
-				if (event.key !== "Escape") return;
-				event.preventDefault();
-				event.stopPropagation();
-				closeSideChat(sessionId);
-			}}
+			className={
+				variant === "docked"
+					? "shrink-0 px-md pb-md flex flex-col gap-1.5"
+					: "flex flex-col gap-2 border-t-[0.5px] border-strong p-2"
+			}
 		>
-			{variant === "docked" ? (
+			{excerpts.length > 0 && (
+				<ul aria-label="Attached excerpts" className="flex flex-wrap gap-1.5 pt-2 pe-2">
+					{excerpts.map((excerpt) => (
+						<ExcerptTile key={excerpt.id} sessionId={sessionId} excerpt={excerpt} />
+					))}
+				</ul>
+			)}
+			<div className="flex items-end gap-1">
+				<textarea
+					ref={inputRef}
+					aria-label="Side chat question"
+					value={draft}
+					rows={1}
+					placeholder={entries.length > 0 ? "Follow up…" : "Ask a quick question…"}
+					onChange={(event) =>
+					{
+						setDraft(event.target.value);
+					}}
+					onKeyDown={(event) =>
+					{
+						if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing)
+						{
+							event.preventDefault();
+							send();
+						}
+					}}
+					className="block max-h-40 min-h-6 w-full resize-none bg-transparent px-1 py-0.5 text-body text-primary [field-sizing:content] placeholder:text-t6 focus:outline-none"
+				/>
+				{pending ? (
+					<Tooltip content="Stop">
+						<button
+							type="button"
+							aria-label="Stop"
+							className={ICON_BUTTON_CLASS}
+							onClick={() =>
+							{
+								if (lastEntry !== undefined) void stopEntry(sessionId, lastEntry.id);
+							}}
+						>
+							<Square className="size-3" fill="currentColor" aria-hidden="true" />
+						</button>
+					</Tooltip>
+				) : (
+					<Tooltip content="Send" shortcut="enter">
+						<button
+							type="button"
+							aria-label="Send"
+							className={ICON_BUTTON_CLASS}
+							disabled={draft.trim() === ""}
+							onClick={send}
+						>
+							<ArrowUp className="size-4" aria-hidden="true" />
+						</button>
+					</Tooltip>
+				)}
+			</div>
+		</div>
+	);
+
+	if (variant === "docked")
+	{
+		return (
+			<div className="flex min-h-0 flex-1 flex-col">
 				<PaneHeaderRow
 					label="Side chat"
 					title={<SideChatTabStrip sessionId={sessionId} status={workingStatus} />}
 					actions={chrome?.controls}
 					moveHandle={chrome?.moveHandle}
 				/>
-			) : (
-				<header className="relative flex items-center gap-1 border-b-[0.5px] border-strong px-3 py-2">
-					<h2 className="flex-1 truncate text-body font-medium text-primary">Side chat</h2>
-					{variant !== "popout" && <Shortcut keys={shortcut.keys} className="mr-1" />}
-					{entries.length > 0 && (
-						<HeaderButton
-							label="Clear side chat"
-							onClick={() =>
-							{
-								clearSideChat(sessionId);
-							}}
-						>
-							<Trash2 className="size-3.5" aria-hidden="true" />
-						</HeaderButton>
-					)}
-					{variant === "floating" && canDock && (
-						<HeaderButton
-							label="Dock side chat"
-							onClick={() =>
-							{
-								setSideChatMode(sessionId, "docked");
-							}}
-						>
-							<PanelRight className="size-3.5" aria-hidden="true" />
-						</HeaderButton>
-					)}
-					{variant !== "popout" && (
-						<HeaderButton
-							label="Open in new window"
-							onClick={() =>
-							{
-								setSideChatMode(sessionId, "popout");
-							}}
-						>
-							<ExternalLink className="size-3.5" aria-hidden="true" />
-						</HeaderButton>
-					)}
+				<div
+					tabIndex={-1}
+					role="group"
+					aria-label="Side chat"
+					data-side-session-pane=""
+					data-escape-owner=""
+					ref={bandSlot}
+					className="epitaxy-side-chat flex h-full min-h-0 flex-col pt-md outline-none"
+					onKeyDownCapture={onKeyDownCapture}
+				>
+					{thread}
+					{composer}
+				</div>
+			</div>
+		);
+	}
+
+	return (
+		<div data-side-session-pane="" className="flex min-h-0 flex-1 flex-col" onKeyDownCapture={onKeyDownCapture}>
+			<header className="relative flex items-center gap-1 border-b-[0.5px] border-strong px-3 py-2">
+				<h2 className="flex-1 truncate text-body font-medium text-primary">Side chat</h2>
+				{variant === "floating" && <Shortcut keys={shortcut.keys} className="mr-1" />}
+				{variant === "floating" && entries.length > 0 && (
 					<HeaderButton
-						label="Close side chat"
-						ariaKeyShortcuts={variant === "popout" ? undefined : shortcut.ariaKeyShortcuts}
+						label="Clear side chat"
 						onClick={() =>
 						{
-							closeSideChat(sessionId);
+							clearSideChat(sessionId);
 						}}
 					>
-						<X className="size-4" aria-hidden="true" />
+						<Trash2 className="size-3.5" aria-hidden="true" />
 					</HeaderButton>
-				</header>
-			)}
+				)}
+				{variant === "floating" && canDock && (
+					<HeaderButton
+						label="Dock side chat"
+						onClick={() =>
+						{
+							setSideChatMode(sessionId, "docked");
+						}}
+					>
+						<PanelRight className="size-3.5" aria-hidden="true" />
+					</HeaderButton>
+				)}
+				{variant === "floating" && (
+					<HeaderButton
+						label="Open in new window"
+						onClick={() =>
+						{
+							setSideChatMode(sessionId, "popout");
+						}}
+					>
+						<ExternalLink className="size-3.5" aria-hidden="true" />
+					</HeaderButton>
+				)}
+				<HeaderButton
+					label="Close side chat"
+					ariaKeyShortcuts={variant === "popout" ? undefined : shortcut.ariaKeyShortcuts}
+					onClick={() =>
+					{
+						closeSideChat(sessionId);
+					}}
+				>
+					<X className="size-4" aria-hidden="true" />
+				</HeaderButton>
+			</header>
 			<p className="border-b-[0.5px] border-strong px-3 py-1.5 text-caption text-t6">
 				Sees {messageCount} messages from main chat · read-only
 			</p>
-			{entries.length > 0 ? (
-				<ol ref={listRef} className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-3">
-					{entries.map((entry) => (
-						<SideChatItem key={entry.id} sessionId={sessionId} entry={entry} />
-					))}
-				</ol>
-			) : (
-				variant !== "floating" && <div className="flex-1" />
-			)}
-			<div className="flex flex-col gap-2 border-t-[0.5px] border-strong p-2">
-				{excerpts.length > 0 && (
-					<ul aria-label="Attached excerpts" className="flex flex-wrap gap-1.5 pt-2 pe-2">
-						{excerpts.map((excerpt) => (
-							<ExcerptTile key={excerpt.id} sessionId={sessionId} excerpt={excerpt} />
-						))}
-					</ul>
-				)}
-				<div className="flex items-end gap-1">
-					<textarea
-						ref={inputRef}
-						aria-label="Side chat question"
-						value={draft}
-						rows={1}
-						placeholder={entries.length > 0 ? "Follow up…" : "Ask a quick question…"}
-						onChange={(event) =>
-						{
-							setDraft(event.target.value);
-						}}
-						onKeyDown={(event) =>
-						{
-							if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing)
-							{
-								event.preventDefault();
-								send();
-							}
-						}}
-						className="block max-h-40 min-h-6 w-full resize-none bg-transparent px-1 py-0.5 text-body text-primary [field-sizing:content] placeholder:text-t6 focus:outline-none"
-					/>
-					{pending ? (
-						<Tooltip content="Stop">
-							<button
-								type="button"
-								aria-label="Stop"
-								className={ICON_BUTTON_CLASS}
-								onClick={() =>
-								{
-									if (lastEntry !== undefined) void stopEntry(sessionId, lastEntry.id);
-								}}
-							>
-								<Square className="size-3" fill="currentColor" aria-hidden="true" />
-							</button>
-						</Tooltip>
-					) : (
-						<Tooltip content="Send" shortcut="enter">
-							<button
-								type="button"
-								aria-label="Send"
-								className={ICON_BUTTON_CLASS}
-								disabled={draft.trim() === ""}
-								onClick={send}
-							>
-								<ArrowUp className="size-4" aria-hidden="true" />
-							</button>
-						</Tooltip>
-					)}
-				</div>
-			</div>
+			{thread}
+			{composer}
 		</div>
 	);
 }

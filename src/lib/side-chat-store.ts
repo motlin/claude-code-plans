@@ -48,7 +48,7 @@ const NO_ANSWER_MESSAGE = "No answer yet. Send a message in the main chat first,
 const EMPTY_SESSION: SideChatSession =
 {
 	open: false,
-	mode: "floating",
+	mode: "docked",
 	entries: [],
 	excerpts: [],
 };

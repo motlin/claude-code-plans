@@ -603,10 +603,10 @@
 	},
 	"client.sessionSwitch.small.mutations":
 	{
-		"ceiling": 49,
+		"ceiling": 48,
 		"unit": "count",
 		"tolerance": 0,
-		"reason": "raised from 47 (2026-11-16): the fixture's statusline has no rate_limits, so the usage ring is now in upstream's context mode and follows the session's context tokens; its aria-label (\"Usage: Context …\") and arc stroke-dashoffset each change once where the plan-mode ring stayed at \"Usage\" and 0%, 2 more attribute mutations (usage-popover-context-section T2).",
+		"reason": "lowered from 49 (2026-11-19): the side chat now defaults to docked, so on the session page (which has a pane host) the closed floating card no longer renders its panel, one fewer mutation (side-chat-pane-tab-strip T5). Before that, raised from 47 (2026-11-16): the fixture's statusline has no rate_limits, so the usage ring is now in upstream's context mode and follows the session's context tokens; its aria-label (\"Usage: Context …\") and arc stroke-dashoffset each change once where the plan-mode ring stayed at \"Usage\" and 0%, 2 more attribute mutations (usage-popover-context-section T2).",
 		"raisedAt": "2026-11-16"
 	},
 	"client.sessionSwitch.typical.commits":
@@ -649,10 +649,10 @@
 	},
 	"client.sessionSwitch.typical.mutations":
 	{
-		"ceiling": 49,
+		"ceiling": 48,
 		"unit": "count",
 		"tolerance": 0,
-		"reason": "raised from 47 (2026-11-16): the fixture's statusline has no rate_limits, so the usage ring is now in upstream's context mode and follows the session's context tokens; its aria-label (\"Usage: Context …\") and arc stroke-dashoffset each change once where the plan-mode ring stayed at \"Usage\" and 0%, 2 more attribute mutations (usage-popover-context-section T2).",
+		"reason": "lowered from 49 (2026-11-19): the side chat now defaults to docked, so on the session page (which has a pane host) the closed floating card no longer renders its panel, one fewer mutation (side-chat-pane-tab-strip T5). Before that, raised from 47 (2026-11-16): the fixture's statusline has no rate_limits, so the usage ring is now in upstream's context mode and follows the session's context tokens; its aria-label (\"Usage: Context …\") and arc stroke-dashoffset each change once where the plan-mode ring stayed at \"Usage\" and 0%, 2 more attribute mutations (usage-popover-context-section T2).",
 		"raisedAt": "2026-11-16"
 	},
 	"hot.claudeEventsReducer.replay-200.calls":

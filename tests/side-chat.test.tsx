@@ -264,6 +264,182 @@ describe("SideChat", () =>
 		expect(aside().hasAttribute("data-open")).toBe(false);
 	});
 
+	it("stops a pending answer on the first Escape and closes on the next, ignoring Escape while composing", async () =>
+	{
+		const signals: AbortSignal[] = [];
+		vi.stubGlobal(
+			"fetch",
+			vi.fn(async (_url: string, init: RequestInit) =>
+			{
+				const signal = init.signal;
+				if (signal === null || signal === undefined) throw new Error("fetch called without a signal");
+				signals.push(signal);
+				return new Promise<Response>((_resolve, reject) =>
+				{
+					signal.addEventListener("abort", () =>
+					{
+						reject(new DOMException("Aborted", "AbortError"));
+					});
+				});
+			}),
+		);
+		renderSideChat();
+		act(() =>
+		{
+			openSideChat(SESSION_ID);
+		});
+		const input = screen.getByRole(
+			"textbox",
+			{
+				name: "Side chat question",
+			},
+		);
+		let pending: Promise<void> = Promise.resolve();
+		act(() =>
+		{
+			pending = askSideChat(SESSION_ID, "Where is config?");
+		});
+
+		fireEvent.keyDown(
+			input,
+			{
+				key: "Escape",
+				isComposing: true,
+			},
+		);
+		const composing =
+		{
+			open: getSideChat(SESSION_ID).open,
+			aborted: signals.map((signal) => signal.aborted),
+		};
+
+		fireEvent.keyDown(
+			input,
+			{
+				key: "Escape",
+			},
+		);
+		await act(async () => pending);
+		const stopped =
+		{
+			open: getSideChat(SESSION_ID).open,
+			aborted: signals.map((signal) => signal.aborted),
+			statuses: getSideChat(SESSION_ID).entries.map((entry) => entry.status),
+		};
+
+		fireEvent.keyDown(
+			input,
+			{
+				key: "Escape",
+			},
+		);
+
+		expect(
+			{
+				composing,
+				stopped,
+				open: getSideChat(SESSION_ID).open,
+			},
+		).toStrictEqual(
+			{
+				composing:
+				{
+					open: true,
+					aborted: [false],
+				},
+				stopped:
+				{
+					open: true,
+					aborted: [true],
+					statuses: ["error"],
+				},
+				open: false,
+			},
+		);
+	});
+
+	it.each(["/clear", "/RESET now", "/new"])("clears the thread instead of asking when %s is sent", async (command) =>
+	{
+		const fetchMock = vi.fn<typeof fetch>(async () => Promise.resolve(ndjsonResponse([textDelta("An answer.")])));
+		vi.stubGlobal("fetch", fetchMock);
+		renderSideChat();
+		act(() =>
+		{
+			openSideChat(SESSION_ID);
+		});
+		await act(async () => askSideChat(SESSION_ID, "What does load() do?"));
+		const input = screen.getByRole(
+			"textbox",
+			{
+				name: "Side chat question",
+			},
+		);
+
+		fireEvent.change(
+			input,
+			{
+				target:
+				{
+					value: command,
+				},
+			},
+		);
+		fireEvent.keyDown(
+			input,
+			{
+				key: "Enter",
+			},
+		);
+
+		expect(
+			{
+				fetches: fetchMock.mock.calls.length,
+				entries: getSideChat(SESSION_ID).entries,
+				draft: (input as HTMLTextAreaElement).value,
+			},
+		).toStrictEqual(
+			{
+				fetches: 1,
+				entries: [],
+				draft: "",
+			},
+		);
+	});
+
+	it("sends /clearly as a question", async () =>
+	{
+		const fetchMock = vi.fn<typeof fetch>(async () => Promise.resolve(ndjsonResponse([textDelta("An answer.")])));
+		vi.stubGlobal("fetch", fetchMock);
+		renderSideChat();
+		act(() =>
+		{
+			openSideChat(SESSION_ID);
+		});
+		const input = screen.getByRole(
+			"textbox",
+			{
+				name: "Side chat question",
+			},
+		);
+		fireEvent.change(
+			input,
+			{
+				target:
+				{
+					value: "/clearly",
+				},
+			},
+		);
+		fireEvent.keyDown(
+			input,
+			{
+				key: "Enter",
+			},
+		);
+		await screen.findByText("An answer.");
+		expect(getSideChat(SESSION_ID).entries.map((entry) => entry.question)).toStrictEqual(["/clearly"]);
+	});
+
 	it("switches the placeholder to Follow up… once there is an answer, and Clear resets it", async () =>
 	{
 		const fetchMock = vi.fn<typeof fetch>(async () =>
@@ -800,7 +976,7 @@ describe("closeSideChat", () =>
 				session:
 				{
 					open: false,
-					mode: "floating",
+					mode: "docked",
 					entries: [],
 					excerpts: [],
 				},
@@ -894,7 +1070,7 @@ describe("handleBtwPrompt", () =>
 		expect([getSideChat(SESSION_ID), toast.mock.calls]).toEqual([
 			{
 				open: true,
-				mode: "floating",
+				mode: "docked",
 				entries: [],
 				excerpts: [],
 			},

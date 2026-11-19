@@ -20,8 +20,9 @@ const POPOUT_BLOCKED_MESSAGE = "Couldn’t open a new window. Allow pop-ups for 
 /**
  * claude.ai/code's side chat for quick questions about this session. Each
  * question runs as an ephemeral fork, so nothing is added to the session
- * itself. It shows as a floating card, docks as the `side-chat` pane when a
- * pane host is present, or pops out to its own window; the Q/A thread lives
+ * itself. It docks as the `side-chat` pane when a pane host is present (the
+ * default, like upstream Code web), shows as a floating card, or pops out to
+ * its own window; the Q/A thread lives
  * in the side chat store, so it survives every switch.
  */
 export function SideChat({sessionId, messageCount}: {sessionId: string; messageCount: number})
@@ -31,7 +32,7 @@ export function SideChat({sessionId, messageCount}: {sessionId: string; messageC
 	const canDock = host !== null;
 	const floating = mode === "floating" || (mode === "docked" && !canDock);
 	const floatingOpen = open && floating;
-	const popoutRoot = usePopoutWindow(sessionId, open && mode === "popout");
+	const popoutRoot = usePopoutWindow(sessionId, open && mode === "popout", canDock);
 	useDockedSideChat(sessionId, messageCount, open && mode === "docked");
 
 	return (
@@ -106,14 +107,23 @@ function useDockedSideChat(sessionId: string, messageCount: number, docked: bool
 
 	const paneOpen = host?.isOpen("side-chat") ?? false;
 	const wasPaneOpen = useRef(paneOpen);
+	// A close this hook asked for (undock, pop out) is not the host closing the side chat, even when the side
+	// chat docks again before the pane reports closed, as a blocked pop-out does.
+	const closingPane = useRef(false);
 	useEffect(() =>
 	{
 		if (host === null) return;
-		const closedByHost = wasPaneOpen.current && !paneOpen;
+		const paneClosed = wasPaneOpen.current && !paneOpen;
+		const closedByHost = paneClosed && !closingPane.current;
+		if (paneClosed) closingPane.current = false;
 		wasPaneOpen.current = paneOpen;
 		if (closedByHost && docked) closeSideChat(sessionId);
 		else if (docked && !paneOpen) host.openPane("side-chat");
-		else if (!docked && paneOpen) host.closePane("side-chat");
+		else if (!docked && paneOpen)
+		{
+			closingPane.current = true;
+			host.closePane("side-chat");
+		}
 	}, [host, paneOpen, docked, sessionId]);
 }
 
@@ -138,10 +148,10 @@ function adoptPageStyles(target: Document): void
 
 /**
  * Opens the side chat's pop-out window while `active` and returns the element
- * to portal into. The window closing on its own drops back to the floating
- * card; a blocked pop-up does too, with a toast.
+ * to portal into. The window closing on its own drops back to the docked pane
+ * (the floating card without a pane host); a blocked pop-up does too, with a toast.
  */
-function usePopoutWindow(sessionId: string, active: boolean): HTMLElement | null
+function usePopoutWindow(sessionId: string, active: boolean, canDock: boolean): HTMLElement | null
 {
 	const toast = useToast();
 	const [root, setRoot] = useState<HTMLElement | null>(null);
@@ -149,10 +159,11 @@ function usePopoutWindow(sessionId: string, active: boolean): HTMLElement | null
 	useEffect(() =>
 	{
 		if (!active) return undefined;
+		const fallbackMode = canDock ? "docked" : "floating";
 		const popup = window.open("", `side-chat-${sessionId}`, "popup,width=420,height=640");
 		if (popup === null)
 		{
-			setSideChatMode(sessionId, "floating");
+			setSideChatMode(sessionId, fallbackMode);
 			toast(
 				{
 					kind: "error",
@@ -168,7 +179,7 @@ function usePopoutWindow(sessionId: string, active: boolean): HTMLElement | null
 		popup.document.body.append(container);
 		const onPageHide = () =>
 		{
-			setSideChatMode(sessionId, "floating");
+			setSideChatMode(sessionId, fallbackMode);
 		};
 		popup.addEventListener("pagehide", onPageHide);
 		setRoot(container);
@@ -179,7 +190,7 @@ function usePopoutWindow(sessionId: string, active: boolean): HTMLElement | null
 			container.remove();
 			popup.close();
 		};
-	}, [active, sessionId, toast]);
+	}, [active, sessionId, toast, canDock]);
 
 	return root;
 }

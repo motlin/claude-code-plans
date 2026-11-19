@@ -200,6 +200,7 @@ describe("SideChat variants", () =>
 		act(() =>
 		{
 			openSideChat(SESSION_ID);
+			setSideChatMode(SESSION_ID, "floating");
 		});
 		await askOneQuestion();
 		const floating = snapshot();
@@ -277,14 +278,6 @@ describe("SideChat variants", () =>
 			openSideChat(SESSION_ID);
 		});
 		await askOneQuestion();
-		fireEvent.click(
-			screen.getByRole(
-				"button",
-				{
-					name: "Dock side chat",
-				},
-			),
-		);
 
 		const closeButton = dockedPane()?.querySelector<HTMLElement>('button[aria-label="Close side chat"]');
 		if (closeButton === null || closeButton === undefined) throw new Error("No Close side chat button");
@@ -332,7 +325,7 @@ describe("SideChat variants", () =>
 		);
 	});
 
-	it("pops out into a new window and returns to floating when that window closes", async () =>
+	it("pops out into a new window and returns docked when that window closes", async () =>
 	{
 		const frame = document.createElement("iframe");
 		document.body.append(frame);
@@ -346,6 +339,7 @@ describe("SideChat variants", () =>
 		act(() =>
 		{
 			openSideChat(SESSION_ID);
+			setSideChatMode(SESSION_ID, "floating");
 		});
 		await askOneQuestion();
 		fireEvent.click(
@@ -394,9 +388,9 @@ describe("SideChat variants", () =>
 				},
 				returned:
 				{
-					mode: "floating",
-					floating: true,
-					docked: false,
+					mode: "docked",
+					floating: false,
+					docked: true,
 					history: HISTORY,
 				},
 				closed: true,
@@ -405,7 +399,7 @@ describe("SideChat variants", () =>
 		frame.remove();
 	});
 
-	it("stays floating when the browser blocks the pop-out window", async () =>
+	it("stays docked when the browser blocks the pop-out window", async () =>
 	{
 		vi.stubGlobal(
 			"open",
@@ -418,21 +412,150 @@ describe("SideChat variants", () =>
 		});
 		await askOneQuestion();
 
+		fireEvent.contextMenu(sideChatTab());
 		fireEvent.click(
-			screen.getByRole(
-				"button",
-				{
-					name: "Open in new window",
-				},
+			await waitFor(() =>
+				screen.getByRole(
+					"menuitem",
+					{
+						name: "Open in new window",
+					},
+				),
 			),
 		);
 
 		expect(snapshot()).toEqual(
 			{
-				mode: "floating",
-				floating: true,
-				docked: false,
+				mode: "docked",
+				floating: false,
+				docked: true,
 				history: HISTORY,
+			},
+		);
+	});
+
+	it("opens docked by default when a pane host exists", () =>
+	{
+		renderInHost();
+		act(() =>
+		{
+			openSideChat(SESSION_ID);
+		});
+		expect(snapshot()).toStrictEqual(
+			{
+				mode: "docked",
+				floating: false,
+				docked: true,
+				history: [],
+			},
+		);
+	});
+
+	it("gives the docked body upstream's side chat root and empty-state note, without the Sees N messages strip", () =>
+	{
+		openDocked();
+		const pane = dockedPane();
+		if (pane === null) throw new Error("No docked pane");
+		const root = pane.querySelector<HTMLElement>(".epitaxy-side-chat");
+		const note = pane.querySelector<HTMLElement>('[role="note"]');
+		expect(
+			{
+				root:
+				{
+					tabIndex: root?.getAttribute("tabindex"),
+					role: root?.getAttribute("role"),
+					label: root?.getAttribute("aria-label"),
+					sidePane: root?.getAttribute("data-side-session-pane"),
+					escapeOwner: root?.getAttribute("data-escape-owner"),
+					className: root?.className,
+				},
+				note:
+				{
+					text: note?.textContent,
+					className: note?.className,
+				},
+				sees: within(pane).queryByText(/Sees \d+ messages from main chat/),
+			},
+		).toStrictEqual(
+			{
+				root:
+				{
+					tabIndex: "-1",
+					role: "group",
+					label: "Side chat",
+					sidePane: "",
+					escapeOwner: "",
+					className: "epitaxy-side-chat flex h-full min-h-0 flex-col pt-md outline-none",
+				},
+				note:
+				{
+					text: "Chat about this session without touching the main thread. Claude sees the full context, and nothing here is added to the session.",
+					className:
+						"flex gap-[5px] w-full p-[8px] rounded-r7 bg-alpha-1 items-start min-h-[calc(var(--cds-h-control)+16px)] py-[calc((var(--cds-h-control)+16px-1lh)/2)] text-body band-enter mt-auto shrink-0",
+				},
+				sees: null,
+			},
+		);
+	});
+
+	it("types a printable key pressed on the docked pane into the side chat input, but not Space on a button", async () =>
+	{
+		openDocked();
+		await askOneQuestion();
+		const pane = dockedPane();
+		if (pane === null) throw new Error("No docked pane");
+		const root = pane.querySelector<HTMLElement>(".epitaxy-side-chat");
+		if (root === null) throw new Error("No side chat root");
+		const input = within(pane).getByRole(
+			"textbox",
+			{
+				name: "Side chat question",
+			},
+		);
+		const copy = within(pane).getByRole(
+			"button",
+			{
+				name: "Copy answer",
+			},
+		);
+		copy.focus();
+		const spaceAllowed = fireEvent.keyDown(
+			copy,
+			{
+				key: " ",
+			},
+		);
+		const afterSpace =
+		{
+			focused: document.activeElement === copy,
+			draft: (input as HTMLTextAreaElement).value,
+		};
+		root.focus();
+		const letterAllowed = fireEvent.keyDown(
+			root,
+			{
+				key: "a",
+			},
+		);
+		expect(
+			{
+				spaceAllowed,
+				afterSpace,
+				letterAllowed,
+				focused: document.activeElement === input,
+				draft: (input as HTMLTextAreaElement).value,
+			},
+		).toStrictEqual(
+			{
+				spaceAllowed: true,
+				afterSpace:
+				{
+					focused: true,
+					draft: "",
+				},
+				letterAllowed: false,
+				focused: true,
+				draft: "a",
 			},
 		);
 	});

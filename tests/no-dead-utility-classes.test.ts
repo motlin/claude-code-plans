@@ -84,6 +84,7 @@ const ALLOWLIST: Record<string, string> =
 		"upstream's approval body class, which the session dock column's short-viewport overscroll rule selects on",
 	"epitaxy-approval-read-hint": HOOK,
 	"epitaxy-chat-panel": "upstream's chat panel class, which the session outline's gutter variants select on",
+	"epitaxy-side-chat": HOOK,
 	"epitaxy-code-card": HOOK,
 	"epitaxy-diff": HOOK,
 	"epitaxy-panel-subheader": HOOK,
