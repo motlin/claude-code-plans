@@ -344,6 +344,7 @@ const SystemLineSchema = z.object(
 		hookCount: z.number().optional(),
 		hookInfos: z.array(JsonValueSchema).optional(),
 		hookErrors: z.array(JsonValueSchema).optional(),
+		failedHookErrorIndexes: z.array(z.number()).optional(),
 		hookAdditionalContext: z.array(JsonValueSchema).optional(),
 		preventedContinuation: z.boolean().optional(),
 		retryAttempt: z.number().optional(),
@@ -1991,6 +1992,10 @@ function* processRecordBatchSteps(
 			if (record.hookCount !== undefined) systemLine.hookCount = record.hookCount;
 			if (record.hookInfos !== undefined) systemLine.hookInfos = record.hookInfos;
 			if (record.hookErrors !== undefined) systemLine.hookErrors = record.hookErrors;
+			if (record.failedHookErrorIndexes !== undefined)
+			{
+				systemLine.failedHookErrorIndexes = record.failedHookErrorIndexes;
+			}
 			if (record.hookAdditionalContext !== undefined)
 			{
 				systemLine.hookAdditionalContext = record.hookAdditionalContext;

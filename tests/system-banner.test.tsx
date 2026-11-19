@@ -104,6 +104,23 @@ describe("SystemBanner", () =>
 		expect(html).toContain("7 stop hooks ran");
 		expect(html).toContain("1 error");
 		expect(html).toContain("blocked continuation");
+		expect(html).not.toContain("failed");
+	});
+
+	it("marks which stop_hook_summary errors came from failed hooks", () =>
+	{
+		const html = renderBanner(
+			{
+				type: "system",
+				subtype: "stop_hook_summary",
+				hookCount: 4,
+				hookErrors: ["blocked", "crashed", "timed out"],
+				failedHookErrorIndexes: [1, 2],
+				lineIndex: 0,
+			},
+		);
+		expect(html).toContain("3 errors");
+		expect(html).toContain("2 from failed hooks");
 	});
 
 	it("renders clean stop_hook_summary without error chips", () =>

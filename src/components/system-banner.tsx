@@ -75,6 +75,8 @@ export function SystemBanner({line, sessionId}: {line: SystemLine; sessionId?: s
 		case "stop_hook_summary":
 		{
 			const errorCount = line.hookErrors?.length ?? 0;
+			const failedIndexes = new Set(line.failedHookErrorIndexes);
+			const failedCount = line.hookErrors?.filter((_err, i) => failedIndexes.has(i)).length ?? 0;
 			const contextCount = line.hookAdditionalContext?.length ?? 0;
 			return (
 				<Banner
@@ -86,6 +88,11 @@ export function SystemBanner({line, sessionId}: {line: SystemLine; sessionId?: s
 					{errorCount > 0 && (
 						<span className="text-danger-000">
 							{errorCount} error{errorCount === 1 ? "" : "s"}
+						</span>
+					)}
+					{failedCount > 0 && (
+						<span className="text-danger-000">
+							{failedCount} from failed hook{failedCount === 1 ? "" : "s"}
 						</span>
 					)}
 					{line.preventedContinuation === true && (
@@ -100,7 +107,12 @@ export function SystemBanner({line, sessionId}: {line: SystemLine; sessionId?: s
 						<div className="basis-full">
 							<CollapsibleSection label="Details">
 								{line.hookErrors?.map((err, i) => (
-									<Pre key={`err-${i}`}>{jsonText(err)}</Pre>
+									<div key={`err-${i}`}>
+										{failedIndexes.has(i) && (
+											<span className="text-footnote text-danger-000">Hook failed</span>
+										)}
+										<Pre>{jsonText(err)}</Pre>
+									</div>
 								))}
 								{line.hookInfos?.map((info, i) => (
 									<Pre key={`info-${i}`}>{jsonText(info)}</Pre>

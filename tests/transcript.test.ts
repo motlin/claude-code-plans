@@ -4811,6 +4811,7 @@ describe("system record lines", () =>
 				subtype: "stop_hook_summary",
 				hookCount: 3,
 				hookErrors: ["boom"],
+				failedHookErrorIndexes: [0],
 				hookInfos: [
 					{
 						name: "precommit",
@@ -4828,6 +4829,7 @@ describe("system record lines", () =>
 				subtype: "stop_hook_summary",
 				hookCount: 3,
 				hookErrors: ["boom"],
+				failedHookErrorIndexes: [0],
 				hookInfos: [
 					{
 						name: "precommit",
