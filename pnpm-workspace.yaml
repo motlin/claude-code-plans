@@ -34,6 +34,10 @@ allowBuilds:
   node-pty: true
   unrs-resolver: true
 patchedDependencies:
+  # dnd-kit 6.3 never detaches a drag's sensor when its DndContext unmounts mid-drag, and its KeyboardSensor attaches
+  # its document keydown listener on a timeout a detach doesn't cancel, so an orphaned listener swallowed arrow keys
+  # (⌥⌘↑ prompt jump) for the rest of the page. Re-apply on upgrades.
+  "@dnd-kit/core@6.3.1": patches/@dnd-kit__core@6.3.1.patch
   # jsdom 31 never re-arms its animation frame interval once fake timers drop it while a focus fixup is pending, so
   # every later requestAnimationFrame in that window (Base UI's initial focus) never runs. Re-apply on upgrades.
   jsdom@31.0.0: patches/jsdom@31.0.0.patch

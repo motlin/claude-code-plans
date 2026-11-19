@@ -727,12 +727,10 @@ const MASK_120 = "[mask-image:linear-gradient(to_right,black_calc(100%_-_120px),
 const MASK_76 = "[mask-image:linear-gradient(to_right,black_calc(100%_-_76px),transparent_calc(100%_-_28px))]";
 
 /**
- * dnd-kit 6.3's KeyboardSensor never detaches when its DndContext unmounts mid-drag: its document keydown
- * listener (added on a zero-delay timeout after pick-up) outlives the band and, in a shared-dom worker, eats
- * every later test's arrow keys (prompt-jump's ⌥⌘↑). Unmount the band, let the listener attach, then cancel
- * the orphaned drag with Escape so the sensor removes it.
+ * Unmount the band mid-drag, let a task pass (dnd-kit's KeyboardSensor attaches its document keydown listener on a
+ * zero-delay timeout after pick-up), then press ⌥⌘↑ as prompt-jump would. Returns whether anything swallowed it.
  */
-async function unmountMidDrag(unmount: () => void): Promise<void>
+async function unmountMidDrag(unmount: () => void): Promise<boolean>
 {
 	unmount();
 	await act(
@@ -742,11 +740,13 @@ async function unmountMidDrag(unmount: () => void): Promise<void>
 				setTimeout(resolve, 0);
 			}),
 	);
-	fireEvent.keyDown(
-		document,
+	return !fireEvent.keyDown(
+		document.body,
 		{
-			code: "Escape",
-			key: "Escape",
+			code: "ArrowUp",
+			key: "ArrowUp",
+			metaKey: true,
+			altKey: true,
 		},
 	);
 }
@@ -1021,11 +1021,20 @@ describe("QueuedMessageBar reorder", () =>
 			},
 		);
 		const during = document.body.style.cursor;
-		await unmountMidDrag(unmount);
-		expect([during, document.body.style.cursor, document.body.style.userSelect]).toStrictEqual([
+		// Let the sensor's deferred keydown listener attach first, so unmounting has a live listener to detach.
+		await act(
+			async () =>
+				new Promise((resolve) =>
+				{
+					setTimeout(resolve, 0);
+				}),
+		);
+		const arrowSwallowed = await unmountMidDrag(unmount);
+		expect([during, document.body.style.cursor, document.body.style.userSelect, arrowSwallowed]).toStrictEqual([
 			"grabbing",
 			"",
 			"",
+			false,
 		]);
 	});
 
@@ -1044,20 +1053,31 @@ describe("QueuedMessageBar reorder", () =>
 				},
 			);
 			const result = rows.map((row) => row.style.transition);
-			await unmountMidDrag(unmount);
-			return result;
+			// Unmounted before the sensor's deferred keydown listener attaches: it must never attach.
+			const arrowSwallowed = await unmountMidDrag(unmount);
+			return {
+				result,
+				arrowSwallowed,
+			};
 		};
 		const animated = await transitions("session-animated");
 		document.documentElement.setAttribute("data-reduce-motion", "true");
+		const reduced = await transitions("session-reduced");
 		expect(
 			{
-				animated: animated.some((transition) => transition !== ""),
-				reduced: await transitions("session-reduced"),
+				animated: animated.result.some((transition) => transition !== ""),
+				animatedArrowSwallowed: animated.arrowSwallowed,
+				reduced,
 			},
 		).toStrictEqual(
 			{
 				animated: true,
-				reduced: ["", ""],
+				animatedArrowSwallowed: false,
+				reduced:
+				{
+					result: ["", ""],
+					arrowSwallowed: false,
+				},
 			},
 		);
 	});

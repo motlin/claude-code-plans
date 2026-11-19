@@ -176,6 +176,7 @@ overrides:
   '@tailwindcss/node>lightningcss': 1.33.0
 
 patchedDependencies:
+  '@dnd-kit/core@6.3.1': cfdd5d3c79a4d4f18c56e479d867090e8da7a4cbaf6293bff77eccef05c0c09e
   jsdom@31.0.0: 5bd2867990584c45fc507d1b8b923c3f715070b89d81d1c982ff57b35b62f364
   mermaid@11.17.2: 6ab6e483bd7f80c85111431c8481dc95c3483058cd983e10085c1ad7f0378e3b
 
@@ -200,10 +201,10 @@ importers:
         version: 6.43.15
       '@dnd-kit/core':
         specifier: 6.3.1
-        version: 6.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+        version: 6.3.1(patch_hash=cfdd5d3c79a4d4f18c56e479d867090e8da7a4cbaf6293bff77eccef05c0c09e)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@dnd-kit/sortable':
         specifier: 10.0.0
-        version: 10.0.0(@dnd-kit/core@6.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react@19.3.1)
+        version: 10.0.0(@dnd-kit/core@6.3.1(patch_hash=cfdd5d3c79a4d4f18c56e479d867090e8da7a4cbaf6293bff77eccef05c0c09e)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react@19.3.1)
       '@dnd-kit/utilities':
         specifier: 3.2.2
         version: 3.2.2(react@19.3.1)
@@ -6775,7 +6776,7 @@ snapshots:
       react: 19.3.1
       tslib: 2.8.1
 
-  '@dnd-kit/core@6.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)':
+  '@dnd-kit/core@6.3.1(patch_hash=cfdd5d3c79a4d4f18c56e479d867090e8da7a4cbaf6293bff77eccef05c0c09e)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)':
     dependencies:
       '@dnd-kit/accessibility': 3.1.1(react@19.3.1)
       '@dnd-kit/utilities': 3.2.2(react@19.3.1)
@@ -6783,9 +6784,9 @@ snapshots:
       react-dom: 19.3.1(react@19.3.1)
       tslib: 2.8.1
 
-  '@dnd-kit/sortable@10.0.0(@dnd-kit/core@6.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react@19.3.1)':
+  '@dnd-kit/sortable@10.0.0(@dnd-kit/core@6.3.1(patch_hash=cfdd5d3c79a4d4f18c56e479d867090e8da7a4cbaf6293bff77eccef05c0c09e)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react@19.3.1)':
     dependencies:
-      '@dnd-kit/core': 6.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+      '@dnd-kit/core': 6.3.1(patch_hash=cfdd5d3c79a4d4f18c56e479d867090e8da7a4cbaf6293bff77eccef05c0c09e)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@dnd-kit/utilities': 3.2.2(react@19.3.1)
       react: 19.3.1
       tslib: 2.8.1

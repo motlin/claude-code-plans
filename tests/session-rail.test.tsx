@@ -2745,31 +2745,14 @@ describe("session rail reorder", () =>
 		});
 		const slot = document.querySelector<HTMLElement>('[data-rail-card="context"]');
 		const section = document.querySelector<HTMLElement>('[data-rail-section="context"]');
-		const lifted =
-		{
-			slotClasses: slot?.className.split(" ").filter((c) => c === "bg-page"),
-			zIndex: slot?.style.zIndex,
-			slotDragging: slot?.hasAttribute("data-dragging"),
-			sectionStyle: section?.getAttribute("style"),
-		};
-		// dnd-kit's keyboard sensor keeps its document keydown listener until the drag ends, even past unmount, and
-		// would swallow a later file's arrow keys in a shared worker. Drop the drag, as the user would with Escape.
-		await act(async () =>
-		{
-			fireEvent.keyDown(
-				grip,
-				{
-					code: "Escape",
-					key: "Escape",
-				},
-			);
-			await new Promise((resolve) =>
+		expect(
 			{
-				setTimeout(resolve, 0);
-			});
-		});
-
-		expect(lifted).toStrictEqual(
+				slotClasses: slot?.className.split(" ").filter((c) => c === "bg-page"),
+				zIndex: slot?.style.zIndex,
+				slotDragging: slot?.hasAttribute("data-dragging"),
+				sectionStyle: section?.getAttribute("style"),
+			},
+		).toStrictEqual(
 			{
 				slotClasses: ["bg-page"],
 				zIndex: "1",
