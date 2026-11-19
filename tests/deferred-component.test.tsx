@@ -462,11 +462,16 @@ describe("useLoadedModule", () =>
 });
 
 /** Makes `module`'s download fail with a stale-chunk error, as one stable promise React can read. */
+/**
+ * A module whose download fails: preload rejects, and it never reads as loaded, even when an earlier file in a shared
+ * worker downloaded the real chunk or left a download that lands during this test.
+ */
 function failDownloads<M>(module: DeferredModule<M>)
 {
 	const failed = Promise.reject(new TypeError(STALE));
 	failed.catch(() => {});
 	vi.spyOn(module, "preload").mockReturnValue(failed);
+	vi.spyOn(module, "loaded").mockReturnValue(undefined);
 }
 
 const PLAN: PlanApprovalContextValue =
