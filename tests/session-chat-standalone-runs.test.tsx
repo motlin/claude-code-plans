@@ -637,5 +637,46 @@ describe("a clipped label-only row", () =>
 				],
 			},
 		);
+
+		// Upstream `dp`: a plain click on the open text's first line re-clips the label.
+		const row = toggle?.closest<HTMLElement>("[data-cds-row]");
+		const label = container.querySelector('[data-tool-row] [id$="-text"] .whitespace-normal');
+		if (row == null || label === null) throw new Error("no unclipped row label");
+		vi.spyOn(row, "getBoundingClientRect").mockReturnValue(
+			DOMRect.fromRect(
+				{
+					x: 0,
+					y: 100,
+					width: 300,
+					height: 60,
+				},
+			),
+		);
+		fireEvent.pointerDown(
+			label,
+			{
+				clientX: 20,
+				clientY: 100,
+				pointerType: "mouse",
+			},
+		);
+		fireEvent.click(
+			label,
+			{
+				clientX: 20,
+				clientY: 100,
+				detail: 1,
+			},
+		);
+		expect(state()).toStrictEqual(
+			{
+				expanded: "false",
+				stretched: true,
+				rowStart: false,
+				openText: false,
+				textInRow: true,
+				wrapped: [],
+			},
+		);
 	});
 });
