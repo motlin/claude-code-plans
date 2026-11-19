@@ -186,8 +186,8 @@ export const wakeupSourceLabels =
 	schedule_wakeup: "Schedule wakeup",
 } satisfies Record<z.infer<typeof WakeupSourceSchema>, string>;
 
-/** `mcpCallNotReadOnly` on MCP tool_result user records; validated only, not rendered yet. */
-const mcpCallNotReadOnlyLabels =
+/** `mcpCallNotReadOnly` on MCP tool_result user records: the Verbose "Not read-only" badge's tooltip. */
+export const mcpCallNotReadOnlyLabels =
 {
 	no_hint: "No read-only hint",
 	declared: "Declared not read-only",

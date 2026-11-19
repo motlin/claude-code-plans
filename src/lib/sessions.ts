@@ -220,6 +220,8 @@ export interface ToolResultInfo
 	permission?: PermissionDecision | undefined;
 	/** Whether the Bash call ran inside the sandbox, from the result record's top-level `sandboxed`. */
 	sandboxed?: boolean | undefined;
+	/** Why Claude Code did not treat an MCP call as read-only, from the result record's `mcpCallNotReadOnly`. */
+	mcpCallNotReadOnly?: McpCallNotReadOnly | undefined;
 	/** The images the result returned, such as a Read of a .png or a browser screenshot. */
 	images?: readonly ToolResultImage[] | undefined;
 	/** Upstream's generic output shape, kept only when it carries a note or reads "No output"; see `classifyToolOutput`. */
@@ -233,7 +235,7 @@ import type {ToolResultMeta} from "./tool-labels";
 import type {ToolOutputShape} from "./tool-output-shape";
 import type {ParsedArtifact} from "./artifact-output";
 import type {ArtifactListEntry} from "./artifact-schemas";
-import type {PermissionDecision} from "./permission-decision";
+import type {McpCallNotReadOnly, PermissionDecision} from "./permission-decision";
 import
 {
 	cleanPromptText,

@@ -1,8 +1,9 @@
 import type {z} from "zod";
 import {assertNever} from "./assert-never";
-import type {PermissionDecisionReasonTypeSchema, UserRecordSchema} from "./schemas";
+import type {McpCallNotReadOnlySchema, PermissionDecisionReasonTypeSchema, UserRecordSchema} from "./schemas";
 import
 {
+	mcpCallNotReadOnlyLabels,
 	permissionDecisionCircuitBreakerLabels,
 	permissionDecisionDecisionLabels,
 	permissionDecisionReasonTypeLabels,
@@ -102,4 +103,13 @@ export function permissionDecisionTitle(permission: PermissionDecision): string
 		reasonTitle(permission),
 	].filter((part) => part !== undefined);
 	return `Permission: ${parts.join(" · ")}`;
+}
+
+/** Why Claude Code did not treat an MCP call as read-only, from its tool_result record's `mcpCallNotReadOnly`. */
+export type McpCallNotReadOnly = z.infer<typeof McpCallNotReadOnlySchema>;
+
+/** The "Not read-only" badge's tooltip, e.g. "Not treated as read-only: No read-only hint". */
+export function mcpCallNotReadOnlyTitle(reason: McpCallNotReadOnly): string
+{
+	return `Not treated as read-only: ${mcpCallNotReadOnlyLabels[reason]}`;
 }

@@ -4,7 +4,7 @@ import type {ToolResultMeta} from "../../lib/tool-labels";
 import type {ToolOutputShape} from "../../lib/tool-output-shape";
 import {isArtifactCardCall, type ParsedArtifact} from "../../lib/artifact-output";
 import type {ArtifactListEntry} from "../../lib/artifact-schemas";
-import type {PermissionDecision} from "../../lib/permission-decision";
+import type {McpCallNotReadOnly, PermissionDecision} from "../../lib/permission-decision";
 import type {ToolResultImage} from "../../lib/session-utils";
 import type {Subagent} from "../../lib/subagents";
 import type {SlowCommand} from "../../lib/slow-commands";
@@ -72,6 +72,8 @@ export interface ClientToolCall
 	permission?: PermissionDecision | undefined;
 	/** Whether the Bash call ran inside the sandbox; see `ToolResultInfo.sandboxed`. */
 	sandboxed?: boolean | undefined;
+	/** Why Claude Code did not treat an MCP call as read-only; see `ToolResultInfo.mcpCallNotReadOnly`. */
+	mcpCallNotReadOnly?: McpCallNotReadOnly | undefined;
 	/** The images the result returned; see `ToolResultInfo.images`. */
 	outputImages?: readonly ToolResultImage[] | undefined;
 	/** See `ToolResultInfo.outputShape`. */
@@ -308,6 +310,7 @@ export function buildClientToolCall(
 		if (resultInfo.artifactList !== undefined) call.artifactList = resultInfo.artifactList;
 		if (resultInfo.permission !== undefined) call.permission = resultInfo.permission;
 		if (resultInfo.sandboxed !== undefined) call.sandboxed = resultInfo.sandboxed;
+		if (resultInfo.mcpCallNotReadOnly !== undefined) call.mcpCallNotReadOnly = resultInfo.mcpCallNotReadOnly;
 		if (resultInfo.images !== undefined) call.outputImages = resultInfo.images;
 		if (resultInfo.outputShape !== undefined) call.outputShape = resultInfo.outputShape;
 		if (resultInfo.resultJson !== undefined) call.resultJson = resultInfo.resultJson;

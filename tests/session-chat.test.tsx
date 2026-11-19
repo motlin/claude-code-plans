@@ -1826,6 +1826,62 @@ describe("SessionChat Bash tool row sandbox badge", () =>
 	});
 });
 
+describe("SessionChat MCP tool row not-read-only badge", () =>
+{
+	const notReadOnlySpans = (transcriptMode: TranscriptMode) =>
+	{
+		const {lines, toolResultMap} = processTranscript(
+			toolResultRecords(
+				{
+					name: "mcp__notes__save",
+					input:
+					{
+						title: "groceries",
+					},
+				},
+				"ok",
+				false,
+				{
+					mcpCallNotReadOnly: "no_hint",
+				},
+			),
+		);
+		const container = render(
+			<SessionChat
+				sessionId="test-session"
+				lines={lines}
+				toolResultMap={toolResultMap}
+				transcriptMode={transcriptMode}
+				shouldScrollToEnd={false}
+			/>,
+		).container;
+		return Array.from(container.querySelectorAll("[data-mcp-not-read-only]"), (el) => (
+		{
+			text: el.textContent,
+			reason: el.getAttribute("data-mcp-not-read-only"),
+			title: el.getAttribute("title"),
+			className: el.className,
+		}));
+	};
+
+	it("badges an MCP call Claude Code did not treat as read-only in Verbose, with why as its tooltip", () =>
+	{
+		expect(notReadOnlySpans("verbose")).toStrictEqual([
+			{
+				text: "Not read-only",
+				reason: "no_hint",
+				title: "Not treated as read-only: No read-only hint",
+				className: "shrink-0 text-body text-t6",
+			},
+		]);
+	});
+
+	it("leaves the not-read-only badge out of Normal, which upstream never shows", () =>
+	{
+		expect(notReadOnlySpans("normal")).toStrictEqual([]);
+	});
+});
+
 describe("SessionChat failed tool row label", () =>
 {
 	const bash = (description: string) => (

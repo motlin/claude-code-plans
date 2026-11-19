@@ -91,7 +91,7 @@ import {compactBoundaryLabel, localCommandOutput} from "./system-banner-text";
 import {ArtifactLinkBanner, ArtifactWatchBanner} from "./artifact-banner";
 import {ContinuedInBanner} from "./continued-in-banner";
 import {BackgroundLaunchBanner} from "./background-launch-banner";
-import {permissionDecisionLabel, permissionDecisionTitle} from "../lib/permission-decision";
+import {mcpCallNotReadOnlyTitle, permissionDecisionLabel, permissionDecisionTitle} from "../lib/permission-decision";
 import {DebugLink} from "./debug-link";
 import {ToolCardBoundary} from "./tool-card-boundary";
 import {TranscriptRowBoundary} from "./transcript-row-boundary";
@@ -8296,6 +8296,8 @@ function ToolCallRow({
 	const permissionLabel = verbose && call.permission !== undefined ? permissionDecisionLabel(call.permission) : null;
 	// Likewise whether a Bash call ran inside the sandbox.
 	const sandboxed = verbose && call.name === "Bash" ? call.sandboxed : undefined;
+	// Likewise why an MCP call was not treated as read-only.
+	const mcpNotReadOnly = verbose ? call.mcpCallNotReadOnly : undefined;
 
 	// Upstream follows a standalone in-flight row's label with the elapsed time.
 	const runningRow = pending && isTurnStatus;
@@ -8598,6 +8600,15 @@ function ToolCallRow({
 					className="shrink-0 text-body text-t6"
 				>
 					{sandboxed ? "Sandboxed" : "Unsandboxed"}
+				</span>
+			)}
+			{mcpNotReadOnly !== undefined && (
+				<span
+					data-mcp-not-read-only={mcpNotReadOnly}
+					title={mcpCallNotReadOnlyTitle(mcpNotReadOnly)}
+					className="shrink-0 text-body text-t6"
+				>
+					Not read-only
 				</span>
 			)}
 		</>
