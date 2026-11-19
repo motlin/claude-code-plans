@@ -316,6 +316,22 @@ describe("permissionDecisionTitle classifier and safety-check details", () =>
 			permissionDecisionTitle(
 				{
 					decision: "reject",
+					source: "classifier",
+					reasonType: "classifier",
+					classifierCategory: "unauthorized_access",
+				},
+			),
+			permissionDecisionTitle(
+				{
+					decision: "reject",
+					source: "classifier",
+					reasonType: "classifier",
+					classifierCategory: "destructive_or_unwanted_actions",
+				},
+			),
+			permissionDecisionTitle(
+				{
+					decision: "reject",
 					source: "config",
 					reasonType: "safetyCheck",
 					circuitBreaker: "dangerousRemoval",
@@ -333,6 +349,8 @@ describe("permissionDecisionTitle classifier and safety-check details", () =>
 			"Permission: Rejected · Classifier · Classifier (Unrequested commit in a connected app)",
 			"Permission: Rejected · Configuration · Classifier (Bot check circumvention)",
 			"Permission: Rejected · Classifier · Classifier (Undermining oversight)",
+			"Permission: Rejected · Classifier · Classifier (Unauthorized access)",
+			"Permission: Rejected · Classifier · Classifier (Destructive or unwanted actions)",
 			"Permission: Rejected · Configuration · Safety check (Dangerous removal)",
 			"Permission: Rejected · Configuration · Safety check",
 		]);

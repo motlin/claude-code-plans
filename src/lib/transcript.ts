@@ -129,6 +129,8 @@ const MessageLineSchema = z.object(
 		scheduledTaskId: z.string().optional(),
 		wakeupSource: WakeupSourceSchema.optional(),
 		queuePriority: z.literal("later").optional(),
+		/** The prompt text was not typed by the user (e.g. pasted or injected into the queue). */
+		textNotTyped: z.literal(true).optional(),
 		/** The `queueOrigin.displayName` of an Artifact watch whose end this task-notification announces. */
 		artifactWatchEnded: z.string().optional(),
 		/** The raw input ("/a /b") of a stacked slash-command prompt, on the stack's first command line. */
@@ -2065,6 +2067,7 @@ function* processRecordBatchSteps(
 			{
 				processedLine.queuePriority = record.queuePriority;
 			}
+			if (record.textNotTyped === true) processedLine.textNotTyped = true;
 			// Most user records carry a human origin; only a peer's is read.
 			if (typeof record.origin === "object" && record.origin["kind"] === "peer")
 			{

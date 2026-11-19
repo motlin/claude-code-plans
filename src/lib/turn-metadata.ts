@@ -135,6 +135,7 @@ function originDetail(line: MessageSessionLine): string | undefined
 		}
 	}
 	if (line.promptSource !== undefined) parts.push(`${promptSourceLabels[line.promptSource]} prompt`);
+	if (line.textNotTyped === true) parts.push("not typed");
 	if (line.queuePriority === "later" && parts.length > 0) parts.push("queued for later");
 	return parts.length === 0 ? undefined : parts.join(" · ");
 }

@@ -2357,7 +2357,7 @@ describe("message metadata fields", () =>
 		]);
 	});
 
-	it("carries promptSource and queuePriority on user lines except typed prompt sources", () =>
+	it("carries promptSource, queuePriority and textNotTyped on user lines except typed prompt sources", () =>
 	{
 		const records = [
 			userRecord(
@@ -2365,6 +2365,13 @@ describe("message metadata fields", () =>
 				{
 					promptSource: "system",
 					queuePriority: "later",
+				},
+			),
+			userRecord(
+				"pasted prompt",
+				{
+					promptSource: "queued",
+					textNotTyped: true,
 				},
 			),
 			userRecord(
@@ -2391,6 +2398,17 @@ describe("message metadata fields", () =>
 			{
 				type: "user",
 				lineIndex: 1,
+				promptSource: "queued",
+				textNotTyped: true,
+				message:
+				{
+					role: "user",
+					content: "pasted prompt",
+				},
+			},
+			{
+				type: "user",
+				lineIndex: 2,
 				message:
 				{
 					role: "user",
@@ -2399,7 +2417,7 @@ describe("message metadata fields", () =>
 			},
 			{
 				type: "user",
-				lineIndex: 2,
+				lineIndex: 3,
 				message:
 				{
 					role: "user",

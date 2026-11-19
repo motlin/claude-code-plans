@@ -309,6 +309,14 @@ describe("userTurnDetails", () =>
 						queuePriority: "later",
 					},
 				),
+				pasted: userTurnDetails(
+					{
+						type: "user",
+						lineIndex: 0,
+						promptSource: "queued",
+						textNotTyped: true,
+					},
+				),
 			},
 		).toStrictEqual(
 			{
@@ -317,6 +325,7 @@ describe("userTurnDetails", () =>
 				sdk: ["From the SDK · SDK prompt"],
 				suggestion: ["Suggestion accepted prompt"],
 				system: ["System prompt · queued for later"],
+				pasted: ["Queued prompt · not typed"],
 			},
 		);
 	});

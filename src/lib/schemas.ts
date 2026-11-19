@@ -327,6 +327,7 @@ const BaseRecordFields =
 	version: z.string().optional(),
 	entrypoint: z.string().optional(),
 	/** The client that sent the prompt, e.g. "desktop_app". */
+	// Validated-only: observed only beside entrypoint "claude-desktop", which the titlebar badge already shows.
 	clientPlatform: z.string().optional(),
 	forkedFrom: ForkedFromSchema.optional(),
 	teamName: z.string().optional(),
@@ -1788,6 +1789,7 @@ const PromptSnapshotAttachmentPayload = z
 								description: z.string().optional(),
 								schema: z.record(z.string(), JsonValueSchema).optional(),
 								/** The MCP server id, on MCP tools. */
+								// Validated-only: an MCP tool's name already carries its server prefix.
 								server: z.string().optional(),
 							},
 						)
@@ -2116,6 +2118,8 @@ export const CompactMetadataSchema = z
 				)
 				.strict()
 				.optional(),
+			// Validated-only: bookkeeping for a compaction that ran mid-turn; the uuids and the
+			// prompt's client platform add nothing the compact boundary row does not already say.
 			runningTurnSends: z
 				.object(
 					{
@@ -3363,6 +3367,7 @@ export const SessionRegistryFileSchema = z
 			kind: z.string(),
 			entrypoint: z.string(),
 			/** The desktop app's id for the session hosting this CLI, e.g. "local_<uuid>". */
+			// Validated-only: an opaque desktop-app id with nothing in this app to link it to.
 			hostSessionId: z.string().optional(),
 			pidDomain: z.string().optional(),
 			/** Set when the session runs as a background job: that job's id. */
