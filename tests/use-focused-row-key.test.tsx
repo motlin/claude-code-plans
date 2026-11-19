@@ -37,6 +37,13 @@ describe("useFocusedSectionRowKey (upstream AJ)", () =>
 {
 	it("reports the focused row only to its own section, and drops the shared listeners with the last section", () =>
 	{
+		// A shared-dom file before this one can leave a capture focusin listener that removes itself on the next focusin.
+		const leaked = () =>
+		{
+			document.removeEventListener("focusin", leaked, true);
+		};
+		document.addEventListener("focusin", leaked, true);
+		const add = vi.spyOn(document, "addEventListener");
 		const remove = vi.spyOn(document, "removeEventListener");
 		const {getByText, unmount} = render(
 			<>
@@ -44,6 +51,7 @@ describe("useFocusedSectionRowKey (upstream AJ)", () =>
 				<Section name="b" />
 			</>,
 		);
+		const hookListeners = new Set(add.mock.calls.map(([, listener]) => listener));
 		const initial =
 		{
 			...seen,
@@ -71,7 +79,10 @@ describe("useFocusedSectionRowKey (upstream AJ)", () =>
 				focused,
 				blurred,
 				removed: remove.mock.calls
-					.filter(([type]) => type === "focusin" || type === "focusout")
+					.filter(
+						([type, listener]) =>
+							hookListeners.has(listener) && (type === "focusin" || type === "focusout"),
+					)
 					.map(([type, , capture]) => [type, capture]),
 			},
 		).toStrictEqual(
