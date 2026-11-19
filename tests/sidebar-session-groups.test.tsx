@@ -35,6 +35,9 @@ import {readFileSync} from "node:fs";
 import {rowTitle} from "./sidebar-row-title";
 
 const MINUTE = 60 * 1000;
+// Pin mid-day: fixtures are minutes or days old under TZ=UTC, and on wall time the minutes-old ones fall into Yesterday just after midnight.
+const NOW = Date.parse("2026-06-15T12:00:00Z");
+vi.setSystemTime(NOW);
 
 function session(id: string, title: string, bucket: SessionBucket, minutesAgo: number)
 {
@@ -391,6 +394,7 @@ afterEach(() =>
 
 beforeEach(() =>
 {
+	vi.setSystemTime(NOW);
 	installLocalStorage();
 	__awaitingAckTesting.reset();
 });
