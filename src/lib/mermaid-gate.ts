@@ -9,6 +9,12 @@ import {findSecrets} from "./secret-mask";
 /** Upstream's source length limit in the pre-gate `Z`. */
 const MERMAID_MAX_SOURCE = 262_144;
 
+/** Upstream's code-block dispatch: only a fence whose language is `mermaid`, in any case, may draw. */
+export function isMermaidFence(info: string): boolean
+{
+	return info.trim().split(/\s+/)[0]?.toLowerCase() === "mermaid";
+}
+
 /**
  * Upstream's pre-gate `Z(code, true)`: a source this long, or with any secret in it, stays a code block (where the
  * secret cloak masks it) and never loads mermaid.

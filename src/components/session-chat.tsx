@@ -12,6 +12,7 @@ import React,
 	useMemo,
 	useRef,
 	useState,
+	useSyncExternalStore,
 	type Context,
 	type ReactNode,
 	type RefCallback,
@@ -114,7 +115,7 @@ import {useTurnStatusPanelLeaving} from "./use-turn-status-panel-leaving";
 import {MessageQuoteTiles} from "./message-excerpt-tiles";
 import {defined} from "../lib/defined";
 import {narrationProse} from "../lib/thinking-narration";
-import {messageHeading, messageText} from "../lib/transcript-action-targets";
+import {messageHeading, messageSearchText, messageText} from "../lib/transcript-action-targets";
 import {WaitingPickupStatus, WaitingUserTurn} from "./waiting-user-turn";
 import {useLandedFlash} from "./landed-flash";
 import {usePickupSettling} from "../lib/pickup-settling";
@@ -212,7 +213,14 @@ import
 	TRANSCRIPT_RELEASE_END_FOLLOW_EVENT,
 } from "../lib/jump-to-message";
 import {useFindListProvider} from "../lib/find-in-page/list-provider";
-import {markdownToPlainText} from "../lib/markdown-plain-text";
+import
+{
+	createMermaidSourceStore,
+	FindEnabledContext,
+	mermaidBlockId,
+	MermaidBlockIdContext,
+	MermaidSourceStoreContext,
+} from "../lib/mermaid-find";
 import {asRecord, isKeyOf} from "../lib/narrow";
 import {toolMarkActivity} from "../lib/working-mark-activity";
 import
@@ -4391,29 +4399,43 @@ function buildSessionListEntries(
 	});
 }
 
-/** A message's prose as plain text, kept per line object across renders. */
+/**
+ * A message's prose as plain text, kept per line object across renders. Prose holding a drawable mermaid fence
+ * depends on the fence's reported source visibility, so it is kept only per {@link entrySearchText} call.
+ */
 const proseSearchText = new WeakMap<SessionLine, string>();
 
 /**
  * Upstream `ECe` for local rows: a prompt or reply entry contributes the plain text of its visible
- * messages' prose; markers, notices and tool bodies contribute nothing.
+ * messages' prose; markers, notices and tool bodies contribute nothing. A drawn mermaid fence counts
+ * only while `mermaidSourceShown` reports its source shown.
  */
 function entrySearchText(
 	lines: readonly SessionLine[],
 	renderProps: LineRenderProps,
 	verbose: boolean,
+	mermaidSourceShown: (key: string) => boolean,
 ): (entry: SessionListEntry) => string
 {
 	const byIndex = new Map(lines.map((line) => [line.lineIndex, line]));
+	const withMermaid = new Map<SessionLine, string>();
 	const textOf = (line: SessionLine): string =>
 	{
 		if ((line.type !== "user" && line.type !== "assistant") || !isLineVisible(line, renderProps, verbose))
 			return "";
-		let text = proseSearchText.get(line);
+		let text = proseSearchText.get(line) ?? withMermaid.get(line);
 		if (text === undefined)
 		{
-			text = markdownToPlainText(messageText(line));
-			proseSearchText.set(line, text);
+			const probe =
+			{
+				asked: false,
+			};
+			text = messageSearchText(line, (key) =>
+			{
+				probe.asked = true;
+				return mermaidSourceShown(key);
+			});
+			(probe.asked ? withMermaid : proseSearchText).set(line, text);
 		}
 		return text;
 	};
@@ -5291,7 +5313,17 @@ function SessionLineList({
 		clientRows,
 		renderClientRowCard,
 	);
-	const searchTextFor = useMemo(() => entrySearchText(lines, renderProps, verbose), [lines, renderProps, verbose]);
+	const [mermaidSources] = useState(createMermaidSourceStore);
+	const mermaidSourcesVersion = useSyncExternalStore(
+		mermaidSources.subscribe,
+		() => mermaidSources.getState().version,
+		() => 0,
+	);
+	const searchTextFor = useMemo(() =>
+	{
+		void mermaidSourcesVersion;
+		return entrySearchText(lines, renderProps, verbose, mermaidSources.getState().isMermaidSourceVisible);
+	}, [lines, renderProps, verbose, mermaidSources, mermaidSourcesVersion]);
 	const heldImagesCall = heldImagesCallId(lines, renderProps, verbose, turnInProgress);
 	const liveThinking = liveThinkingKey(lines, renderProps, verbose, turnInProgress);
 	const [expansionStore] = useState(() => new Map<string, ExpansionToggle>());
@@ -5299,17 +5331,22 @@ function SessionLineList({
 		<ExpansionStoreContext.Provider value={expansionStore}>
 			<LiveThinkingContext.Provider value={liveThinking}>
 				<HeldImagesCallContext.Provider value={heldImagesCall}>
-					<AssistantSpanInteractions held={held} setHeld={setHeld}>
-						<VirtualizedSessionEntries
-							key={measurementSource === undefined ? undefined : measurementKey}
-							entries={entries}
-							searchTextFor={searchTextFor}
-							shouldScrollToEnd={shouldScrollToEnd}
-							measurementKey={measurementKey}
-							measurementSource={measurementSource}
-							scrollKey={renderProps.sessionId}
-						/>
-					</AssistantSpanInteractions>
+					{/* Upstream c1c1ec7b9 provides `findEnabled` to the transcript, which registers the find provider. */}
+					<FindEnabledContext value>
+						<MermaidSourceStoreContext value={mermaidSources}>
+							<AssistantSpanInteractions held={held} setHeld={setHeld}>
+								<VirtualizedSessionEntries
+									key={measurementSource === undefined ? undefined : measurementKey}
+									entries={entries}
+									searchTextFor={searchTextFor}
+									shouldScrollToEnd={shouldScrollToEnd}
+									measurementKey={measurementKey}
+									measurementSource={measurementSource}
+									scrollKey={renderProps.sessionId}
+								/>
+							</AssistantSpanInteractions>
+						</MermaidSourceStoreContext>
+					</FindEnabledContext>
 				</HeldImagesCallContext.Provider>
 			</LiveThinkingContext.Provider>
 		</ExpansionStoreContext.Provider>
@@ -7375,7 +7412,9 @@ function ContentBlock({
 		return (
 			<div className="relative min-w-0 text-body text-primary" data-transcript-prose>
 				{/* Upstream's Wbe: transcript text items are the "diagram" context, so mermaid fences draw. */}
-				<ProseMarkdown markdown={prose} smartQuotes diagrams />
+				<MermaidBlockIdContext value={mermaidBlockId(line.uuid, blockIndex)}>
+					<ProseMarkdown markdown={prose} smartQuotes diagrams />
+				</MermaidBlockIdContext>
 				<DebugLink sessionId={sessionId} uuid={line.uuid} className="absolute top-0 right-0" />
 			</div>
 		);

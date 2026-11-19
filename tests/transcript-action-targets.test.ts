@@ -1,6 +1,8 @@
 import {describe, expect, it} from "vite-plus/test";
 
-import {chapterFor, chapterTitle, forkPointFor} from "../src/lib/transcript-action-targets";
+import {mermaidSourceKey} from "../src/lib/mermaid-find";
+import {chapterFor, chapterTitle, forkPointFor, messageSearchText} from "../src/lib/transcript-action-targets";
+import type {MessageSessionLine} from "../src/lib/transcript";
 import {processTranscript} from "../src/lib/transcript";
 
 const RECORDS: unknown[] = [
@@ -140,6 +142,79 @@ describe("chapterTitle", () =>
 				fortyOne: `${forty}…`,
 				skipsBlankLines: "Second line",
 				blank: "",
+			},
+		);
+	});
+});
+
+describe("messageSearchText", () =>
+{
+	const MERMAID = "```mermaid\ngraph TD; A-->B\n```";
+	const {lines: mermaidLines} = processTranscript(
+		[
+			{
+				type: "user",
+				uuid: "ask",
+				message:
+				{
+					role: "user",
+					content: `Draw it\n\n${MERMAID}`,
+				},
+			},
+			{
+				type: "assistant",
+				uuid: "draw",
+				parentUuid: "ask",
+				message:
+				{
+					role: "assistant",
+					content: [
+						{
+							type: "text",
+							text: `Here:\n\n${MERMAID}`,
+						},
+						{
+							type: "tool_use",
+							id: "toolu_m",
+							name: "Bash",
+							input:
+							{
+								command: "ls",
+							},
+						},
+						{
+							type: "text",
+							text: MERMAID,
+						},
+					],
+				},
+			},
+		],
+		10,
+	);
+	const message = (uuid: string) =>
+		mermaidLines.find((line): line is MessageSessionLine => "uuid" in line && line.uuid === uuid)!;
+
+	it("drops a reply's drawn mermaid fences unless the find store reports that block's source shown (upstream ECe + sd)", () =>
+	{
+		const shown = new Set([mermaidSourceKey("draw:2", "graph TD; A-->B")]);
+		const asked: string[] = [];
+		const isShown = (key: string) =>
+		{
+			asked.push(key);
+			return shown.has(key);
+		};
+		expect(
+			{
+				reply: messageSearchText(message("draw"), isShown),
+				prompt: messageSearchText(message("ask"), isShown),
+				asked,
+			},
+		).toStrictEqual(
+			{
+				reply: "Here:\n\n\n\ngraph TD; A-->B",
+				prompt: "Draw it\n\ngraph TD; A-->B",
+				asked: ["draw:0\ngraph TD; A-->B", "draw:2\ngraph TD; A-->B"],
 			},
 		);
 	});

@@ -32,6 +32,7 @@ import {mdFileHref, resolveRelativeMdHref} from "./md-links";
 import {afterBreak, afterOpaque, newQuoteState, smartenQuotes} from "./smart-quotes";
 import {SHIKI_TOKENIZE_OPTIONS} from "./shiki-tokenize-options";
 import {defined} from "./defined";
+import {isMermaidFence} from "./mermaid-gate";
 import {CHIP_INTERACTIVE, CHIP_LABEL} from "../components/session-link-chip-classes";
 import {isSessionLinkText, renderChipTitleHtml, SESSION_CHIP_STATE_LABELS} from "./session-chip-label";
 import {parseSessionLinkHref, sessionChipModel, type SessionLinkTarget} from "./session-link-href";
@@ -225,12 +226,6 @@ function getMarkdownVariant(options?: MarkdownRenderOptions): MarkdownVariant
 export const MERMAID_FENCE_ATTR = "data-mermaid-fence";
 /** The mermaid source a {@link MERMAID_FENCE_ATTR} placeholder draws, without the fence's trailing newline. */
 export const MERMAID_SOURCE_ATTR = "data-mermaid-source";
-
-/** Upstream's code-block dispatch: only a fence whose language is `mermaid`, in any case, may draw. */
-function isMermaidFence(info: string): boolean
-{
-	return info.trim().split(/\s+/)[0]?.toLowerCase() === "mermaid";
-}
 
 /** Marks the wrapper `<div>` a fenced code block and its copy button share. */
 export const CODEBLOCK_CLASS = "markdown-codeblock";

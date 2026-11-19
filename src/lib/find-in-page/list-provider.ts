@@ -115,6 +115,7 @@ export function useFindListProvider<T>(options: FindListOptions<T>): void
 		{
 			query: string;
 			items: readonly T[];
+			getSearchText: FindListOptions<T>["getSearchText"];
 			matches: Matches;
 		} | null = null;
 		const counted = new Map<
@@ -133,7 +134,8 @@ export function useFindListProvider<T>(options: FindListOptions<T>): void
 		const matchesFor = (value: string): Matches =>
 		{
 			const {items, getItemKey, getSearchText} = optionsRef.current;
-			if (cache?.query === value && cache.items === items) return cache.matches;
+			if (cache?.query === value && cache.items === items && cache.getSearchText === getSearchText)
+				return cache.matches;
 			const matches: Matches =
 			{
 				rows: [],
@@ -170,6 +172,7 @@ export function useFindListProvider<T>(options: FindListOptions<T>): void
 			{
 				query: value,
 				items,
+				getSearchText,
 				matches: result,
 			};
 			return result;
@@ -284,8 +287,9 @@ export function useFindListProvider<T>(options: FindListOptions<T>): void
 		};
 	}, [enabled]);
 
-	// New or changed items move the count while a query is active (upstream `recountOnItemsChange`).
-	const {items} = options;
+	// New or changed items, or their search text (upstream's `visibleBodiesVersion`), move the count while a query
+	// is active (upstream `recountOnItemsChange`).
+	const {items, getSearchText} = options;
 	const firstRender = useRef(true);
 	useEffect(() =>
 	{
@@ -295,5 +299,5 @@ export function useFindListProvider<T>(options: FindListOptions<T>): void
 			return;
 		}
 		requestFindRecount();
-	}, [items]);
+	}, [items, getSearchText]);
 }

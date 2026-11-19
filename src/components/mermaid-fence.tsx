@@ -26,7 +26,8 @@ import {Tooltip} from "./ui/tooltip";
  * success; View source fades back to the code block. A drawing that fails upstream's post-draw audit (secrets, even
  * split across labels, or glyph-bending styles) is withheld: the code block shows at once, with no note and no fade.
  * Under a document lightbox store (document prose) the toolbar moves into a row above the diagram with Expand.
- * There it also marks the shown diagram as a document figure (`useFigureWidth`). Left out here: in-page find.
+ * There it also marks the shown diagram as a document figure (`useFigureWidth`). In-page find lives in the gate
+ * (`mermaid-fence-gate.tsx`), which wraps the code block and placeholder handed in here.
  */
 
 /** Upstream's note above a failed diagram (`GVQKxz`), shown on every render error. */

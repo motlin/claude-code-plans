@@ -27,8 +27,13 @@ function runFind(query: string, forward: boolean, isNewQuery: boolean): FindResu
 	return result;
 }
 
+function textOf(item: Item): string
+{
+	return item.text;
+}
+
 /** A minimal virtualized list: only `WINDOW` rows around the window's start are mounted. */
-function VirtualList({items}: {items: Item[]})
+function VirtualList({items, searchText = textOf}: {items: Item[]; searchText?: (item: Item) => string})
 {
 	const [start, setStart] = useState(Math.max(0, items.length - WINDOW));
 	const scopeRef = useRef<HTMLDivElement>(null);
@@ -37,7 +42,7 @@ function VirtualList({items}: {items: Item[]})
 			items,
 			surface: "transcript",
 			getItemKey: (item) => item.key,
-			getSearchText: (item) => item.text,
+			getSearchText: searchText,
 			getScopeEl: () => scopeRef.current,
 			scrollToIndex: (index) =>
 			{
@@ -190,5 +195,27 @@ describe("useFindListProvider", () =>
 		rerender(<VirtualList items={withPrepended} />);
 		const result = recountFind();
 		expect(`${result.activeIndex}/${result.total}`).toBe("3/3");
+	});
+
+	it("recounts when the search text changes for the same entries (upstream visibleBodiesVersion)", async () =>
+	{
+		const entries = items(40, [2, 39]);
+		const {rerender} = render(<VirtualList items={entries} />);
+		const before = runFind("needle", true, true);
+		await settle();
+		rerender(<VirtualList items={entries} searchText={(item) => `${item.text} needle`} />);
+		await settle();
+		const after = runFind("needle", true, false);
+		expect(
+			{
+				before: `${before.activeIndex}/${before.total}`,
+				after: `${after.activeIndex}/${after.total}`,
+			},
+		).toStrictEqual(
+			{
+				before: "1/2",
+				after: "4/42",
+			},
+		);
 	});
 });

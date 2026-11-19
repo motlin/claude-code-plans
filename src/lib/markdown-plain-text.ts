@@ -1,5 +1,7 @@
 import MarkdownIt from "markdown-it";
 
+import {isMermaidFence, mermaidSourceDrawable} from "./mermaid-gate";
+
 type Token = ReturnType<MarkdownIt["parse"]>[number];
 
 const parser = new MarkdownIt(
@@ -23,12 +25,37 @@ function inlineText(token: Token): string
 		.join("");
 }
 
+export interface PlainTextOptions
+{
+	/**
+	 * Upstream's "diagram" context (`mermaidFences` + `mermaidSourceShown`): a drawable mermaid fence reads as its
+	 * diagram, so it contributes nothing unless its source copy is shown.
+	 */
+	readonly mermaidSourceShown?: ((code: string) => boolean) | undefined;
+}
+
+/** Upstream cb6930dae `pd`'s fence case. */
+function fenceText(token: Token, options: PlainTextOptions): string
+{
+	const code = token.content.replace(/\n$/, "");
+	const {mermaidSourceShown} = options;
+	if (
+		token.type === "fence" &&
+		mermaidSourceShown !== undefined &&
+		isMermaidFence(token.info) &&
+		mermaidSourceDrawable(code) &&
+		!mermaidSourceShown(code)
+	)
+		return "";
+	return code;
+}
+
 /**
  * Markdown as the text a reader sees: markers, link targets and fences are
  * dropped, blocks are separated by a blank line, list items and table rows by
  * a newline, and table cells by a tab.
  */
-export function markdownToPlainText(markdown: string): string
+export function markdownToPlainText(markdown: string, options: PlainTextOptions = {}): string
 {
 	const blocks: string[] = [];
 	let listDepth = 0;
@@ -77,7 +104,7 @@ export function markdownToPlainText(markdown: string): string
 				break;
 			case "fence":
 			case "code_block":
-				push(token.content.replace(/\n$/, ""));
+				push(fenceText(token, options));
 				break;
 			default:
 				break;

@@ -1,4 +1,5 @@
 import {markdownToPlainText} from "./markdown-plain-text";
+import {mermaidBlockId, mermaidSourceKey} from "./mermaid-find";
 import {stripCommandTags} from "./session-utils";
 import {narrationProse} from "./thinking-narration";
 import type {MessageSessionLine, SessionLine} from "./transcript";
@@ -34,6 +35,34 @@ export function messageText(line: MessageSessionLine): string
 			if (block.type === "text" && typeof block.text === "string") return [block.text];
 			const narration = narrationProse(block);
 			return narration === null ? [] : [narration];
+		})
+		.join("\n\n");
+}
+
+/**
+ * Upstream `ECe`'s text for one message: its prose as plain text. A reply's text and narration blocks are upstream's
+ * "diagram" context, so each drawable mermaid fence in one counts only while `mermaidSourceShown` reports its source
+ * shown, keyed by {@link mermaidSourceKey} with the block's {@link mermaidBlockId}.
+ */
+export function messageSearchText(line: MessageSessionLine, mermaidSourceShown: (key: string) => boolean): string
+{
+	const content = line.message?.content;
+	if (line.type !== "assistant" || line.isApiErrorMessage === true || !Array.isArray(content))
+		return markdownToPlainText(messageText(line));
+	return content
+		.flatMap((block, index) =>
+		{
+			const prose = block.type === "text" && typeof block.text === "string" ? block.text : narrationProse(block);
+			if (prose === null || prose.trim() === "") return [];
+			const blockId = mermaidBlockId(line.uuid, index);
+			return [
+				markdownToPlainText(
+					prose,
+					{
+						mermaidSourceShown: (code) => mermaidSourceShown(mermaidSourceKey(blockId, code)),
+					},
+				),
+			];
 		})
 		.join("\n\n");
 }
