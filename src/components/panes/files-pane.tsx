@@ -553,9 +553,9 @@ interface FilesPaneViewProps
 }
 
 /**
- * The Files pane surface, header included: tree toggle · "Files" · Move ·
- * Go to file or search · Files settings · Expand · Close, over the tree column (the
- * workspace tree) and the viewer column.
+ * The Files pane surface, header included: row 1 "Files" (or the tab strip) · Expand · Close · Move,
+ * row 2 the breadcrumb lead · Go to file or search · Hide file tree · Files settings, over the
+ * tree column (the workspace tree) and the viewer column.
  */
 export function FilesPaneView({chrome, sessionId, cwd, sessionFiles, unscannedRecordCount}: FilesPaneViewProps)
 {
@@ -865,34 +865,6 @@ export function FilesPaneView({chrome, sessionId, cwd, sessionFiles, unscannedRe
 				}}
 				title={
 					<div className="relative flex min-w-0 flex-1 items-center gap-1">
-						<TreeToggle
-							ref={setTreeToggleButton}
-							shown={treePressed}
-							onToggle={() =>
-							{
-								toggleTree();
-							}}
-						/>
-						<CoachMark
-							open={coachMarkOpen}
-							anchor={treeToggleButton}
-							side="bottom"
-							align="end"
-							className="max-w-xs"
-							title="Browse the project beside your file"
-							message="Show the file tree to jump between files without leaving this pane. Files you open line up here as tabs."
-							action={
-							{
-								label: "Show file tree",
-								onClick: () =>
-								{
-									coachMark.markSeen();
-									toggleTree("coachmark");
-								},
-							}}
-							onDismiss={coachMark.markSeen}
-							onClose={coachMark.close}
-						/>
 						{fileTabs.tabs.length === 0 ? (
 							<span data-pane-title className="truncate text-pane text-secondary select-none">
 								Files
@@ -921,6 +893,34 @@ export function FilesPaneView({chrome, sessionId, cwd, sessionFiles, unscannedRe
 								<Search aria-hidden="true" className="size-4" />
 							</button>
 						</Tooltip>
+						<TreeToggle
+							ref={setTreeToggleButton}
+							shown={treePressed}
+							onToggle={() =>
+							{
+								toggleTree();
+							}}
+						/>
+						<CoachMark
+							open={coachMarkOpen}
+							anchor={treeToggleButton}
+							side="bottom"
+							align="end"
+							className="max-w-xs"
+							title="Browse the project beside your file"
+							message="Show the file tree to jump between files without leaving this pane. Files you open line up here as tabs."
+							action={
+							{
+								label: "Show file tree",
+								onClick: () =>
+								{
+									coachMark.markSeen();
+									toggleTree("coachmark");
+								},
+							}}
+							onDismiss={coachMark.markSeen}
+							onClose={coachMark.close}
+						/>
 						<FilesSettingsMenu
 							treeShown={treePressed}
 							onTreeShownChange={setTreePressed}
@@ -932,8 +932,16 @@ export function FilesPaneView({chrome, sessionId, cwd, sessionFiles, unscannedRe
 								onUnselectAll: unselectAllSources,
 							}}
 						/>
-						{chrome.controls}
 					</>
+				}
+				controls={chrome.controls}
+				secondRowLead={
+					// Upstream portals the open file's breadcrumb here (files-pane-breadcrumb-row); local's breadcrumb still
+					// sits in the file view's subheader, so the target stays empty.
+					<span
+						data-files-breadcrumb=""
+						className="draggable-none flex min-w-0 items-center gap-1 self-stretch overflow-x-clip px-1.5 -mx-1.5 flex-1"
+					/>
 				}
 				moveHandle={chrome.moveHandle}
 			/>

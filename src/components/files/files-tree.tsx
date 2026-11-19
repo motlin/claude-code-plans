@@ -1,5 +1,5 @@
 import {keepPreviousData, useQuery} from "@tanstack/react-query";
-import {ArrowUp, Folder, Search, X} from "lucide-react";
+import {ArrowUp, Folder} from "lucide-react";
 import
 {
 	type KeyboardEvent,
@@ -24,8 +24,10 @@ import {clampFilesTreeWidth, FILES_TREE_NARROW_HIDDEN_CLASS, goUpTarget, parseTr
 import {ContextMenu, ContextMenuTrigger, MenuContent} from "../ui/menu";
 import {FILE_COLUMN_HANDLE_Z, FileColumnEdgeHandle} from "../ui/file-column-edge-handle";
 import {FileColumnResizeShield} from "../ui/file-column-resize-shield";
+import {Icon} from "../ui/icon";
 import {ResizeHandle} from "../ui/resize-handle";
 import {RESIZE_HANDLE_HALF_CLIP_CLASS} from "../ui/resize-pill";
+import {Field, TextInput} from "../ui/text-input";
 import {Tooltip} from "../ui/tooltip";
 import {type ContentMatchOpenOptions, ContentSearchResults} from "./content-search-results";
 import {TreeRowMenuItems} from "./file-context-menu";
@@ -297,6 +299,7 @@ export function FilesTree({
 		else if (event.key === "Escape" && query !== "")
 		{
 			event.preventDefault();
+			event.stopPropagation();
 			changeQuery("");
 		}
 	}
@@ -383,15 +386,11 @@ export function FilesTree({
 
 	return (
 		<div className="flex h-full min-h-0 flex-col">
-			<div className="flex h-8 shrink-0 items-center px-2">
-				<label className="relative flex h-6 w-full items-center">
-					<Search
-						className="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-t6"
-						aria-hidden="true"
-					/>
-					<input
+			{/* Upstream `BD(Bn)` inside a pane: the toolbar-padded filter row. */}
+			<div className="flex shrink-0 items-center h-auto min-h-[calc(var(--cds-h-control)+2*var(--cds-toolbar-pad-block,0.5rem))] py-[var(--cds-toolbar-pad-block,0.5rem)] px-sm">
+				<Field className="min-w-0 flex-1">
+					<TextInput
 						ref={inputRef}
-						type="text"
 						aria-label="Filter files"
 						aria-controls={treeId}
 						aria-describedby={hintId}
@@ -404,27 +403,23 @@ export function FilesTree({
 						}}
 						onKeyDown={handleInputKeyDown}
 						placeholder="Search files…"
-						className="h-6 w-full rounded-md border border-strong bg-surface-1 pl-7 pr-6 text-pane text-primary outline-none placeholder:text-t6 focus:shadow-[0_0_0_1px_rgb(37,125,224),0_0_6px_1px_rgb(205,226,251)]"
 						style={
 						{
 							textOverflow: "ellipsis",
 						}}
+						slotStart={
+							<span className="grid size-4 shrink-0 place-items-center">
+								<Icon name="Search" size="sm" />
+							</span>
+						}
+						clearable
+						clearLabel="Clear filter"
+						onClear={() =>
+						{
+							changeQuery("");
+						}}
 					/>
-					{query !== "" && (
-						<button
-							type="button"
-							aria-label="Clear filter"
-							onClick={() =>
-							{
-								changeQuery("");
-								inputRef.current?.focus();
-							}}
-							className="absolute right-1 flex size-[18px] cursor-pointer items-center justify-center rounded-r5 text-t6 hover:text-primary"
-						>
-							<X aria-hidden="true" className="size-3" />
-						</button>
-					)}
-				</label>
+				</Field>
 				<p id={hintId} className="sr-only">
 					Results update as you type.{cwd === undefined ? "" : " Start with ? to search file contents."} Press
 					Down Arrow to go to results, and Up Arrow on the first result to return here.

@@ -371,17 +371,27 @@ describe("Files pane header", () =>
 		press(CMD_SHIFT_F);
 
 		const header = filesPane().querySelector("[data-files-header]");
+		const secondRow = filesPane().querySelector("[data-files-header] + [role=presentation]");
+		const labelsIn = (element: Element | null | undefined) =>
+			[...(element?.querySelectorAll("button") ?? [])].map((button) => button.getAttribute("aria-label"));
 		expect(
 			{
-				labels: [...(header?.querySelectorAll("button") ?? [])].map((button) =>
-					button.getAttribute("aria-label"),
-				),
+				rowOne: labelsIn(header),
 				title: header?.querySelector("[data-pane-title]")?.textContent,
+				rowTwo: labelsIn(secondRow),
+				rowTwoToolbar: secondRow?.querySelector(":scope > [role=toolbar]")?.getAttribute("aria-label"),
+				lead: secondRow?.querySelector("[data-files-breadcrumb]")?.parentElement?.className,
+				breadcrumb: secondRow?.querySelector("[data-files-breadcrumb]")?.className,
 			},
 		).toStrictEqual(
 			{
-				labels: ["Hide file tree", "Go to file or search", "Files settings", "Expand", "Close", "Move"],
+				rowOne: ["Expand", "Close", "Move"],
 				title: "Files",
+				rowTwo: ["Go to file or search", "Hide file tree", "Files settings"],
+				rowTwoToolbar: "Files controls",
+				lead: "flex min-w-0 flex-1 items-center ms-pad-md",
+				breadcrumb:
+					"draggable-none flex min-w-0 items-center gap-1 self-stretch overflow-x-clip px-1.5 -mx-1.5 flex-1",
 			},
 		);
 	});

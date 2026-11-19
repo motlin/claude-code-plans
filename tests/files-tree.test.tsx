@@ -3,7 +3,7 @@
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {cleanup, fireEvent, render, screen, waitFor} from "@testing-library/react";
 import {type ComponentProps, type ComponentType, type ReactNode, useState} from "react";
-import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
+import {afterEach, beforeEach, describe, expect, it, onTestFinished, vi} from "vite-plus/test";
 
 import {FileTypeIconSetContext} from "../src/components/file-type-icon-set-context";
 import {FilesTree, FilesTreeColumn} from "../src/components/files/files-tree";
@@ -437,6 +437,7 @@ describe("FilesTree drill-in", () =>
 		expect(
 			{
 				query: filterInput().value,
+				focused: document.activeElement === filterInput(),
 				clear: screen.queryByRole(
 					"button",
 					{
@@ -447,7 +448,55 @@ describe("FilesTree drill-in", () =>
 		).toStrictEqual(
 			{
 				query: "",
+				focused: true,
 				clear: null,
+			},
+		);
+	});
+
+	it("Escape clears a non-empty filter without the key reaching the pane", async () =>
+	{
+		responses.set(
+			key("", ""),
+			{
+				kind: "listing",
+				dir: "",
+				entries: [folder("src")],
+				partial: false,
+			},
+		);
+		const parentKeyDown = vi.fn<() => void>();
+		document.addEventListener("keydown", parentKeyDown);
+		onTestFinished(() =>
+		{
+			document.removeEventListener("keydown", parentKeyDown);
+		});
+		renderTree();
+		await screen.findByText("src");
+		fireEvent.change(
+			filterInput(),
+			{
+				target:
+				{
+					value: "sr",
+				},
+			},
+		);
+		fireEvent.keyDown(
+			filterInput(),
+			{
+				key: "Escape",
+			},
+		);
+		expect(
+			{
+				query: filterInput().value,
+				parentCalls: parentKeyDown.mock.calls.length,
+			},
+		).toStrictEqual(
+			{
+				query: "",
+				parentCalls: 0,
 			},
 		);
 	});
@@ -772,7 +821,13 @@ describe("FilesTree density", () =>
 		);
 		const goUpClasses = goUp.className.split(" ");
 		const input = filterInput();
-		const inputClasses = input.className.split(" ");
+		const shellClasses = input.parentElement?.className.split(" ") ?? [];
+		const clear = screen.getByRole(
+			"button",
+			{
+				name: "Clear filter",
+			},
+		);
 		expect(
 			{
 				rowText: rowClasses.includes("text-pane"),
@@ -791,19 +846,24 @@ describe("FilesTree density", () =>
 				goUpFill: goUpClasses.includes("bg-fill-control"),
 				goUpFirstChild: goUp.firstElementChild?.getAttribute("class")?.split(" ").includes("lucide-arrow-up"),
 				placeholder: input.placeholder,
-				inputText: inputClasses.includes("text-pane"),
-				inputFocusRing: inputClasses.includes(
-					"focus:shadow-[0_0_0_1px_rgb(37,125,224),0_0_6px_1px_rgb(205,226,251)]",
-				),
-				clearSize: screen
-					.getByRole(
-						"button",
-						{
-							name: "Clear filter",
-						},
-					)
-					.className.split(" ")
-					.includes("size-[18px]"),
+				type: input.getAttribute("type"),
+				field: input.closest("[data-cds=Field]")?.className,
+				shell: input.parentElement?.getAttribute("data-cds"),
+				shellHas: [
+					"h-control",
+					"ps-md",
+					"rounded",
+					"bg-fill-field",
+					"shadow-field-ring",
+					"has-[:focus-visible]:shadow-focus",
+				].every((name) => shellClasses.includes(name)),
+				row: input.closest("[data-cds=Field]")?.parentElement?.className,
+				slotIcon: input.parentElement?.firstElementChild?.firstElementChild?.className,
+				clear:
+				{
+					tabIndex: clear.tabIndex,
+					size: clear.className.split(" ").includes("size-[var(--fhn)]"),
+				},
 			},
 		).toStrictEqual(
 			{
@@ -823,9 +883,17 @@ describe("FilesTree density", () =>
 				goUpFill: true,
 				goUpFirstChild: true,
 				placeholder: "Search files…",
-				inputText: true,
-				inputFocusRing: true,
-				clearSize: true,
+				type: null,
+				field: "flex flex-col gap-xs font-sans min-w-0 flex-1",
+				shell: "TextInput",
+				shellHas: true,
+				row: "flex shrink-0 items-center h-auto min-h-[calc(var(--cds-h-control)+2*var(--cds-toolbar-pad-block,0.5rem))] py-[var(--cds-toolbar-pad-block,0.5rem)] px-sm",
+				slotIcon: "grid size-4 shrink-0 place-items-center",
+				clear:
+				{
+					tabIndex: -1,
+					size: true,
+				},
 			},
 		);
 	});
