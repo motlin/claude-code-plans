@@ -244,6 +244,12 @@ const FLYOUT_OFFSET =
 
 const FABLE_TOOLTIP = "Fable is the most capable model and draws down usage much faster than Opus";
 
+/** Every Fable catalog row carries the Fable `notice` as its tooltip: the alias, Fable 5.1 and Fable 5 alike. */
+function fableTooltip(id: string): string | undefined
+{
+	return /^(claude-)?fable(-|$)/.test(id) ? FABLE_TOOLTIP : undefined;
+}
+
 /**
  * An Effort row's label line, as upstream's `ON`: the name, then the catalog badge (a neutral Recommended, or the
  * warning "3.5× or more usage"), on one non-wrapping flex line. A tooltipped row without a warning badge (every Max
@@ -605,7 +611,7 @@ export function ModelMenu({
 								<ModelRowLabel label={model.label} badge={model.badge} />
 							</MenuRadioItem>
 						);
-						return withRestriction(model, row, model.id === "fable" ? FABLE_TOOLTIP : undefined);
+						return withRestriction(model, row, fableTooltip(model.id));
 					})}
 					{unsupported !== null && (
 						<MenuRadioItem value={unsupported} data-model-id={unsupported}>
@@ -715,6 +721,7 @@ export function ModelMenu({
 									>
 										<ModelRowLabel label={model.label} badge={model.badge} />
 									</MenuRadioItem>,
+									fableTooltip(model.id),
 								),
 							)}
 						</MenuRadioGroup>

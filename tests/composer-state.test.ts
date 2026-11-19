@@ -331,8 +331,8 @@ describe("resolveComposerState precedence", () =>
 			settings: "fable",
 			expected:
 			{
-				model: "Fable 5.1",
-				modelId: "claude-fable-5-1",
+				model: "Fable 5.2",
+				modelId: "claude-fable-5-2",
 			},
 		},
 		{

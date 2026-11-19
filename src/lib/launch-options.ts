@@ -229,11 +229,14 @@ export interface ModelChoice
 	label: string;
 }
 
-/** The full id each family alias currently launches. */
+/**
+ * The full id each family alias currently launches: the installed CLI's `latest_per_family` (2.1.321 moved `fable`
+ * from `claude-fable-5-1` to `claude-fable-5-2`). A stopgap until the table is read from the installed binary.
+ */
 const ALIAS_LATEST: Readonly<Record<string, string>> =
 {
 	opus: "claude-opus-5-5",
-	fable: "claude-fable-5-1",
+	fable: "claude-fable-5-2",
 	sonnet: "claude-sonnet-5-5",
 	haiku: "claude-haiku-5-5",
 };
@@ -247,6 +250,7 @@ export const PRIMARY_MODELS: readonly ModelChoice[] = Object.entries(ALIAS_LATES
 
 /** Upstream's "More models" submenu: older full ids the primary aliases no longer launch, in its order. */
 export const MORE_MODELS: readonly ModelChoice[] = [
+	"claude-fable-5-1",
 	"claude-haiku-4-5-20251001",
 	"claude-sonnet-5",
 	"claude-opus-5",
@@ -401,6 +405,7 @@ export function moreModelsMenuValue(current: string | undefined, catalog = DEFAU
 /** Models whose catalog entry offers the Fast mode toggle (upstream `fast_mode:{type:"toggle"}`). */
 const FAST_MODE_MODELS: ReadonlySet<string> = new Set([
 	"claude-opus-5-5",
+	"claude-fable-5-2",
 	"claude-opus-5",
 	"claude-opus-4-8",
 	"claude-opus-4-6",
@@ -439,6 +444,11 @@ const EFFORT_CATALOG: Readonly<
 > =
 {
 	"claude-opus-5-5":
+	{
+		levels: ALL_LEVELS,
+		recommended: "medium",
+	},
+	"claude-fable-5-2":
 	{
 		levels: ALL_LEVELS,
 		recommended: "medium",

@@ -1097,7 +1097,7 @@ describe("Composer model menu", () =>
 						checked: "true",
 					},
 					{
-						label: "Fable 5.1",
+						label: "Fable 5.2",
 						key: "2",
 						checked: "false",
 					},
@@ -1113,7 +1113,7 @@ describe("Composer model menu", () =>
 					},
 				],
 				more: "More models",
-				trigger: "Model: Fable 5.1 High",
+				trigger: "Model: Fable 5.2 High",
 				calls: [
 					[
 						"Continue Carol's test",
@@ -1176,8 +1176,8 @@ describe("Composer model menu", () =>
 				chin:
 				{
 					...CHIN,
-					model: "Fable 5.1",
-					modelId: "claude-fable-5-1",
+					model: "Fable 5.2",
+					modelId: "claude-fable-5-2",
 				},
 			},
 		);
@@ -1219,7 +1219,7 @@ describe("Composer model menu", () =>
 						key: "1",
 					},
 					{
-						label: "Fable 5.1",
+						label: "Fable 5.2",
 						key: "2",
 					},
 					{
@@ -1231,7 +1231,7 @@ describe("Composer model menu", () =>
 						key: "4",
 					},
 				],
-				text: ["Opus 5.51", "Fable 5.1", "Sonnet 5.53", "Haiku 5.54"],
+				text: ["Opus 5.51", "Fable 5.2", "Sonnet 5.53", "Haiku 5.54"],
 				calls: [
 					[
 						"Continue Erin's test",
@@ -1382,6 +1382,82 @@ describe("Composer model menu", () =>
 		);
 	});
 
+	it("shows the Fable tooltip on every Fable row in More models, and none on other models", async () =>
+	{
+		renderComposer();
+
+		openModelMenu();
+		const subTrigger = await screen.findByRole(
+			"menuitem",
+			{
+				name: /More models/,
+			},
+		);
+		fireEvent.pointerEnter(
+			subTrigger,
+			{
+				pointerType: "mouse",
+			},
+		);
+		fireEvent.mouseEnter(subTrigger);
+		fireEvent.pointerMove(
+			subTrigger,
+			{
+				pointerType: "mouse",
+			},
+		);
+		fireEvent.mouseMove(subTrigger);
+		await waitFor(() =>
+		{
+			expect(screen.getAllByRole("menu")).toHaveLength(2);
+		});
+		const submenu = screen.getAllByRole("menu")[1]!;
+		async function hover(id: string)
+		{
+			const anchor = submenu.querySelector(`[data-model-id="${id}"]`)?.parentElement;
+			if (anchor === null || anchor === undefined) throw new Error(`${id} row has no parent`);
+			fireEvent.pointerEnter(anchor);
+			const tooltip = await screen.findByRole("tooltip").catch(() => null);
+			const result =
+			{
+				text: tooltip?.textContent ?? null,
+				side: tooltip?.getAttribute("data-side") ?? null,
+			};
+			fireEvent.pointerLeave(anchor);
+			await waitFor(() =>
+			{
+				expect(screen.queryByRole("tooltip")).toBeNull();
+			});
+			return result;
+		}
+		const fable51 = await hover("claude-fable-5-1");
+		const fable5 = await hover("claude-fable-5");
+		const opus48 = await hover("claude-opus-4-8");
+		const notice =
+		{
+			text: "Fable is the most capable model and draws down usage much faster than Opus",
+			side: "left",
+		};
+
+		expect(
+			{
+				fable51,
+				fable5,
+				opus48,
+			},
+		).toStrictEqual(
+			{
+				fable51: notice,
+				fable5: notice,
+				opus48:
+				{
+					text: null,
+					side: null,
+				},
+			},
+		);
+	});
+
 	it("opens More models on hover with only the models the primary rows lack, in upstream order", async () =>
 	{
 		const onSend = renderComposer();
@@ -1413,6 +1489,9 @@ describe("Composer model menu", () =>
 		});
 		const submenu = screen.getAllByRole("menu")[1]!;
 		const labels = radioRows(submenu).map((row) => row.label);
+		const ids = within(submenu)
+			.getAllByRole("menuitemradio")
+			.map((row) => row.getAttribute("data-model-id"));
 		fireEvent.click(
 			within(submenu).getByRole(
 				"menuitemradio",
@@ -1430,11 +1509,13 @@ describe("Composer model menu", () =>
 		expect(
 			{
 				labels,
+				ids,
 				calls: onSend.mock.calls,
 			},
 		).toStrictEqual(
 			{
 				labels: [
+					"Fable 5.1",
 					"Haiku 4.5",
 					"Sonnet 5",
 					"Opus 5",
@@ -1443,6 +1524,17 @@ describe("Composer model menu", () =>
 					"Opus 4.7",
 					"Opus 4.6",
 					"Sonnet 4.6",
+				],
+				ids: [
+					"claude-fable-5-1",
+					"claude-haiku-4-5-20251001",
+					"claude-sonnet-5",
+					"claude-opus-5",
+					"claude-fable-5",
+					"claude-opus-4-8",
+					"claude-opus-4-7",
+					"claude-opus-4-6",
+					"claude-sonnet-4-6",
 				],
 				calls: [
 					[
@@ -1571,7 +1663,7 @@ describe("Composer model menu catalog rows (upstream's host transform)", () =>
 						description: null,
 					},
 					{
-						label: "Fable 5.1",
+						label: "Fable 5.2",
 						key: null,
 						disabled: "true",
 						description: RESTRICTED,
@@ -1642,6 +1734,10 @@ describe("Composer model menu catalog rows (upstream's host transform)", () =>
 			{
 				main: ["true", "true", "true", "true"],
 				more: [
+					{
+						label: "Fable 5.1",
+						disabled: "true",
+					},
 					{
 						label: "Haiku 4.5",
 						disabled: "true",
@@ -1858,8 +1954,8 @@ describe("Composer model menu catalog rows (upstream's host transform)", () =>
 						checked: "true",
 					},
 					{
-						id: "claude-fable-5-1",
-						label: "Fable 5.1",
+						id: "claude-fable-5-2",
+						label: "Fable 5.2",
 						key: "3",
 						checked: "false",
 					},
@@ -1940,8 +2036,8 @@ describe("Composer model menu catalog rows (upstream's host transform)", () =>
 						checked: "false",
 					},
 					{
-						id: "claude-fable-5-1",
-						label: "Fable 5.1",
+						id: "claude-fable-5-2",
+						label: "Fable 5.2",
 						key: "2",
 						checked: "false",
 					},
@@ -2443,6 +2539,37 @@ describe("Composer model menu Fast mode section", () =>
 						},
 					],
 				],
+			},
+		);
+	});
+
+	it("offers the Fast mode header and switch on Fable 5.2, as its catalog entry has fast_mode toggle", async () =>
+	{
+		renderComposer(
+			{
+				chin:
+				{
+					...CHIN,
+					model: "Fable 5.2",
+					modelId: "claude-fable-5-2",
+				},
+			},
+		);
+
+		openModelMenu();
+		const menu = await screen.findByRole("menu");
+
+		expect(
+			{
+				rows: within(menu)
+					.queryAllByRole("menuitemcheckbox")
+					.map((row) => row.firstElementChild?.textContent),
+				header: within(menu).queryByText("Fast mode")?.textContent,
+			},
+		).toStrictEqual(
+			{
+				rows: ["Enable fast mode"],
+				header: "Fast mode",
 			},
 		);
 	});
@@ -3064,8 +3191,9 @@ describe("Composer effort submenu", () =>
 			{
 				side: "right",
 				capped: true,
-				primary: ["claude-opus-5-5", "claude-fable-5-1", "claude-sonnet-5-5", "claude-haiku-5-5"],
+				primary: ["claude-opus-5-5", "claude-fable-5-2", "claude-sonnet-5-5", "claude-haiku-5-5"],
 				ids: [
+					"claude-fable-5-1",
 					"claude-haiku-4-5-20251001",
 					"claude-sonnet-5",
 					"claude-opus-5",
@@ -3656,8 +3784,8 @@ describe("Composer on a live pane", () =>
 				chin:
 				{
 					...CHIN,
-					model: "Fable 5.1",
-					modelId: "claude-fable-5-1",
+					model: "Fable 5.2",
+					modelId: "claude-fable-5-2",
 				},
 			},
 		);
@@ -3683,14 +3811,14 @@ describe("Composer on a live pane", () =>
 			},
 		).toStrictEqual(
 			{
-				trigger: "Model: Fable 5.1 High",
+				trigger: "Model: Fable 5.2 High",
 				rows: [
 					{
 						label: "Opus 5.5",
 						checked: "false",
 					},
 					{
-						label: "Fable 5.1",
+						label: "Fable 5.2",
 						checked: "true",
 					},
 					{
@@ -3736,7 +3864,7 @@ describe("Composer on a live pane", () =>
 		).toStrictEqual(
 			{
 				mode: "Plan",
-				model: "Model: Fable 5.1 Max",
+				model: "Model: Fable 5.2 Max",
 			},
 		);
 	});

@@ -2845,7 +2845,7 @@ describe("Composer host commands", () =>
 			{
 				sends: [],
 				text: "",
-				label: "Model: Fable 5.1 High",
+				label: "Model: Fable 5.2 High",
 			},
 		);
 	});

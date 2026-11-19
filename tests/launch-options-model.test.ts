@@ -29,8 +29,12 @@ describe("modelMenuValue", () =>
 {
 	it.each([
 		{
-			id: "claude-fable-5-1",
+			id: "claude-fable-5-2",
 			expected: "fable",
+		},
+		{
+			id: "claude-fable-5-1",
+			expected: "claude-fable-5-1",
 		},
 		{
 			id: "claude-opus-4-8[1m]",
@@ -72,12 +76,31 @@ describe("modelMenuValue", () =>
 
 describe("MORE_MODELS", () =>
 {
-	it("starts with Haiku 4.5, as upstream's More models does", () =>
+	it("starts with Fable 5.1, as upstream's More models does", () =>
 	{
-		expect(MORE_MODELS[0]).toStrictEqual(
+		expect(
 			{
-				id: "claude-haiku-4-5-20251001",
-				label: "Haiku 4.5",
+				first: MORE_MODELS[0],
+				ids: MORE_MODELS.map((model) => model.id),
+			},
+		).toStrictEqual(
+			{
+				first:
+				{
+					id: "claude-fable-5-1",
+					label: "Fable 5.1",
+				},
+				ids: [
+					"claude-fable-5-1",
+					"claude-haiku-4-5-20251001",
+					"claude-sonnet-5",
+					"claude-opus-5",
+					"claude-fable-5",
+					"claude-opus-4-8",
+					"claude-opus-4-7",
+					"claude-opus-4-6",
+					"claude-sonnet-4-6",
+				],
 			},
 		);
 	});
@@ -89,11 +112,16 @@ describe("primary and More models values", () =>
 		{
 			current: "fable",
 			primary: "fable",
-			more: "claude-fable-5-1",
+			more: "claude-fable-5-2",
+		},
+		{
+			current: "claude-fable-5-2",
+			primary: "fable",
+			more: "claude-fable-5-2",
 		},
 		{
 			current: "claude-fable-5-1",
-			primary: "fable",
+			primary: "",
 			more: "claude-fable-5-1",
 		},
 		{
@@ -157,7 +185,7 @@ describe("modelRowsFor [1m] twins", () =>
 					},
 					{
 						id: "fable",
-						label: "Fable 5.1",
+						label: "Fable 5.2",
 					},
 					{
 						id: "sonnet",
@@ -184,7 +212,7 @@ describe("modelRowsFor [1m] twins", () =>
 		expect(
 			{
 				primary: ids(catalog.primary),
-				more: catalog.more.slice(4, 6),
+				more: catalog.more.slice(5, 7),
 			},
 		).toStrictEqual(
 			{
@@ -290,6 +318,10 @@ describe("resolveLaunchModel", () =>
 		{
 			settings: "sonnet",
 			expected: "claude-sonnet-5-5",
+		},
+		{
+			settings: "fable",
+			expected: "claude-fable-5-2",
 		},
 		{
 			settings: "claude-opus-4-8[1m]",
@@ -407,6 +439,14 @@ describe("fastModeSupported", () =>
 		{
 			model: "claude-fable-5-1",
 			expected: false,
+		},
+		{
+			model: "fable",
+			expected: true,
+		},
+		{
+			model: "claude-fable-5-2",
+			expected: true,
 		},
 		{
 			model: "haiku",
@@ -543,6 +583,12 @@ describe("withModel", () =>
 					{
 						fastMode: false,
 					},
+					"claude-fable-5-1",
+				),
+				fable: withModel(
+					{
+						fastMode: true,
+					},
 					"fable",
 				),
 			},
@@ -561,6 +607,11 @@ describe("withModel", () =>
 				},
 				off:
 				{
+					model: "claude-fable-5-1",
+				},
+				fable:
+				{
+					fastMode: true,
 					model: "fable",
 				},
 			},
@@ -648,6 +699,14 @@ describe("effortOptionsFor", () =>
 		},
 		{
 			model: "fable",
+			expected: options("medium", MAX_EFFORT_GENERIC_TOOLTIP),
+		},
+		{
+			model: "claude-fable-5-2",
+			expected: options("medium", MAX_EFFORT_GENERIC_TOOLTIP),
+		},
+		{
+			model: "claude-fable-5-1",
 			expected: options("high", MAX_EFFORT_GENERIC_TOOLTIP),
 		},
 		{
@@ -730,6 +789,10 @@ describe("defaultEffortFor", () =>
 		{
 			model: "claude-opus-4-7",
 			expected: "xhigh",
+		},
+		{
+			model: "claude-fable-5-2",
+			expected: "medium",
 		},
 		{
 			model: "claude-fable-5-1",

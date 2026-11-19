@@ -1785,7 +1785,7 @@ describe("SessionChat error recovery", () =>
 		).toStrictEqual(
 			{
 				main: [
-					...["Opus 5.5", "Fable 5.1", "Sonnet 5.5", "Haiku 5.5"].map((text) => (
+					...["Opus 5.5", "Fable 5.2", "Sonnet 5.5", "Haiku 5.5"].map((text) => (
 					{
 						role: "menuitemradio",
 						text,
