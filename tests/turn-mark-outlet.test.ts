@@ -4,6 +4,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import
 {
+	cardHoldsTranscriptTail,
 	markedRowBelowTailSlot,
 	moveInto,
 	OUTLET_LATE_NOTICE_MS,
@@ -39,6 +40,28 @@ describe("markedRowBelowTailSlot, as upstream's pf", () =>
 				),
 			),
 		).toStrictEqual(["card", "card", false, false, "plan", false, false, false]);
+	});
+
+	it("lets a card hold the tail only while the turn responds, as upstream's Vt gate", () =>
+	{
+		const cases = [
+			[true, "working"],
+			[true, "stopping"],
+			[true, "retrying"],
+			[true, "waiting"],
+			[true, "idle"],
+			[false, "working"],
+		] as const;
+		expect(
+			cases.map(([cardShown, status]) =>
+				cardHoldsTranscriptTail(
+					{
+						cardShown,
+						status,
+					},
+				),
+			),
+		).toStrictEqual([true, true, true, false, false, false]);
 	});
 
 	it("keeps upstream's constants", () =>

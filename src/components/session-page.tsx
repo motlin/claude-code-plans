@@ -334,7 +334,7 @@ import {TranscriptAfterRows} from "./transcript-after-rows";
 import {TailActionsOutletContext} from "./tail-actions-context";
 import {createTailActionsOutlet} from "../lib/tail-actions-outlet";
 import {useTurnMarkStore} from "./turn-mark-context";
-import {markedRowBelowTailSlot} from "../lib/turn-mark-outlet";
+import {cardHoldsTranscriptTail, markedRowBelowTailSlot} from "../lib/turn-mark-outlet";
 import {usePlanExitHold} from "../lib/plan-exit-hold";
 import {planHoldsLoader, turnPlanBox, turnPlanState} from "../lib/turn-plan-box";
 import {useSessionMentionProvider} from "../hooks/use-session-mention-provider";
@@ -2671,9 +2671,14 @@ function SessionView({
 	const planBox = turnPlanBox(planState, turnResponding);
 	const planHolds = planHoldsLoader(planBox);
 	const shownPlan = usePlanExitHold(planBox?.todos ?? null, planBox?.working === true);
-	// Upstream `pf`: while the docked permission card or the plan box holds the tail of a running turn, the marked
-	// row is carried below it.
-	const cardHoldsTail = pendingPermission !== null && turnResponding;
+	// Upstream `pf`: while the docked permission card or the plan box holds the tail of a responding turn, the marked
+	// row is carried below it. A turn parked on the card is not responding, so its row stays above the card.
+	const cardHoldsTail = cardHoldsTranscriptTail(
+		{
+			cardShown: pendingPermission !== null,
+			status: workingMarkerState.status,
+		},
+	);
 	const markedRow = markedRowBelowTailSlot(
 		{
 			cardHoldsTail,

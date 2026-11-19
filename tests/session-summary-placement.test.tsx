@@ -1,6 +1,5 @@
 // @vitest-environment jsdom
 
-import {collectFindRanges} from "../src/lib/find-in-page/match";
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import
 {
@@ -1571,57 +1570,40 @@ describe("SessionPage dock composition", () =>
 			);
 		};
 	}
-	it("carries the running row into upstream's turn-mark outlet below the docked permission card", async () =>
+	it("keeps the waiting row in the transcript above the permission card, with no outlet, while the session waits on it", async () =>
 	{
 		await renderSessionPage(detail, [], seedWaiting(true), waitingBashRecords());
 		await flush();
 		const card = document.querySelector("[data-inline-permission]");
-		const outlet = document.querySelector("[data-turn-mark-outlet]");
-		const line = document.querySelector('[data-testid="code-working-line"]');
-		const grid = outlet?.parentElement;
-		const chrome = grid?.parentElement;
-		const home = document.querySelector('[data-testid="transcript-row"] [data-turn-mark-home]');
-		const carriedLabel = outlet?.querySelector("[data-standalone-tool-row] [id$='-label']")?.textContent ?? "";
+		const row = document.querySelector('[data-testid="transcript-row"] [data-standalone-tool-row]');
 		expect(
 			{
-				// Upstream's tail slot, tail chrome and carried box are data-find-omitted, so in-app Find
-				// counts neither the moved row nor the card's description of the same call.
-				carriedFind: [
-					carriedLabel !== "",
-					collectFindRanges(document.body, carriedLabel).length,
-					[card, chrome, outlet?.querySelector("[data-turn-mark-box]")].map((element) =>
-						element?.hasAttribute("data-find-omitted"),
-					),
-				],
-				cardFirst:
+				// Upstream's `Vt` builds the tail grid and its outlet only while the transcript is responding; a parked
+				// turn waiting on the card is not, so the row keeps its place above the card.
+				outlets: document.querySelectorAll("[data-turn-mark-outlet]").length,
+				homes: document.querySelectorAll("[data-turn-mark-home]").length,
+				rowInTranscript: row !== null,
+				rowBeforeCard:
+					row !== null &&
 					card !== null &&
-					outlet !== null &&
-					(card.compareDocumentPosition(outlet) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
+					(row.compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
 				cardClass: card?.className,
-				carried:
-					outlet?.querySelector("[data-turn-mark-box] [data-standalone-tool-row] [data-cds=WorkingMark]") !==
-					null,
-				homeEmpty: home?.childElementCount,
-				// A page that did not watch the turn draws no working line under the card; the grid keeps only the outlet.
-				lines: line === null ? 0 : 1,
-				gridClass: grid?.className,
-				chrome: [chrome?.getAttribute("data-testid"), chrome?.className],
+				cardFindOmitted: card?.hasAttribute("data-find-omitted"),
+				// A page that did not watch the turn draws no working line under the card.
+				lines: document.querySelectorAll('[data-testid="code-working-line"]').length,
+				chrome: document.querySelector("[data-testid=transcript-tail-chrome]")?.childElementCount ?? 0,
 				cardInStickySlot: card?.closest("[data-testid=transcript-trailing-slot]")?.className.includes("sticky"),
 			},
 		).toStrictEqual(
 			{
-				carriedFind: [true, 0, [true, true, true]],
-				cardFirst: true,
+				outlets: 0,
+				homes: 0,
+				rowInTranscript: true,
+				rowBeforeCard: true,
 				cardClass: "empty:hidden",
-				carried: true,
-				homeEmpty: 0,
+				cardFindOmitted: true,
 				lines: 0,
-				gridClass:
-					"grid grid-cols-[minmax(0,1fr)] gap-y-[var(--chat-turn-gap,15px)] [&>*]:min-w-0 [&>:empty]:invisible [&>:empty]:[grid-area:1/1] [&>[data-quiet]]:[grid-area:1/1] [&>[data-turn-mark-outlet]]:[grid-area:1/1]",
-				chrome: [
-					"transcript-tail-chrome",
-					"chat-column flex w-full flex-col gap-[var(--chat-turn-gap)] pt-[var(--chat-turn-gap)] [[data-transcript-tail-turn]:has(>[data-transcript-last-row-controls]:not(:empty))+&]:pt-0 [[data-transcript-tail-turn]:has(>[data-transcript-last-row-controls]:not(:empty))+&]:mt-xs empty:hidden",
-				],
+				chrome: 0,
 				cardInStickySlot: true,
 			},
 		);

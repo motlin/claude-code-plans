@@ -4,7 +4,7 @@
  * drawn in an outlet below the card.
  */
 
-import type {PermissionWait} from "./working-marker";
+import type {PermissionWait, WorkingMarkerState} from "./working-marker";
 
 /** Upstream `_f`: how long a close waits (at most) before listeners hear of it. */
 export const OUTLET_LATE_NOTICE_MS = 250;
@@ -19,6 +19,21 @@ const REOPEN_LOOP_MESSAGE =
 	"Claude Code transcript: turn-mark outlet removed and re-added 30 times in 5 s (likely a render loop; nothing fell back)";
 
 export type MarkedRowSlot = "card" | "plan" | false;
+
+/**
+ * Upstream `Vt` (`busyLineBelowTailSlot && isResponding`): a shown card holds the transcript tail only while the turn
+ * responds. A turn parked on the card ("waiting") is not responding, so its row stays above the card.
+ */
+export function cardHoldsTranscriptTail({
+	cardShown,
+	status,
+}: {
+	cardShown: boolean;
+	status: WorkingMarkerState["status"];
+}): boolean
+{
+	return cardShown && status !== "idle" && status !== "waiting";
+}
 
 /** Upstream `pf`: where the marked row goes while something holds the transcript tail. */
 export function markedRowBelowTailSlot({
