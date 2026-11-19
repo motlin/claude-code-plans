@@ -505,6 +505,22 @@ describe("Shell tabs", () =>
 		});
 	}
 
+	/** Resolves on the next save of this session's tab list, which dispatchTerminalTabs makes as it adds a tab. */
+	async function nextTabsWrite(): Promise<void>
+	{
+		return new Promise((resolve) =>
+		{
+			const save = storage.setItem.bind(storage);
+			const spy = vi.spyOn(storage, "setItem").mockImplementation((key, value) =>
+			{
+				save(key, value);
+				if (key !== terminalTabsStorageKey(SESSION_ID)) return;
+				spy.mockRestore();
+				resolve();
+			});
+		});
+	}
+
 	async function openWithShells(ptyKeys: readonly string[], busy: readonly string[] = [])
 	{
 		stubShellApi(
@@ -535,8 +551,9 @@ describe("Shell tabs", () =>
 				)
 				.click();
 		});
-		for (const [index] of ptyKeys.entries())
+		for (const _ of ptyKeys)
 		{
+			const added = nextTabsWrite();
 			fireEvent.click(
 				screen.getByRole(
 					"button",
@@ -545,9 +562,11 @@ describe("Shell tabs", () =>
 					},
 				),
 			);
-			await waitFor(() =>
+			// Await the store's add itself, not a wall-clock budget: its render is queued in this act and commits
+			// with the button re-enabled when the act ends.
+			await act(async () =>
 			{
-				expect(screen.getAllByRole("tab")).toHaveLength(index + 2);
+				await added;
 			});
 		}
 		// Let the new tab take focus in its frame, as upstream's addTab does, before the test moves focus elsewhere.
