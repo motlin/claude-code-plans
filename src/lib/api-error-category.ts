@@ -262,6 +262,11 @@ interface CategoryCopy
 	markerLabel?: string;
 	hint: string;
 	hintNoRewind?: string;
+	/** cd8db4979's context_length variants for a session that can rewind but isn't offered Compact, or whose automatic compaction failed. */
+	hintNoCompact?: string;
+	hintCompactTried?: string;
+	hintCompactTriedNoCompact?: string;
+	hintCompactTriedNoRewind?: string;
 	hintWithoutRetry?: string;
 	hintWithoutComposer?: string;
 	learnMoreUrl?: string;
@@ -338,6 +343,13 @@ const COPY: Readonly<Record<ApiErrorCategory, CategoryCopy>> =
 		markerLabel: "Context window was full",
 		hint: "This chat is too long to continue. Compact it to summarize earlier messages and keep going, rewind to an earlier point, or start a new chat.",
 		hintNoRewind: "This chat is too long to continue. Start a new chat.",
+		hintNoCompact: "This chat is too long to continue. Rewind to an earlier point or start a new chat.",
+		hintCompactTried:
+			"This chat is too long to continue, and compacting it automatically didn’t help. You can try compacting again, rewind to an earlier point, or start a new chat.",
+		hintCompactTriedNoCompact:
+			"This chat is too long to continue, and compacting it automatically didn’t help. You can rewind to an earlier point or start a new chat.",
+		hintCompactTriedNoRewind:
+			"This chat is too long to continue, and compacting it automatically didn’t help. Start a new chat.",
 		detailsVerdict: "drop",
 	},
 	usage_policy:
@@ -444,6 +456,10 @@ export interface ErrorCopyContext
 	hasComposer: boolean;
 	/** The error text, for hints that quote it (the version gate's versions). */
 	text?: string;
+	/** The card offers Compact session (upstream's `!!onCompact`). */
+	compactOffered?: boolean;
+	/** Automatic compaction already ran and failed before the context filled. */
+	autoCompactTried?: boolean;
 }
 
 export interface ErrorCopy
@@ -464,11 +480,11 @@ export interface ErrorCopy
  */
 export function errorCopy(
 	category: ApiErrorCategory,
-	{canRewind, canRetry, hasComposer, text}: ErrorCopyContext,
+	{canRewind, canRetry, hasComposer, text, compactOffered, autoCompactTried = false}: ErrorCopyContext,
 ): ErrorCopy
 {
 	const copy = COPY[category];
-	const hint = !canRewind && copy.hintNoRewind !== undefined ? copy.hintNoRewind : copy.hint;
+	const hint = baseHint(copy, canRewind, compactOffered, autoCompactTried);
 	const chosen = canRetry ? hint : hasComposer ? (copy.hintWithoutRetry ?? hint) : (copy.hintWithoutComposer ?? hint);
 	const versions = text === undefined ? undefined : modelVersionGate(text);
 	const shown =
@@ -486,6 +502,39 @@ export function errorCopy(
 		rewindHelps: REWIND_HELPS.has(category),
 		detailsVerdict: copy.detailsVerdict,
 	};
+}
+
+/**
+ * The hint before the retry/composer pick. cd8db4979's context_length order, first match wins:
+ * rewind without Compact, then a failed automatic compaction, then the no-rewind hint.
+ */
+function baseHint(
+	copy: CategoryCopy,
+	canRewind: boolean,
+	compactOffered: boolean | undefined,
+	autoCompactTried: boolean,
+): string
+{
+	if (canRewind && compactOffered === false)
+	{
+		const noCompact = autoCompactTried ? copy.hintCompactTriedNoCompact : copy.hintNoCompact;
+		if (noCompact !== undefined) return noCompact;
+	}
+	if (autoCompactTried)
+	{
+		const tried = canRewind ? copy.hintCompactTried : copy.hintCompactTriedNoRewind;
+		if (tried !== undefined) return tried;
+	}
+	return !canRewind && copy.hintNoRewind !== undefined ? copy.hintNoRewind : copy.hint;
+}
+
+/**
+ * Whether the CLI's context-full record says automatic compaction failed first: its `gcs()` writes
+ * "Prompt is too long · automatic compaction failed: <detail>" when the failure reason is "error".
+ */
+export function autoCompactFailed(text: string): boolean
+{
+	return /(?:^|\s)Prompt is too long · automatic compaction failed: /.test(text);
 }
 
 /** The category the transcript card classifies an error into, from its text, code, status (number or digits) and stop reason. */

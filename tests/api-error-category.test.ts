@@ -1,5 +1,12 @@
 import {describe, expect, it} from "vite-plus/test";
-import {classifyApiError, errorCopy, refusalPassthrough, type ApiErrorInput} from "../src/lib/api-error-category";
+import
+{
+	autoCompactFailed,
+	classifyApiError,
+	errorCopy,
+	refusalPassthrough,
+	type ApiErrorInput,
+} from "../src/lib/api-error-category";
 
 const VIEWER =
 {
@@ -192,6 +199,13 @@ describe("classifyApiError", () =>
 					text: "Claude Code returned an error result: exceeded the 32000 output token maximum",
 				},
 			),
+			classify(
+				{
+					text: "Prompt is too long · automatic compaction failed: x",
+					code: "invalid_request",
+					status: 400,
+				},
+			),
 		]).toStrictEqual([
 			"usage_policy",
 			"rate_limit",
@@ -209,7 +223,23 @@ describe("classifyApiError", () =>
 			"invalid_request",
 			"context_length",
 			"output_token_limit",
+			"context_length",
 		]);
+	});
+});
+
+describe("autoCompactFailed", () =>
+{
+	it("reads the CLI's automatic-compaction-failed suffix and nothing else", () =>
+	{
+		expect([
+			autoCompactFailed("Prompt is too long · automatic compaction failed: summary request timed out"),
+			autoCompactFailed("API Error: Prompt is too long · automatic compaction failed: x"),
+			autoCompactFailed("Prompt is too long"),
+			autoCompactFailed(
+				"Autocompact is thrashing: the context refilled to the limit within 3 turns of the previous compact, 3 times in a row.",
+			),
+		]).toStrictEqual([true, true, false, false]);
 	});
 });
 
@@ -407,6 +437,53 @@ describe("errorCopy", () =>
 				},
 			).hint,
 			errorCopy(
+				"context_length",
+				{
+					canRewind: true,
+					canRetry: false,
+					hasComposer: true,
+					compactOffered: false,
+				},
+			).hint,
+			errorCopy(
+				"context_length",
+				{
+					canRewind: true,
+					canRetry: false,
+					hasComposer: true,
+					compactOffered: false,
+					autoCompactTried: true,
+				},
+			).hint,
+			errorCopy(
+				"context_length",
+				{
+					canRewind: true,
+					canRetry: false,
+					hasComposer: true,
+					compactOffered: true,
+					autoCompactTried: true,
+				},
+			).hint,
+			errorCopy(
+				"context_length",
+				{
+					canRewind: false,
+					canRetry: false,
+					hasComposer: true,
+					autoCompactTried: true,
+				},
+			).hint,
+			errorCopy(
+				"context_length",
+				{
+					canRewind: true,
+					canRetry: false,
+					hasComposer: true,
+					compactOffered: true,
+				},
+			).hint,
+			errorCopy(
 				"auth",
 				{
 					canRewind: false,
@@ -421,6 +498,11 @@ describe("errorCopy", () =>
 			"Server was temporarily limiting requests",
 			"Context window was full",
 			"This chat is too long to continue. Start a new chat.",
+			"This chat is too long to continue. Compact it to summarize earlier messages and keep going, rewind to an earlier point, or start a new chat.",
+			"This chat is too long to continue. Rewind to an earlier point or start a new chat.",
+			"This chat is too long to continue, and compacting it automatically didn’t help. You can rewind to an earlier point or start a new chat.",
+			"This chat is too long to continue, and compacting it automatically didn’t help. You can try compacting again, rewind to an earlier point, or start a new chat.",
+			"This chat is too long to continue, and compacting it automatically didn’t help. Start a new chat.",
 			"This chat is too long to continue. Compact it to summarize earlier messages and keep going, rewind to an earlier point, or start a new chat.",
 			"Sign in again to continue.",
 		]);

@@ -1272,6 +1272,50 @@ describe("ApiErrorCard recovery actions", () =>
 		);
 	});
 
+	it("says automatic compaction didn’t help when the CLI record carries the compaction-failed suffix, keeping Compact session while it is offered", () =>
+	{
+		const text = "Prompt is too long · automatic compaction failed: x";
+		const view = (recovery: ApiErrorRecovery) =>
+		{
+			const {container, unmount} = render(<ApiErrorCard text={text} recovery={recovery} />);
+			const card = container.querySelector("[data-api-error-card]");
+			const result =
+			{
+				hint: card?.children[1]?.querySelector("span:not(.sr-only)")?.textContent,
+				labels: [...(actionGroup(card)?.querySelectorAll("button") ?? [])].map(
+					(button) => button.getAttribute("aria-label") ?? button.textContent,
+				),
+			};
+			unmount();
+			return result;
+		};
+
+		expect([
+			view(
+				{
+					onRetry: vi.fn<() => boolean>(() => true),
+					onCompact: vi.fn<() => void>(),
+					onRewind: vi.fn<() => void>(),
+				},
+			),
+			view(
+				{
+					onRetry: vi.fn<() => boolean>(() => true),
+					onRewind: vi.fn<() => void>(),
+				},
+			),
+		]).toStrictEqual([
+			{
+				hint: "This chat is too long to continue, and compacting it automatically didn’t help. You can try compacting again, rewind to an earlier point, or start a new chat.",
+				labels: ["Compact session", "More recovery options"],
+			},
+			{
+				hint: "This chat is too long to continue, and compacting it automatically didn’t help. You can rewind to an earlier point or start a new chat.",
+				labels: ["Rewind"],
+			},
+		]);
+	});
+
 	it("wraps the action group right-aligned under View details at phone width, like upstream's flex-wrap justify-end row", () =>
 	{
 		const {container} = render(

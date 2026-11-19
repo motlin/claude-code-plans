@@ -5,6 +5,7 @@ import
 {
 	type ApiErrorCategory,
 	apiErrorCategory,
+	autoCompactFailed,
 	errorCopy,
 	refusalPassthrough,
 	SIGNED_IN_AGAIN_LABEL,
@@ -311,6 +312,8 @@ export function ApiErrorCard(props: ApiErrorCardProps)
 				canRewind: recovery?.onRewind !== undefined,
 				canRetry,
 				hasComposer: recovery !== undefined,
+				compactOffered: recovery?.onCompact !== undefined,
+				autoCompactTried: autoCompactFailed(props.text),
 			},
 		},
 	);
