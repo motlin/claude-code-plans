@@ -11,7 +11,8 @@ import
 	RouterProvider,
 } from "@tanstack/react-router";
 import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
-import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
+import {afterEach, beforeAll, beforeEach, describe, expect, it, vi} from "vite-plus/test";
+import {preloadCustomizeDialogPanel} from "../src/components/settings/customize-dialog-panel-loader";
 import {SettingsDialog} from "../src/components/settings/settings-dialog";
 import {SettingsProvider} from "../src/components/settings-provider";
 import {ToolbarSearch} from "../src/components/toolbar-search";
@@ -2212,6 +2213,13 @@ describe("settings search Customize rows", () =>
 		]);
 		queryClient.setQueryData(pluginsQueryOptions.queryKey, []);
 	};
+
+	// The Customize panel loads on first open: without this, a worker that has not imported it yet pays for its module
+	// graph (and React's Suspense reveal) inside findBy's window when a row opens Skills.
+	beforeAll(async () =>
+	{
+		await preloadCustomizeDialogPanel();
+	});
 
 	beforeEach(() =>
 	{

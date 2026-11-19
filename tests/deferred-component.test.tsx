@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
+import {act, cleanup, fireEvent, render, screen, waitFor} from "@testing-library/react";
 import type React from "react";
 import {Component} from "react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
@@ -553,13 +553,19 @@ describe("deferred surfaces upstream draws an inline ErrorView for", () =>
 				</>
 			);
 		}
-		await renderAsync(<Composer />);
-		await flush();
-		const frame = document.querySelector("[data-slash-menu-frame]");
+		const composer = await renderAsync(<Composer />);
+		// The popup's ErrorView commits on React's retry of the boundary after the download rejects; wait for that commit
+		// in this render's own popup instead of for one macrotask.
+		const slashError = await waitFor(() =>
+		{
+			const error = composer.container.querySelector("[data-slash-menu-frame] [data-chunk-error]");
+			if (error === null) throw new Error("The / popup has not drawn its ErrorView yet");
+			return error;
+		});
 		const slash =
 		{
-			state: frame?.querySelector("[data-chunk-error]")?.getAttribute("data-chunk-error"),
-			button: frame?.querySelector("[data-chunk-error] button")?.textContent,
+			state: slashError.getAttribute("data-chunk-error"),
+			button: slashError.querySelector("button")?.textContent,
 		};
 		const parked = screen.getByTestId("parked").innerHTML;
 		cleanup();
