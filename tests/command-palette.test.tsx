@@ -5991,6 +5991,44 @@ describe("CommandPalette shell", () =>
 			);
 		});
 
+		it("is off for a phone-latched open (upstream disabled = !composeEntry): a drop neither attaches nor flips to Compose", async () =>
+		{
+			vi.stubGlobal("matchMedia", (query: string) => (
+			{
+				matches: query === "(pointer: coarse), (hover: none)" || query === "(width < 40rem)",
+				media: query,
+				addEventListener()
+				{
+				},
+				removeEventListener()
+				{
+				},
+			}));
+			const dialog = await openPalette();
+
+			fireEvent.dragOver(document.body, filesDrag());
+			const dragging = zoneShape();
+			fireEvent.drop(document.body, filesDrag());
+			await act(async () =>
+			{
+				await Promise.resolve();
+			});
+
+			expect(
+				{
+					dragging,
+					input: within(dialog).getByRole("combobox").getAttribute("placeholder"),
+					chips: chipNames(),
+				},
+			).toStrictEqual(
+				{
+					dragging: IDLE,
+					input: "Search",
+					chips: [],
+				},
+			);
+		});
+
 		it("still swallows a drop while picking a project, without attaching or switching view", async () =>
 		{
 			const dialog = await openPalette();

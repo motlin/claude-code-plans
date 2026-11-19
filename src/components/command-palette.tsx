@@ -1411,7 +1411,14 @@ function hasFileDrag(event: DragEvent): boolean
  * file drag it catches pointer events and draws upstream's `Oc` overlay. A pointer press or move on a stuck overlay
  * (a drag that left the window without a dragleave) dismisses it until the next file dragenter.
  */
-function PaletteFileDropZone({onDropFiles}: {onDropFiles: (files: readonly File[]) => void})
+function PaletteFileDropZone({
+	onDropFiles,
+	disabled,
+}: {
+	onDropFiles: (files: readonly File[]) => void;
+	/** Upstream `disabled = !composeEntry || …`: a phone-latched open takes no drops. */
+	disabled: boolean;
+})
 {
 	const zoneRef = useRef<HTMLDivElement>(null);
 	// The walk is async: deliver to the latest render's handler, and not at all once the palette has closed.
@@ -1431,6 +1438,7 @@ function PaletteFileDropZone({onDropFiles}: {onDropFiles: (files: readonly File[
 		{
 			targetRef: zoneRef,
 			priority: "overlay",
+			disabled,
 			onTransferDrop: (transfer) =>
 			{
 				// Read the items now: the DataTransfer empties once the drop handler returns.
@@ -2057,7 +2065,8 @@ function PalettePopup({
 			[selectedThumbnailUrl],
 		),
 	);
-	const thumbRowKey = !compose && selectedThumb !== undefined ? selectedValue : null;
+	// Upstream `Cs = U&&!phone&&…`: a phone-latched open shows no thumb card.
+	const thumbRowKey = !compose && composeAvailable && selectedThumb !== undefined ? selectedValue : null;
 	const projectsById = useMemo(() => new Map(projects.map((project) => [project.id, project])), [projects]);
 
 	// The listed rows upstream's generic card `yt` covers, by cmdk value.
@@ -3968,6 +3977,7 @@ function PalettePopup({
 							);
 						}}
 						onClose={closeRowActions}
+						screenshots={composeAvailable}
 					/>
 				)}
 				{renaming !== null && (
@@ -3996,7 +4006,7 @@ function PalettePopup({
 					/>
 				)}
 			</DialogPopup>
-			<PaletteFileDropZone onDropFiles={attachDroppedFiles} />
+			<PaletteFileDropZone onDropFiles={attachDroppedFiles} disabled={!composeAvailable} />
 		</>
 	);
 }

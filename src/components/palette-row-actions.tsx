@@ -166,12 +166,15 @@ interface CardProps
 export function PaletteRowActionsCard({
 	target,
 	onRename,
+	screenshots = true,
 	...props
 }: CardProps &
 {
 	target: PaletteCardTarget;
 	/** Opens upstream's Rename session dialog over the palette, which stays open. */
 	onRename: (session: PaletteCardSession) => void;
+	/** False for a phone-latched open (upstream `Ts`'s `!phone`): the artifact card has no header screenshot. */
+	screenshots?: boolean;
 })
 {
 	switch (target.kind)
@@ -179,7 +182,7 @@ export function PaletteRowActionsCard({
 		case "session":
 			return <SessionCard session={target.session} onRename={onRename} {...props} />;
 		case "artifact":
-			return <ArtifactCard artifact={target.artifact} {...props} />;
+			return <ArtifactCard artifact={target.artifact} screenshot={screenshots} {...props} />;
 		case "project":
 			return <ProjectCard project={target.project} {...props} />;
 		case "generic":
@@ -350,14 +353,16 @@ function ArtifactCard({
 	onClose,
 	anchorRect,
 	morphFrom = null,
+	screenshot,
 }: CardProps &
 {
 	artifact: ArtifactSummary;
+	screenshot: boolean;
 })
 {
 	const toast = useToast();
 	const pinned = useArtifactPins().isPinned(artifact.url);
-	const {thumbnailUrl} = artifact;
+	const thumbnailUrl = screenshot ? artifact.thumbnailUrl : null;
 	const thumb = useMemo(
 		(): PaletteThumb | undefined =>
 			thumbnailUrl === null

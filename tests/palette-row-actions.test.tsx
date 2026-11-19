@@ -2934,6 +2934,47 @@ describe("palette row actions card", () =>
 			);
 		});
 
+		it("shows no thumb card and no card screenshot for a phone-latched open (upstream Cs/Ts: !phone)", async () =>
+		{
+			vi.stubGlobal("matchMedia", (query: string) => (
+			{
+				matches: query === "(pointer: coarse), (hover: none)" || query === "(width < 40rem)",
+				media: query,
+				addEventListener()
+				{
+				},
+				removeEventListener()
+				{
+				},
+			}));
+			const {input} = await openTab("Artifacts", seedThumbs);
+			const selected = document.querySelector("[cmdk-item][data-selected=true]")?.getAttribute("data-value");
+			const thumb = thumbCard();
+			altEnter(input);
+			const card = await screen.findByRole(
+				"menu",
+				{
+					name: "Actions",
+				},
+			);
+
+			expect(
+				{
+					selected,
+					thumb,
+					fromThumb: card.getAttribute("data-from-thumb-card"),
+					header: card.querySelector('[data-testid="palette-thumb-image"]'),
+				},
+			).toStrictEqual(
+				{
+					selected: "artifact:art-thumb",
+					thumb: null,
+					fromThumb: null,
+					header: null,
+				},
+			);
+		});
+
 		it("drops the card for good when its screenshot fails to load", async () =>
 		{
 			const failing = "/api/artifacts/art-fail/thumbnail?v=1";
