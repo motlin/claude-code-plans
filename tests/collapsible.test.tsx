@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
+import {act, cleanup, fireEvent, render, screen, within} from "@testing-library/react";
 import {afterEach, describe, expect, it} from "vite-plus/test";
 
 import * as Collapsible from "../src/components/ui/collapsible";
@@ -302,7 +302,7 @@ describe("cds Collapsible", () =>
 	it("still runs the caller's onMouseDown before the guard", () =>
 	{
 		const calls: number[] = [];
-		render(
+		const {container} = render(
 			<Fold
 				triggerProps={
 				{
@@ -310,14 +310,50 @@ describe("cds Collapsible", () =>
 				}}
 			/>,
 		);
-		fireEvent.mouseDown(
-			trigger(),
+		// This failed once in a loaded shuffled shared-dom run with calls [] and was never reproduced. Fire on the button
+		// this render mounted, not whichever one the shared document holds, and record where the event went and any other
+		// button, so a recurrence says whether it hit another node, never reached React's root, or reached it and skipped
+		// the handler.
+		const button = within(container).getByRole("button");
+		const seen: string[] = [];
+		const record = (phase: string) => (event: Event) =>
+			seen.push(`${phase}:${event.target === button ? "button" : String(event.target)}`);
+		const windowCapture = record("window-capture");
+		const documentBubble = record("document-bubble");
+		window.addEventListener("mousedown", windowCapture, true);
+		document.addEventListener("mousedown", documentBubble);
+		try
+		{
+			fireEvent.mouseDown(
+				button,
+				{
+					detail: 3,
+					button: 0,
+				},
+			);
+		}
+		finally
+		{
+			window.removeEventListener("mousedown", windowCapture, true);
+			document.removeEventListener("mousedown", documentBubble);
+		}
+		expect(
 			{
-				detail: 3,
-				button: 0,
+				calls,
+				seen,
+				connected: button.isConnected,
+				strayButtons: [...document.body.querySelectorAll("button")]
+					.filter((other) => other !== button)
+					.map((other) => other.outerHTML),
+			},
+		).toStrictEqual(
+			{
+				calls: [3],
+				seen: ["window-capture:button", "document-bubble:button"],
+				connected: true,
+				strayButtons: [],
 			},
 		);
-		expect(calls).toStrictEqual([3]);
 	});
 
 	it("marks the trigger data-disabled under a disabled root", () =>
