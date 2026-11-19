@@ -1612,6 +1612,7 @@ describe("SessionTitlebar cost pill", () =>
 			linesRemoved: 30,
 			apiDurationMs: 90_000,
 			toolDurationMs: 12_000,
+			modelCallCostUSD: 0.37,
 			hasUnknownModelCost: true,
 			models: [
 				{
@@ -1674,6 +1675,7 @@ describe("SessionTitlebar cost pill", () =>
 					["lines", ["Lines changed", "+120 −30"]],
 					["api", ["API time", "1m 30s"]],
 					["tools", ["Tool time", "12.0s"]],
+					["mod-calls", ["Mods' model calls", "$0.37 of the total"]],
 					["model", ["Opus 5.5", "$3.00", "1K in · 2K out · 30K cache read · 4K cache write (3K 5m, 1K 1h)"]],
 					["model", ["Haiku 4.5", "$0.50", "10 in · 5 out"]],
 				],

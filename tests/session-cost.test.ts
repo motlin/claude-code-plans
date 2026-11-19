@@ -21,6 +21,7 @@ describe("costStateFromRecord", () =>
 					totalDuration: 600_000,
 					startTime: 1_000,
 					hasUnknownModelCost: true,
+					modelCallCostUSD: 0.25,
 					modelUsage:
 					{
 						"claude-haiku-4-5-20251001":
@@ -49,6 +50,7 @@ describe("costStateFromRecord", () =>
 				linesRemoved: 30,
 				apiDurationMs: 90_000,
 				toolDurationMs: 12_000,
+				modelCallCostUSD: 0.25,
 				hasUnknownModelCost: true,
 				models: [
 					{

@@ -43,5 +43,7 @@ export function costStateFromRecord(record: unknown): SessionCostState | null
 	};
 	if (cost.totalAPIDuration !== undefined) state.apiDurationMs = cost.totalAPIDuration;
 	if (cost.totalToolDuration !== undefined) state.toolDurationMs = cost.totalToolDuration;
+	if (cost.modelCallCostUSD !== undefined && cost.modelCallCostUSD > 0)
+		state.modelCallCostUSD = cost.modelCallCostUSD;
 	return state;
 }

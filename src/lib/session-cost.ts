@@ -27,6 +27,8 @@ export const SessionCostStateSchema = z
 			linesRemoved: z.number(),
 			apiDurationMs: z.number().optional(),
 			toolDurationMs: z.number().optional(),
+			/** The part of `totalCostUSD` spent by mods' (plugins') own model calls; absent when none. */
+			modelCallCostUSD: z.number().optional(),
 			/** Some model had no known price, so `totalCostUSD` undercounts. */
 			hasUnknownModelCost: z.boolean(),
 			/** Most expensive first. */

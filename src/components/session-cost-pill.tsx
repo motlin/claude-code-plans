@@ -59,6 +59,13 @@ function CostBreakdown({cost}: {cost: SessionCostState})
 			{cost.toolDurationMs !== undefined && (
 				<CostRow kind="tools" label="Tool time" value={formatDuration(cost.toolDurationMs)} />
 			)}
+			{cost.modelCallCostUSD !== undefined && (
+				<CostRow
+					kind="mod-calls"
+					label="Mods' model calls"
+					value={`${formatUsd(cost.modelCallCostUSD)} of the total`}
+				/>
+			)}
 			{cost.models.length > 0 && (
 				<div className="flex flex-col gap-1.5 border-t border-border pt-2">
 					{cost.models.map((model) => (
