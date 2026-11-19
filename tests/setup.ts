@@ -149,6 +149,20 @@ if (typeof window !== "undefined")
 	{
 		resetLandingWindow(window);
 	});
+	// A menu pin requests the "drag to pin" coach mark in a module-level flag, which keeps a later file's empty Pinned
+	// section open as the hint instead of an inert stub. Close it, as a fresh page starts without the request.
+	const {closeDragPinHint} = await import("../src/lib/drag-pin-hint");
+	afterEach(() =>
+	{
+		closeDragPinHint();
+	});
+	// The sidebar writes its Recents row count on a 2s debounce, so a list a test unmounts can still write it into a
+	// later file's storage in a shared-dom worker. Drop the pending write, as leaving the page would.
+	const {cancelPendingRecentsRowCount} = await import("../src/lib/sidebar-store");
+	afterEach(() =>
+	{
+		cancelPendingRecentsRowCount();
+	});
 	afterEach(() =>
 	{
 		cleanup();

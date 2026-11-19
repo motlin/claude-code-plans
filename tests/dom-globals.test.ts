@@ -11,6 +11,7 @@ describe("restoreDomGlobals", () =>
 		captureDomGlobals();
 		const offsetParent = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "offsetParent");
 		const innerHeight = Object.getOwnPropertyDescriptor(globalThis, "innerHeight");
+		const requestAnimationFrame = globalThis.requestAnimationFrame;
 		Object.defineProperty(
 			HTMLElement.prototype,
 			"offsetParent",
@@ -42,12 +43,16 @@ describe("restoreDomGlobals", () =>
 			},
 		);
 
+		// jsdom's window globals are accessors, so assigning one (as fake timers' uninstall does) keeps the descriptor.
+		globalThis.requestAnimationFrame = () => 0;
+
 		restoreDomGlobals();
 
 		expect(
 			{
 				offsetParent: Object.getOwnPropertyDescriptor(HTMLElement.prototype, "offsetParent"),
 				innerHeight: Object.getOwnPropertyDescriptor(globalThis, "innerHeight"),
+				requestAnimationFrame: globalThis.requestAnimationFrame === requestAnimationFrame,
 				added: [
 					Object.hasOwn(HTMLElement.prototype, "animate"),
 					Object.hasOwn(Range.prototype, "getBoxQuads"),
@@ -60,6 +65,7 @@ describe("restoreDomGlobals", () =>
 			{
 				offsetParent,
 				innerHeight,
+				requestAnimationFrame: true,
 				added: [false, false, false, false, false],
 			},
 		);

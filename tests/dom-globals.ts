@@ -49,6 +49,11 @@ interface OwnerSnapshot
 {
 	owner: object;
 	descriptors: Map<PropertyKey, PropertyDescriptor>;
+	/**
+	 * What each accessor read when captured. jsdom's window globals are accessors, so assigning one (as fake timers'
+	 * uninstall does with the requestAnimationFrame a stub replaced) changes what it reads but not its descriptor.
+	 */
+	accessorValues: Map<PropertyKey, unknown>;
 	/** Restore only these keys, or every own key when absent. */
 	keys?: readonly PropertyKey[];
 }
@@ -62,21 +67,27 @@ declare global
 function snapshot(owner: object, keys?: readonly PropertyKey[]): OwnerSnapshot
 {
 	const descriptors = new Map<PropertyKey, PropertyDescriptor>();
+	const accessorValues = new Map<PropertyKey, unknown>();
 	for (const key of keys ?? Reflect.ownKeys(owner))
 	{
 		const descriptor = Reflect.getOwnPropertyDescriptor(owner, key);
-		if (descriptor !== undefined) descriptors.set(key, descriptor);
+		if (descriptor === undefined) continue;
+		descriptors.set(key, descriptor);
+		if (keys !== undefined && descriptor.get !== undefined && descriptor.set !== undefined)
+			accessorValues.set(key, Reflect.get(owner, key));
 	}
 	return keys === undefined
 		?
 			{
 				owner,
 				descriptors,
+				accessorValues,
 			}
 		:
 			{
 				owner,
 				descriptors,
+				accessorValues,
 				keys,
 			};
 }
@@ -107,7 +118,7 @@ export function captureDomGlobals(): void
 export function restoreDomGlobals(): void
 {
 	captureDomGlobals();
-	for (const {owner, descriptors, keys} of globalThis.ccbOriginalDom ?? [])
+	for (const {owner, descriptors, accessorValues, keys} of globalThis.ccbOriginalDom ?? [])
 	{
 		for (const key of keys ?? new Set([...descriptors.keys(), ...Reflect.ownKeys(owner)]))
 		{
@@ -121,6 +132,8 @@ export function restoreDomGlobals(): void
 			{
 				Object.defineProperty(owner, key, original);
 			}
+			if (accessorValues.has(key) && Reflect.get(owner, key) !== accessorValues.get(key))
+				Reflect.set(owner, key, accessorValues.get(key));
 		}
 	}
 }

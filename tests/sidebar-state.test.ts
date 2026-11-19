@@ -3,6 +3,7 @@
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import
 {
+	cancelPendingRecentsRowCount,
 	DEFAULT_SIDEBAR_STATE,
 	readSidebarState,
 	recordRecentsRowCount,
@@ -258,7 +259,7 @@ describe("sidebar-store", () =>
 		]);
 	});
 
-	it("writes a larger Recents count after upstream's 2000ms debounce and a smaller one after 250ms", () =>
+	it("writes a larger Recents count after upstream's 2000ms debounce and a smaller one after 250ms, unless cancelled", () =>
 	{
 		vi.useFakeTimers();
 		try
@@ -272,17 +273,26 @@ describe("sidebar-store", () =>
 				vi.advanceTimersByTime(1);
 				return [before, early, readSidebarState().recentsRowCount];
 			};
+			const cancelled = () =>
+			{
+				recordRecentsRowCount(7);
+				cancelPendingRecentsRowCount();
+				vi.advanceTimersByTime(2000);
+				return readSidebarState().recentsRowCount;
+			};
 			expect(
 				{
 					grow: after(9, 2000),
 					shrink: after(4, 250),
 					same: after(4, 2000),
+					cancelled: cancelled(),
 				},
 			).toStrictEqual(
 				{
 					grow: [undefined, undefined, 9],
 					shrink: [9, 9, 4],
 					same: [4, 4, 4],
+					cancelled: 4,
 				},
 			);
 		}

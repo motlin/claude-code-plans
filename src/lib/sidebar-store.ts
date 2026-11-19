@@ -265,8 +265,7 @@ let pendingRowCount: ReturnType<typeof setTimeout> | undefined;
 /** Upstream `recordSidebarRowCount(scope, "code.recents", n)`: remember how many Recents rows the list shows. */
 export function recordRecentsRowCount(count: number): void
 {
-	clearTimeout(pendingRowCount);
-	pendingRowCount = undefined;
+	cancelPendingRecentsRowCount();
 	const stored = readSidebarState().recentsRowCount;
 	if (stored === count) return;
 	pendingRowCount = setTimeout(
@@ -282,6 +281,13 @@ export function recordRecentsRowCount(count: number): void
 		},
 		stored !== undefined && count < stored ? ROW_COUNT_SHRINK_WRITE_MS : ROW_COUNT_WRITE_MS,
 	);
+}
+
+/** Drop a Recents count still waiting to be written, as leaving the page would. */
+export function cancelPendingRecentsRowCount(): void
+{
+	clearTimeout(pendingRowCount);
+	pendingRowCount = undefined;
 }
 
 /** Upstream `Xw`: the remembered Recents row count clamped to 0…21, or undefined when none is stored. */

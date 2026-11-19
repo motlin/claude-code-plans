@@ -1,5 +1,4 @@
 // @vitest-environment jsdom
-// @vitest-isolate: a later file sharing its worker renders the sidebar with an extra Pinned group after this file's pin and unread tests.
 
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import
