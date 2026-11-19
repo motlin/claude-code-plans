@@ -141,7 +141,7 @@ import type {SessionWorkflowRun, TranscriptCut} from "../lib/api/sessions";
 import {workflowCallName, workflowSummary} from "../lib/workflow-name";
 import {rewindLayout, type RewindMarkerPlacement} from "../lib/rewind-layout";
 import type {ToolUseBlock} from "../lib/schemas";
-import {coalesceSameTarget, runSuffix, sameTarget, toolBucket, type ToolBucket} from "../lib/tool-runs";
+import {coalesceSameTarget, runSuffix, sameTarget, targetKey, toolBucket, type ToolBucket} from "../lib/tool-runs";
 import {chapterDisposition, isChapterTool, type ChapterDisposition} from "../lib/chapter-tool";
 import {ChapterHeading, ClaudeChapterHeading} from "./chapter-heading";
 import {estimatedRowHeight} from "../lib/transcript-row-estimate";
@@ -7575,7 +7575,13 @@ function ToolCallSection({
 	const backgroundCalls = calls.filter((c) => !isProminentCall(c));
 	const [loneBackgroundCall] = backgroundCalls;
 	const queuedCallIds = useContext(QueuedCallIdsContext);
-	const sameTargetRun = backgroundCalls.length > 1 && notices.length === 0 && sameTarget(backgroundCalls);
+	// Upstream `pme`: every call shares one file target, so a lone file call is a run of one.
+	const loneTarget =
+		notices.length === 0 &&
+		loneBackgroundCall !== undefined &&
+		targetKey(loneBackgroundCall) !== null &&
+		sameTarget(backgroundCalls);
+	const sameTargetRun = loneTarget && backgroundCalls.length > 1;
 	// oxlint-disable-next-line unicorn/prefer-array-find -- findLast is not in the ES2022 lib
 	const liveCall = backgroundCalls.findLast(isPendingToolCall);
 	const liveKey = liveCall?.id ?? SETTLED_LIVE_KEY;
@@ -7583,9 +7589,9 @@ function ToolCallSection({
 		() => (
 		{
 			key: liveKey,
-			lone: sameTargetRun,
+			lone: loneTarget,
 		}),
-		[liveKey, sameTargetRun],
+		[liveKey, loneTarget],
 	);
 	const held = useHeldLabel(live, liveKey, LIVE_KEY_HOLD);
 	// The finished call the live key still holds on; upstream keeps its words only while it completed (`cP`).
@@ -7594,9 +7600,9 @@ function ToolCallSection({
 			? undefined
 			: backgroundCalls.find((c) => c.id === held.key && !isPendingToolCall(c) && c.isError !== true);
 	// Upstream `relabelStep`: a sole run whose held member finished keeps that member's present tense.
-	const heldRunCall = sameTargetRun && liveCall === undefined ? heldCall : undefined;
+	const heldRunCall = loneTarget && liveCall === undefined ? heldCall : undefined;
 	// Upstream `subjectOf`: a group that just stopped being a sole run keeps the run's words and file.
-	const handedOffCall = !sameTargetRun && held.lone ? heldCall : undefined;
+	const handedOffCall = !loneTarget && held.lone ? heldCall : undefined;
 	// Upstream holds no notices beside a queued lone row (`u2` false): they draw on their own and the row gives way.
 	const queuedLoneCall =
 		backgroundCalls.length === 1 &&
@@ -7619,7 +7625,12 @@ function ToolCallSection({
 			    a multi-call group by every call's stage (`t8`). */}
 			{backgroundCalls.length === 1 && notices.length === 0 && loneBackgroundCall !== undefined && (
 				<ToolCardBoundary resetOn={toolCardStage(loneBackgroundCall)}>
-					<LoneToolCall call={loneBackgroundCall} sessionId={sessionId} leading={leading} />
+					<LoneToolCall
+						call={loneBackgroundCall}
+						heldLive={heldRunCall}
+						sessionId={sessionId}
+						leading={leading}
+					/>
 				</ToolCardBoundary>
 			)}
 			{sameTargetRun && (
@@ -7985,7 +7996,18 @@ function PlanFeedbackBubble({text}: {text: string})
  * record yet, and live at mount or still pending) or whose run is still running draws upstream's workflow card
  * (`S1` -> `Vme`); every other call, and a settled workflow, is a row.
  */
-function LoneToolCall({call, sessionId, leading}: {call: ClientToolCall; sessionId: string; leading: boolean})
+function LoneToolCall({
+	call,
+	heldLive,
+	sessionId,
+	leading,
+}: {
+	call: ClientToolCall;
+	/** The finished call the group's live key still holds on (upstream `relabelStep`). */
+	heldLive: ClientToolCall | undefined;
+	sessionId: string;
+	leading: boolean;
+})
 {
 	const run = useContext(WorkflowRunsContext).get(call.id);
 	const permissionWaitId = useContext(PermissionWaitContext);
@@ -8002,7 +8024,7 @@ function LoneToolCall({call, sessionId, leading}: {call: ClientToolCall; session
 	if (!preLaunch && !(isWorkflow && run?.status === "running"))
 	{
 		const feedback = planRejectionFeedback(call);
-		const row = <ToolCallRow call={call} sessionId={sessionId} leading={leading} />;
+		const row = <ToolCallRow call={call} heldLive={heldLive} sessionId={sessionId} leading={leading} />;
 		if (call.name === "ReportFindings")
 			return (
 				<div data-tool-anchor={call.id} className="contents">

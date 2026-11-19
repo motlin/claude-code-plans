@@ -925,6 +925,28 @@ describe("a status row's morph slot", () =>
 		Reflect.deleteProperty(HTMLElement.prototype, "animate");
 	});
 
+	/** Completes the Read, then lets its group's 650ms live-key hold (upstream `LC`) lapse so the row settles. */
+	function complete(view: ReturnType<typeof render>): void
+	{
+		vi.useFakeTimers(
+			{
+				toFake: ["setTimeout", "clearTimeout", "performance"],
+			},
+		);
+		try
+		{
+			view.rerender(chat([prompt, readA, readResult]));
+			act(() =>
+			{
+				vi.advanceTimersByTime(650);
+			});
+		}
+		finally
+		{
+			vi.useRealTimers();
+		}
+	}
+
 	it("seats a settled Read row's label in a done|Read face on the -label slot, beside its meta", () =>
 	{
 		const {container} = render(chat([prompt, readA, readResult]));
@@ -956,7 +978,7 @@ describe("a status row's morph slot", () =>
 	{
 		installFakeAnimate();
 		const view = render(chat([prompt, readA]));
-		view.rerender(chat([prompt, readA, readResult]));
+		complete(view);
 		const toggle = view.container.querySelector("[aria-labelledby]");
 		const labelId = toggle?.getAttribute("aria-labelledby")?.split(" ")[0] ?? "";
 		expect(faces(document.getElementById(labelId))).toStrictEqual([
@@ -1006,7 +1028,7 @@ describe("a status row's morph slot", () =>
 		};
 		const view = render(chat([prompt, readA]));
 		const busy = view.container.querySelectorAll("[data-cds-row-mark]").length;
-		view.rerender(chat([prompt, readA, readResult]));
+		complete(view);
 		await act(async () =>
 		{
 			await Promise.resolve();

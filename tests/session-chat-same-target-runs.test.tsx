@@ -472,57 +472,84 @@ describe("busy same-target run row (upstream mergeLiveLoneStep)", () =>
 			]);
 		});
 
-		it("keeps the lone run's words and file on the group row for 650ms after a different target joins, then settles the new label in 250ms", () =>
+		it("treats a lone file call as a run of one: it keeps its present tense for 650ms after finishing", () =>
 		{
-			const {container, rerender} = render(chat([edit("e1", "a", "b"), pendingEdit("e2")]));
-			rerender(
-				chat([
-					edit("e1", "a", "b"),
-					edit("e2", "c", "d"),
-					{
-						...read("r1", "/repo/b.ts"),
-						pending: true,
-					},
-				]),
-			);
-			const header = () =>
-			{
-				const toggle = container.querySelector("button[aria-expanded]");
-				return {
-					parts: rowParts(container),
-					status: toggle?.closest("[data-tool-row]")?.querySelector('[role="status"]')?.textContent,
-				};
-			};
-			const handedOff = header();
+			const {container, rerender} = render(chat([pendingEdit("e1")]));
+			rerender(chat([edit("e1", "c", "d")]));
+			const finished = rowParts(container);
 			advance(649);
-			const held = header();
+			const held = rowParts(container);
 			advance(1);
-			const swapped = header();
-			advance(249);
-			const settling = header();
-			advance(1);
-			expect([handedOff, held, swapped, settling, header()]).toStrictEqual([
-				{
-					parts: ["Editing", "a.ts"],
-					status: "Editing a.ts",
-				},
-				{
-					parts: ["Editing", "a.ts"],
-					status: "Editing a.ts",
-				},
-				{
-					parts: ["Editing", "a.ts"],
-					status: "Editing a.ts",
-				},
-				{
-					parts: ["Editing", "a.ts"],
-					status: "Editing a.ts",
-				},
-				{
-					parts: ["Reading"],
-					status: "Reading",
-				},
+			expect([finished, held, rowParts(container)]).toStrictEqual([
+				["Editing", "a.ts"],
+				["Editing", "a.ts"],
+				["Edited", "a.ts"],
 			]);
 		});
+
+		it.each([
+			{
+				start: "a run of two",
+				before: [edit("e1", "a", "b")],
+			},
+			{
+				start: "a lone file call",
+				before: [],
+			},
+		])(
+			"keeps $start's words and file on the group row for 650ms after a different target joins, then settles the new label in 250ms",
+			({before}) =>
+			{
+				const {container, rerender} = render(chat([...before, pendingEdit("e2")]));
+				rerender(
+					chat([
+						...before,
+						edit("e2", "c", "d"),
+						{
+							...read("r1", "/repo/b.ts"),
+							pending: true,
+						},
+					]),
+				);
+				const header = () =>
+				{
+					const toggle = container.querySelector("button[aria-expanded]");
+					return {
+						parts: rowParts(container),
+						status: toggle?.closest("[data-tool-row]")?.querySelector('[role="status"]')?.textContent,
+					};
+				};
+				const handedOff = header();
+				advance(649);
+				const held = header();
+				advance(1);
+				const swapped = header();
+				advance(249);
+				const settling = header();
+				advance(1);
+				expect([handedOff, held, swapped, settling, header()]).toStrictEqual([
+					{
+						parts: ["Editing", "a.ts"],
+						status: "Editing a.ts",
+					},
+					{
+						parts: ["Editing", "a.ts"],
+						status: "Editing a.ts",
+					},
+					{
+						parts: ["Editing", "a.ts"],
+						status: "Editing a.ts",
+					},
+					{
+						parts: ["Editing", "a.ts"],
+						status: "Editing a.ts",
+					},
+					{
+						parts: ["Reading"],
+						status: "Reading",
+					},
+				]);
+			},
+		);
 	});
 });
