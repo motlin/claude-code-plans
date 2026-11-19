@@ -205,9 +205,8 @@ _verify-read-only: _build-bundle fallow-check _verify-pre-commit
 _verify-pre-commit: install
     SKIP=oxfmt,fallow pre-commit run --all-files
 
-# typecheck after build, which regenerates the gitignored src/routeTree.gen.ts that tsc reads
 [private]
-_build-bundle: build perf-bundle client-boundaries typecheck
+_build-bundle: build perf-bundle client-boundaries
 
 # Last, because the tests read the build's .output
 [private]

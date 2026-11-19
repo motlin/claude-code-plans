@@ -69,7 +69,10 @@ export default defineConfig(
 		{
 			tasks:
 			{
-				// Add dependsOn here for code generation that type-aware lint needs.
+				// Add dependsOn here for code generation that type-aware lint needs. The gitignored src/routeTree.gen.ts needs
+				// none: vp check resolves this config, and the TanStack router generator writes the tree in configResolved
+				// before linting starts. typeCheck: true below makes vp check the gate's only type check, so `just verify`
+				// does not also run tsc.
 				// `just format` runs oxfmt-next-line; vp check would otherwise reformat everything with vp fmt defaults.
 				check:
 				{
