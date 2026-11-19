@@ -40,6 +40,7 @@ import {capDetails, parseHookMessage} from "./hook-prompt-block";
 import {JsonlRecordSchema} from "./runtime-schemas";
 import
 {
+	parseCommandBlock,
 	extractSessionTitle,
 	extractToolResultContent,
 	extractToolResultImages,
@@ -1481,6 +1482,14 @@ function* processRecordBatchSteps(
 	const delivered = new Set<ProcessedLine>();
 	// Per deferred_tools_delta uuid, the description each surfaced tool resolved to.
 	const surfacedDescriptions = new Map<string, Map<string, string | undefined>>();
+	// CLI 2.1.243 local-command echoes by uuid: their output records name no command.
+	const unnamedCommandEchoes = new Map<
+		string,
+		{
+			command: string;
+			args: string;
+		}
+	>();
 	// Adjacent notices share one line (upstream `Jd` merges adjacent plugin-less `hook_notice` items).
 	// A turn_duration line between them doesn't split them: upstream's stand-in for it, the `result`
 	// event, adds no item to the entry, so the last item is still the notice.
@@ -1939,8 +1948,27 @@ function* processRecordBatchSteps(
 			const subtype = RenderedSystemSubtypeSchema.safeParse(record.subtype);
 			if (!subtype.success) continue;
 			// The input-echo half of a local command carries no commandRun; the
-			// output half names the command, so render only that one.
-			if (subtype.data === "local_command" && record.commandRun === undefined) continue;
+			// output half names the command, so render only that one. CLI 2.1.243
+			// names it in neither half, so the output borrows its echo's name.
+			let commandRun = record.commandRun;
+			if (subtype.data === "local_command" && commandRun === undefined)
+			{
+				const echo = typeof record.content === "string" ? parseCommandBlock(record.content) : null;
+				if (echo !== null && uuid !== undefined)
+				{
+					unnamedCommandEchoes.set(
+						uuid,
+						{
+							command: echo.name.replace(/^\//, ""),
+							args: echo.args ?? "",
+						},
+					);
+					continue;
+				}
+				commandRun =
+					typeof record.parentUuid === "string" ? unnamedCommandEchoes.get(record.parentUuid) : undefined;
+				if (commandRun === undefined) continue;
+			}
 			// Upstream's model-switched card is drawn for a refusal that moved the turn to a fallback
 			// (`direction: "retry"`), the same records the live refusal scan counts.
 			if (
@@ -1984,7 +2012,7 @@ function* processRecordBatchSteps(
 			if (record.taskKind !== undefined) systemLine.taskKind = record.taskKind;
 			if (record.cronKind !== undefined) systemLine.cronKind = record.cronKind;
 			if (record.noOpStreak !== undefined) systemLine.noOpStreak = record.noOpStreak;
-			if (record.commandRun !== undefined) systemLine.commandRun = record.commandRun;
+			if (commandRun !== undefined) systemLine.commandRun = commandRun;
 			if (record.url !== undefined) systemLine.url = record.url;
 			if (record.originalModel !== undefined) systemLine.originalModel = record.originalModel;
 			if (record.fallbackModel !== undefined) systemLine.fallbackModel = record.fallbackModel;

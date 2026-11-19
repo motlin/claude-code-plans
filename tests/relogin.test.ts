@@ -50,6 +50,33 @@ function userLogin(timestamp: string, stdout = "Login successful"): Record<strin
 	];
 }
 
+/** The dotfiles cd177268 shape (CLI 2.1.243): the command echo and its stdout as two system records, neither naming the command. */
+function unnamedSystemLogin(timestamp: string, stdout = "Login successful"): Record<string, unknown>[]
+{
+	return [
+		{
+			type: "system",
+			subtype: "local_command",
+			uuid: `system-echo-${timestamp}`,
+			timestamp,
+			content:
+				"<command-name>/login</command-name>\n            <command-message>login</command-message>\n            <command-args></command-args>",
+			level: "info",
+			isMeta: false,
+		},
+		{
+			type: "system",
+			subtype: "local_command",
+			parentUuid: `system-echo-${timestamp}`,
+			uuid: `system-stdout-${timestamp}`,
+			timestamp,
+			content: `<local-command-stdout>${stdout}</local-command-stdout>`,
+			level: "info",
+			isMeta: false,
+		},
+	];
+}
+
 function at(records: Record<string, unknown>[]): number | null
 {
 	return loginSucceededAt(processTranscript(records).lines);
@@ -57,12 +84,14 @@ function at(records: Record<string, unknown>[]): number | null
 
 describe("loginSucceededAt", () =>
 {
-	it("reads a successful /login from either record shape, the latest one winning, and ignores a failed one", () =>
+	it("reads a successful /login from any record shape, the latest one winning, and ignores a failed one", () =>
 	{
 		expect(
 			{
 				system: at([systemLogin(LOGIN_AT)]),
 				user: at(userLogin("2026-11-09T04:20:38.407Z")),
+				unnamedSystem: at(unnamedSystemLogin("2026-08-25T02:58:43.012Z")),
+				failedUnnamedSystem: at(unnamedSystemLogin("2026-08-25T02:58:43.012Z", "Login failed")),
 				failedSystem: at([systemLogin(LOGIN_AT, "Login failed")]),
 				failedUser: at(userLogin(LOGIN_AT, "Login failed")),
 				latest: at([
@@ -76,6 +105,8 @@ describe("loginSucceededAt", () =>
 			{
 				system: Date.parse(LOGIN_AT),
 				user: Date.parse("2026-11-09T04:20:38.407Z"),
+				unnamedSystem: Date.parse("2026-08-25T02:58:43.012Z"),
+				failedUnnamedSystem: null,
 				failedSystem: null,
 				failedUser: null,
 				latest: Date.parse("2026-10-07T00:00:00.000Z"),
