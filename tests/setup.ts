@@ -1,8 +1,13 @@
 import {afterAll, afterEach, beforeAll, vi} from "vite-plus/test";
 import {resetAnsweredApprovals} from "../src/lib/answered-approvals";
 import {resetAnsweredSessions} from "../src/lib/answered-sessions";
+import {resetBackgroundTaskViews} from "../src/lib/background-task-focus";
+import {resetThumbStore} from "../src/lib/palette-thumb-store";
+import {resetDefaultJourneyTracker} from "../src/lib/perf/journey";
 import {resetQuestionCardStore} from "../src/lib/question-card-store";
 import {resetSessionUndo} from "../src/lib/session-undo";
+import {resetTerminalCommandsMarked} from "../src/lib/terminal-marked-store";
+import {__unreadStoreTesting} from "../src/lib/unread-store";
 import {captureDomGlobals, restoreDomGlobals} from "./dom-globals";
 import {isolateGitEnvironment} from "./git-fixture";
 import {captureStorageGlobals, restoreStorageGlobals} from "./storage-globals";
@@ -53,15 +58,21 @@ if (typeof navigator !== "undefined" && typeof navigator.sendBeacon !== "functio
 	navigator.sendBeacon = () => true;
 }
 
-// The answer stores keep holds, marks and drafts at module level, and a shared pool runs every file in one module
-// graph, so a test that answers a card would leak into the next file. Reset them after every test, after Testing
-// Library's unmount below (after-hooks run in reverse registration order), as a fresh page would start.
+// The answer stores keep holds, marks and drafts at module level, as do the Background tasks pane's view state, the ⌘K
+// thumbs that loaded, the terminal-marked flag, the unread marks and the perf tracker's queue, and a shared pool runs
+// every file in one module graph, so a test that answers a card would leak into the next file. Reset them after every
+// test, after Testing Library's unmount below (after-hooks run in reverse registration order), as a fresh page would.
 afterEach(() =>
 {
 	resetAnsweredSessions();
 	resetAnsweredApprovals();
 	resetQuestionCardStore();
 	resetSessionUndo();
+	resetBackgroundTaskViews();
+	resetThumbStore();
+	resetTerminalCommandsMarked();
+	__unreadStoreTesting.reset();
+	resetDefaultJourneyTracker();
 });
 
 declare global
@@ -70,6 +81,8 @@ declare global
 	{
 		/** The animation frames still queued, kept on the window so a shared-dom worker's rerun of this file finds them. */
 		ccbPendingAnimationFrames?: Set<number>;
+		/** The empty React root setup releases a stuck press on, kept on the window so a rerun of this file reuses it. */
+		ccbPressReleaseTarget?: HTMLElement;
 	}
 }
 
@@ -171,6 +184,21 @@ if (typeof window !== "undefined")
 	{
 		cancelPendingRecentsRowCount();
 	});
+	// React's onSelect polyfill holds a module-level "mouse is down" flag from a mousedown until a mouseup, and drops
+	// every select event meanwhile, so a test that presses without releasing would silence onSelect in every later test
+	// in a shared-dom worker. Release it on an empty root of its own, as the user lifting the button would.
+	const releaseTarget = await pressReleaseTarget(window);
+	afterEach(() =>
+	{
+		releaseTarget.dispatchEvent(
+			new MouseEvent(
+				"mouseup",
+				{
+					bubbles: true,
+				},
+			),
+		);
+	});
 	afterEach(() =>
 	{
 		cleanup();
@@ -183,6 +211,17 @@ if (typeof window !== "undefined")
 	{
 		restoreDomGlobals();
 	});
+}
+
+async function pressReleaseTarget(win: Window): Promise<HTMLElement>
+{
+	if (win.ccbPressReleaseTarget !== undefined) return win.ccbPressReleaseTarget;
+	const {createRoot} = await import("react-dom/client");
+	const target = win.document.createElement("div");
+	// createRoot attaches React's event listeners to the container; nothing is ever rendered into it.
+	createRoot(target);
+	win.ccbPressReleaseTarget = target;
+	return target;
 }
 
 function trackAnimationFrames(win: Window): Set<number>

@@ -33,3 +33,11 @@ export function useTerminalCommandsMarked(): boolean
 		() => false,
 	);
 }
+
+/** Clear the flag, as a reload would. */
+export function resetTerminalCommandsMarked(): void
+{
+	if (!marked) return;
+	marked = false;
+	for (const listener of listeners) listener();
+}

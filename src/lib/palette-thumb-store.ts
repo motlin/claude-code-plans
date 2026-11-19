@@ -74,3 +74,11 @@ export function preferredThumbSrc(thumb: PaletteThumb, failed: ReadonlySet<strin
 {
 	return failed.has(thumb.src) && thumb.fallbackSrc !== undefined ? thumb.fallbackSrc : thumb.src;
 }
+
+/** Forget every loaded and failed src, as a reload would. */
+export function resetThumbStore(): void
+{
+	loadedSrcs.clear();
+	failedSrcs = new Set();
+	for (const listener of failedListeners) listener();
+}

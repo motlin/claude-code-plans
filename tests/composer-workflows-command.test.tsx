@@ -274,6 +274,8 @@ describe("/workflows Custom command twin", () =>
 		],
 	]);
 
+	// Typing moves the caret, and the browser reports it with selectionchange, so React's onSelect sees the caret where
+	// the text ends; without it React would report the stale caret on the next keydown, after Enter has accepted a row.
 	function type(textarea: HTMLTextAreaElement, text: string)
 	{
 		fireEvent.change(
@@ -285,6 +287,7 @@ describe("/workflows Custom command twin", () =>
 				},
 			},
 		);
+		fireEvent(document, new Event("selectionchange"));
 	}
 
 	function key(textarea: HTMLTextAreaElement, name: string)

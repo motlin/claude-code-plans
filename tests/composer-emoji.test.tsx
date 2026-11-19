@@ -1,8 +1,16 @@
 // @vitest-environment jsdom
 
 import {cleanup, fireEvent, render, screen} from "@testing-library/react";
-import {afterEach, describe, expect, it, vi} from "vite-plus/test";
+import {afterEach, beforeAll, describe, expect, it, vi} from "vite-plus/test";
 import {Composer} from "../src/components/composer";
+import {preloadComposerSurfaces} from "../src/components/composer-surfaces-entry";
+
+// Load the deferred composer chunks up front, as the page warms them before first use, so a download one of these tests
+// starts cannot land after this file's environment is torn down.
+beforeAll(async () =>
+{
+	await preloadComposerSurfaces();
+});
 
 afterEach(() =>
 {

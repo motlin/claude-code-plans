@@ -517,6 +517,48 @@ describe("journey tracker", () =>
 		harness.setVisibility("hidden");
 		expect(harness.sent).toHaveLength(1);
 	});
+
+	it("flushes the queue once, 30s after its first sample, on a one-shot timer a fake clock's runAll can drain", async () =>
+	{
+		const harness = makeHarness();
+		const main = document.createElement("div");
+		main.setAttribute("data-perf-region", "main");
+		main.textContent = "ready";
+		document.body.append(main);
+
+		async function journey(id: string)
+		{
+			harness.tracker.startJourney(
+				id,
+				{
+					trigger: "navigation",
+				},
+			);
+			const done = harness.tracker.endJourneyWhenRendered(id, '[data-perf-region="main"]');
+			await flushMicrotasks();
+			harness.runFrame();
+			await done;
+		}
+		await journey("J1");
+		await journey("J3");
+		const flushTimers = harness.delayed.filter(([ms]) => ms === 30_000);
+		for (const [, callback] of flushTimers) callback();
+		await journey("J4");
+
+		expect(
+			{
+				flushTimers: flushTimers.length,
+				sent: harness.sent.map((batch) => batch.map((sample) => sample.journey)),
+				rearmed: harness.delayed.filter(([ms]) => ms === 30_000).length,
+			},
+		).toStrictEqual(
+			{
+				flushTimers: 1,
+				sent: [["J1", "J3"]],
+				rearmed: 2,
+			},
+		);
+	});
 });
 
 describe("default browser tracker", () =>

@@ -36,7 +36,7 @@ export function transcriptRowAt(line: number): string
 
 const PERF_BEACON_PATH = "/api/perf";
 
-const FLUSH_INTERVAL_MS = 30_000;
+const FLUSH_DELAY_MS = 30_000;
 const ANCHOR_TIMEOUT_MS = 30_000;
 const ENTRY_BUFFER_LIMIT = 500;
 const PHONE_MAX_WIDTH = 768;
@@ -177,8 +177,7 @@ export interface JourneyEnvironment
 	mode: "dev" | "prod";
 	requestAnimationFrame: (callback: FrameRequestCallback) => number;
 	setTimeout: (callback: () => void, ms?: number) => unknown;
-	setInterval: (callback: () => void, ms: number) => unknown;
-	clearInterval: (handle: unknown) => void;
+	clearTimeout: (handle: unknown) => void;
 	send: (batch: JourneySample[]) => void;
 }
 
@@ -446,7 +445,12 @@ export function createJourneyTracker(environment: JourneyEnvironment): JourneyTr
 	function enqueue(sample: JourneySample): void
 	{
 		queue.push(sample);
-		flushTimer ??= environment.setInterval(flush, FLUSH_INTERVAL_MS);
+		// One-shot, not an interval: an idle page arms nothing, and a test's fake clock can run every timer to the end.
+		flushTimer ??= environment.setTimeout(() =>
+		{
+			flushTimer = undefined;
+			flush();
+		}, FLUSH_DELAY_MS);
 	}
 
 	function entriesBetween<T extends ObservedEntry>(
@@ -674,7 +678,7 @@ export function createJourneyTracker(environment: JourneyEnvironment): JourneyTr
 			document.removeEventListener("visibilitychange", onVisibilityChange);
 			for (const observer of observers) observer.disconnect();
 			for (const cancel of cancelWaits) cancel();
-			if (flushTimer !== undefined) environment.clearInterval(flushTimer);
+			if (flushTimer !== undefined) environment.clearTimeout(flushTimer);
 			active.clear();
 			queue = [];
 		},
@@ -718,10 +722,9 @@ export function browserEnvironment(): JourneyEnvironment
 		requestAnimationFrame: (callback) =>
 			hasWindow() ? window.requestAnimationFrame(whileWindowExists(callback)) : 0,
 		setTimeout: (callback, ms) => (hasWindow() ? window.setTimeout(whileWindowExists(callback), ms) : undefined),
-		setInterval: (callback, ms) => (hasWindow() ? window.setInterval(whileWindowExists(callback), ms) : undefined),
-		clearInterval: (handle) =>
+		clearTimeout: (handle) =>
 		{
-			if (hasWindow() && typeof handle === "number") window.clearInterval(handle);
+			if (hasWindow() && typeof handle === "number") window.clearTimeout(handle);
 		},
 		send: (batch) =>
 		{
@@ -745,6 +748,13 @@ export function defaultJourneyTracker(): JourneyTracker | undefined
 	if (typeof window === "undefined") return undefined;
 	defaultTracker ??= createJourneyTracker(browserEnvironment());
 	return defaultTracker;
+}
+
+/** Drops the shared tracker with its queue, observers and timers, as leaving the page would; the next use makes a new one. */
+export function resetDefaultJourneyTracker(): void
+{
+	defaultTracker?.dispose();
+	defaultTracker = undefined;
 }
 
 /** Starts timing journey `id` from `trigger`'s timeStamp (or navigation start). A no-op during SSR. */

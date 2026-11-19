@@ -117,3 +117,12 @@ export function useOpenTaskRows(sessionId: string | undefined): ReadonlyMap<stri
 		() => EMPTY_ROWS,
 	);
 }
+
+/** Forget every session's pending focus request and pane view state, as a reload would. */
+export function resetBackgroundTaskViews(): void
+{
+	pendingBySession.clear();
+	finishedBySession.clear();
+	openRowsBySession.clear();
+	notifyView();
+}

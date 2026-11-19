@@ -1511,6 +1511,7 @@ describe("BackgroundTasksList per-row Stop", () =>
 				}}
 			/>,
 		);
+		fireEvent.click(finishedToggle());
 		expect(
 			[...document.querySelectorAll("[data-task-id] [data-background-task]")].map((opener) =>
 				opener.className.split(" ").includes("pe-9.5"),

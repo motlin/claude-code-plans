@@ -120,6 +120,8 @@ export interface JourneyHarness
 	sent: JourneySample[][];
 	frames: (() => void)[];
 	timers: (() => void)[];
+	/** Timers with a delay, which never fire on their own: the 30 s anchor timeout and the 30 s flush. */
+	delayed: [number, () => void][];
 	runFrame(): void;
 	setVisibility(state: DocumentVisibilityState): void;
 }
@@ -164,6 +166,7 @@ export function makeJourneyHarness(overrides: Partial<JourneyEnvironment> = {}):
 	const sent: JourneySample[][] = [];
 	const frames: (() => void)[] = [];
 	const timers: (() => void)[] = [];
+	const delayed: [number, () => void][] = [];
 	const environment: JourneyEnvironment =
 	{
 		document,
@@ -184,15 +187,18 @@ export function makeJourneyHarness(overrides: Partial<JourneyEnvironment> = {}):
 			});
 			return frames.length;
 		},
-		// Only zero-delay timers are part of a frame; the 30 s anchor timeout never fires on its own.
+		// Only zero-delay timers are part of a frame; delayed ones wait in `delayed` until a test runs them.
 		setTimeout: (callback, ms) =>
 		{
-			if (ms !== undefined && ms > 0) return 0;
+			if (ms !== undefined && ms > 0)
+			{
+				delayed.push([ms, callback]);
+				return 0;
+			}
 			timers.push(callback);
 			return timers.length;
 		},
-		setInterval: () => 0,
-		clearInterval: () =>
+		clearTimeout: () =>
 		{
 		},
 		send: (batch) =>
@@ -210,6 +216,7 @@ export function makeJourneyHarness(overrides: Partial<JourneyEnvironment> = {}):
 		sent,
 		frames,
 		timers,
+		delayed,
 		runFrame()
 		{
 			for (const frame of frames.splice(0)) frame();
