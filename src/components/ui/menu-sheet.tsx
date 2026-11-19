@@ -391,10 +391,7 @@ const SHEET_SIZE =
 	}
 >;
 
-type SheetPopupProps = Omit<
-	ComponentProps<typeof BaseMenu.Popup>,
-	"className" | "children" | "finalFocus" | "onKeyDown" | "render"
->;
+type SheetPopupProps = Omit<ComponentProps<typeof BaseMenu.Popup>, "className" | "children" | "finalFocus" | "render">;
 
 export interface SheetContentProps
 {
@@ -513,7 +510,11 @@ export function RootSheetContent({children, className, finalFocus, popupProps, c
 										className={popupClass(SHEET_POPUP_CLASS, size)}
 										data-cds-sheet-detent={detent}
 										style={popupStyle(detent, frame.height, popupProps?.style)}
-										onKeyDown={handleSheetKey}
+										onKeyDown={(event) =>
+										{
+											handleSheetKey(event);
+											popupProps?.onKeyDown?.(event);
+										}}
 										{...(finalFocus === undefined
 											? {}
 											:
@@ -592,7 +593,11 @@ export function NestedSheetContent({
 							className={popupClass(SHEET_NESTED_POPUP_CLASS, size)}
 							data-cds-sheet-detent={detent}
 							style={popupStyle(detent, frame?.height, popupProps?.style)}
-							onKeyDown={handleSheetKey}
+							onKeyDown={(event) =>
+							{
+								handleSheetKey(event);
+								popupProps?.onKeyDown?.(event);
+							}}
 							{...(finalFocus === undefined
 								? {}
 								:

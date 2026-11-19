@@ -1,4 +1,4 @@
-import {queryOptions} from "@tanstack/react-query";
+import {type QueryClient, queryOptions} from "@tanstack/react-query";
 import {z} from "zod";
 
 import {apiFetch} from "./client";
@@ -100,3 +100,23 @@ export const fileRefStatusQueryOptions = (path: string) =>
 			staleTime: 60_000,
 		},
 	);
+
+/** Whether `path` is gone now (upstream `U`'s fresh check as a file menu opens); false when the check fails. */
+export async function isFileRefGone(queryClient: QueryClient, path: string): Promise<boolean>
+{
+	try
+	{
+		return (
+			(await queryClient.query(
+				{
+					...fileRefStatusQueryOptions(path),
+					staleTime: 0,
+				},
+			)) === "missing"
+		);
+	}
+	catch
+	{
+		return false;
+	}
+}

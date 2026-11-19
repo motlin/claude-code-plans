@@ -28,6 +28,7 @@ import
 import {DialogPopup} from "./ui/dialog-popup";
 import {morph, setMorphName} from "../lib/image-viewer-morph";
 import {nativeTitle} from "../lib/visible-text";
+import {ImageContextMenu} from "./image-context-menu";
 import type {AttachedImage} from "./user-attachments";
 
 /** Clicks this close to the Close button never select the neighbour slide underneath it. */
@@ -106,22 +107,13 @@ function pagerButtonClass(disabled: boolean): string
 	return `p-2 rounded-lg ${disabled ? "text-white/30 cursor-default" : "text-white hover:bg-white/10"}`;
 }
 
-/**
- * Upstream's full-screen image viewer: every image is a 75vw slide in a
- * translateX track centred on the active one, neighbours peeking at 40%
- * opacity (click one to select it), Close at the top right, and a
- * non-wrapping Previous / "N of M" / Next pager. The active slide is a zoom
- * toggle (click, Enter/Space, ctrl+wheel pinch) and a zoomed image pans by
- * drag or wheel. Opening morphs from the `origin` thumbnail (hidden while
- * open) and closing morphs back, then refocuses what had focus. Decoded in
- * .llm/upstream-sync/dumps/image-viewer-bundle.txt.
- */
 export function ImageViewer({
 	images,
 	index,
 	origin = null,
 	captions,
 	fallbackFocus,
+	sessionId,
 	onIndexChange,
 	onClose,
 }: {
@@ -136,6 +128,8 @@ export function ImageViewer({
 	captions?: readonly (string | undefined)[];
 	/** Where focus goes on close when what had focus is gone and it fell to the body. */
 	fallbackFocus?: () => HTMLElement | null;
+	/** The session a referenced image's Attach as context goes to. */
+	sessionId?: string | undefined;
 	onIndexChange: (index: number) => void;
 	onClose: () => void;
 })
@@ -517,29 +511,37 @@ export function ImageViewer({
 											width: "75vw",
 										}}
 									>
-										{/* oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions -- the slide around it is the keyboard zoom button */}
-										<img
-											ref={active ? activeImgRef : undefined}
+										{/* Upstream's gallery slide (cdc2e8a7b `s`): only the active image opens the image menu. */}
+										<ImageContextMenu
 											src={image.src}
-											alt={image.label}
-											decoding={active ? "sync" : "async"}
-											referrerPolicy="no-referrer"
-											onDragStart={preventDrag}
-											onClick={active ? onImgClick : undefined}
-											onPointerDown={slideZoom === null ? undefined : onPanStart}
-											onPointerMove={slideZoom === null ? undefined : onPanMove}
-											onPointerUp={onPanEnd}
-											onPointerCancel={onPanEnd}
-											style={
-												slideZoom === null
-													? undefined
-													:
-														{
-															transform: zoomTransform(slideZoom),
-														}
-											}
-											className={slideImgClass(active, slideZoom !== null)}
-										/>
+											path={image.path}
+											sessionId={sessionId}
+											disabled={!active}
+										>
+											{/* oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions -- the slide around it is the keyboard zoom button */}
+											<img
+												ref={active ? activeImgRef : undefined}
+												src={image.src}
+												alt={image.label}
+												decoding={active ? "sync" : "async"}
+												referrerPolicy="no-referrer"
+												onDragStart={preventDrag}
+												onClick={active ? onImgClick : undefined}
+												onPointerDown={slideZoom === null ? undefined : onPanStart}
+												onPointerMove={slideZoom === null ? undefined : onPanMove}
+												onPointerUp={onPanEnd}
+												onPointerCancel={onPanEnd}
+												style={
+													slideZoom === null
+														? undefined
+														:
+															{
+																transform: zoomTransform(slideZoom),
+															}
+												}
+												className={slideImgClass(active, slideZoom !== null)}
+											/>
+										</ImageContextMenu>
 									</div>
 								);
 							})}

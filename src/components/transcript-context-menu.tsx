@@ -1,8 +1,8 @@
-import {type QueryClient, QueryClientContext} from "@tanstack/react-query";
+import {QueryClientContext} from "@tanstack/react-query";
 import {type ComponentProps, type ReactNode, useContext, useRef, useState} from "react";
 
 import {MIN_EXCERPT_LENGTH} from "../hooks/use-transcript-selection-attach";
-import {fileRefStatusQueryOptions} from "../lib/api/file-refs";
+import {isFileRefGone} from "../lib/api/file-refs";
 import {writeClipboardText} from "../lib/clipboard";
 import {CODEBLOCK_CLASS, CODEBLOCK_COPY_ATTR, CODEBLOCK_TEXT_ATTR} from "../lib/client-markdown";
 import {useSessionChapters} from "../lib/chapter-store";
@@ -161,26 +161,6 @@ function snapshotSelection(turn: Element): string | null
 /** Upstream `Kn`'s `beforeOpen`: the longest a file menu waits on its "is this path gone?" check. */
 const GONE_CHECK_WAIT_MS = 150;
 
-/** Whether `path` no longer exists, rechecked now; a failed check counts as present. */
-async function checkGone(queryClient: QueryClient, path: string): Promise<boolean>
-{
-	try
-	{
-		return (
-			(await queryClient.query(
-				{
-					...fileRefStatusQueryOptions(path),
-					staleTime: 0,
-				},
-			)) === "missing"
-		);
-	}
-	catch
-	{
-		return false;
-	}
-}
-
 const MENU_WIDTH =
 {
 	assistant: "w-[225px]",
@@ -325,6 +305,16 @@ export function TranscriptMessageMenu({
 				}}
 				onContextMenu={(event) =>
 				{
+					// Upstream `eT`/`yw`: a nested menu already handled it, or it bubbled out of a React portal.
+					if (
+						event.defaultPrevented ||
+						!(event.target instanceof Node) ||
+						!event.currentTarget.contains(event.target)
+					)
+					{
+						event.preventBaseUIHandler();
+						return;
+					}
 					const nextTarget = resolveMenuTarget(
 						event.target instanceof Element ? event.target : null,
 						fallback,
@@ -343,7 +333,7 @@ export function TranscriptMessageMenu({
 					goneCheck.current = null;
 					if (nextTarget.kind === "file" && queryClient !== undefined)
 					{
-						const check = checkGone(queryClient, nextTarget.path);
+						const check = isFileRefGone(queryClient, nextTarget.path);
 						goneCheck.current = check;
 						void check.then((isGone) =>
 						{

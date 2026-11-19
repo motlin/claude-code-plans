@@ -2,6 +2,7 @@ import {PreviewCard} from "@base-ui/react/preview-card";
 import {lazy, type MouseEvent, type ReactNode, Suspense, useId, useState} from "react";
 
 import type {ToolResultImage} from "../lib/session-utils";
+import {ImageContextMenu} from "./image-context-menu";
 
 const ImageViewer = lazy(async () =>
 	import("./image-viewer").then((module) => (
@@ -222,32 +223,37 @@ function Thumbnail({shot, caption, descriptionId, groupIndex, total, lazy, viewe
 	};
 	return (
 		<PreviewCard.Root open={previewOpen && !viewerOpen} onOpenChange={setPreviewOpen}>
-			<PreviewCard.Trigger
-				delay={PREVIEW_DELAY_MS}
-				closeDelay={0}
-				render={
-					<button
-						type="button"
-						aria-label={label}
-						aria-describedby={caption === undefined ? undefined : descriptionId}
-						className={THUMB_CLASS}
-						onClick={handleClick}
+			{/* Upstream cb6930dae `uo`: the thumbnail opens the image menu, not the tool row's. */}
+			<ImageContextMenu src={src}>
+				<PreviewCard.Trigger
+					// The image menu would otherwise drop the thumbnail out of the tab order.
+					tabIndex={0}
+					delay={PREVIEW_DELAY_MS}
+					closeDelay={0}
+					render={
+						<button
+							type="button"
+							aria-label={label}
+							aria-describedby={caption === undefined ? undefined : descriptionId}
+							className={THUMB_CLASS}
+							onClick={handleClick}
+						/>
+					}
+				>
+					<img
+						alt=""
+						className="h-full w-auto max-w-full object-cover object-left-top"
+						src={src}
+						{...(lazy
+							?
+								{
+									loading: "lazy",
+									decoding: "async",
+								}
+							: {})}
 					/>
-				}
-			>
-				<img
-					alt=""
-					className="h-full w-auto max-w-full object-cover object-left-top"
-					src={src}
-					{...(lazy
-						?
-							{
-								loading: "lazy",
-								decoding: "async",
-							}
-						: {})}
-				/>
-			</PreviewCard.Trigger>
+				</PreviewCard.Trigger>
+			</ImageContextMenu>
 			<PreviewCard.Portal>
 				<PreviewCard.Positioner side="top" align="end" className="pointer-events-none z-[100]">
 					<PreviewCard.Popup data-screenshot-preview="" className={PREVIEW_POPUP_CLASS}>
@@ -293,18 +299,24 @@ export function StepScreenshots({images, padTop = true, captions}: StepScreensho
 	return (
 		<div data-step-screenshots="" className={`flex flex-col items-start gap-1${padTop ? " pt-p8" : ""}`}>
 			{images.map((image, index) => (
-				<button
-					key={index}
-					type="button"
-					aria-label="View screenshot"
-					className="max-w-full cursor-zoom-in focus-visible:outline-hidden hide-focus-ring focus-visible:ring-focus rounded-sm"
-					onClick={(event) =>
-					{
-						viewer.open(index, event.currentTarget);
-					}}
-				>
-					<img alt="" className="max-w-full max-h-[360px] w-auto rounded-r4 border" src={imageSrc(image)} />
-				</button>
+				<ImageContextMenu key={index} src={imageSrc(image)}>
+					<button
+						type="button"
+						tabIndex={0}
+						aria-label="View screenshot"
+						className="max-w-full cursor-zoom-in focus-visible:outline-hidden hide-focus-ring focus-visible:ring-focus rounded-sm"
+						onClick={(event) =>
+						{
+							viewer.open(index, event.currentTarget);
+						}}
+					>
+						<img
+							alt=""
+							className="max-w-full max-h-[360px] w-auto rounded-r4 border"
+							src={imageSrc(image)}
+						/>
+					</button>
+				</ImageContextMenu>
 			))}
 			{viewer.viewer}
 		</div>

@@ -1,13 +1,15 @@
 // @vitest-environment jsdom
 
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
-import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
+import {act, cleanup, createEvent, fireEvent, render, screen} from "@testing-library/react";
 import type {ReactNode} from "react";
+import {createPortal} from "react-dom";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {FileRefsProvider} from "../src/components/file-refs-context";
 import {SessionChat} from "../src/components/session-chat";
 import {ToastProvider} from "../src/components/toast";
+import {TranscriptMessageMenu} from "../src/components/transcript-context-menu";
 import {CompactScope} from "./fizzy-lake-off";
 import {type TranscriptActions, TranscriptActionsContext} from "../src/components/transcript-actions-context";
 import {toggleUserChapterAt} from "../src/lib/chapter-store";
@@ -1849,6 +1851,97 @@ describe("transcript file ref menus", () =>
 				rows: ["Copy path", "---", ...ASSISTANT_ROWS],
 				clipboard: [["src/app.ts:12"]],
 				toasts: [],
+			},
+		);
+	});
+});
+
+describe("portaled content", () =>
+{
+	function renderTurn(): void
+	{
+		render(
+			<TranscriptMessageMenu
+				speaker="user"
+				sessionId="test-session"
+				uuid="user-1"
+				markdown="Please run the tests"
+				render={<div data-testid="turn" />}
+			>
+				<p>Please run the tests</p>
+				<button
+					type="button"
+					data-testid="handled"
+					onContextMenu={(event) =>
+					{
+						event.preventDefault();
+					}}
+				>
+					own menu
+				</button>
+				{createPortal(<div data-testid="portal">x</div>, document.body)}
+			</TranscriptMessageMenu>,
+		);
+	}
+
+	function rightClick(testId: string):
+	{
+		defaultPrevented: boolean;
+		menus: number;
+	}
+	{
+		const event = createEvent.contextMenu(
+			screen.getByTestId(testId),
+			{
+				clientX: 10,
+				clientY: 10,
+			},
+		);
+		fireEvent(screen.getByTestId(testId), event);
+		return {
+			defaultPrevented: event.defaultPrevented,
+			menus: screen.queryAllByRole("menu").length,
+		};
+	}
+
+	it("leaves a right-click inside a React portal to the browser menu (upstream yw)", () =>
+	{
+		renderTurn();
+
+		expect(rightClick("portal")).toStrictEqual(
+			{
+				defaultPrevented: false,
+				menus: 0,
+			},
+		);
+	});
+
+	it("opens no transcript menu over a right-click a nested handler already prevented", () =>
+	{
+		renderTurn();
+
+		expect(rightClick("handled")).toStrictEqual(
+			{
+				defaultPrevented: true,
+				menus: 0,
+			},
+		);
+	});
+
+	it("still opens the user menu on the turn's own text", () =>
+	{
+		renderTurn();
+
+		expect(
+			{
+				...rightClick("turn"),
+				first: screen.queryAllByRole("menuitem")[0]?.textContent,
+			},
+		).toStrictEqual(
+			{
+				defaultPrevented: true,
+				menus: 1,
+				first: "Copy message",
 			},
 		);
 	});

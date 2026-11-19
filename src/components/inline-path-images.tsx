@@ -11,5 +11,6 @@ export function inlinePathImages(text: string, allowedRoots: readonly string[]):
 			key: `path:${path}`,
 			src: `/api/image?path=${encodeURIComponent(path)}`,
 			label: `Referenced file ${path}`,
+			path,
 		}));
 }

@@ -363,10 +363,7 @@ export interface MenuContentProps
 	cds?: string;
 }
 
-type MenuPopupProps = Omit<
-	ComponentProps<typeof BaseMenu.Popup>,
-	"className" | "children" | "finalFocus" | "onKeyDown" | "render"
-> &
+type MenuPopupProps = Omit<ComponentProps<typeof BaseMenu.Popup>, "className" | "children" | "finalFocus" | "render"> &
 	Partial<Record<`data-${string}`, string>>;
 
 interface MenuContentInternalProps extends MenuContentProps
@@ -470,7 +467,11 @@ export function MenuContent({
 									}
 								: {})}
 							className={className ? `${popupClass} ${className}` : popupClass}
-							onKeyDown={handleAcceleratorKey}
+							onKeyDown={(event) =>
+							{
+								handleAcceleratorKey(event);
+								popupProps?.onKeyDown?.(event);
+							}}
 							{...(finalFocus === undefined
 								? {}
 								:

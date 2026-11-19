@@ -5942,7 +5942,7 @@ function UserEntry({
 				markdown={messageText(line)}
 				render={<UserMessageColumn turnKey={turnKey} className={USER_MESSAGE_CLASS} />}
 			>
-				<UserAttachments images={images} />
+				<UserAttachments images={images} sessionId={sessionId} />
 				<MessageQuoteTiles snippets={excerpts} annotations={annotations} />
 				{textNodes.length > 0 && <UserPromptBubble text={messageText(line)}>{textNodes}</UserPromptBubble>}
 				{mediaNodes}
@@ -6592,7 +6592,7 @@ function CompactSummaryBody({
 	return (
 		<div id={id} className="flex justify-end pt-p6">
 			<div className={USER_MESSAGE_CLASS}>
-				<UserAttachments images={images} />
+				<UserAttachments images={images} sessionId={sessionId} />
 				{textNodes.length > 0 && <UserBubbleBox className={AUTO_BUBBLE_CLASS}>{textNodes}</UserBubbleBox>}
 				{mediaNodes}
 				<UserTurnActions line={line} sessionId={sessionId} contextText="Compacted conversation" />
@@ -6625,7 +6625,7 @@ function LabeledAutomatedEntry({
 						{label}
 					</span>
 				</div>
-				<UserAttachments images={images} />
+				<UserAttachments images={images} sessionId={sessionId} />
 				{textNodes.length > 0 && <UserBubbleBox className={AUTO_BUBBLE_CLASS}>{textNodes}</UserBubbleBox>}
 				{mediaNodes}
 				<UserTurnActions line={line} sessionId={sessionId} />

@@ -133,11 +133,13 @@ describe("client-side image root filtering", () =>
 				key: "path:/tmp/test/images/alice+detail.png",
 				src: "/api/image?path=%2Ftmp%2Ftest%2Fimages%2Falice%2Bdetail.png",
 				label: "Referenced file /tmp/test/images/alice+detail.png",
+				path: "/tmp/test/images/alice+detail.png",
 			},
 			{
 				key: "path:/tmp/test/images/bob.gif",
 				src: "/api/image?path=%2Ftmp%2Ftest%2Fimages%2Fbob.gif",
 				label: "Referenced file /tmp/test/images/bob.gif",
+				path: "/tmp/test/images/bob.gif",
 			},
 		]);
 	});
