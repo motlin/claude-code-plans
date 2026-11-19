@@ -211,6 +211,13 @@ const RECORDS: unknown[] = [
 			},
 		},
 	),
+	attachment(
+		"att-workflow-size",
+		{
+			type: "workflow_size_guideline_change",
+			size: "large",
+		},
+	),
 ];
 
 const DIAGNOSTIC_TEXT = [
@@ -224,6 +231,7 @@ const DIAGNOSTIC_TEXT = [
 	"Auto mode",
 	"Hook context: PostToolUse:Bash",
 	"Hook context: UserPromptSubmit",
+	"Workflow size: large",
 ];
 
 function renderRecords(records: unknown[], mode: TranscriptMode, showHookWarnings = true): HTMLElement

@@ -85,6 +85,8 @@ beforeAll(async () =>
 		);
 	vi.stubEnv("HOME", home);
 	vi.stubEnv("XDG_CONFIG_HOME", join(root, "config"));
+	// A developer shell may turn fast mode off; the ceilings assume the default.
+	vi.stubEnv("CLAUDE_CODE_DISABLE_FAST_MODE", "");
 
 	// Load the routes and the scope as one module graph, so the handlers report into the scope this test opens.
 	vi.resetModules();

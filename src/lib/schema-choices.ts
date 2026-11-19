@@ -933,7 +933,7 @@ const configChangeSourceLabels =
 	local_settings: "Local settings",
 	policy_settings: "Policy settings",
 	skills: "Skills",
-} satisfies Record<HookEventOf<"ConfigChange">["config_source"], string>;
+} satisfies Record<NonNullable<HookEventOf<"ConfigChange">["config_source"]>, string>;
 
 const modelSwitchSourceLabels =
 {
@@ -1127,6 +1127,7 @@ const attachmentVariants =
 	async_hook_response: true,
 	deferred_tools_delta: true,
 	agent_listing_delta: true,
+	workflow_size_guideline_change: true,
 	mcp_instructions_delta: true,
 	skill_listing: true,
 	dynamic_skill: true,

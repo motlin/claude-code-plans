@@ -154,6 +154,137 @@ describe("HookEventEnvelope", () =>
 		}
 	});
 
+	it("parses SessionStart resume event with prompt-cache fields", () =>
+	{
+		const result = HookEventEnvelope.safeParse(
+			{
+				...baseEnvelope,
+				hook_event_name: "SessionStart",
+				source: "resume",
+				context_tokens: 141167,
+				estimated_cache_write_usd: 1.1293,
+				prompt_cache_likely_expired: false,
+				seconds_since_last_response: 86,
+			},
+		);
+		expect(result.error).toBeUndefined();
+	});
+
+	it("parses ConfigChange with source and file_path instead of config_source", () =>
+	{
+		const result = HookEventEnvelope.safeParse(
+			{
+				...baseEnvelope,
+				hook_event_name: "ConfigChange",
+				source: "skills",
+				file_path: "/tmp/test/skills/example/SKILL.md",
+			},
+		);
+		expect(result.error).toBeUndefined();
+	});
+
+	it("parses PostToolUse for Bash with a bashEditDiff", () =>
+	{
+		const result = HookEventEnvelope.safeParse(
+			{
+				...baseEnvelope,
+				hook_event_name: "PostToolUse",
+				tool_name: "Bash",
+				tool_input:
+				{
+					command: "sed -i 's/a/b/' example.ts",
+				},
+				tool_response:
+				{
+					stdout: "",
+					stderr: "",
+					bashEditDiff:
+					{
+						files: [
+							{
+								filePath: "/tmp/test/example.ts",
+								hunks: [
+									{
+										oldStart: 6,
+										oldLines: 6,
+										newStart: 6,
+										newLines: 9,
+										lines: [" context", "-old", "+new"],
+									},
+								],
+							},
+							{
+								filePath: "/tmp/test/new.ts",
+								hunks: [],
+								created: true,
+							},
+							{
+								filePath: "/tmp/test/gone.ts",
+								hunks: [],
+								deleted: true,
+							},
+						],
+						moreFiles: 0,
+						changedFiles: ["/tmp/test/example.ts"],
+						unavailable: true,
+						shared: true,
+					},
+				},
+			},
+		);
+		expect(result.error).toBeUndefined();
+	});
+
+	it("parses PostToolUse for Edit with contentNotInModelContext", () =>
+	{
+		const result = HookEventEnvelope.safeParse(
+			{
+				...baseEnvelope,
+				hook_event_name: "PostToolUse",
+				tool_name: "Edit",
+				tool_input:
+				{
+					file_path: "/tmp/test/a.ts",
+					old_string: "a",
+					new_string: "b",
+				},
+				tool_response:
+				{
+					filePath: "/tmp/test/a.ts",
+					oldString: "a",
+					newString: "b",
+					originalFile: "a",
+					structuredPatch: [],
+					userModified: false,
+					replaceAll: false,
+					contentNotInModelContext: true,
+				},
+			},
+		);
+		expect(result.error).toBeUndefined();
+	});
+
+	it.each(["PreToolUse", "PostToolUse", "PostToolUseFailure"])(
+		"parses %s for an MCP tool with mcp_server",
+		(hookEventName) =>
+		{
+			const result = HookEventEnvelope.safeParse(
+				{
+					...baseEnvelope,
+					hook_event_name: hookEventName,
+					tool_name: "mcp__example__tool",
+					tool_input: {},
+					mcp_server:
+					{
+						name: "example",
+						source: "user",
+					},
+				},
+			);
+			expect(result.error).toBeUndefined();
+		},
+	);
+
 	it("requires source on SessionStart", () =>
 	{
 		const result = HookEventEnvelope.safeParse(

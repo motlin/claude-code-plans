@@ -1490,15 +1490,16 @@ export async function dispatchHookEvent({
 			// uses. The viewer is a passive observer — the event is not acted on
 			// beyond the broadcast.
 			store.touchSession(event.session_id);
+			const configSource = event.config_source ?? event.source;
 			broadcast(
 				DOMAIN_EVENTS.CONFIG_CHANGED,
 				{
 					sessionId: event.session_id,
-					configSource: event.config_source,
+					configSource,
 					changedFields: event.changed_fields ?? [],
 				} satisfies ConfigChangedPayload,
 			);
-			if (event.config_source === "skills")
+			if (configSource === "skills")
 			{
 				broadcast(SSE_EVENTS.CONTENT_UPDATED, {});
 			}

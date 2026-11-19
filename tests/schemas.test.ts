@@ -4518,6 +4518,55 @@ describe("JsonlRecordSchema observed on the work machine 2026-10-22", () =>
 		};
 	}
 
+	it("parses an api-request whose trusted_directories list a worktree as an additional session directory", () =>
+	{
+		const fixture = jsonlRecordFixtures["api-request"];
+		const [safeguard] = fixture.params.safeguards;
+		const classifierContext = safeguard!.classifier_context;
+		const record =
+		{
+			...fixture,
+			params:
+			{
+				...fixture.params,
+				safeguards: [
+					{
+						...safeguard!,
+						classifier_context:
+						{
+							...classifierContext,
+							trusted_directories:
+							{
+								...classifierContext.trusted_directories,
+								additional: [
+									{
+										path: "/tmp/test/repo/.claude/worktrees/agent-1",
+										resolved: ["/tmp/test/repo/.claude/worktrees/agent-1"],
+										source: "session",
+									},
+								],
+							},
+						},
+					},
+				],
+			},
+		};
+
+		expect(JsonlRecordSchema.parse(record)).toStrictEqual(record);
+	});
+
+	it("parses a workflow_size_guideline_change attachment", () =>
+	{
+		const record = attachmentRecord(
+			{
+				type: "workflow_size_guideline_change",
+				size: "large",
+			},
+		);
+
+		expect(JsonlRecordSchema.parse(record)).toStrictEqual(record);
+	});
+
 	it("parses an api-request whose auto_mode carries hard_deny rules", () =>
 	{
 		const fixture = jsonlRecordFixtures["api-request"];

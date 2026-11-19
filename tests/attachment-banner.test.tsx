@@ -122,6 +122,11 @@ const MINIMAL_BY_TYPE: Record<string, AttachmentPayload> =
 	{
 		type: "agent_listing_delta",
 	},
+	workflow_size_guideline_change:
+	{
+		type: "workflow_size_guideline_change",
+		size: "large",
+	},
 	mcp_instructions_delta:
 	{
 		type: "mcp_instructions_delta",

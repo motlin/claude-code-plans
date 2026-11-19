@@ -729,6 +729,14 @@ function AttachmentContent({
 				/>
 			);
 		}
+		case "workflow_size_guideline_change":
+			return (
+				<Banner
+					icon={<Workflow className="h-3.5 w-3.5" />}
+					label={`Workflow size: ${attachment.size}`}
+					{...shared}
+				/>
+			);
 		case "mcp_instructions_delta":
 		{
 			const parts: string[] = [];

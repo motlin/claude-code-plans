@@ -447,7 +447,7 @@ export interface InstructionsLoadedPayload
 export interface ConfigChangedPayload
 {
 	sessionId: string;
-	configSource: string;
+	configSource: string | undefined;
 	changedFields: string[];
 }
 
@@ -620,6 +620,42 @@ const BashToolResponseObjectSchema = z
 			backgroundCwdHint: z.string().optional(),
 			staleReadFileStateHint: z.string().optional(),
 			persistedOutputPath: z.string().optional(),
+			/** Files the command changed on disk; `unavailable` / `shared` meanings are undetermined. */
+			bashEditDiff: z
+				.object(
+					{
+						files: z.array(
+							z
+								.object(
+									{
+										filePath: z.string(),
+										hunks: z.array(
+											z
+												.object(
+													{
+														oldStart: z.number().int(),
+														oldLines: z.number().int(),
+														newStart: z.number().int(),
+														newLines: z.number().int(),
+														lines: z.array(z.string()),
+													},
+												)
+												.strict(),
+										),
+										created: z.boolean().optional(),
+										deleted: z.boolean().optional(),
+									},
+								)
+								.strict(),
+						),
+						moreFiles: z.number().int(),
+						changedFiles: z.array(z.string()).optional(),
+						unavailable: z.boolean().optional(),
+						shared: z.boolean().optional(),
+					},
+				)
+				.strict()
+				.optional(),
 		},
 	)
 	.strict();
@@ -661,6 +697,8 @@ const EditToolResponseObjectSchema = z
 			replaceAll: z.boolean().optional(),
 			memdirStamped: z.boolean().optional(),
 			staleRecovered: z.boolean().optional(),
+			/** True on some edits; possibly when the file was never read into context. */
+			contentNotInModelContext: z.boolean().optional(),
 		},
 	)
 	.strict();
@@ -1255,6 +1293,11 @@ const SessionStartHookEvent = z.strictObject(
 		source: z.enum(["startup", "resume", "clear", "compact", "fork"]),
 		model: z.string().optional(),
 		session_title: z.string().optional(),
+		// Prompt-cache state sent on resume.
+		context_tokens: z.number().optional(),
+		estimated_cache_write_usd: z.number().optional(),
+		prompt_cache_likely_expired: z.boolean().optional(),
+		seconds_since_last_response: z.number().optional(),
 	},
 );
 
@@ -1379,6 +1422,14 @@ const PostCompactHookEvent = z.strictObject(
 	},
 );
 
+/** The MCP server that owns a tool, sent beside MCP tool calls. `source` is an open set. */
+const HookMcpServerSchema = z.strictObject(
+	{
+		name: z.string(),
+		source: z.string(),
+	},
+);
+
 /**
  * Build a strict `PreToolUse` / `PostToolUse` variant union. The outer
  * `HookEventEnvelope` discriminates on `hook_event_name`, so we cannot keep a
@@ -1414,6 +1465,7 @@ function buildToolUseEvent(eventName: "PreToolUse" | "PostToolUse")
 			tool_input: JsonValueSchema,
 			tool_response: JsonValueSchema.optional(),
 			duration_ms: z.number().optional(),
+			mcp_server: HookMcpServerSchema.optional(),
 		},
 	);
 	return z.union([...variants, mcpVariant]);
@@ -1472,6 +1524,7 @@ function buildPostToolUseFailureEvent()
 			duration_ms: z.number().optional(),
 			error: z.string().optional(),
 			hook_specific_output: PostToolUseFailureHookSpecificOutput.optional(),
+			mcp_server: HookMcpServerSchema.optional(),
 		},
 	);
 	return z.union([...variants, mcpVariant]);
@@ -1557,14 +1610,6 @@ const PermissionUpdateSchema = z.discriminatedUnion("type", [
 ]);
 
 export type PermissionUpdate = z.infer<typeof PermissionUpdateSchema>;
-
-/** The MCP server that owns a tool, sent beside MCP tool calls. `source` is an open set. */
-const HookMcpServerSchema = z.strictObject(
-	{
-		name: z.string(),
-		source: z.string(),
-	},
-);
 
 /**
  * Build the `PermissionRequest` per-tool union. Fires when the CLI is about to
@@ -1691,6 +1736,14 @@ const InstructionsLoadedHookEvent = z.strictObject(
 	},
 );
 
+const ConfigChangeSourceSchema = z.enum([
+	"user_settings",
+	"project_settings",
+	"local_settings",
+	"policy_settings",
+	"skills",
+]);
+
 /**
  * Fires when a configuration file changes during the session. The viewer's
  * plugins / skills view can go stale if `~/.claude/settings.json` is edited
@@ -1705,7 +1758,10 @@ const ConfigChangeHookEvent = z.strictObject(
 	{
 		...BaseHookFields,
 		hook_event_name: z.literal("ConfigChange"),
-		config_source: z.enum(["user_settings", "project_settings", "local_settings", "policy_settings", "skills"]),
+		/** Older CLIs; newer ones send `source` and `file_path` instead. */
+		config_source: ConfigChangeSourceSchema.optional(),
+		source: ConfigChangeSourceSchema.optional(),
+		file_path: z.string().optional(),
 		changed_fields: z.array(z.string()).optional(),
 	},
 );

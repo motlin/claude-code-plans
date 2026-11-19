@@ -38,6 +38,8 @@ const WorkflowAgentEntrySchema = z.strictObject(
 		queuedAt: z.number().optional(),
 		lastProgressAt: z.number().optional(),
 		attempt: z.number().optional(),
+		/** Why the previous attempt was retried; widen once other reasons appear. */
+		lastAttemptReason: z.literal("stalled").optional(),
 		cached: z.boolean().optional(),
 		lastToolName: z.string().optional(),
 		lastToolSummary: z.string().optional(),

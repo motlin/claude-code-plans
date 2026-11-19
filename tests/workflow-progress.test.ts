@@ -988,6 +988,20 @@ describe("WorkflowProgressEntrySchema", () =>
 		);
 	});
 
+	it("accepts an agent retried after it stalled", () =>
+	{
+		const entry =
+		{
+			type: "workflow_agent",
+			index: 2,
+			label: "poem-2",
+			state: "progress",
+			attempt: 2,
+			lastAttemptReason: "stalled",
+		};
+		expect(WorkflowProgressEntrySchema.parse(entry)).toStrictEqual(entry);
+	});
+
 	it("accepts a queued agent that has no agentId yet", () =>
 	{
 		const entry =

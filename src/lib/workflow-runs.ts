@@ -128,7 +128,10 @@ export const WorkflowAgentMetaSchema = z.strictObject(
 		isBuiltIn: z.boolean().optional(),
 		description: z.string().optional(),
 		workflowPhase: z.string().optional(),
-		spawnDepth: z.number(),
+		/** Absent from meta files that hold only `agentType`. */
+		spawnDepth: z.number().optional(),
+		worktreePath: z.string().optional(),
+		spawnedWithWorktree: z.boolean().optional(),
 		requestShape: z.string().optional(),
 		requestNonInteractive: z.boolean().optional(),
 		model: z.string().optional(),

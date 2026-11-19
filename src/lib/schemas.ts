@@ -1163,6 +1163,16 @@ const AgentListingDeltaAttachmentPayload = z
 	)
 	.strict();
 
+/** Workflow size guideline in effect; only "large" has been seen, so `size` stays open. */
+const WorkflowSizeGuidelineChangeAttachmentPayload = z
+	.object(
+		{
+			type: z.literal("workflow_size_guideline_change"),
+			size: z.string(),
+		},
+	)
+	.strict();
+
 const McpInstructionsDeltaAttachmentPayload = z
 	.object(
 		{
@@ -1970,6 +1980,7 @@ export const AttachmentPayloadSchema = z.discriminatedUnion("type", [
 	AsyncHookResponseAttachmentPayload,
 	DeferredToolsDeltaAttachmentPayload,
 	AgentListingDeltaAttachmentPayload,
+	WorkflowSizeGuidelineChangeAttachmentPayload,
 	McpInstructionsDeltaAttachmentPayload,
 	SkillListingAttachmentPayload,
 	DynamicSkillAttachmentPayload,
@@ -2978,7 +2989,17 @@ const DangerousToolUseClassifierContextSchema = z
 								},
 							)
 							.strict(),
-						additional: z.array(z.never()),
+						additional: z.array(
+							z
+								.object(
+									{
+										path: z.string(),
+										resolved: z.array(z.string()),
+										source: z.literal("session"),
+									},
+								)
+								.strict(),
+						),
 						network: z.array(z.never()),
 						block_reads_outside_working_directories: z.boolean(),
 					},

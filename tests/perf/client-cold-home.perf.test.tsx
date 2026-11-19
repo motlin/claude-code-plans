@@ -268,6 +268,8 @@ beforeAll(async () =>
 	);
 	vi.stubEnv("HOME", home);
 	vi.stubEnv("XDG_CONFIG_HOME", join(root, "config"));
+	// A developer shell may turn fast mode off; the ceilings assume the default.
+	vi.stubEnv("CLAUDE_CODE_DISABLE_FAST_MODE", "");
 	vi.stubEnv("XDG_CACHE_HOME", join(root, "cache"));
 
 	const {openTestDb} = await import("../../src/lib/db/connection");

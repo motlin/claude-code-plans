@@ -5370,6 +5370,7 @@ const VERBOSE_ONLY_SUBTYPES = new Set([
 	"auto_mode",
 	"auto_mode_exit",
 	"hook_additional_context",
+	"workflow_size_guideline_change",
 ]);
 const STOP_HOOK_EVENTS = new Set(["Stop", "SubagentStop"]);
 const SYSTEM_BANNER_SUBTYPES = new Set([

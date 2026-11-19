@@ -1147,6 +1147,26 @@ describe("workflow schemas", () =>
 		};
 		expect(WorkflowAgentMetaSchema.parse(meta)).toStrictEqual(meta);
 	});
+
+	it("accepts an agent meta file with only agentType", () =>
+	{
+		const meta =
+		{
+			agentType: "workflow-subagent",
+		};
+		expect(WorkflowAgentMetaSchema.parse(meta)).toStrictEqual(meta);
+	});
+
+	it("accepts an agent meta file for an agent spawned in a worktree", () =>
+	{
+		const meta =
+		{
+			agentType: "workflow-subagent",
+			worktreePath: "/tmp/test/repo/.claude/worktrees/agent-1",
+			spawnedWithWorktree: true,
+		};
+		expect(WorkflowAgentMetaSchema.parse(meta)).toStrictEqual(meta);
+	});
 });
 
 /** The paths `pick` selects for every ~/.claude/projects/<project>/<session> entry. */
@@ -1201,6 +1221,22 @@ const launchFiles = selectFilesForScan(
 	Date.now(),
 	300,
 ).files;
+
+/** Drop a final line that is not JSON, as a run killed mid-write leaves one. */
+function withoutTruncatedLastLine(lines: readonly string[]): readonly string[]
+{
+	const last = lines.at(-1);
+	if (last === undefined) return lines;
+	try
+	{
+		JSON.parse(last);
+		return lines;
+	}
+	catch
+	{
+		return lines.slice(0, -1);
+	}
+}
 
 describe("workflow schemas against disk", () =>
 {
@@ -1274,14 +1310,16 @@ describe("workflow schemas against disk", () =>
 		const failures = diskFiles((session) => runTranscriptDirs(session)).flatMap((dir) =>
 		{
 			const journal = listDir(dir, "journal.jsonl").flatMap((file) =>
-				readFileSync(file, "utf8")
-					.split("\n")
-					.filter((line) => line !== "")
-					.flatMap((line, i) =>
-					{
-						const result = WorkflowJournalEventSchema.safeParse(JSON.parse(line));
-						return result.success ? [] : [`${file}:${i + 1}: ${result.error.message}`];
-					}),
+				// A run killed mid-write leaves a partial last line; the runtime reader skips it too.
+				withoutTruncatedLastLine(
+					readFileSync(file, "utf8")
+						.split("\n")
+						.filter((line) => line !== ""),
+				).flatMap((line, i) =>
+				{
+					const result = WorkflowJournalEventSchema.safeParse(JSON.parse(line));
+					return result.success ? [] : [`${file}:${i + 1}: ${result.error.message}`];
+				}),
 			);
 			const metas = listDir(dir, ".meta.json").flatMap((file) =>
 			{
