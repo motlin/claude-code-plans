@@ -1184,7 +1184,7 @@ export interface PermissionKeyEvent
 
 /**
  * Upstream's inline card keys: Esc denies, ⌘⏎ allows once and ⇧⌘⏎ grants the persistent option.
- * Digits are dock-only upstream, so the inline card binds none, and ⌘⏎ yields to alt.
+ * The digits are the card's own listener (upstream's `Fa`), and ⌘⏎ yields to alt.
  */
 export function permissionDecisionForKey(event: PermissionKeyEvent): PermissionDecision | null
 {

@@ -1,5 +1,6 @@
 import {type RefObject, useEffect, useRef} from "react";
 
+import {cardOwnsDigit} from "../lib/approval-digits";
 import {isButtonish, isEditableTarget, isInModalLayer, ownsTyping} from "../lib/shortcuts/match";
 import {type Presence, presenceOf} from "../lib/stray-input-presence";
 
@@ -7,7 +8,8 @@ import {type Presence, presenceOf} from "../lib/stray-input-presence";
  * Keys belong elsewhere inside any input or editable field, inside a menu, listbox, dialog or popper, and while
  * a modal or menu is open even if focus fell to the body, and while focus is inside `[data-owns-typing-and-pastes]`
  * (upstream's `Vo`, read from the active element), and during the wait after focus was inside an iframe. Space types
- * too, except from a control it presses or toggles (`cP`).
+ * too, except from a control it presses or toggles (`cP`). A digit that the focused approval card takes stays with it
+ * (upstream's `DP`).
  */
 function claimsTypedKey(event: KeyboardEvent, presence: Presence): boolean
 {
@@ -17,6 +19,7 @@ function claimsTypedKey(event: KeyboardEvent, presence: Presence): boolean
 	if (target instanceof HTMLInputElement || isEditableTarget(target) || isInModalLayer(target)) return false;
 	if (ownsTyping(document.activeElement)) return false;
 	if (event.key === " " && isButtonish(document.activeElement)) return false;
+	if (cardOwnsDigit(event.key, document.activeElement)) return false;
 	return document.querySelector('[aria-modal="true"],[role="menu"]') === null && presence.isPresent();
 }
 

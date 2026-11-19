@@ -126,7 +126,7 @@ function windowFocused(win: Window): boolean
 }
 
 /** Upstream's `EZ`: within a second of the window regaining focus. */
-function justRefocused(win: Window): boolean
+export function justRefocused(win: Window): boolean
 {
 	const state = windowFocus.get(win);
 	return state !== undefined && performance.now() - state.gainedAt <= WINDOW_REFOCUS_GUARD_MS;

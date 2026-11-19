@@ -219,7 +219,7 @@ export function ApprovalCardShell({
 	rootRef?: Ref<HTMLDivElement>;
 	/** The card's accessible group label; omitted cards are a plain focusable box. */
 	label?: string;
-	/** Widest keycap digit count, which upstream uses to size the keycap column. */
+	/** Upstream's `data-approval-card-digits`: how many digit keys the card takes; omitted when it takes none. */
 	digits?: number;
 	/**
 	 * Upstream's in-flow tool card title: drawn in a tinted band flush with the card's top (`approval-title-region`),

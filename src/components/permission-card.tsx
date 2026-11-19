@@ -23,9 +23,18 @@ import
 } from "../lib/answered-approvals";
 import {holdAnswered, releaseAnswered} from "../lib/answered-sessions";
 import {approvalEnterSeen, markApprovalEnterSeen} from "../lib/approval-enter-seen";
-import {installLandingKeys} from "../lib/approval-slot-landing";
+import {installLandingKeys, justRefocused, landingAllowsPick, trackWindowFocus} from "../lib/approval-slot-landing";
+import {buttonDigit, type DigitEntry, digitLayoutKey, permissionDigitEntries} from "../lib/approval-digits";
 import {ApprovalPaintSentinel} from "./approval-paint-sentinel";
-import {APPROVAL_ARM_GRACE_MS, approvalHotkeyFocusAllowed, isIdleComposer, onScreen} from "../lib/dock-keys";
+import
+{
+	APPROVAL_ARM_GRACE_MS,
+	approvalHotkeyFocusAllowed,
+	elementOffscreen,
+	isIdleComposer,
+	onScreen,
+} from "../lib/dock-keys";
+import {isInKeystrokeSink} from "../lib/shortcuts/match";
 import {storeLeadingAllow, useLeadingAllow} from "../lib/approval-leading-allow";
 import
 {
@@ -113,7 +122,8 @@ interface GateRead
  * with no scope tip, as upstream's web card) with Allow once in the menu, or the reverse. Picking the
  * non-leading option from the menu makes it the lead for the next card. The body then lists what
  * "Always allow" adds, as upstream's web saves block.
- * Upstream's keys (Esc deny, ⌘⏎ allow once, ⇧⌘⏎ the persistent option) and no digits, which are dock-only.
+ * Upstream's keys (Esc deny, ⌘⏎ allow once, ⇧⌘⏎ the persistent option) and digits 1 (Deny) and 2 (Allow once; 3 when
+ * a persistent option is offered, whose own digit 2 does nothing), with no keycaps inline.
  * A decision hides the card at once, with no busy state; a failed answer brings it back with the error.
  * With `sessionId` and `answerKey` the decision also marks the prompt answered for every view,
  * so a remount of the same prompt stays hidden until the mark clears on a failed answer.
@@ -476,6 +486,28 @@ export function PermissionCard({
 			decide,
 		},
 	);
+	// Upstream's `digitsEnabled` (`enableDigitShortcuts && !bn`): no digits on a deny-first or click-only card.
+	const digitsLive = canAnswer && !denyFirst && !clickOnly;
+	const digitEntries = permissionDigitEntries(
+		{
+			persistentOffered: persistentAllow !== null,
+			allowDisabled: !enabled || readHeld,
+			denyDisabled: !enabled,
+		},
+	);
+	usePermissionDigitKeys(
+		cardRootRef,
+		{
+			live: digitsLive,
+			painted,
+			entries: digitEntries,
+			act: (entry) =>
+			{
+				if (entry === "deny") void decide("deny");
+				else if (entry === "once") allowed(() => void decide("allow"))();
+			},
+		},
+	);
 
 	if ((decided || answered) && hideOnDecision) return null;
 
@@ -608,6 +640,12 @@ export function PermissionCard({
 		<ApprovalCardShell
 			rootRef={cardRootRef}
 			label={permissionCardLabel(title)}
+			{...(digitsLive
+				?
+					{
+						digits: digitEntries.length,
+					}
+				: {})}
 			footer={footer}
 			presentation={presentation}
 			toolCard
@@ -894,6 +932,180 @@ function usePermissionHotkeys(
 			window.removeEventListener("keydown", onKeyDown, true);
 		};
 	}, [cardRootRef, enabled, painted, persistent, held, onHeldAttempt, decide]);
+}
+
+/** Targets that keep their digits (upstream `Fa` step 5): fields, menus, tabs, a question card, bare-digit owners. */
+const DIGIT_FIELD_SELECTOR = [
+	"input",
+	"select",
+	'[role^="menu"]',
+	'[role="listbox"]',
+	'[role="option"]',
+	'[role="tab"]',
+	'[role="combobox"]',
+	'[role="textbox"]',
+	'[role="searchbox"]',
+	"[data-owns-bare-digits]",
+	'[data-cds="AskUserQuestion"]',
+	'[contenteditable]:not([contenteditable="false"])',
+].join(",");
+/** Open popups and dialogs a digit yields to (upstream's `Rr`). */
+const DIGIT_POPUP_SELECTOR = '[role="dialog"],[role="alertdialog"],[role="menu"],[role="listbox"],dialog[open]';
+/** Whether the digit's target keeps it: another approval card, a keystroke sink, a field, or a textarea that isn't the idle composer. */
+function targetKeepsDigit(target: Element, card: HTMLElement): boolean
+{
+	const otherCard = target.closest("[data-approval-card-root]");
+	if (otherCard !== null && otherCard !== card) return true;
+	if (isInKeystrokeSink(target)) return true;
+	if (target.closest(DIGIT_FIELD_SELECTOR) !== null) return true;
+	return target instanceof HTMLTextAreaElement && !isIdleComposer(target);
+}
+
+/** Upstream's `M1`: the card sits under `[inert]` or behind a modal it isn't inside. */
+function cardUnderModal(card: HTMLElement): boolean
+{
+	if (card.closest("[inert]") !== null) return true;
+	return [...document.querySelectorAll('[aria-modal="true"]')].some((modal) => !modal.contains(card));
+}
+
+function popupOpenOutside(card: HTMLElement): boolean
+{
+	return [...document.querySelectorAll<HTMLElement>(DIGIT_POPUP_SELECTOR)].some(
+		(popup) => !card.contains(popup) && (typeof popup.checkVisibility !== "function" || popup.checkVisibility()),
+	);
+}
+
+/** The session composer holds a draft. */
+function composerHasDraft(): boolean
+{
+	const composer = document.querySelector<HTMLTextAreaElement>("[data-composer-card] textarea");
+	return composer !== null && composer.value !== "";
+}
+
+/**
+ * Upstream's inline digit keys (shared-3 `Fa`) on window in the capture phase: digit n runs `entries[n-1]`. They yield
+ * to IME, chords, modals (restarting the arm), popups, fields and other cards, to a composer draft when focus is outside
+ * the card, and while the card is off-screen. The held persistent digit is left alone in the composer and on a card
+ * button of another digit. A repeat is swallowed. Within the 400ms arm grace (counted from mount and paint, focus
+ * entering the card, and a pointerdown on it) a digit falls through untouched; within a second of the window regaining
+ * focus it is swallowed. Otherwise it is consumed, and a non-deny digit within 400ms of the layout changing (a gate
+ * releasing) does nothing, the window sliding to the press. On a card focus landed on, only a fresh pick acts.
+ */
+function usePermissionDigitKeys(
+	cardRootRef: RefObject<HTMLDivElement | null>,
+	{
+		live,
+		painted,
+		entries,
+		act,
+	}:
+	{
+		/** The card takes digits at all (upstream's `digitsEnabled`). */
+		live: boolean;
+		/** Each paint restarts the arm grace (upstream's paint latch in `armKey`). */
+		painted: boolean;
+		entries: readonly DigitEntry[];
+		act: (entry: DigitEntry) => void;
+	},
+)
+{
+	const entriesRef = useRef(entries);
+	entriesRef.current = entries;
+	const actRef = useRef(act);
+	actRef.current = act;
+	const armedAtRef = useRef(Number.NEGATIVE_INFINITY);
+	useEffect(() =>
+	{
+		if (live) armedAtRef.current = performance.now();
+	}, [live, painted]);
+	// Upstream's `rearmKey`: a change of which entries act re-arms the non-deny digits.
+	const layout = digitLayoutKey(entries);
+	const layoutRef = useRef(layout);
+	const rearmAtRef = useRef(Number.NEGATIVE_INFINITY);
+	useEffect(() =>
+	{
+		if (layoutRef.current !== layout) rearmAtRef.current = performance.now();
+		layoutRef.current = layout;
+	}, [layout]);
+	useEffect(() =>
+	{
+		const card = cardRootRef.current;
+		if (!live || card === null) return undefined;
+		installLandingKeys(window);
+		trackWindowFocus(window);
+		const arm = () =>
+		{
+			armedAtRef.current = performance.now();
+		};
+		const onFocusIn = (event: FocusEvent) =>
+		{
+			if (!(event.relatedTarget instanceof Node && card.contains(event.relatedTarget))) arm();
+		};
+		const onKeyDown = (event: KeyboardEvent) =>
+		{
+			if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
+			if (event.isComposing || !/^[1-9]$/.test(event.key)) return;
+			const index = Number(event.key) - 1;
+			const entry = entriesRef.current[index];
+			if (entry === undefined) return;
+			const now = performance.now();
+			if (cardUnderModal(card))
+			{
+				armedAtRef.current = now;
+				return;
+			}
+			if (popupOpenOutside(card)) return;
+			const target = event.target instanceof Element ? event.target : null;
+			if (target !== null && targetKeepsDigit(target, card)) return;
+			const active = document.activeElement;
+			const inComposer = isIdleComposer(target);
+			if (
+				entry === "held" &&
+				(inComposer ||
+					(active instanceof HTMLButtonElement &&
+						card.contains(active) &&
+						buttonDigit(active) !== Number(event.key)))
+			)
+			{
+				return;
+			}
+			if (!(target !== null && card.contains(target)) && composerHasDraft()) return;
+			if (elementOffscreen(card)) return;
+			const consume = () =>
+			{
+				event.preventDefault();
+				event.stopImmediatePropagation();
+			};
+			if (event.repeat)
+			{
+				consume();
+				return;
+			}
+			if (now - armedAtRef.current < APPROVAL_ARM_GRACE_MS) return;
+			if (justRefocused(window) || active instanceof HTMLIFrameElement)
+			{
+				if (!inComposer) consume();
+				return;
+			}
+			consume();
+			if (index !== 0 && now - rearmAtRef.current < APPROVAL_ARM_GRACE_MS)
+			{
+				rearmAtRef.current = now;
+				return;
+			}
+			if (!landingAllowsPick(event, true)) return;
+			actRef.current(entry);
+		};
+		card.addEventListener("focusin", onFocusIn);
+		card.addEventListener("pointerdown", arm);
+		window.addEventListener("keydown", onKeyDown, true);
+		return () =>
+		{
+			card.removeEventListener("focusin", onFocusIn);
+			card.removeEventListener("pointerdown", arm);
+			window.removeEventListener("keydown", onKeyDown, true);
+		};
+	}, [cardRootRef, live]);
 }
 
 /** Upstream's body classes (`epitaxy-code-size` hooks, held at the default size by the card's data-fixed-code-size): the detail block (`Lg`), its footnote (`kg`) and the description line (`Dg`). */

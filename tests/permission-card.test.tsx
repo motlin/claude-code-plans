@@ -2927,6 +2927,7 @@ describe("PermissionCard", () =>
 		expect(
 			{
 				label: card.getAttribute("aria-label"),
+				rootDigits: card.getAttribute("data-approval-card-digits"),
 				title: card.querySelector("[data-permission-title]")?.textContent,
 				command: card.querySelector("[data-permission-detail]")?.textContent,
 				denyKeys: [...deny.querySelectorAll("kbd")].map((kbd) => kbd.textContent),
@@ -2944,6 +2945,7 @@ describe("PermissionCard", () =>
 		).toStrictEqual(
 			{
 				label: "Permission request: run this command",
+				rootDigits: "2",
 				title: "Allow Claude to run this command?",
 				command: "$ rm -rf dist",
 				denyKeys: [],
@@ -2963,6 +2965,90 @@ describe("PermissionCard", () =>
 					["1", "Deny"],
 					["2", "Allow once"],
 				],
+			},
+		);
+	});
+
+	it("counts upstream's live digits on the root (3 with a persistent option, either lead), and none on a deny-first or read-only card; the labels stay 1/2", () =>
+	{
+		const facts = (setup: () => ReturnType<typeof renderCard>) =>
+		{
+			const {container, unmount} = setup();
+			const root = container.querySelector("[data-approval-card-root]")!;
+			const fact =
+			{
+				root: root.getAttribute("data-approval-card-digits"),
+				labels: [...root.querySelectorAll<HTMLElement>("[data-approval-digit]")].map((label) => [
+					label.dataset["approvalDigit"],
+					label.textContent,
+				]),
+			};
+			unmount();
+			return fact;
+		};
+		const leading = (lead: "once" | "always") =>
+		{
+			localStorage.setItem(APPROVAL_LEADING_ALLOW_KEY, lead);
+			return renderCard(
+				{
+					persistentAllow: "always",
+				},
+			);
+		};
+		const deniesFirst = [
+			["1", "Deny"],
+			["2", "Allow once"],
+		];
+		expect(
+			{
+				plain: facts(() => renderCard()),
+				leadsOnce: facts(() => leading("once")),
+				leadsAlways: facts(() => leading("always")),
+				denyFirst: facts(() =>
+					renderCard(
+						{
+							dialog: "unknown",
+						},
+					),
+				),
+				readOnly: facts(() =>
+					renderCard(
+						{
+							canAnswer: false,
+						},
+					),
+				),
+			},
+		).toStrictEqual(
+			{
+				plain:
+				{
+					root: "2",
+					labels: deniesFirst,
+				},
+				leadsOnce:
+				{
+					root: "3",
+					labels: deniesFirst,
+				},
+				leadsAlways:
+				{
+					root: "3",
+					labels: [
+						["1", "Deny"],
+						["2", "Always allow"],
+					],
+				},
+				denyFirst:
+				{
+					root: null,
+					labels: deniesFirst,
+				},
+				readOnly:
+				{
+					root: null,
+					labels: deniesFirst,
+				},
 			},
 		);
 	});
@@ -4772,22 +4858,255 @@ describe("PermissionCard", () =>
 			expect(onDecision.mock.calls).toStrictEqual([[decision]]);
 		});
 
-		it("binds no digits on the inline card", () =>
+		describe("digits, as upstream's inline Fa", () =>
 		{
-			const {onDecision} = renderCard(
-				{
-					persistentAllow: "always",
-				},
-			);
-			arm();
-			for (const key of ["1", "2", "3"])
-				fireEvent.keyDown(
-					document.body,
+			/** Dispatches a digit keydown on `target` (default: the focused element) and reports whether it was consumed. */
+			function digit(key: string, target: Element = document.activeElement ?? document.body, repeat = false)
+			{
+				const event = new KeyboardEvent(
+					"keydown",
 					{
 						key,
+						repeat,
+						bubbles: true,
+						cancelable: true,
 					},
 				);
-			expect(onDecision.mock.calls).toStrictEqual([]);
+				target.dispatchEvent(event);
+				return event.defaultPrevented;
+			}
+			const cardRoot = (container: HTMLElement) =>
+				container.querySelector<HTMLElement>("[data-approval-card-root]")!;
+			const composer = () =>
+				screen.getByRole(
+					"textbox",
+					{
+						name: "Prompt",
+					},
+				);
+
+			it("denies on 1 and allows once on 2 with focus on the card, the body or the empty composer", () =>
+			{
+				const outcomes = ["card", "body", "composer"].flatMap((place) =>
+					["1", "2"].map((key) =>
+					{
+						const {container, onDecision, unmount} = renderCard();
+						if (place === "card") cardRoot(container).focus();
+						if (place === "composer") composer().focus();
+						arm();
+						const prevented = digit(key);
+						const outcome =
+						{
+							place,
+							key,
+							prevented,
+							calls: onDecision.mock.calls,
+						};
+						unmount();
+						return outcome;
+					}),
+				);
+				expect(outcomes).toStrictEqual(
+					["card", "body", "composer"].flatMap((place) => [
+						{
+							place,
+							key: "1",
+							prevented: true,
+							calls: [["deny"]],
+						},
+						{
+							place,
+							key: "2",
+							prevented: true,
+							calls: [["allow"]],
+						},
+					]),
+				);
+			});
+
+			it("with a persistent option, 2 is held (consumed, nothing) and 3 allows once; 4 is ignored", () =>
+			{
+				const {container, onDecision} = renderCard(
+					{
+						persistentAllow: "always",
+					},
+				);
+				cardRoot(container).focus();
+				arm();
+				const four = digit("4");
+				const two = digit("2");
+				const callsAfterTwo = [...onDecision.mock.calls];
+				const three = digit("3");
+				expect(
+					{
+						four,
+						two,
+						callsAfterTwo,
+						three,
+						calls: onDecision.mock.calls,
+					},
+				).toStrictEqual(
+					{
+						four: false,
+						two: true,
+						callsAfterTwo: [],
+						three: true,
+						calls: [["allow"]],
+					},
+				);
+			});
+
+			it("leaves the persistent digit alone with focus on a card button of another digit", () =>
+			{
+				const {onDecision} = renderCard(
+					{
+						persistentAllow: "always",
+					},
+				);
+				screen
+					.getByRole(
+						"button",
+						{
+							name: "Deny",
+						},
+					)
+					.focus();
+				arm();
+				expect(
+					{
+						prevented: digit("2"),
+						calls: onDecision.mock.calls,
+					},
+				).toStrictEqual(
+					{
+						prevented: false,
+						calls: [],
+					},
+				);
+			});
+
+			it("leaves a digit inside the 400ms arm grace to the page, and swallows a repeat", () =>
+			{
+				const {onDecision} = renderCard();
+				vi.advanceTimersByTime(100);
+				const inGrace = digit("1");
+				arm();
+				const repeat = digit("1", document.body, true);
+				expect(
+					{
+						inGrace,
+						repeat,
+						calls: onDecision.mock.calls,
+					},
+				).toStrictEqual(
+					{
+						inGrace: false,
+						repeat: true,
+						calls: [],
+					},
+				);
+			});
+
+			it("restarts the arm grace when focus enters the card from outside", () =>
+			{
+				const {container, onDecision} = renderCard();
+				vi.advanceTimersByTime(1000);
+				cardRoot(container).focus();
+				const justEntered = digit("1");
+				arm();
+				const later = digit("1");
+				expect(
+					{
+						justEntered,
+						later,
+						calls: onDecision.mock.calls,
+					},
+				).toStrictEqual(
+					{
+						justEntered: false,
+						later: true,
+						calls: [["deny"]],
+					},
+				);
+			});
+
+			it("lets a digit type into a composer draft, and ignores one from another field", () =>
+			{
+				const {container, onDecision} = renderCard();
+				arm();
+				const textarea = composer();
+				fireEvent.change(
+					textarea,
+					{
+						target:
+						{
+							value: "x",
+						},
+					},
+				);
+				textarea.focus();
+				const draft = digit("2");
+				const input = document.createElement("input");
+				container.append(input);
+				input.focus();
+				const field = digit("2");
+				expect(
+					{
+						draft,
+						field,
+						calls: onDecision.mock.calls,
+					},
+				).toStrictEqual(
+					{
+						draft: false,
+						field: false,
+						calls: [],
+					},
+				);
+			});
+
+			it("ignores a digit while a menu is open outside the card", () =>
+			{
+				const {container, onDecision} = renderCard();
+				arm();
+				const menu = document.createElement("div");
+				menu.setAttribute("role", "menu");
+				container.append(menu);
+				expect(
+					{
+						prevented: digit("1", document.body),
+						calls: onDecision.mock.calls,
+					},
+				).toStrictEqual(
+					{
+						prevented: false,
+						calls: [],
+					},
+				);
+			});
+
+			it("ignores digits on a deny-first card", () =>
+			{
+				const {onDecision} = renderCard(
+					{
+						dialog: "unknown",
+					},
+				);
+				arm();
+				expect(
+					{
+						one: digit("1"),
+						two: digit("2"),
+						calls: onDecision.mock.calls,
+					},
+				).toStrictEqual(
+					{
+						one: false,
+						two: false,
+						calls: [],
+					},
+				);
+			});
 		});
 
 		it("listens on window in the capture phase and stops the key there", () =>
@@ -5694,6 +6013,33 @@ describe("PermissionCard after a landing", () =>
 		);
 	});
 
+	it("swallows a digit on a card focus landed on until a fresh pick, as the question card's landing guard", () =>
+	{
+		const {container, onDecision} = renderCard();
+		const root = container.querySelector<HTMLElement>("[data-approval-card-root]")!;
+		vi.advanceTimersByTime(400);
+		landOn(root);
+		vi.advanceTimersByTime(600);
+		// jsdom's events are untrusted, so none is a fresh pick.
+		const consumed = !fireEvent.keyDown(
+			root,
+			{
+				key: "1",
+			},
+		);
+		expect(
+			{
+				consumed,
+				calls: onDecision.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				consumed: true,
+				calls: [],
+			},
+		);
+	});
+
 	it("acts on ⇧⌘⏎ with focus in the card when nothing landed", () =>
 	{
 		const {container, onDecision} = renderCard(
@@ -6244,6 +6590,76 @@ describe("PermissionCard read gates", () =>
 					at999: 0,
 					at1399: 1,
 					calls: [["allow"]],
+				},
+			);
+		});
+
+		it("consumes 2 with no action while held, and for 400ms after the gate releases (upstream's rearm key), while 1 still denies", async () =>
+		{
+			vi.useFakeTimers(
+				{
+					toFake: ["performance"],
+				},
+			);
+			const {container, onDecision, unmount} = renderOverflowingRows();
+			await flushFrames();
+			vi.advanceTimersByTime(1000);
+			const digit = (key: string) =>
+				!fireEvent.keyDown(
+					document.body,
+					{
+						key,
+					},
+				);
+			const root = container
+				.querySelector("[data-approval-card-root]")
+				?.getAttribute("data-approval-card-digits");
+			const held = digit("2");
+			const callsWhileHeld = [...onDecision.mock.calls];
+			place(
+				rowsPanel(container),
+				{
+					top: -600,
+					height: 900,
+				},
+			);
+			scroll();
+			await flushFrames();
+			vi.advanceTimersByTime(300);
+			const rearmed = digit("2");
+			const callsWhileRearmed = [...onDecision.mock.calls];
+			// The press at 300 slid the window to 700.
+			vi.advanceTimersByTime(399);
+			const slid = digit("2");
+			vi.advanceTimersByTime(400);
+			digit("2");
+			const callsAfterRearm = [...onDecision.mock.calls];
+			unmount();
+			const {onDecision: denied} = renderOverflowingRows();
+			await flushFrames();
+			vi.advanceTimersByTime(1000);
+			digit("1");
+			expect(
+				{
+					root,
+					held,
+					callsWhileHeld,
+					rearmed,
+					callsWhileRearmed,
+					slid,
+					callsAfterRearm,
+					denied: denied.mock.calls,
+				},
+			).toStrictEqual(
+				{
+					root: "2",
+					held: true,
+					callsWhileHeld: [],
+					rearmed: true,
+					callsWhileRearmed: [],
+					slid: true,
+					callsAfterRearm: [["allow"]],
+					denied: [["deny"]],
 				},
 			);
 		});

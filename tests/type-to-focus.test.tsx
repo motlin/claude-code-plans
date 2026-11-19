@@ -176,6 +176,46 @@ describe("type-to-focus", () =>
 		);
 	});
 
+	it("leaves a digit the focused approval card takes (upstream's DP), but routes a higher digit or a letter", () =>
+	{
+		render(
+			<>
+				<div data-approval-card-digits="2">
+					<button type="button">Deny</button>
+				</div>
+				<button type="button">Elsewhere</button>
+				<Composer
+					variant="session"
+					draftKey="session-alice"
+					onSend={() =>
+					{
+					}}
+				/>
+			</>,
+		);
+		const typeOn = (name: string, key: string) =>
+		{
+			screen
+				.getByRole(
+					"button",
+					{
+						name,
+					},
+				)
+				.focus();
+			fireEvent.keyDown(
+				document.activeElement!,
+				{
+					key,
+				},
+			);
+			return prompts()[0]!.value;
+		};
+		expect([typeOn("Deny", "2"), typeOn("Deny", "3"), typeOn("Deny", "a"), typeOn("Elsewhere", "2")]).toStrictEqual(
+			["", "3", "3a", "3a2"],
+		);
+	});
+
 	it("routes Space from a focused link or plain focusable div, but not from a button, checkbox, switch, menuitem or option", () =>
 	{
 		render(
