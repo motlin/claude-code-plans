@@ -657,7 +657,7 @@ describe("phone sheet sidebar", () =>
 		});
 	});
 
-	it("drops the Search icon from the sheet footer", async () =>
+	it("drops the Search icon from the sheet footer and keeps the content-width account button beside the Code settings gear", async () =>
 	{
 		mockViewport(390);
 		await renderFrame();
@@ -675,12 +675,19 @@ describe("phone sheet sidebar", () =>
 				accountWidth: within(footer)
 					.getByTestId("user-menu-button")
 					.className.split(" ")
-					.filter((name) => name === "w-full"),
+					.filter((name) => name === "w-full" || name === "max-w-full"),
+				gear: within(footer).getAllByRole(
+					"button",
+					{
+						name: "Code settings",
+					},
+				).length,
 			},
 		).toStrictEqual(
 			{
 				search: null,
-				accountWidth: ["w-full"],
+				accountWidth: ["max-w-full"],
+				gear: 1,
 			},
 		);
 	});

@@ -10,7 +10,8 @@ import
 	Outlet,
 	RouterProvider,
 } from "@tanstack/react-router";
-import {cleanup, render, screen, waitFor, within} from "@testing-library/react";
+import {readFileSync} from "node:fs";
+import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
 import {SettingsProvider} from "../src/components/settings-provider";
 import {DEFAULTS} from "../src/components/settings-context";
@@ -139,38 +140,124 @@ beforeEach(() =>
 
 describe("sidebar footer", () =>
 {
-	it("renders only the full-width account menu button, with no Search icon", async () =>
+	it("lays out upstream's df-footer-row: a content-width account button and the Code settings gear in the aux", async () =>
 	{
 		await renderSidebar();
 
 		const footer = await waitFor(() => screen.getByTestId("sidebar-footer"));
+		const row = footer.firstElementChild;
 		const account = within(footer).getByTestId("user-menu-button");
-		const label = within(footer).getByText("craig").parentElement?.className.split(" ") ?? [];
+		const words = within(footer).getByText("craig").parentElement;
+		const name = within(footer).getByText("craig");
+		const dot = within(footer).getByText("·");
+		const plan = within(footer).getByText("Max");
+		const caret = account.querySelector("[data-cds=Icon]");
+		const gear = within(footer).getByRole(
+			"button",
+			{
+				name: "Code settings",
+			},
+		);
+		const classes = (element: Element | null | undefined) => element?.getAttribute("class")?.split(" ") ?? [];
 
 		expect(
 			{
 				accountText: account.textContent,
 				accountPopup: account.getAttribute("aria-haspopup"),
-				accountFullWidth: account.classList.contains("w-full"),
+				tray: classes(footer).includes("df-bottom-tray"),
+				row: ["df-footer-row", "gap-[var(--df-footer-gap)]"].every((token) => classes(row).includes(token)),
+				account: ["df-user-menu-btn", "h-7", "max-w-full", "justify-start"].every((token) =>
+					classes(account).includes(token),
+				),
+				accountFullWidth: classes(account).includes("w-full"),
+				words: classes(words).filter(
+					(token) => token.startsWith("df-") || token.startsWith("text-[") || token.startsWith("leading-"),
+				),
+				name: classes(name).filter((token) => token.startsWith("df-") || token === "truncate"),
+				dot: classes(dot).filter((token) => token.startsWith("df-") || token.startsWith("text-[")),
+				plan: classes(plan).filter((token) => token.startsWith("df-") || token.startsWith("text-[")),
+				caret: classes(caret).includes("df-user-menu-caret"),
+				caretWrapper: classes(caret?.parentElement),
 				buttonCount: within(footer).getAllByRole("button").length,
+				gearInAux: gear.closest(".df-footer-aux") !== null,
+				gear: ["df-chrome-btn", "size-7", "rounded-r6"].every((token) => classes(gear).includes(token)),
 				search: within(footer).queryByRole(
 					"button",
 					{
 						name: "Search",
 					},
 				),
-				labelType: label.filter((token) => token.startsWith("text-[") || token.startsWith("leading-")),
 			},
 		).toStrictEqual(
 			{
 				accountText: "Ccraig·Max",
 				accountPopup: "menu",
-				accountFullWidth: true,
-				buttonCount: 1,
+				tray: true,
+				row: true,
+				account: true,
+				accountFullWidth: false,
+				words: ["df-user-menu-words", "df-footer-suffix", "text-[length:var(--sb-row-font)]", "leading-5"],
+				name: ["df-footer-name"],
+				dot: ["df-footer-suffix-text", "text-[length:calc(var(--sb-row-font)-2px)]/5"],
+				plan: ["df-footer-suffix-text", "text-[length:calc(var(--sb-row-font)-2px)]/5"],
+				caret: true,
+				caretWrapper: ["-me-1", "inline-flex"],
+				buttonCount: 2,
+				gearInAux: true,
+				gear: true,
 				search: null,
-				labelType: ["text-[14px]", "leading-[21px]"],
 			},
 		);
+	});
+
+	it("opens Settings at the Code tab from the gear", async () =>
+	{
+		const router = await renderSidebar();
+
+		fireEvent.click(
+			await screen.findByRole(
+				"button",
+				{
+					name: "Code settings",
+				},
+			),
+		);
+
+		await waitFor(() =>
+		{
+			expect(router.state.location.hash).toBe("settings/claude-code");
+		});
+	});
+
+	it("shows a Code settings tooltip with no shortcut when the gear is focused", async () =>
+	{
+		await renderSidebar();
+
+		const gear = await screen.findByRole(
+			"button",
+			{
+				name: "Code settings",
+			},
+		);
+		act(() =>
+		{
+			gear.focus();
+		});
+
+		expect((await screen.findByRole("tooltip")).textContent).toBe("Code settings");
+	});
+
+	it("draws the tray hairline and fades cut footer words as upstream", () =>
+	{
+		const styles = readFileSync("src/styles/globals.css", "utf8").replaceAll(/\s+/g, " ");
+
+		expect(
+			[
+				'.df-bottom-tray::before { content: ""; position: absolute; inset-inline: 0; top: -0.5px; z-index: 1; border-top: 0.5px solid var(--color-border); }',
+				".df-footer-suffix { padding-right: 2px; mask-image: linear-gradient(90deg, #000 calc(100% - 12px), transparent); }",
+				"--df-footer-gap: 6px;",
+			].filter((rule) => !styles.includes(rule)),
+		).toStrictEqual([]);
 	});
 
 	it("labels the account button Local until the account loads", async () =>

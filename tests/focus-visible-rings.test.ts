@@ -182,7 +182,7 @@ describe("sidebar nav row focus ring", () =>
 				),
 				accountMenu: has(
 					"src/components/sidebar/account-menu.tsx",
-					`pr-2 pl-0.5 text-left ${ROW_FOCUS} hover:`,
+					`ps-0.5 pe-3 align-top text-left ${ROW_FOCUS}"`,
 				),
 				accountMenuBackground: has("src/components/sidebar/account-menu.tsx", "focus-visible:bg-"),
 			},

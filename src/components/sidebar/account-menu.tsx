@@ -4,7 +4,6 @@ import
 {
 	BookOpen,
 	Bug,
-	ChevronDown,
 	CircleHelp,
 	ExternalLink,
 	FileCog,
@@ -14,7 +13,7 @@ import
 	Settings,
 	Wrench,
 } from "lucide-react";
-import type {ReactNode} from "react";
+import {useCallback, useLayoutEffect, useRef, useState, type ReactNode} from "react";
 import {useShortcutKeys} from "../../hooks/use-shortcut";
 import {localAccountQueryOptions} from "../../lib/api/local-account";
 import {setKeyboardShortcutsOpen} from "../keyboard-shortcuts-open";
@@ -31,6 +30,8 @@ import
 	MenuTrigger,
 } from "../ui/menu";
 import {nonEmpty} from "../../lib/non-empty";
+import {Icon} from "../ui/icon";
+import {Tooltip} from "../ui/tooltip";
 
 /** Upstream's Learn more links; a separator sits between these two groups. */
 const UPSTREAM_PRODUCT_LINKS = [
@@ -101,37 +102,89 @@ export function AccountMenu()
 	const shortcutsKeys = useShortcutKeys("shortcuts_modal").keys;
 	const name = nonEmpty(data?.name) ?? "Local";
 	const initial = nonEmpty(data?.initial) ?? name.charAt(0).toUpperCase();
+	const planLabel = data?.planLabel;
+	const tooltip = planLabel === undefined ? name : `${name} · ${planLabel}`;
+	const wordsRef = useRef<HTMLSpanElement>(null);
+	const [cut, setCut] = useState(false);
+	/** Upstream's `pT`: the words are cut when any of their spans overflows; marks the plan `data-cut` to match. */
+	const measureCut = useCallback(() =>
+	{
+		const words = wordsRef.current;
+		const next =
+			words !== null && [...words.querySelectorAll("span")].some((span) => span.scrollWidth > span.clientWidth);
+		setCut(next);
+		return next;
+	}, []);
+
+	useLayoutEffect(() =>
+	{
+		const words = wordsRef.current;
+		measureCut();
+		if (words === null || typeof ResizeObserver === "undefined") return undefined;
+		const observer = new ResizeObserver(() =>
+		{
+			measureCut();
+		});
+		observer.observe(words);
+		return () =>
+		{
+			observer.disconnect();
+		};
+	}, [measureCut, name, planLabel]);
 
 	return (
 		<Menu>
-			<MenuTrigger
-				data-testid="user-menu-button"
-				data-prefetch="settings"
-				className="flex h-8 w-full max-w-full min-w-0 items-center gap-2 rounded-r6 pr-2 pl-0.5 text-left hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--color-accent-100),0_0_6px_0_color-mix(in_srgb,var(--color-accent-100)_20%,transparent)] hover:bg-[var(--sb-hover)] data-[popup-open]:bg-[var(--sb-hover)]"
-			>
-				<span className="flex h-7 w-7 shrink-0 items-center justify-center">
-					<span
-						aria-hidden="true"
-						className="flex size-6 items-center justify-center rounded-full bg-fill-control text-[9px] font-medium text-primary select-none"
-					>
-						{initial}
+			<Tooltip content={tooltip} side="top" openWhen={measureCut} className="max-w-full min-w-0 align-top">
+				<MenuTrigger
+					data-testid="user-menu-button"
+					data-prefetch="settings"
+					className="df-user-menu-btn group/btn relative inline-flex h-7 max-w-full min-w-0 items-center justify-start gap-1.5 rounded-r6 ps-0.5 pe-3 align-top text-left hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--color-accent-100),0_0_6px_0_color-mix(in_srgb,var(--color-accent-100)_20%,transparent)]"
+				>
+					<span aria-hidden="true" className="absolute inset-0 -z-[1] rounded-[inherit]">
+						<span
+							data-cds-part="paint"
+							className="absolute inset-0 rounded-[inherit] transition-[background-color] group-hover/btn:bg-fill-ghost-hover group-data-[popup-open]/btn:bg-fill-ghost-hover"
+						/>
 					</span>
-				</span>
-				<span className="flex min-w-0 items-baseline gap-1 overflow-hidden text-[14px] leading-[21px]">
-					<span className="max-w-full shrink-0 truncate whitespace-nowrap text-secondary">{name}</span>
-					{data?.planLabel !== undefined && (
-						<>
-							<span aria-hidden="true" className="text-[12px]/[18px] text-ink-muted">
-								·
+					<span className="inline-flex min-w-0 items-center gap-1">
+						<span className="df-on-rail relative flex w-[var(--sb-leading-slot)] shrink-0 items-center justify-center">
+							<span
+								aria-hidden="true"
+								className="flex size-5 items-center justify-center rounded-full bg-fill-control text-[9px] font-medium text-primary select-none"
+							>
+								{initial}
 							</span>
-							<span className="min-w-0 whitespace-nowrap text-[12px]/[18px] text-ink-muted">
-								{data.planLabel}
+						</span>
+						<span
+							ref={wordsRef}
+							className="df-user-menu-words df-footer-suffix flex min-w-0 items-baseline gap-1 overflow-hidden text-start text-[length:var(--sb-row-font)] leading-5"
+						>
+							<span className="df-footer-name max-w-full shrink-0 whitespace-nowrap text-secondary">
+								{name}
 							</span>
-						</>
-					)}
-				</span>
-				<ChevronDown aria-hidden="true" className="ms-auto size-3 shrink-0 text-ink-muted" />
-			</MenuTrigger>
+							{planLabel !== undefined && (
+								<>
+									<span
+										aria-hidden="true"
+										className="df-footer-suffix-text text-[length:calc(var(--sb-row-font)-2px)]/5 text-ink-muted"
+									>
+										·
+									</span>
+									<span
+										data-cut={cut ? "" : undefined}
+										className="df-footer-suffix-text text-[length:calc(var(--sb-row-font)-2px)]/5 min-w-0 whitespace-nowrap text-ink-muted"
+									>
+										{planLabel}
+									</span>
+								</>
+							)}
+						</span>
+						<span className="-me-1 inline-flex">
+							<Icon name="CaretDown" size="xs" className="df-user-menu-caret shrink-0 text-ink-muted" />
+						</span>
+					</span>
+				</MenuTrigger>
+			</Tooltip>
 			<MenuContent density="comfortable" side="top" align="start" className="w-[17rem]">
 				{data?.email !== undefined && (
 					<div role="presentation" className="truncate px-2.5 py-1 text-footnote font-medium text-ink-muted">

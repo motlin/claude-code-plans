@@ -167,6 +167,77 @@ describe("footer account button", () =>
 
 		expect(button.textContent).toBe("Ccraig");
 	});
+
+	it("marks the plan cut and shows a name · plan tooltip when the words overflow", async () =>
+	{
+		await renderAccountMenu();
+		const button = await screen.findByTestId("user-menu-button");
+		const name = screen.getByText("Craig");
+		Object.defineProperty(
+			name,
+			"scrollWidth",
+			{
+				configurable: true,
+				value: 300,
+			},
+		);
+		Object.defineProperty(
+			name,
+			"clientWidth",
+			{
+				configurable: true,
+				value: 100,
+			},
+		);
+		act(() =>
+		{
+			button.focus();
+		});
+
+		const tooltip = await screen.findByRole("tooltip");
+		expect(
+			{
+				tooltip: tooltip.textContent,
+				cut: screen.getByText("Max").getAttribute("data-cut"),
+				truncate: name.classList.contains("truncate"),
+			},
+		).toStrictEqual(
+			{
+				tooltip: "Craig · Max",
+				cut: "",
+				truncate: false,
+			},
+		);
+	});
+
+	it("shows no tooltip and no cut mark when the words fit", async () =>
+	{
+		await renderAccountMenu();
+		const button = await screen.findByTestId("user-menu-button");
+		act(() =>
+		{
+			button.focus();
+		});
+		vi.useFakeTimers();
+		fireEvent.pointerEnter(button.parentElement ?? button);
+		act(() =>
+		{
+			vi.advanceTimersByTime(400);
+		});
+		vi.useRealTimers();
+
+		expect(
+			{
+				tooltip: screen.queryByRole("tooltip"),
+				cut: screen.getByText("Max").hasAttribute("data-cut"),
+			},
+		).toStrictEqual(
+			{
+				tooltip: null,
+				cut: false,
+			},
+		);
+	});
 });
 
 describe("account menu", () =>

@@ -869,6 +869,8 @@ html[data-interface-font="dyslexic"]
 	--sb-iconless-pad: 8px;
 	--sb-icon: 20px;
 	--sb-leading-slot: 28px;
+	/* Upstream comfortable .dframe-sidebar --df-footer-gap: the account button to the Code settings gear. */
+	--df-footer-gap: 6px;
 	--sb-row-ctl: 24px;
 	/* Upstream .dframe-root --df-described-tuck and .df-session-list --df-described-trim (two-line described rows) */
 	--sb-described-tuck: 4px;
@@ -5947,6 +5949,24 @@ html[data-reduce-motion="true"] [data-cds="SkeletonGroup"][data-hold="delayed"]
 		--upstream-text-body: var(--transcript-comfortable-text-size, 1rem);
 		--upstream-leading-body: var(--transcript-comfortable-leading, 1.5rem);
 	}
+}
+
+/* Upstream .df-bottom-tray::before: the footer's half-pixel hairline, drawn above the row rather than as a border. */
+.df-bottom-tray::before
+{
+	content: "";
+	position: absolute;
+	inset-inline: 0;
+	top: -0.5px;
+	z-index: 1;
+	border-top: 0.5px solid var(--color-border);
+}
+
+/* Upstream .df-footer-suffix at content width (LTR): no ellipsis; the cut tail fades out over 12px. */
+.df-footer-suffix
+{
+	padding-right: 2px;
+	mask-image: linear-gradient(90deg, #000 calc(100% - 12px), transparent);
 }
 
 /* Upstream .dframe-sidebar .df-on-rail: a leading slot that follows the hub rail's shift. */
