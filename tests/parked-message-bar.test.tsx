@@ -262,4 +262,14 @@ describe("ParkedMessageBar", () =>
 		);
 		expect(container.innerHTML).toBe("");
 	});
+
+	it("renders nothing when the parked prompts list in the transcript", () =>
+	{
+		const {container} = renderBar(
+			{
+				listInTranscript: true,
+			},
+		);
+		expect(container.innerHTML).toBe("");
+	});
 });

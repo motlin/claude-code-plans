@@ -7,6 +7,7 @@ import
 {
 	HeldSteerTurns,
 	OptimisticWaitingTurn,
+	ParkedWaitingTurns,
 	WaitingPickupStatus,
 	WaitingUserTurn,
 } from "../src/components/waiting-user-turn";
@@ -486,6 +487,85 @@ describe("HeldSteerTurns", () =>
 				onSendNow={async () =>
 				{
 				}}
+				onCancel={() =>
+				{
+				}}
+			/>,
+		);
+		expect(container.innerHTML).toBe("");
+	});
+});
+
+describe("ParkedWaitingTurns", () =>
+{
+	const PARKED = [
+		{
+			id: "p1",
+			text: "Alice's held follow-up",
+			parked:
+			{
+				parkedAtMs: 1,
+			},
+		},
+		{
+			id: "p2",
+			text: "Bob's held follow-up",
+			parked:
+			{
+				parkedAtMs: 2,
+			},
+		},
+	];
+
+	it("draws parked prompts as waiting rows that read held, with no Send now, and Cancel and edit forwards the row", () =>
+	{
+		const onCancel = vi.fn<(item: {id: string; text: string}) => void>();
+		const {container, getAllByRole} = render(<ParkedWaitingTurns items={PARKED} onCancel={onCancel} />);
+		const rows = [...container.querySelectorAll("[data-take-back-entry]")].map((row) => (
+		{
+			entry: row.getAttribute("data-take-back-entry"),
+			bubble: row.querySelector(".user-message-bubble")?.textContent,
+			status: row.querySelector("[role=status]")?.textContent,
+			sendNow: row.querySelectorAll("[data-testid=awaiting-turn-send-now]").length,
+		}));
+		const [, second] = getAllByRole(
+			"button",
+			{
+				name: "Cancel and edit message",
+			},
+		);
+		if (second !== undefined) fireEvent.click(second);
+		expect(
+			{
+				rows,
+				cancelled: onCancel.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				rows: [
+					{
+						entry: "p1",
+						bubble: "Alice's held follow-up",
+						status: "held",
+						sendNow: 0,
+					},
+					{
+						entry: "p2",
+						bubble: "Bob's held follow-up",
+						status: "held",
+						sendNow: 0,
+					},
+				],
+				cancelled: [[PARKED[1]]],
+			},
+		);
+	});
+
+	it("renders nothing without parked prompts", () =>
+	{
+		const {container} = render(
+			<ParkedWaitingTurns
+				items={[]}
 				onCancel={() =>
 				{
 				}}

@@ -1,12 +1,6 @@
-import type {MouseEvent} from "react";
-
 import type {QueuedPrompt} from "../lib/composer-queue";
-import {parkedNoticeMessage, parkedResetDetail} from "../lib/parked-prompts";
-import {useNow} from "../hooks/use-now";
+import {ParkedNoticeBand} from "./usage-pace-banner";
 import {QueuedMessageBar} from "./queued-message-bar";
-import {cdsButtonClass} from "./ui/cds-button";
-import {Spinner} from "./ui/spinner";
-import {BandShell} from "./usage-pace-banner";
 
 export interface ParkedMessageBarProps
 {
@@ -23,13 +17,13 @@ export interface ParkedMessageBarProps
 	onSendAnyway: () => void;
 	onEdit: (item: QueuedPrompt) => void;
 	onRemove: (id: string) => void;
+	/**
+	 * Upstream's `listInTranscript`: the parked rows draw in the transcript and the held count joins the usage-limit
+	 * band, so the dock bar renders nothing.
+	 */
+	listInTranscript?: boolean;
 	/** Test seam for the reset's time zone. */
 	timeZone?: string;
-}
-
-function keepComposerFocus(event: MouseEvent)
-{
-	event.preventDefault();
 }
 
 /**
@@ -47,50 +41,27 @@ export function ParkedMessageBar({
 	onSendAnyway,
 	onEdit,
 	onRemove,
+	listInTranscript = false,
 	timeZone,
 }: ParkedMessageBarProps)
 {
-	// Upstream `Fr`: a ticking clock while a reset exists, so the detail drops once it passes.
-	const now = useNow(resetsAt !== undefined);
-	if (items.length === 0) return null;
-	const detail = archived || resetsAt === undefined ? undefined : parkedResetDetail(resetsAt, now, timeZone);
+	if (items.length === 0 || listInTranscript) return null;
 	return (
 		<div className="flex w-full flex-col">
-			<BandShell
-				icon={null}
+			<ParkedNoticeBand
+				willAutoSend={willAutoSend}
+				resetsAt={resetsAt}
+				archived={archived}
+				flushing={flushing}
+				onSendAnyway={onSendAnyway}
 				className="rounded-b-none"
-				actions={
-					<button
-						type="button"
-						aria-label="Send anyway"
-						aria-busy={flushing ? true : undefined}
-						disabled={flushing || archived}
-						className={`${cdsButtonClass("secondary", "sm")} shrink-0`}
-						onMouseDown={keepComposerFocus}
-						onClick={() =>
+				{...(timeZone === undefined
+					? {}
+					:
 						{
-							onSendAnyway();
-						}}
-					>
-						<span className={flushing ? "opacity-0" : undefined}>Send anyway</span>
-						{flushing && (
-							<span className="absolute inset-0 grid place-items-center leading-[0]">
-								<Spinner size="sm" />
-							</span>
-						)}
-					</button>
-				}
-			>
-				<span className="min-w-0 text-primary">
-					{parkedNoticeMessage(
-						{
-							archived,
-							willAutoSend,
-						},
-					)}
-				</span>
-				{detail !== undefined && <span className="min-w-0 text-ink-muted">{detail}</span>}
-			</BandShell>
+							timeZone,
+						})}
+			/>
 			<QueuedMessageBar
 				sessionId={`${sessionId}:parked`}
 				items={items}

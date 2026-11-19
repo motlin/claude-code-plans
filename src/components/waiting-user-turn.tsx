@@ -157,11 +157,14 @@ export function WaitingUserTurn({
 	sendNowBusy = false,
 	onFocusComposer,
 	onCancel,
+	lane = "steer",
 	...rest
 }: {
 	entryId: string;
 	text: string;
 	head: boolean;
+	/** Upstream's `waitingLane`: a parked (usage-limit held) row reads "held" and never offers Send now. */
+	lane?: "steer" | "parked";
 	/** Claude picked the prompt up, so the status reads "read" briefly and then goes quiet. */
 	delivered?: boolean;
 	/** The CLI has the prompt (a JSONL `enqueue`): upstream's "Delivered", which a browser-held steer is not yet. */
@@ -180,7 +183,9 @@ export function WaitingUserTurn({
 	const reading = useReadAnnouncement(delivered);
 	const panels = useFizzyLake("panels");
 	// Upstream `qv`: under panels a stacked row the host acknowledged reads "Delivered".
-	const waitingStatus = panels && !head && hostHasIt ? "Delivered" : "unread";
+	let waitingStatus = panels && !head && hostHasIt ? "Delivered" : "unread";
+	// Upstream c59c32499 `us`: a parked row is held, not unread.
+	if (lane === "parked") waitingStatus = "held";
 	return (
 		<div className="group/msg flex w-full justify-start items-start gap-1" data-take-back-entry={entryId} {...rest}>
 			<h2 className="sr-only select-none">{messageHeading("user", text)}</h2>
@@ -192,7 +197,7 @@ export function WaitingUserTurn({
 					<p className={USER_PARAGRAPH_CLASS}>{text}</p>
 				</UserBubbleBox>
 				<WaitingMessageActions text={text} stacked={!head} hostHasIt={hostHasIt} onCancel={onCancel}>
-					{head && (
+					{head && lane !== "parked" && (
 						<SendNowButton onSendNow={onSendNow} onFocusComposer={onFocusComposer} busy={sendNowBusy} />
 					)}
 				</WaitingMessageActions>
@@ -304,6 +309,39 @@ export function HeldSteerTurns({
 						onCancel(item);
 					}}
 					onFocusComposer={onFocusComposer}
+				/>
+			))}
+		</div>
+	);
+}
+
+/**
+ * Upstream's transcript variant of the parked lane (`ie` with `inTranscript`): messages held for the usage limit draw
+ * as waiting rows on the `parked` lane, after the steers. They read "held", carry no Send now (Send anyway lives in the
+ * limit band), and Cancel and edit takes one back into the composer.
+ */
+export function ParkedWaitingTurns({
+	items,
+	onCancel,
+}: {
+	items: readonly QueuedPrompt[];
+	onCancel: (item: QueuedPrompt) => void;
+})
+{
+	if (items.length === 0) return null;
+	return (
+		<div className={`${CHAT_COLUMN_CLASS} flex flex-col gap-2 pb-[var(--chat-turn-gap)]`}>
+			{items.map((item) => (
+				<WaitingUserTurn
+					key={item.id}
+					entryId={item.id}
+					text={item.text}
+					head={false}
+					lane="parked"
+					onCancel={() =>
+					{
+						onCancel(item);
+					}}
 				/>
 			))}
 		</div>

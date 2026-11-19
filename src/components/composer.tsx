@@ -298,6 +298,8 @@ export interface ComposerParkedView
 	archived: boolean;
 	flushing: boolean;
 	sendAnyway: () => void;
+	/** Upstream's `listInTranscript`: the held prompts draw as transcript rows and the limit band, not the dock bar. */
+	listInTranscript: boolean;
 }
 
 /**
@@ -3730,6 +3732,7 @@ export function Composer({
 								onSendAnyway={queue.parked.sendAnyway}
 								onEdit={editQueuedPrompt}
 								onRemove={queue.remove}
+								listInTranscript={queue.parked.listInTranscript}
 							/>
 						)}
 					</div>

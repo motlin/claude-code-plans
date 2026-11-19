@@ -12,6 +12,8 @@ import
 	autoSendSkipReason,
 	beginRun,
 	heldCountText,
+	LOCAL_ENVIRONMENTS_ON,
+	parkedListInTranscript,
 	newParkWindow,
 	parkDecision,
 	parkJitterMs,
@@ -722,6 +724,35 @@ describe("parked copy", () =>
 				twoAuto: "2 held messages will send automatically",
 				oneHeld: "1 message held",
 				twoHeld: "2 messages held",
+			},
+		);
+	});
+});
+
+describe("parkedListInTranscript", () =>
+{
+	it("lists parked prompts in the transcript only with environments on and the transcript mounted; local stays on the dock", () =>
+	{
+		const gate = (environmentsOn: boolean, inTranscript: boolean) =>
+			parkedListInTranscript(
+				{
+					environmentsOn,
+					inTranscript,
+				},
+			);
+		expect(
+			{
+				both: gate(true, true),
+				noEnvironments: gate(false, true),
+				noTranscript: gate(true, false),
+				local: gate(LOCAL_ENVIRONMENTS_ON, true),
+			},
+		).toStrictEqual(
+			{
+				both: true,
+				noEnvironments: false,
+				noTranscript: false,
+				local: false,
 			},
 		);
 	});

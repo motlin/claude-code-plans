@@ -53,7 +53,7 @@ import type {UsageRingContext} from "./usage-popover-context";
 import {formatSendTime} from "../lib/timestamp-format";
 import {FailedUserRow, HeldUserRow, SendingUserRow} from "./pending-user-row";
 import {StreamingMessage} from "./streaming-message";
-import {HeldSteerTurns, OptimisticWaitingTurn} from "./waiting-user-turn";
+import {HeldSteerTurns, OptimisticWaitingTurn, ParkedWaitingTurns} from "./waiting-user-turn";
 import {SessionHookContext} from "./session-hook-context";
 import {useSettings} from "./settings-context";
 import {useTranscriptModeShortcut} from "../hooks/use-session-transcript-mode";
@@ -117,7 +117,8 @@ import {sessionOutputStylesQueryOptions} from "../lib/api/output-styles";
 import {outputStyleItems} from "../lib/output-style-options";
 import {sessionOutputStyle} from "../lib/session-output-style";
 import {useMemoryDialogLoad} from "../hooks/use-memory-dialog-load";
-import {type QueuedPrompt, steeredPrompts} from "../lib/composer-queue";
+import {type QueuedPrompt, parkedPrompts, steeredPrompts} from "../lib/composer-queue";
+import {LOCAL_ENVIRONMENTS_ON, parkedListInTranscript} from "../lib/parked-prompts";
 import {recallLastHeldSteer} from "../lib/steer-recall";
 import
 {
@@ -135,7 +136,7 @@ import {ApprovalSlot} from "./approval-slot";
 import {sessionApprovalSlotCard} from "../lib/approval-slot-card";
 import {showsWaitingForInputNotice} from "./waiting-for-input-notice";
 import {NotifyMePrompt} from "./notify-me-prompt";
-import {UsagePaceBanner} from "./usage-pace-banner";
+import {type HeldNotice, UsagePaceBanner} from "./usage-pace-banner";
 import {WorkflowSizeWarningNotice} from "./workflow-size-warning-notice";
 import {SessionAutoModeSetupBand} from "./auto-mode-setup-band";
 import {ColdResumeNotice} from "./cold-resume-notice";
@@ -1659,6 +1660,37 @@ function SessionView({
 		},
 	);
 	const {park: parkPrompt, decision: parkedDecision} = parkedLane;
+	// Upstream lists parked prompts in the transcript only on its environments branch; local has no environments.
+	const parkedInTranscript = parkedListInTranscript(
+		{
+			environmentsOn: LOCAL_ENVIRONMENTS_ON,
+			inTranscript: promptBehavior.usesHerdr,
+		},
+	);
+	const parkedItems = useMemo(() => parkedPrompts(queuedPrompts), [queuedPrompts]);
+	const heldNotice = useMemo<HeldNotice | undefined>(
+		() =>
+			parkedInTranscript && parkedItems.length > 0
+				?
+					{
+						count: parkedItems.length,
+						willAutoSend: parkedLane.willAutoSend,
+						resetsAt: parkedLane.windowResetsAt,
+						archived: data.archived,
+						flushing: parkedLane.flushing,
+						sendAnyway: parkedLane.sendAnyway,
+					}
+				: undefined,
+		[
+			data.archived,
+			parkedInTranscript,
+			parkedItems.length,
+			parkedLane.flushing,
+			parkedLane.sendAnyway,
+			parkedLane.willAutoSend,
+			parkedLane.windowResetsAt,
+		],
+	);
 	const composerQueueView = useMemo(
 		() => (
 		{
@@ -1670,18 +1702,20 @@ function SessionView({
 				archived: data.archived,
 				flushing: parkedLane.flushing,
 				sendAnyway: parkedLane.sendAnyway,
+				listInTranscript: parkedInTranscript,
 			},
 		}),
 		[
 			composerQueue,
 			data.archived,
+			parkedInTranscript,
 			parkedLane.flushing,
 			parkedLane.sendAnyway,
 			parkedLane.willAutoSend,
 			parkedLane.windowResetsAt,
 		],
 	);
-	const cancelHeldSteer = useCallback(
+	const cancelHeldPrompt = useCallback(
 		(item: QueuedPrompt) =>
 		{
 			if (takeBackSend(sessionId, item.text, toast)) removeQueuedPrompt(item.id);
@@ -2996,7 +3030,9 @@ function SessionView({
 																className="contents"
 															/>
 															{/* Upstream sets the usage chip between the docked card and the composer */}
-															{!chromeHidden && sessionDirectory && <UsagePaceBanner />}
+															{!chromeHidden && sessionDirectory && (
+																<UsagePaceBanner held={heldNotice} />
+															)}
 															{!chromeHidden && sessionDirectory && (
 																<WorkflowSizeWarningNotice
 																	runs={workflowRuns}
@@ -3436,9 +3472,12 @@ function SessionView({
 													)
 												}
 												onSendNow={composerQueue.sendNow}
-												onCancel={cancelHeldSteer}
+												onCancel={cancelHeldPrompt}
 												onFocusComposer={focusSessionComposer}
 											/>
+										)}
+										{parkedInTranscript && (
+											<ParkedWaitingTurns items={parkedItems} onCancel={cancelHeldPrompt} />
 										)}
 
 										{/* Upstream's after-rows block (`w8`): the sticky approval cards, the tail turn and the tail chrome */}

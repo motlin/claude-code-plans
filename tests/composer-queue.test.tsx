@@ -1319,6 +1319,7 @@ describe("Composer queued message bar", () =>
 						archived: false,
 						flushing: false,
 						sendAnyway,
+						listInTranscript: false,
 					},
 				},
 			},

@@ -311,3 +311,22 @@ export function heldCountText(count: number, willAutoSend: boolean): string
 	if (willAutoSend) return `${count} held ${count === 1 ? "message" : "messages"} will send automatically`;
 	return `${count} ${count === 1 ? "message" : "messages"} held`;
 }
+
+/** Upstream's `environmentsOn`: local has no environments, so it is always off. */
+export const LOCAL_ENVIRONMENTS_ON = false;
+
+/**
+ * Upstream `ie`'s gate (and the composer store's `parkedWaiting !== null`): parked prompts list in the transcript, with
+ * their count in the usage-limit band, only on the environments branch with the transcript mounted. Otherwise the dock
+ * bar shows them.
+ */
+export function parkedListInTranscript({
+	environmentsOn,
+	inTranscript,
+}: {
+	environmentsOn: boolean;
+	inTranscript: boolean;
+}): boolean
+{
+	return environmentsOn && inTranscript;
+}

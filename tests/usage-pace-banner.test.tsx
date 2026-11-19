@@ -5,7 +5,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {ResetCountdown} from "../src/components/reset-countdown";
 import {InRegionContext} from "../src/components/composer-notice-context";
-import {UsageLimitBand, UsagePaceBand} from "../src/components/usage-pace-banner";
+import {type HeldNotice, UsageHeldBand, UsageLimitBand, UsagePaceBand} from "../src/components/usage-pace-banner";
 import
 {
 	approachingLimit,
@@ -582,6 +582,169 @@ describe("usage limit reached", () =>
 		{
 			vi.useRealTimers();
 		}
+	});
+});
+
+describe("usage limit band with held messages", () =>
+{
+	const NOW = Date.UTC(2026, 9, 20, 16, 0);
+	const RESETS_AT = Date.UTC(2026, 9, 20, 18, 0) / 1000;
+
+	function held(overrides: Partial<HeldNotice> = {}): HeldNotice
+	{
+		return {
+			count: 2,
+			willAutoSend: true,
+			resetsAt: RESETS_AT,
+			archived: false,
+			flushing: false,
+			sendAnyway: vi.fn<() => void>(),
+			...overrides,
+		};
+	}
+
+	function bandState()
+	{
+		const band = screen.getByRole("status");
+		const sendAnyway = screen.getByRole(
+			"button",
+			{
+				name: "Send anyway",
+			},
+		);
+		return {
+			text: band.textContent,
+			sendAnyway:
+			{
+				disabled: sendAnyway.hasAttribute("disabled"),
+				busy: sendAnyway.getAttribute("aria-busy"),
+			},
+		};
+	}
+
+	beforeEach(() =>
+	{
+		vi.useFakeTimers();
+		vi.setSystemTime(NOW);
+	});
+
+	afterEach(() =>
+	{
+		vi.useRealTimers();
+	});
+
+	it("appends the held count to the reset and offers a Send anyway link that flushes", () =>
+	{
+		const notice = held();
+		render(<UsageLimitBand headline="Weekly limit reached" resetsAt={RESETS_AT} held={notice} />);
+		const before = bandState();
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Send anyway",
+				},
+			),
+		);
+		expect(
+			{
+				before,
+				flushed: vi.mocked(notice.sendAnyway).mock.calls.length,
+			},
+		).toStrictEqual(
+			{
+				before:
+				{
+					text: "Weekly limit reachedResets at 6:00 PM · 2 held messages will send automaticallySend anyway",
+					sendAnyway:
+					{
+						disabled: false,
+						busy: null,
+					},
+				},
+				flushed: 1,
+			},
+		);
+	});
+
+	it("reads the held count without auto-send, busy while flushing", () =>
+	{
+		render(
+			<UsageLimitBand
+				headline="Weekly limit reached"
+				resetsAt={RESETS_AT}
+				held={held(
+					{
+						count: 1,
+						willAutoSend: false,
+						flushing: true,
+					},
+				)}
+			/>,
+		);
+		expect(bandState()).toStrictEqual(
+			{
+				text: "Weekly limit reachedResets at 6:00 PM · 1 message heldSend anyway",
+				sendAnyway:
+				{
+					disabled: true,
+					busy: "true",
+				},
+			},
+		);
+	});
+
+	it("replaces the detail with the archived copy and disables Send anyway", () =>
+	{
+		render(
+			<UsageLimitBand
+				headline="Weekly limit reached"
+				resetsAt={RESETS_AT}
+				held={held(
+					{
+						archived: true,
+					},
+				)}
+			/>,
+		);
+		expect(bandState()).toStrictEqual(
+			{
+				text: "Weekly limit reachedThis session is archived, so held messages won’t send. Unarchive it to send them.Send anyway",
+				sendAnyway:
+				{
+					disabled: true,
+					busy: null,
+				},
+			},
+		);
+	});
+
+	it("draws the standalone held band with the parked bar's band props when no limit band shows", () =>
+	{
+		const notice = held();
+		render(<UsageHeldBand held={notice} />);
+		const band = screen.getByRole("status");
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Send anyway",
+				},
+			),
+		);
+		expect(
+			{
+				text: band.textContent,
+				icon: band.querySelector("svg"),
+				flushed: vi.mocked(notice.sendAnyway).mock.calls.length,
+			},
+		).toStrictEqual(
+			{
+				text: "You hit your usage limit. Held messages will send when it resets.Resets at 6:00 PMSend anyway",
+				icon: null,
+				flushed: 1,
+			},
+		);
 	});
 });
 
