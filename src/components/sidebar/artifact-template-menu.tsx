@@ -80,9 +80,12 @@ export function ArtifactsNavRow({
 										)
 									}
 								>
-									<span className="flex min-w-0 items-center">
-										<span className="truncate">{template.label}</span>
-										<TemplateBadge badge={template.badge} className="ms-2" />
+									{/* Upstream's label is the truncate span itself, with the badge inside it. */}
+									<span className="min-w-0 flex-1 truncate">
+										{template.label}
+										{template.badge !== undefined && (
+											<TemplateBadge badge={template.badge} className="ms-2" />
+										)}
 									</span>
 								</MenuItem>
 							</Fragment>

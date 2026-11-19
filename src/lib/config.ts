@@ -164,7 +164,16 @@ export const ApplicationSettingsSchema = z
 
 export type ApplicationSettings = z.infer<typeof ApplicationSettingsSchema>;
 
-export function readApplicationSettings(configPath: string = getConfigPath()): ApplicationSettings
+/** `hasRoutines` runs only when no nav sections were saved: a saved list always wins. */
+export function readApplicationSettings(
+	configPath: string = getConfigPath(),
+	{
+		hasRoutines,
+	}:
+	{
+		hasRoutines?: () => boolean;
+	} = {},
+): ApplicationSettings
 {
 	const config = readConfig(configPath);
 	return {
@@ -180,6 +189,9 @@ export function readApplicationSettings(configPath: string = getConfigPath()): A
 				{
 					showHerdrSection: config?.show_herdr_section,
 					showTmuxSection: config?.show_tmux_section,
+				},
+				{
+					hasRoutines: hasRoutines?.() ?? false,
 				},
 			),
 		ignoredDirs: config?.ignored_dirs ?? [...DEFAULT_IGNORED_DIR_NAMES],

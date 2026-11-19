@@ -4271,8 +4271,9 @@ describe("Make something new strip", () =>
 					href: link.getAttribute("href"),
 					label: link.textContent,
 				})),
-				description:
-					screen.getByText(/^By Anthropic\. A document/).id === links[0]?.getAttribute("aria-describedby"),
+				descriptions: links.map(
+					(link) => document.getElementById(link.getAttribute("aria-describedby") ?? "")?.className,
+				),
 				beforeGrid:
 					strip.compareDocumentPosition(document.querySelector("[data-gallery-card]") ?? strip) &
 					Node.DOCUMENT_POSITION_FOLLOWING,
@@ -4282,27 +4283,32 @@ describe("Make something new strip", () =>
 				heading: "text-caption font-medium text-ink-muted",
 				links: [
 					{
-						name: "Docs, New",
+						name: "Docs",
 						href: "/?create=pages",
-						label: "DocsNewBy Anthropic. A document your team reads, comments on and edits in place while Claude keeps it current.",
+						label: "DocsBy Anthropic. A document your team reads, comments on and edits in place while Claude keeps it current.",
 					},
 					{
-						name: "Slides, New",
+						name: "Slides",
 						href: "/?create=slides",
-						label: "SlidesNew",
+						label: "SlidesBy Anthropic. A deck you can present, restyle with a design system and export to PowerPoint.",
 					},
 					{
-						name: "Design, New",
+						name: "Design",
 						href: "/?create=design",
-						label: "DesignNew",
+						label: "DesignBy Anthropic. Screens, flows and graphics laid out as artboards on one canvas you can edit by hand.",
 					},
 					{
-						name: "Dashboard, Beta",
+						name: "Data, Beta",
 						href: "/?create=dashboard",
-						label: "DashboardBeta",
+						label: "DataBetaBy Anthropic. Charts, numbers and tables from your data, each marked with its source.",
 					},
 				],
-				description: true,
+				descriptions: [
+					"sr-only select-none",
+					"sr-only select-none",
+					"sr-only select-none",
+					"sr-only select-none",
+				],
 				beforeGrid: Node.DOCUMENT_POSITION_FOLLOWING,
 			},
 		);

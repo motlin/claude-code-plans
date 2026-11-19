@@ -106,6 +106,31 @@ describe("migrateLegacyNavFlags", () =>
 		expect(migrateLegacyNavFlags({})).toStrictEqual(["projects", "artifacts", "plans", "memories", "customize"]);
 	});
 
+	it("pins Scheduled after Artifacts when local routines exist, as upstream pins it for accounts with routines", () =>
+	{
+		expect(
+			{
+				withRoutines: migrateLegacyNavFlags(
+					{},
+					{
+						hasRoutines: true,
+					},
+				),
+				withoutRoutines: migrateLegacyNavFlags(
+					{},
+					{
+						hasRoutines: false,
+					},
+				),
+			},
+		).toStrictEqual(
+			{
+				withRoutines: ["projects", "artifacts", "routines", "plans", "memories", "customize"],
+				withoutRoutines: ["projects", "artifacts", "plans", "memories", "customize"],
+			},
+		);
+	});
+
 	it("pins Terminals once when the old Herdr and Tmux flags showed them", () =>
 	{
 		expect(

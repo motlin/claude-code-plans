@@ -67,13 +67,26 @@ function inNavOrder(sections: ReadonlySet<NavSection>): NavSection[]
 	return NAV_SECTIONS.filter((section) => sections.has(section));
 }
 
-/** Carry the retired Herdr/Tmux visibility flags into the pinned set; both now pin Terminals (`herdr`). */
-export function migrateLegacyNavFlags(legacy: {
-	showHerdrSection?: boolean | undefined;
-	showTmuxSection?: boolean | undefined;
-}): NavSection[]
+/**
+ * The default pinned set: carry the retired Herdr/Tmux visibility flags in (both now pin Terminals, `herdr`), and pin
+ * Scheduled when local routines exist, as upstream's `fa` keeps `scheduled` only while `hasCodeRoutines` holds.
+ */
+export function migrateLegacyNavFlags(
+	legacy:
+	{
+		showHerdrSection?: boolean | undefined;
+		showTmuxSection?: boolean | undefined;
+	},
+	{
+		hasRoutines = false,
+	}:
+	{
+		hasRoutines?: boolean;
+	} = {},
+): NavSection[]
 {
 	const visible = new Set<NavSection>(DEFAULT_VISIBLE_NAV_SECTIONS);
+	if (hasRoutines) visible.add("routines");
 	if (legacy.showHerdrSection === true || legacy.showTmuxSection === true) visible.add("herdr");
 	return inNavOrder(visible);
 }

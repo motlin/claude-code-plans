@@ -6,10 +6,13 @@ const RESPONSE_HEADERS =
 	"Cache-Control": "private, max-age=0, must-revalidate",
 };
 
-export function handleGetApplicationSettings(configPath?: string): Response
+export function handleGetApplicationSettings(
+	configPath?: string,
+	options: Parameters<typeof readApplicationSettings>[1] = {},
+): Response
 {
 	return Response.json(
-		ApplicationSettingsSchema.parse(readApplicationSettings(configPath)),
+		ApplicationSettingsSchema.parse(readApplicationSettings(configPath, options)),
 		{
 			headers: RESPONSE_HEADERS,
 		},

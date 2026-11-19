@@ -3,10 +3,11 @@ import {useId} from "react";
 import {TEMPLATE_ICONS} from "./artifact-template-icons";
 import {ARTIFACT_TEMPLATES, type ArtifactTemplate} from "../lib/artifact-templates";
 
-/** Upstream's cds Badge: New is accent on tint-blue, Beta is secondary on neutral. */
-const BADGE_CLASS: Record<ArtifactTemplate["badge"], string> =
+type TemplateBadgeName = NonNullable<ArtifactTemplate["badge"]>;
+
+/** Upstream's cds Badge: Beta is secondary on neutral. */
+const BADGE_CLASS: Record<TemplateBadgeName, string> =
 {
-	New: "bg-upstream-tint-blue text-upstream-accent",
 	Beta: "bg-alpha-1 text-secondary",
 };
 
@@ -53,13 +54,8 @@ function TemplateTile({
 			{
 				create: template.slug,
 			}}
-			aria-label={`${template.label}, ${template.badge}`}
-			{...(template.description === undefined
-				? {}
-				:
-					{
-						"aria-describedby": descriptionId,
-					})}
+			aria-label={template.badge === undefined ? template.label : `${template.label}, ${template.badge}`}
+			aria-describedby={descriptionId}
 			className="group flex w-34 flex-col gap-1.5 rounded-composer outline-none transition-transform duration-150 hide-focus-ring focus-visible:shadow-focus motion-safe:active:scale-[0.98]"
 		>
 			<span
@@ -74,13 +70,11 @@ function TemplateTile({
 			</span>
 			<span className="flex min-h-4 min-w-0 items-center gap-1.5 px-0.5 text-footnote font-medium text-primary">
 				<span className="truncate">{template.label}</span>
-				<TemplateBadge badge={template.badge} />
+				{template.badge !== undefined && <TemplateBadge badge={template.badge} />}
 			</span>
-			{template.description === undefined ? null : (
-				<span id={descriptionId} className="sr-only select-none">
-					{template.description}
-				</span>
-			)}
+			<span id={descriptionId} className="sr-only select-none">
+				{template.description}
+			</span>
 		</Link>
 	);
 }
@@ -102,13 +96,13 @@ function TileGrain()
 	);
 }
 
-/** A template's xs cds Badge ("New" or "Beta"), shared by the strip tiles and the sidebar template menu. */
+/** A template's xs cds Badge ("Beta"), shared by the strip tiles and the sidebar template menu. */
 export function TemplateBadge({
 	badge,
 	className,
 }: Readonly<
 {
-	badge: ArtifactTemplate["badge"];
+	badge: TemplateBadgeName;
 	className?: string;
 }>)
 {

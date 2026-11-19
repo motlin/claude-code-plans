@@ -9,8 +9,27 @@ export const Route = createFileRoute("/api/application-settings")(
 				{
 					GET: async () =>
 					{
-						const {handleGetApplicationSettings} = await import("../../lib/application-settings-handler");
-						return handleGetApplicationSettings();
+						const [{handleGetApplicationSettings}, {getDb}, {getRoutines}, {liveSessionRoutines}] =
+							await Promise.all([
+								import("../../lib/application-settings-handler"),
+								import("../../lib/db"),
+								import("../../lib/db/routine-index"),
+								import("../../lib/active-session-store"),
+							]);
+						// Upstream pins Scheduled for accounts with routines; locally, when the Scheduled list is non-empty.
+						return handleGetApplicationSettings(
+							undefined,
+							{
+								hasRoutines: () =>
+									getRoutines(
+										getDb().index,
+										{
+											now: Date.now(),
+											liveSessions: liveSessionRoutines(),
+										},
+									).length > 0,
+							},
+						);
 					},
 					PUT: async ({request}: {request: Request}) =>
 					{

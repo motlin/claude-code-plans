@@ -286,6 +286,50 @@ describe("persisted application settings", () =>
 		expect(readApplicationSettings(configPath).visibleNavSections).toStrictEqual(["plans"]);
 	});
 
+	it("pins Scheduled by default when local routines exist", async () =>
+	{
+		await writeFile(configPath, JSON.stringify({}));
+
+		expect(
+			readApplicationSettings(
+				configPath,
+				{
+					hasRoutines: () => true,
+				},
+			).visibleNavSections,
+		).toStrictEqual(["projects", "artifacts", "routines", "plans", "memories", "customize"]);
+	});
+
+	it("never asks for routines when nav sections were saved", async () =>
+	{
+		await writeFile(
+			configPath,
+			JSON.stringify(
+				{
+					visible_nav_sections: ["plans"],
+				},
+			),
+		);
+		const hasRoutines = vi.fn<() => boolean>(() => true);
+
+		expect(
+			{
+				visibleNavSections: readApplicationSettings(
+					configPath,
+					{
+						hasRoutines,
+					},
+				).visibleNavSections,
+				calls: hasRoutines.mock.calls.length,
+			},
+		).toStrictEqual(
+			{
+				visibleNavSections: ["plans"],
+				calls: 0,
+			},
+		);
+	});
+
 	it("prefers saved nav sections over the retired flags", async () =>
 	{
 		await writeFile(

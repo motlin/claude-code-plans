@@ -302,7 +302,7 @@ describe("sidebar Artifacts template launcher", () =>
 		).toBeNull();
 	});
 
-	it("opens upstream's template menu: Docs, Slides, Design, a separator, Dashboard, then the footer", async () =>
+	it("opens upstream's template menu: Docs, Slides, Design, a separator, Data, then the footer", async () =>
 	{
 		await renderSidebar();
 		const menu = await openTemplateMenu();
@@ -317,7 +317,7 @@ describe("sidebar Artifacts template launcher", () =>
 		).toStrictEqual(
 			{
 				expanded: "true",
-				rows: ["DocsNew", "SlidesNew", "DesignNew", "---", "DashboardBeta", "---"],
+				rows: ["Docs", "Slides", "Design", "---", "DataBeta", "---"],
 				footer: "Opens a new session ready to make what you pick. Nothing is created until you send.",
 			},
 		);
@@ -498,7 +498,7 @@ describe("sidebar Artifacts template launcher", () =>
 
 	it("tags the nav rows with upstream's data-nav-item ids", async () =>
 	{
-		await renderSidebar();
+		await renderSidebar(["artifacts", "routines", "plans", "memories", "customize"]);
 		const navItem = (id: string) => document.querySelector(`[data-nav-item="${id}"]`);
 		expect(
 			{
@@ -534,6 +534,14 @@ describe("sidebar Artifacts template launcher", () =>
 							name: "Plans",
 						},
 					),
+				scheduled:
+					navItem("scheduled") ===
+					screen.getByRole(
+						"link",
+						{
+							name: "Scheduled",
+						},
+					),
 			},
 		).toStrictEqual(
 			{
@@ -541,6 +549,7 @@ describe("sidebar Artifacts template launcher", () =>
 				customize: true,
 				more: true,
 				plans: true,
+				scheduled: true,
 			},
 		);
 	});
