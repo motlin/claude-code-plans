@@ -23,6 +23,7 @@ import
 	CornerDownLeft,
 	Database,
 	Ellipsis,
+	Expand,
 	Eye,
 	EyeOff,
 	File,
@@ -45,6 +46,7 @@ import
 	Play,
 	Plus,
 	Presentation,
+	RotateCcw,
 	Scroll,
 	Search,
 	Shapes,
@@ -56,6 +58,8 @@ import
 	TriangleAlert,
 	Workflow,
 	X,
+	ZoomIn,
+	ZoomOut,
 } from "lucide-react";
 import {createElement, type ComponentType} from "react";
 
@@ -74,6 +78,7 @@ export const ICON_GLYPHS =
 	Animation: Clapperboard,
 	Archive,
 	Artifacts: Shapes,
+	ArrowCounterClockwise: RotateCcw,
 	ArrowReturn: CornerDownLeft,
 	ArrowDown,
 	ArrowRight,
@@ -94,6 +99,7 @@ export const ICON_GLYPHS =
 	Diagram: Workflow,
 	DotsCircle: CircleEllipsis,
 	DotsHorizontal: Ellipsis,
+	Expand,
 	Eye,
 	EyeSlash: EyeOff,
 	File,
@@ -123,6 +129,8 @@ export const ICON_GLYPHS =
 	WarningCircle: CircleAlert,
 	X,
 	XCircle: CircleX,
+	ZoomIn,
+	ZoomOut,
 } satisfies Partial<Record<AnthropiconName, LucideIcon>>;
 
 type GlyphProps = Omit<LucideProps, "ref">;

@@ -4,12 +4,14 @@ import
 	type Ref,
 	type TransitionEvent,
 	useCallback,
+	useContext,
 	useEffect,
 	useLayoutEffect,
 	useRef,
 	useState,
 } from "react";
 import {flushSync} from "react-dom";
+import {DiagramLightboxContext, figureOf} from "../lib/diagram-lightbox";
 import {svgWithheld} from "../lib/mermaid-svg-audit";
 import {useReducedMotion} from "../lib/reduced-motion";
 import {useResolvedTheme} from "./theme-context";
@@ -22,8 +24,8 @@ import {Tooltip} from "./ui/tooltip";
  * a code layer and a diagram layer stacked in one box. The diagram draws hidden under a placeholder and fades in on
  * success; View source fades back to the code block. A drawing that fails upstream's post-draw audit (secrets, even
  * split across labels, or glyph-bending styles) is withheld: the code block shows at once, with no note and no fade.
- * Left out here, as separate features: the lightbox (Expand and the row toolbar), the document figure width, and
- * in-page find.
+ * Under a document lightbox store (document prose) the toolbar moves into a row above the diagram with Expand.
+ * Left out here, as separate features: the document figure width and in-page find.
  */
 
 /** Upstream's note above a failed diagram (`GVQKxz`), shown on every render error. */
@@ -352,6 +354,9 @@ export function MermaidFence({
 	if (success && drawnCode !== code) setDrawnCode(code);
 	const toolbarShown = !failed && (viewSource || success || drawnCode === code);
 	const showing: LayerName = success && !viewSource ? "diagram" : "code";
+	const lightbox = useContext(DiagramLightboxContext);
+	// Upstream `W`: the corner overlay only in the transcript (no store) while the diagram shows.
+	const corner = lightbox === null && showing === "diagram";
 	const awaitingFirstDraw = !viewSource && !failed && drawnCode !== code;
 	const standIn = awaitingFirstDraw ? "placeholder" : "source";
 	const reducedMotion = useReducedMotion();
@@ -534,7 +539,34 @@ export function MermaidFence({
 				)}
 			</div>
 			{toolbarShown && (
-				<div data-placement="corner" className="absolute right-1.75 top-1.25 flex gap-0.5">
+				<div
+					data-placement={corner ? "corner" : "row"}
+					className={
+						corner
+							? "absolute right-1.75 top-1.25 flex gap-0.5"
+							: "relative order-first flex justify-end gap-0.5"
+					}
+				>
+					{lightbox !== null && success && !viewSource && (
+						<Tooltip content="Expand diagram">
+							<button
+								type="button"
+								data-cds="Button"
+								data-cds-icon-only=""
+								data-cds-ghost=""
+								data-testid="epitaxy-mermaid-fence-expand"
+								aria-label="Expand diagram"
+								className={TOOLBAR_BUTTON_CLASS}
+								onClick={() =>
+								{
+									const drawing = findDrawing(layerRefs.current.diagram);
+									if (drawing) lightbox.getState().show(figureOf(drawing));
+								}}
+							>
+								<Icon name="Expand" />
+							</button>
+						</Tooltip>
+					)}
 					<Tooltip content={label}>
 						<button
 							type="button"

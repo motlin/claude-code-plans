@@ -25,6 +25,20 @@ vi.mock("../src/hooks/use-shiki", async (importOriginal) => (
 	useHighlightedLines: () => null,
 }));
 
+// The fence island is covered elsewhere; here only that the preview draws it under a lightbox store matters.
+vi.mock("../src/components/mermaid-fence-gate", async () =>
+{
+	const {useContext} = await import("react");
+	const {DiagramLightboxContext} = await import("../src/lib/diagram-lightbox");
+	return {
+		MermaidFenceGate: ({code}: {code: string}) => (
+			<span data-testid="island" data-lightbox={useContext(DiagramLightboxContext) === null ? "none" : "store"}>
+				{code}
+			</span>
+		),
+	};
+});
+
 type FakeResponse =
 {
 	status: number;
@@ -282,6 +296,36 @@ describe("markdown files", () =>
 			},
 		);
 	});
+	it("draws mermaid fences as diagrams under the document lightbox store, as upstream's file prose does", async () =>
+	{
+		textFile(README, "Flow:\n\n```mermaid\ngraph TD; A-->B\n```\n");
+		const islands = () =>
+			[...document.querySelectorAll<HTMLElement>("[data-testid=island]")].map((island) => [
+				island.textContent,
+				island.dataset["lightbox"],
+			]);
+		renderView(
+			{
+				path: README,
+			},
+		);
+		await waitFor(() =>
+		{
+			expect(islands()).toStrictEqual([["graph TD; A-->B", "store"]]);
+		});
+		cleanup();
+		renderView(
+			{
+				path: README,
+				onOpenFile: vi.fn<(path: string) => void>(),
+			},
+		);
+		await waitFor(() =>
+		{
+			expect(islands()).toStrictEqual([["graph TD; A-->B", "store"]]);
+		});
+	});
+
 	it("puts a Copy code button on each fenced block that copies the block text", async () =>
 	{
 		textFile(README, "Run this:\n\n```sh\npnpm install\n```\n");

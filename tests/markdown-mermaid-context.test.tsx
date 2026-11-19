@@ -31,10 +31,18 @@ vi.mock("../src/hooks/use-claude-events", () => (
 	}),
 }));
 // The island itself is covered elsewhere; here only which surfaces opt into the diagram context matters.
-vi.mock("../src/components/mermaid-fence-gate", () => (
+vi.mock("../src/components/mermaid-fence-gate", async () =>
 {
-	MermaidFenceGate: ({code}: {code: string}) => <span data-testid="island">{code}</span>,
-}));
+	const {useContext} = await import("react");
+	const {DiagramLightboxContext} = await import("../src/lib/diagram-lightbox");
+	return {
+		MermaidFenceGate: ({code}: {code: string}) => (
+			<span data-testid="island" data-lightbox={useContext(DiagramLightboxContext) === null ? "none" : "store"}>
+				{code}
+			</span>
+		),
+	};
+});
 
 class FakeResizeObserver
 {
@@ -82,6 +90,7 @@ function transcriptFences(records: unknown[])
 	{
 		inProse: fence.closest("[data-transcript-prose]") !== null,
 		source: fence.getAttribute("data-mermaid-source"),
+		lightbox: fence.querySelector<HTMLElement>("[data-testid=island]")?.dataset["lightbox"],
 	}));
 }
 
@@ -118,6 +127,7 @@ describe("which markdown surfaces draw mermaid (upstream's diagram vs code conte
 			{
 				inProse: true,
 				source: "graph TD; A-->B",
+				lightbox: "none",
 			},
 		]);
 	});
@@ -167,6 +177,17 @@ describe("which markdown surfaces draw mermaid (upstream's diagram vs code conte
 			},
 		];
 		expect(transcriptFences(records)).toStrictEqual([]);
+	});
+
+	it("draws plan documents with a lightbox store, as upstream's document prose does", () =>
+	{
+		const {container} = render(<MarkdownView markdown={FENCE} document />);
+		expect(
+			[...container.querySelectorAll<HTMLElement>("[data-testid=island]")].map((island) => [
+				island.textContent,
+				island.dataset["lightbox"],
+			]),
+		).toStrictEqual([["graph TD; A-->B", "store"]]);
 	});
 
 	it("keeps prose markdown, plans and memories as code unless asked", () =>

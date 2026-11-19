@@ -30,6 +30,7 @@ import {useResolvedFileRefs} from "../use-resolved-file-refs";
 import {FileTypeIcon} from "../file-type-icon";
 import {FileViewer} from "../file-viewer";
 import {fileViewerLanguage} from "../file-viewer-utils";
+import {DocumentDiagrams} from "../diagram-lightbox";
 import {MarkdownArticle} from "../markdown-article";
 import {useSettings} from "../settings-context";
 import {ContextMenu, ContextMenuTrigger, MenuContent} from "../ui/menu";
@@ -152,6 +153,7 @@ function LinkedMarkdown({
 	return (
 		<MarkdownArticle
 			markdown={markdown}
+			diagrams
 			mdLinkBase={SIBLING_MD_BASE}
 			fileRefs={refs.size === 0 ? undefined : refs}
 			onFileRef={(ref) =>
@@ -711,11 +713,13 @@ export function FileView({
 				// oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- delegates clicks from the rendered links inside it, which are keyboard-reachable themselves
 				<div className="p-4" onClick={openSiblingLink}>
 					<div className="mx-auto max-w-[860px]">
-						{onOpenFile === undefined ? (
-							<MarkdownArticle markdown={data.content} />
-						) : (
-							<LinkedMarkdown markdown={data.content} path={path} cwd={cwd} onOpenFile={onOpenFile} />
-						)}
+						<DocumentDiagrams>
+							{onOpenFile === undefined ? (
+								<MarkdownArticle markdown={data.content} diagrams />
+							) : (
+								<LinkedMarkdown markdown={data.content} path={path} cwd={cwd} onOpenFile={onOpenFile} />
+							)}
+						</DocumentDiagrams>
 					</div>
 				</div>
 			);

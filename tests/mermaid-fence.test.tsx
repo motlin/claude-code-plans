@@ -5,6 +5,12 @@ import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {MermaidFence} from "../src/components/mermaid-fence";
 import {MermaidPlaceholder} from "../src/components/mermaid-fence-gate";
 import type {MermaidStatus} from "../src/components/mermaid-diagram";
+import
+{
+	createDiagramLightboxStore,
+	DiagramLightboxContext,
+	type DiagramLightboxStore,
+} from "../src/lib/diagram-lightbox";
 
 const {diagram} = vi.hoisted(() =>
 {
@@ -51,9 +57,29 @@ vi.mock("../src/components/mermaid-diagram", async () =>
 
 const CODE_BLOCK = <div className="markdown-codeblock">source</div>;
 
-function fence()
+function fence(lightbox: DiagramLightboxStore | null = null)
 {
-	return render(<MermaidFence code="graph TD; A-->B" codeBlock={CODE_BLOCK} placeholder={<MermaidPlaceholder />} />);
+	return render(
+		<DiagramLightboxContext value={lightbox}>
+			<MermaidFence code="graph TD; A-->B" codeBlock={CODE_BLOCK} placeholder={<MermaidPlaceholder />} />
+		</DiagramLightboxContext>,
+	);
+}
+
+function toolbarOf(container: HTMLElement)
+{
+	const toolbar = container.querySelector<HTMLElement>("[data-placement]");
+	return toolbar === null
+		? null
+		:
+			{
+				placement: toolbar.dataset["placement"],
+				className: toolbar.className,
+				buttons: [...toolbar.querySelectorAll("button")].map((button) => [
+					button.dataset["testid"],
+					button.getAttribute("aria-label"),
+				]),
+			};
 }
 
 /** The renderer finishing with `status`; a success first draws `svg` into its host, as the real one does. */
@@ -291,11 +317,14 @@ describe("MermaidFence (upstream EpitaxyMermaidFence)", () =>
 		expect(
 			{
 				label: view().getAttribute("aria-label"),
+				// Upstream `W`: the corner overlay is only for a shown diagram; the source gets the row above it.
+				placement: toolbarOf(container)?.placement,
 				layers: layers(container).map(({layer, state, holds}) => [layer, state, holds]),
 			},
 		).toStrictEqual(
 			{
 				label: "Preview",
+				placement: "row",
 				layers: [
 					["code", "shown", "markdown-codeblock"],
 					["diagram", "leaving", "diagram"],
@@ -430,5 +459,88 @@ describe("MermaidFence (upstream EpitaxyMermaidFence)", () =>
 				toolbar: null,
 			},
 		);
+	});
+
+	describe("under a document lightbox store (upstream c3fde7009 document prose)", () =>
+	{
+		const WIDE_SVG = `<svg xmlns="${SVG_NS}" viewBox="0 0 812.5 240" style="max-width: 812.5px;"><text>A</text></svg>`;
+
+		it("moves the toolbar into a row above the diagram with Expand before View source", () =>
+		{
+			const {container} = fence(createDiagramLightboxStore());
+			report("success");
+			act(() =>
+			{
+				vi.advanceTimersByTime(400);
+			});
+			expect(toolbarOf(container)).toStrictEqual(
+				{
+					placement: "row",
+					className: "relative order-first flex justify-end gap-0.5",
+					buttons: [
+						["epitaxy-mermaid-fence-expand", "Expand diagram"],
+						["epitaxy-mermaid-fence-view", "View source"],
+					],
+				},
+			);
+		});
+
+		it("opens the lightbox on Expand with a copy of the drawing at its viewBox size", () =>
+		{
+			const store = createDiagramLightboxStore();
+			const {container} = fence(store);
+			report("success", WIDE_SVG);
+			fireEvent.click(container.querySelector("[data-testid=epitaxy-mermaid-fence-expand]")!);
+			const {diagram: figure, open} = store.getState();
+			const drawn = container.querySelector("svg");
+			expect(
+				{
+					open,
+					width: figure?.width,
+					height: figure?.height,
+					copy: figure?.drawing.outerHTML,
+					detached: figure?.drawing !== drawn && figure?.drawing.isConnected === false,
+				},
+			).toStrictEqual(
+				{
+					open: true,
+					width: 812.5,
+					height: 240,
+					copy: drawn?.outerHTML,
+					detached: true,
+				},
+			);
+		});
+
+		it("hides Expand while the source is shown, and the whole toolbar when drawing fails", () =>
+		{
+			const {container} = fence(createDiagramLightboxStore());
+			report("success");
+			act(() =>
+			{
+				vi.advanceTimersByTime(400);
+			});
+			fireEvent.click(container.querySelector("[data-testid=epitaxy-mermaid-fence-view]")!);
+			const viewingSource = toolbarOf(container);
+			cleanup();
+			const failed = fence(createDiagramLightboxStore()).container;
+			report("error");
+			expect(
+				{
+					viewingSource,
+					failed: toolbarOf(failed),
+				},
+			).toStrictEqual(
+				{
+					viewingSource:
+					{
+						placement: "row",
+						className: "relative order-first flex justify-end gap-0.5",
+						buttons: [["epitaxy-mermaid-fence-view", "Preview"]],
+					},
+					failed: null,
+				},
+			);
+		});
 	});
 });
