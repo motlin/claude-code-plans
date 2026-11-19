@@ -134,9 +134,18 @@ describe("useCodeThemeBackground (upstream c6e73333a S)", () =>
 	{
 		const {result} = renderHook(() => useCodeThemeBackground());
 		expect(result.current).toBe(
-			"light-dark(var(--code-theme-light-bg, var(--cds-surface-2)), var(--code-theme-dark-bg, var(--cds-surface-2)))",
+			"light-dark(var(--code-theme-light-bg, var(--upstream-surface-2)), var(--code-theme-dark-bg, var(--upstream-surface-2)))",
 		);
 		expect(CODE_THEME_BG_FALLBACK).toBe(result.current);
+		// The fallback must name a token a root rule declares, or the surface paints transparent.
+		const globals = readFileSync("src/styles/globals.css", "utf8");
+		expect(
+			[...new Set(CODE_THEME_BG_FALLBACK.match(/var\(--(?!code-theme-)[\w-]+/g))].map((ref) =>
+			{
+				const name = ref.slice(4);
+				return [name, globals.includes(`\n\t${name}:`)];
+			}),
+		).toStrictEqual([["--upstream-surface-2", true]]);
 		await waitFor(() =>
 		{
 			expect(result.current).toBe(

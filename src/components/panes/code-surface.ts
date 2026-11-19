@@ -1,4 +1,5 @@
 import type {CSSProperties} from "react";
+import {CODE_THEME_BG_FALLBACK} from "../../hooks/use-code-theme-background";
 import type {PaneKind} from "../../lib/pane-layout";
 
 /** Upstream c03935b01 `vc` ({diff: "editor", file: "editor", terminal: "terminal"}): the tiles drawn on the code theme. */
@@ -12,8 +13,7 @@ const CODE_SURFACE_KINDS: ReadonlySet<PaneKind> = new Set<PaneKind>(["files", "c
  */
 const CODE_SURFACE_STYLE =
 {
-	background:
-		"light-dark(var(--code-theme-light-bg, var(--upstream-surface-2)), var(--code-theme-dark-bg, var(--upstream-surface-2)))",
+	background: CODE_THEME_BG_FALLBACK,
 	"--epitaxy-transcript-surface": "var(--code-theme-bg)",
 } as const satisfies CSSProperties & Record<`--${string}`, string>;
 

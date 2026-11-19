@@ -5,7 +5,7 @@ import {useCodeThemes} from "./use-code-themes";
 
 /** Upstream c6e73333a `S` before both code themes have loaded. */
 export const CODE_THEME_BG_FALLBACK =
-	"light-dark(var(--code-theme-light-bg, var(--cds-surface-2)), var(--code-theme-dark-bg, var(--cds-surface-2)))";
+	"light-dark(var(--code-theme-light-bg, var(--upstream-surface-2)), var(--code-theme-dark-bg, var(--upstream-surface-2)))";
 
 interface LoadedTheme
 {
