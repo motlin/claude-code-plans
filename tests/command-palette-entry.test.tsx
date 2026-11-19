@@ -1,5 +1,4 @@
 // @vitest-environment jsdom
-// @vitest-isolate: after any earlier file in the worker suspended a Suspense boundary, the retried palette download here never leaves its loading shell.
 
 import {act, cleanup, render, screen} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
@@ -80,9 +79,12 @@ describe("deferred command palette", () =>
 
 		view.rerender(<Harness open={false} />);
 		harness.fail = false;
-		act(() =>
+		// Awaited: a sync act() that suspends abandons its queued retry render, and React then skips the module's ping
+		// whenever that ping lands on the same retry lane, which depends on how many retries earlier files used.
+		await act(async () =>
 		{
 			view.rerender(<Harness open />);
+			await Promise.resolve();
 		});
 		const opened = await screen.findByRole(
 			"dialog",
