@@ -103,6 +103,42 @@ function sentFrames(socket: ReturnType<typeof createSocket>): ShellServerFrame[]
 	return socket.send.mock.calls.map(([message]) => parseShellServerFrame(message));
 }
 
+/** Resolves on the frames a real shell sends, so tests wait for its output rather than polling a timer. */
+function watchShellOutput(socket: ReturnType<typeof createSocket>)
+{
+	let output = "";
+	let exitFrame: ShellServerFrame | undefined;
+	const listeners = new Set<() => void>();
+	socket.send.mockImplementation((message) =>
+	{
+		const frame = parseShellServerFrame(message);
+		if (frame.type === "data") output += decodeTerminalText(frame.data);
+		if (frame.type === "opened") output += decodeTerminalText(frame.buffered);
+		if (frame.type === "exit") exitFrame = frame;
+		for (const listener of listeners) listener();
+	});
+	async function until<T>(read: () => T | undefined): Promise<T>
+	{
+		return new Promise((resolve) =>
+		{
+			const check = () =>
+			{
+				const value = read();
+				if (value === undefined) return;
+				listeners.delete(check);
+				resolve(value);
+			};
+			listeners.add(check);
+			check();
+		});
+	}
+	return {
+		output: () => output,
+		printed: async (marker: string) => until(() => (output.includes(marker) ? true : undefined)),
+		exited: async () => until(() => exitFrame),
+	};
+}
+
 const LOOPBACK_ORIGIN = "http://127.0.0.1:7526";
 
 function createRequest(body: unknown, headers: Record<string, string> = {}, ip: string | null = "127.0.0.1"): Request
@@ -582,94 +618,57 @@ describe("shell pty registry", () =>
 		);
 		if (!created.ok) throw new Error(created.error);
 		const socket = createSocket();
+		const shell = watchShellOutput(socket);
 		const connection = registry.attach(created.ptyKey, socket);
-		const idleAtPrompt = await vi.waitFor(
-			() =>
-			{
-				expect(sentFrames(socket).length).toBeGreaterThan(1);
-				return registry.busy([created.ptyKey]);
-			},
-			{
-				timeout: 10_000,
-			},
-		);
-		connection?.input(
-			JSON.stringify(
-				{
-					type: "data",
-					data: encodeTerminalText("sleep 30\n"),
-				},
-			),
-		);
-		await vi.waitFor(
-			() =>
-			{
-				expect(registry.busy([created.ptyKey])).toStrictEqual([created.ptyKey]);
-			},
-			{
-				timeout: 10_000,
-			},
-		);
-		// The terminal's foreground group flips to the job before the forked child resets the shell's SIGINT
-		// handler and execs `sleep`, so under load a single ^C could land in that window and be lost, leaving
-		// `sleep 30` running past the timeout. Interrupt again on every poll until the shell has the terminal back.
-		await vi.waitFor(
-			() =>
-			{
-				const busyKeys = registry.busy([created.ptyKey]);
-				if (busyKeys.length > 0)
-				{
-					connection?.input(
-						JSON.stringify(
-							{
-								type: "data",
-								data: encodeTerminalText("\u0003"),
-							},
-						),
-					);
-				}
-				expect(busyKeys).toStrictEqual([]);
-			},
-			{
-				timeout: 10_000,
-				interval: 250,
-			},
-		);
-		expect(idleAtPrompt).toStrictEqual([]);
-		connection?.input(
-			JSON.stringify(
-				{
-					type: "data",
-					data: encodeTerminalText("pwd; exit 7\n"),
-				},
-			),
-		);
-
-		await vi.waitFor(
-			() =>
-			{
-				expect(sentFrames(socket).at(-1)).toStrictEqual(
+		const type = (text: string) =>
+			connection?.input(
+				JSON.stringify(
 					{
-						type: "exit",
-						exitCode: 7,
-						signal: null,
+						type: "data",
+						data: encodeTerminalText(text),
 					},
-				);
-			},
+				),
+			);
+		// Each step waits for a marker the shell itself prints, never a wall-clock budget, so a slow login
+		// under load only delays the test. Splitting each marker with "" keeps the terminal's echo of the
+		// typed line from matching; only the command's own output contains it.
+		type('echo RE""ADY\n');
+		await shell.printed("READY");
+		const idleAtPrompt = registry.busy([created.ptyKey]);
+		// The job prints its marker after the shell has handed it the terminal and exec'd it with default
+		// SIGINT, so it is the foreground group and a single ^C ends it.
+		type("sh -c 'echo RUN\"\"NING; exec sleep 30'\n");
+		await shell.printed("RUNNING");
+		const busyInJob = registry.busy([created.ptyKey]);
+		type("\u0003");
+		type('echo ID""LE\n');
+		await shell.printed("IDLE");
+		const idleAfterInterrupt = registry.busy([created.ptyKey]);
+		type("pwd; exit 7\n");
+		const exit = await shell.exited();
+
+		expect(
 			{
-				timeout: 10_000,
+				idleAtPrompt,
+				busyInJob,
+				idleAfterInterrupt,
+				exit,
+				printedCwd: shell.output().split(/\r?\n/).includes(directory),
+			},
+		).toStrictEqual(
+			{
+				idleAtPrompt: [],
+				busyInJob: [created.ptyKey],
+				idleAfterInterrupt: [],
+				exit:
+				{
+					type: "exit",
+					exitCode: 7,
+					signal: null,
+				},
+				printedCwd: true,
 			},
 		);
-		const output = sentFrames(socket)
-			.map((frame) =>
-				frame.type === "data"
-					? decodeTerminalText(frame.data)
-					: frame.type === "opened"
-						? decodeTerminalText(frame.buffered)
-						: "",
-			)
-			.join("");
-		expect(output.split(/\r?\n/)).toContain(directory);
 		registry.shutdown();
 	});
 });
