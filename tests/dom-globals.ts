@@ -24,7 +24,7 @@ function domOwners(): object[]
 }
 
 // Globals files replace by assignment rather than vi.stubGlobal. Only these: vitest and the test files keep their own
-// state on globalThis too, and that must survive. localStorage and sessionStorage belong to storage-globals.ts.
+// state on globalThis too, and that must survive. localStorage, sessionStorage and fetch belong to worker-globals.ts.
 const GLOBAL_NAMES = [
 	"ResizeObserver",
 	"IntersectionObserver",
@@ -37,7 +37,6 @@ const GLOBAL_NAMES = [
 	"innerHeight",
 	"visualViewport",
 	"open",
-	"fetch",
 	"EventSource",
 	"WebSocket",
 	"ClipboardItem",

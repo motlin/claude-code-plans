@@ -10,7 +10,7 @@ import {resetTerminalCommandsMarked} from "../src/lib/terminal-marked-store";
 import {__unreadStoreTesting} from "../src/lib/unread-store";
 import {captureDomGlobals, restoreDomGlobals} from "./dom-globals";
 import {isolateGitEnvironment} from "./git-fixture";
-import {captureStorageGlobals, restoreStorageGlobals} from "./storage-globals";
+import {captureWorkerGlobals, restoreWorkerGlobals} from "./worker-globals";
 
 // Runs before every test file, so no test or code under test inherits a GIT_DIR
 // that points git at the developer's repository, and no git it spawns starts an
@@ -95,12 +95,13 @@ afterAll(() =>
 });
 
 // A file that swaps localStorage or sessionStorage for a fake or a throwing getter would hand it to the next file in a
-// shared worker, where the beforeAll below clears storage first and crashes on a throwing getter. Remember the
-// worker's own storage before any file runs and put it back after each file.
-captureStorageGlobals();
+// shared worker, where the beforeAll below clears storage first and crashes on a throwing getter, and a fetch spy it
+// never restored would answer a later file's requests (a sidebar would load Recents and start its row-count timer).
+// Remember the worker's own storage and fetch before any file runs, in every environment, and put them back after each file.
+captureWorkerGlobals();
 afterAll(() =>
 {
-	restoreStorageGlobals();
+	restoreWorkerGlobals();
 });
 
 // findBy* and waitFor give up after Testing Library's default 1s, which a render on a machine at load average 100+
