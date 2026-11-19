@@ -317,7 +317,7 @@ describe("InlinePlanApproval", () =>
 			{
 				wrapper: wrapper?.className,
 				rootHas: ["!pt-0", "overflow-clip", "gap-3", "max-h-[60vh]"].filter((c) => card?.classList.contains(c)),
-				rootLacks: ["gap-[24px]"].filter((c) => card?.classList.contains(c)),
+				rootLacks: ["gap-[24px]", "epitaxy-tool-card-in-flow"].filter((c) => card?.classList.contains(c)),
 				band: band?.className,
 				titleRow: titleRow?.className,
 				titleColumn: titleRow?.firstElementChild?.className,

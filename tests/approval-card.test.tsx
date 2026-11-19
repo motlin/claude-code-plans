@@ -710,3 +710,180 @@ describe("approval scroll region (upstream c2d1aeb56 scroller)", () =>
 		);
 	});
 });
+
+describe("approval conversation cap (upstream c2d1aeb56 `B`)", () =>
+{
+	it("compiles the in-flow tool card's cap and end reclaim from the fitter's properties", async () =>
+	{
+		expect(
+			await compileAll([
+				"max-h-[var(--approval-conversation-cap,max(60vh,calc(16rem*var(--cds-rem-scale,1))))]",
+				"mb-[calc(-1*var(--approval-conversation-end-reclaim,0px))]",
+			]),
+		).toStrictEqual(
+			{
+				"max-h-[var(--approval-conversation-cap,max(60vh,calc(16rem*var(--cds-rem-scale,1))))]":
+					".max-h-\\[var\\(--approval-conversation-cap\\,max\\(60vh\\,calc\\(16rem\\*var\\(--cds-rem-scale\\,1\\)\\)\\)\\)\\] { max-height: var(--approval-conversation-cap,max(60vh, calc(16rem * var(--cds-rem-scale,1)))); }",
+				"mb-[calc(-1*var(--approval-conversation-end-reclaim,0px))]":
+					".mb-\\[calc\\(-1\\*var\\(--approval-conversation-end-reclaim\\,0px\\)\\)\\] { margin-bottom: calc(-1 * var(--approval-conversation-end-reclaim,0px)); }",
+			},
+		);
+	});
+
+	class FakeResizeObserver
+	{
+		static instances: FakeResizeObserver[] = [];
+		observed: Element[] = [];
+		disconnected = false;
+		constructor(readonly callback: () => void)
+		{
+			FakeResizeObserver.instances.push(this);
+		}
+		observe(element: Element)
+		{
+			this.observed.push(element);
+		}
+		unobserve()
+		{
+		}
+		disconnect()
+		{
+			this.disconnected = true;
+		}
+		/** The fitter's observer: the only one watching the scroller. */
+		static fitters(scroller: Element)
+		{
+			return FakeResizeObserver.instances.filter((instance) => instance.observed.includes(scroller));
+		}
+		static fire()
+		{
+			act(() =>
+			{
+				for (const instance of FakeResizeObserver.instances) instance.callback();
+			});
+		}
+	}
+
+	beforeEach(() =>
+	{
+		FakeResizeObserver.instances = [];
+		vi.stubGlobal("ResizeObserver", FakeResizeObserver);
+	});
+	afterEach(() =>
+	{
+		vi.unstubAllGlobals();
+	});
+
+	function card(presentation: "card" | "dock")
+	{
+		return (
+			<div
+				data-testid="scroller"
+				style={
+				{
+					overflowY: "auto",
+				}}
+			>
+				<PermissionCard
+					title={
+					{
+						action: "run",
+						meta: null,
+					}}
+					detail="ls"
+					canAnswer
+					presentation={presentation}
+					onDecision={async () =>
+					{
+					}}
+				/>
+			</div>
+		);
+	}
+
+	function setClientHeight(element: Element, value: number)
+	{
+		Object.defineProperty(
+			element,
+			"clientHeight",
+			{
+				configurable: true,
+				value,
+			},
+		);
+	}
+
+	it("fits an inline tool card to its scroller, re-measures on resize and clears both properties on unmount", () =>
+	{
+		const view = render(card("card"));
+		const scroller = screen.getByTestId("scroller");
+		const root = view.container.querySelector<HTMLElement>("[data-approval-card-root]")!;
+		const cap = () => root.style.getPropertyValue("--approval-conversation-cap");
+		const mounted = cap();
+		setClientHeight(scroller, 800);
+		FakeResizeObserver.fire();
+		const tall = cap();
+		setClientHeight(scroller, 600);
+		FakeResizeObserver.fire();
+		const short = cap();
+		const fitters = FakeResizeObserver.fitters(scroller);
+		const observed = fitters
+			.flatMap(({observed}) => observed)
+			.map((element) =>
+				element === scroller
+					? "scroller"
+					: element === root.parentElement
+						? "column"
+						: element.matches("[data-approval-card-body]")
+							? "body"
+							: "other",
+			);
+		view.unmount();
+		expect(
+			{
+				mounted,
+				tall,
+				short,
+				observed,
+				afterUnmount: [cap(), root.style.getPropertyValue("--approval-conversation-end-reclaim")],
+				disconnected: fitters.map(({disconnected}) => disconnected),
+			},
+		).toStrictEqual(
+			{
+				mounted: "",
+				tall: "max(min(60vh, 800px), 34px)",
+				short: "max(min(60vh, 600px), 34px)",
+				observed: ["scroller", "column", "body"],
+				afterUnmount: ["", ""],
+				disconnected: [true],
+			},
+		);
+	});
+
+	it("stops fitting when the card docks, and never fits a docked card", () =>
+	{
+		const view = render(card("card"));
+		const scroller = screen.getByTestId("scroller");
+		setClientHeight(scroller, 800);
+		FakeResizeObserver.fire();
+		const root = view.container.querySelector<HTMLElement>("[data-approval-card-root]")!;
+		const inline = root.style.getPropertyValue("--approval-conversation-cap");
+		view.rerender(card("dock"));
+		const docked = view.container.querySelector<HTMLElement>("[data-approval-card-root]")!;
+		expect(
+			{
+				inline,
+				sameRoot: docked === root,
+				docked: docked.style.getPropertyValue("--approval-conversation-cap"),
+				fitters: FakeResizeObserver.fitters(scroller).map(({disconnected}) => disconnected),
+			},
+		).toStrictEqual(
+			{
+				inline: "max(min(60vh, 800px), 34px)",
+				sameRoot: true,
+				docked: "",
+				fitters: [true],
+			},
+		);
+	});
+});

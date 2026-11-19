@@ -355,7 +355,7 @@ export interface ReadGateWatch
 export type GateWindow = Window & typeof globalThis;
 
 /** An observer constructor the types promise but jsdom (or an older engine) may lack. */
-function maybe<T>(value: T): T | undefined
+export function maybe<T>(value: T): T | undefined
 {
 	return value;
 }

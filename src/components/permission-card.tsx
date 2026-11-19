@@ -610,6 +610,7 @@ export function PermissionCard({
 			label={permissionCardLabel(title)}
 			footer={footer}
 			presentation={presentation}
+			toolCard
 			queueDepth={queueDepth}
 			enter={enter}
 			titleRef={titleRef}

@@ -11,6 +11,7 @@ import
 	useState,
 } from "react";
 
+import {useApprovalConversationCap} from "../hooks/use-approval-conversation-cap";
 import {useOverflows} from "../hooks/use-overflows";
 import type {HerdrRefusalFallbackDialog, RefusalFallbackChoice} from "../lib/api/herdr";
 import type {ElicitationFocus} from "../lib/herdr/elicitation-keys";
@@ -183,6 +184,13 @@ const BODY_GIVE_WAY_CLASS =
 	"[&>*]:shrink-0 empty:hidden [&:has(~.epitaxy-approval-notices)]:shrink-[1000] [&:has(~.epitaxy-approval-notices)]:min-h-9 [&:has(~.epitaxy-approval-notices):has([data-approval-value])]:min-h-18";
 
 /**
+ * Upstream's in-flow tool card frame (c2d1aeb56 `J`'s U, W, q and J classes): the conversation cap fitter's height
+ * cap (falling back to the static 60vh / 16rem one), its end reclaim pulling the tail up, and the in-flow marker.
+ */
+const IN_FLOW_TOOL_CARD_FRAME =
+	"max-h-[var(--approval-conversation-cap,max(60vh,calc(16rem*var(--cds-rem-scale,1))))] mb-[calc(-1*var(--approval-conversation-end-reclaim,0px))] !pt-0 overflow-clip epitaxy-tool-card-in-flow";
+
+/**
  * Upstream's approval card shell for a pending permission: a scrolling body
  * and an action row, 12px radius (cds-radius + 4px) and 12px padding. Each card is its own
  * inline-size container, and at upstream's 420px its actions stack full width.
@@ -201,6 +209,7 @@ export function ApprovalCardShell({
 	titleRef,
 	bodyRef,
 	presentation = "dock",
+	toolCard = false,
 	queueDepth = 0,
 	enter = false,
 	compact = false,
@@ -229,6 +238,11 @@ export function ApprovalCardShell({
 	bodyRef?: Ref<HTMLDivElement>;
 	/** Upstream's inline "card" in the transcript, or the composer "dock". */
 	presentation?: "card" | "dock";
+	/**
+	 * Upstream's `toolCard` (only the tool permission card passes it): inline, the card caps its height to the
+	 * conversation's visible room and reclaims the tail space under it (`use-approval-conversation-cap.ts`).
+	 */
+	toolCard?: boolean;
 	/** Upstream's `queueDepth`: requests pending behind this one. Only the dock draws them, as ghosts (`w`'s `V`). */
 	queueDepth?: number;
 	/** Upstream's 160ms enter fade for a live arrival; false marks the card `data-skip-approval-enter`. */
@@ -254,11 +268,25 @@ export function ApprovalCardShell({
 	const bodyGap = presentation === "card" ? (compact ? "gap-3" : "gap-[24px]") : "gap-[12px] overscroll-contain";
 	const band = presentation === "card" && title !== undefined;
 	// The banded card is upstream's in-flow tool card: no top padding, clipped to its radius, and a taller floor.
-	const frame = band
-		? compact
-			? "max-h-[60vh] !pt-0 overflow-clip"
-			: "max-h-[max(60vh,calc(16rem*var(--cds-rem-scale,1)))] !pt-0 overflow-clip"
-		: "max-h-[60vh]";
+	const inFlowTool = presentation === "card" && toolCard;
+	const root = useRef<HTMLDivElement | null>(null);
+	const mergedRootRef = useCallback(
+		(node: HTMLDivElement | null) =>
+		{
+			root.current = node;
+			if (typeof rootRef === "function") rootRef(node);
+			else if (rootRef !== null && rootRef !== undefined) rootRef.current = node;
+		},
+		[rootRef],
+	);
+	useApprovalConversationCap(root, inFlowTool);
+	const frame = inFlowTool
+		? IN_FLOW_TOOL_CARD_FRAME
+		: band
+			? compact
+				? "max-h-[60vh] !pt-0 overflow-clip"
+				: "max-h-[max(60vh,calc(16rem*var(--cds-rem-scale,1)))] !pt-0 overflow-clip"
+			: "max-h-[60vh]";
 	// Upstream's root carries a literal 12px pad; `.epitaxy-approval-card[data-approval-presentation="card"]` lifts the
 	// inline card's to pad-lg (16px comfortable, 12px compact). Title band and body bleed to the same inset.
 	const inset =
@@ -280,7 +308,7 @@ export function ApprovalCardShell({
 		<div className={presentation === "card" ? "@container/approval-dock" : "contents"}>
 			{/* oxlint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/no-noninteractive-element-interactions -- upstream's focusable card root: arrows roam its action buttons, Enter focuses the primary, and clicks stop short of the transcript */}
 			<div
-				ref={rootRef}
+				ref={mergedRootRef}
 				data-approval-card-root
 				data-fixed-code-size=""
 				data-focus-region="question"
