@@ -1255,9 +1255,7 @@ describe("customize header sizes", () =>
 				},
 			)
 		).className.split(" ");
-		expect(["h-6", "text-[13px]/[19px]", "rounded-r6", "px-2"].filter((c) => !classes.includes(c))).toStrictEqual(
-			[],
-		);
+		expect(["h-6", "text-body", "rounded-r6", "px-2"].filter((c) => !classes.includes(c))).toStrictEqual([]);
 	});
 });
 
@@ -3041,7 +3039,7 @@ const MCP_CATALOG: DiscoverCatalog =
 };
 
 const BACK_LINK_CLASS =
-	"-ms-2 inline-flex h-6 w-fit items-center gap-1.5 rounded-r6 px-2 text-[13px]/[19px] text-primary no-underline hover:bg-fill-ghost-hover";
+	"-ms-2 inline-flex h-6 w-fit items-center gap-1.5 rounded-r6 px-2 text-body text-primary no-underline hover:bg-fill-ghost-hover";
 
 describe("returning to the unified search from an opened hit", () =>
 {

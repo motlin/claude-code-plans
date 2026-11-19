@@ -3004,7 +3004,6 @@ describe("PermissionCard", () =>
 						"w-[var(--split-h)]",
 						"px-1",
 						"h-6",
-						"text-[13px]/[19px]",
 						"px-2",
 						"rounded-r5",
 					];

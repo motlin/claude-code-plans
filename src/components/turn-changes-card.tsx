@@ -109,7 +109,7 @@ const SEE_ALL_STATS_CLASS = "flex shrink-0 items-center gap-0.5";
 
 /** Upstream's summary card: 4px top margin, 4px 8px padding, 10px radius, 13/19 control text, inset ring. */
 const CARD_CLASS =
-	"mt-1 flex w-full select-text flex-col gap-1 rounded-r7 px-2 py-1 text-[13px]/[19px] shadow-[inset_0_0_0_1px_var(--color-border)]";
+	"mt-1 flex w-full select-text flex-col gap-1 rounded-r7 px-2 py-1 text-body shadow-[inset_0_0_0_1px_var(--color-border)]";
 /** Upstream's file row: the control's `::before` fills the whole `<li>`, Undo and stats included, on hover. */
 const ITEM_CLASS = "relative -mx-1 flex min-w-0 items-center gap-2 px-2";
 const ROW_CONTROL_CLASS =

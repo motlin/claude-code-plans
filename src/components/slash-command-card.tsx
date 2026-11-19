@@ -4,7 +4,7 @@
  */
 
 export const SLASH_COMMAND_CARD_CLASS =
-	"flex w-[280px] max-w-[calc(100vw-16px)] flex-col gap-1 rounded-r7 bg-[var(--menu-bg)] p-3 text-[13px]/[19px] text-primary shadow-[var(--menu-shadow)] outline-none";
+	"flex w-[280px] max-w-[calc(100vw-16px)] flex-col gap-1 rounded-r7 bg-[var(--menu-bg)] p-3 text-body text-primary shadow-[var(--menu-shadow)] outline-none";
 
 const CARD_DESCRIPTION_CLASS =
 	"max-h-[min(40vh,calc(var(--available-height,100vh)-3rem))] scroll-fade-y overflow-y-auto overscroll-contain break-words text-primary";

@@ -183,7 +183,7 @@ describe("AssistantMessageActions", () =>
 				button: ["comfortable:size-8", "comfortable:rounded-r6"],
 				icon: ["comfortable:size-5"],
 				// Panels' ms-1 already brings the time to upstream's 12px, so no comfortable ps-3 on top.
-				time: ["comfortable:h-8", "comfortable:text-[14px]/[20px]"],
+				time: ["comfortable:h-8"],
 			},
 		);
 	});
@@ -1396,8 +1396,8 @@ describe("message action toolbar sizing and reveal", () =>
 			{
 				button: ["size-6", "rounded-r5"].every((c) => copy.className.split(" ").includes(c)),
 				icon: copy.querySelector("svg")!.getAttribute("class")!.split(" ").includes("size-4"),
-				assistantTime: ["flex", "h-6", "items-center", "text-[13px]/[19px]", "text-ink-muted", "ps-2"].every(
-					(c) => assistantTime.includes(c),
+				assistantTime: ["flex", "h-6", "items-center", "text-body", "text-ink-muted", "ps-2"].every((c) =>
+					assistantTime.includes(c),
 				),
 				userTime: ["text-[11px]/[17px]", "h-6", "text-ink-muted", "pe-[6px]"].every((c) =>
 					userTime.includes(c),

@@ -8529,7 +8529,7 @@ function ToolCallRow({
 						event.stopPropagation();
 						liveOutput();
 					}}
-					className="shrink-0 cursor-pointer rounded-r3 text-[13px]/[19px] text-primary underline-offset-[3px] hover:underline"
+					className="shrink-0 cursor-pointer rounded-r3 text-body text-primary underline-offset-[3px] hover:underline"
 				>
 					View live output
 				</button>

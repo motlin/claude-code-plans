@@ -368,7 +368,7 @@ function timeClass(inner: "left" | "right", panels: boolean): string
 		// no comfortable ps-3 on top (panels makes every scope comfortable locally).
 		const inset = panels ? "ps-2 ms-1" : "ps-2";
 		const comfortableInset = panels ? "" : " comfortable:ps-3";
-		return `flex h-6 items-center ${inset} text-[13px]/[19px] text-ink-muted tabular-nums outline-none comfortable:h-8${comfortableInset} comfortable:text-[14px]/[20px]`;
+		return `flex h-6 items-center ${inset} text-body text-ink-muted tabular-nums outline-none comfortable:h-8${comfortableInset}`;
 	}
 	// Upstream's panels + flat-look rule: `display:block; align-content:center` and an uppercase first letter.
 	return panels

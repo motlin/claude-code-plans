@@ -19,7 +19,7 @@ describe("ListPageHeader", () =>
 		expect(markup).toStrictEqual(
 			["0 items", "1 item", "100 items"].map(
 				(caption) =>
-					`${HEADER_OPEN}${MOTION_OPEN}<h1 class="${TITLE_CLASS}">Items</h1></div><p class="mt-1 text-[13px] text-t6">${caption}</p></div></header>`,
+					`${HEADER_OPEN}${MOTION_OPEN}<h1 class="${TITLE_CLASS}">Items</h1></div><p class="mt-1 text-footnote text-t6">${caption}</p></div></header>`,
 			),
 		);
 	});
@@ -31,7 +31,7 @@ describe("ListPageHeader", () =>
 		);
 
 		expect(markup).toBe(
-			`${HEADER_OPEN}${MOTION_OPEN}<h1 class="${TITLE_CLASS}">Tasks</h1></div><p class="mt-1 text-[13px] text-t6">2 tasks</p></div><div class="mt-5 flex min-h-8 flex-wrap items-center gap-x-4 gap-y-2"><div data-cds-part="controls" class="ms-auto flex max-w-full shrink-0 flex-wrap items-center justify-end gap-2 [&amp;[data-search-open]]:min-w-min [&amp;[data-search-open]]:flex-nowrap @min-[640px]:[&amp;[data-search-open]]:grow-[3] @min-[640px]:[&amp;[data-search-open]]:basis-0 @max-[640px]:[&amp;[data-search-open]]:basis-full @max-[640px]:[&amp;[data-search-open]&gt;:not([role=search])]:hidden"><button type="button">List</button></div></div></header>`,
+			`${HEADER_OPEN}${MOTION_OPEN}<h1 class="${TITLE_CLASS}">Tasks</h1></div><p class="mt-1 text-footnote text-t6">2 tasks</p></div><div class="mt-5 flex min-h-8 flex-wrap items-center gap-x-4 gap-y-2"><div data-cds-part="controls" class="ms-auto flex max-w-full shrink-0 flex-wrap items-center justify-end gap-2 [&amp;[data-search-open]]:min-w-min [&amp;[data-search-open]]:flex-nowrap @min-[640px]:[&amp;[data-search-open]]:grow-[3] @min-[640px]:[&amp;[data-search-open]]:basis-0 @max-[640px]:[&amp;[data-search-open]]:basis-full @max-[640px]:[&amp;[data-search-open]&gt;:not([role=search])]:hidden"><button type="button">List</button></div></div></header>`,
 		);
 	});
 

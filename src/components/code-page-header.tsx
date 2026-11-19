@@ -53,7 +53,7 @@ export function CodePageHeader({
 	const tabsRow = panels && tabs !== undefined;
 	const tallTabs = tabsRow && sticky !== undefined;
 	const heading = <h1 className="min-w-0 font-voice text-[24px]/[32px] font-medium text-primary">{title}</h1>;
-	const caption = subtitle !== undefined && <p className="mt-1 text-[13px] text-t6">{subtitle}</p>;
+	const caption = subtitle !== undefined && <p className="mt-1 text-footnote text-t6">{subtitle}</p>;
 	const header = (
 		<header
 			data-cds="PageHeader"

@@ -68,7 +68,7 @@ const NewOutputStyleDialog = lazy(async () =>
 );
 
 const TITLE_CLASS =
-	"-mx-2 h-6 min-w-0 cursor-text truncate rounded-r5 border-0 bg-transparent px-2 text-left text-[13px]/[19px] font-medium text-primary select-none hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus comfortable:-mx-3 comfortable:h-[var(--cds-h-control)] comfortable:px-3 comfortable:rounded-r6 comfortable:text-[14px]/[20px]";
+	"-mx-2 h-6 min-w-0 cursor-text truncate rounded-r5 border-0 bg-transparent px-2 text-left text-body font-medium text-primary select-none hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus comfortable:-mx-3 comfortable:h-[var(--cds-h-control)] comfortable:px-3 comfortable:rounded-r6";
 
 /* Upstream `qh`: the toolbar root's ring, shown when focus parks on it after losing the focused item. */
 const TOOLBAR_FOCUS_RING_CLASS =

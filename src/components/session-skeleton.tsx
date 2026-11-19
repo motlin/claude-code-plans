@@ -36,10 +36,7 @@ export function SessionSkeleton({
 				) : (
 					<>
 						<Laptop aria-hidden="true" className="size-[18px] shrink-0 text-primary" />
-						<span
-							data-skeleton-title=""
-							className="min-w-0 truncate text-[13px]/[19px] font-medium text-primary"
-						>
+						<span data-skeleton-title="" className="min-w-0 truncate text-body font-medium text-primary">
 							{title}
 						</span>
 					</>

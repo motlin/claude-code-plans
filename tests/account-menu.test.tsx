@@ -179,11 +179,13 @@ describe("account menu", () =>
 		expect(
 			{
 				header: within(menu).getByTestId("user-menu-header").textContent,
+				headerClass: within(menu).getByTestId("user-menu-header").parentElement?.className,
 				entries: menuEntries(menu),
 			},
 		).toStrictEqual(
 			{
 				header: "craig@example.com",
+				headerClass: "truncate px-2.5 py-1 text-footnote font-medium text-ink-muted",
 				entries: ["Settings", "Usage", "Get help", "---", "Claude Config", "Setup", "---", "Learn more"],
 			},
 		);

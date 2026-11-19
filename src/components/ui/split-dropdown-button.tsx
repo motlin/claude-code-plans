@@ -202,7 +202,7 @@ const SIZES: Record<
 	{
 		h: "24px",
 		height: "h-6",
-		text: "text-[13px]/[19px]",
+		text: "text-body",
 		padX: "px-2",
 		radius: "rounded-r5",
 		icon: "size-4",
@@ -222,7 +222,7 @@ const SIZES: Record<
 	{
 		h: "28px",
 		height: "h-7",
-		text: "text-[13px]/[19px]",
+		text: "text-body",
 		padX: "px-2",
 		radius: "rounded-r6",
 		icon: "size-4",

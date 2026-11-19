@@ -228,7 +228,7 @@ function HomeSkeleton({chin}: {chin: ShellChinLabels | null})
 			<div className={`min-h-0 flex-1 overflow-hidden ${HOME_COLUMN}`}>
 				<section className="flex flex-col gap-2 pt-6">
 					<header className="flex items-center gap-1">
-						<h2 className="text-[13px] leading-[19px] font-normal text-primary">Sessions</h2>
+						<h2 className="text-body font-normal text-primary">Sessions</h2>
 					</header>
 					<ul className="flex flex-col gap-1">
 						{HOME_ROW_WIDTHS.map((width) => (

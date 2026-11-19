@@ -2098,7 +2098,7 @@ describe("TurnChangesCard", () =>
 			"rounded-r7",
 			"px-2",
 			"py-1",
-			"text-[13px]/[19px]",
+			"text-body",
 			"shadow-[inset_0_0_0_1px_var(--color-border)]",
 		];
 		const ITEM = ["relative", "-mx-1", "flex", "min-w-0", "items-center", "gap-2", "px-2"];
@@ -2259,7 +2259,7 @@ describe("TurnChangesCard", () =>
 
 		expect(
 			{
-				card: card.classList.contains("text-[13px]/[19px]"),
+				card: card.classList.contains("text-body"),
 				title: screen.getByText("Edited 2 files").className,
 				icon: item?.querySelector("svg")?.getAttribute("class"),
 				iconSize: [item?.querySelector("svg")?.style.width, item?.querySelector("svg")?.style.height],

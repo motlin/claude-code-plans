@@ -728,10 +728,7 @@ function RowActionsCardShell<Id extends string>({
 						<div
 							className={`flex flex-col gap-0.5 px-2.5 pt-1 pb-1${unfolding ? " animate-palette-card-title-in motion-reduce:animate-none" : ""}`}
 						>
-							<div
-								data-palette-card-title=""
-								className="line-clamp-2 break-words text-[13px]/[19px] text-primary"
-							>
+							<div data-palette-card-title="" className="line-clamp-2 break-words text-body text-primary">
 								{preview.title}
 							</div>
 							{meta !== "" && (

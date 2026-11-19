@@ -117,7 +117,7 @@ describe("missing-session view", () =>
 					text: "",
 				},
 				wrapper: ["h-full", "flex", "flex-col", "items-center", "justify-center", "px-4"],
-				stack: ["flex", "w-full", "max-w-md", "flex-col", "items-start", "gap-3", "text-[13px]/[19px]"],
+				stack: ["flex", "w-full", "max-w-md", "flex-col", "items-start", "gap-3", "text-body"],
 				heading:
 				{
 					tag: "H2",

@@ -1958,7 +1958,7 @@ describe("Composer slash commands", () =>
 						"px-2",
 						"py-[2.5px]",
 						"rounded-r5",
-						"text-[13px]/[19px]",
+						"text-body",
 						"w-full",
 					],
 				),

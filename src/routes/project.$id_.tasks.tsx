@@ -78,7 +78,7 @@ function ProjectTasksPage()
 		<ProjectPage>
 			<ProjectPageHeader projectId={id} section="tasks" />
 			{todoCounts.total > 0 && (
-				<p className="flex flex-wrap items-center gap-x-3 text-[13px] text-t6">
+				<p className="flex flex-wrap items-center gap-x-3 text-footnote text-t6">
 					{todoCounts.pending > 0 && <span>{todoCounts.pending} pending</span>}
 					{todoCounts.inProgress > 0 && (
 						<span className="text-blue-500">{todoCounts.inProgress} in progress</span>

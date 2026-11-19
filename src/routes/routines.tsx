@@ -122,7 +122,7 @@ function RoutinesPage()
 					</div>
 				)}
 				{hiddenCompleted > 0 && (
-					<div className="flex flex-col items-center justify-center gap-3 py-16 text-[13px]/[19px] text-ink-muted">
+					<div className="flex flex-col items-center justify-center gap-3 py-16 text-body text-ink-muted">
 						<span>{hiddenCompletedText(hiddenCompleted)}</span>
 					</div>
 				)}

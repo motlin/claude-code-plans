@@ -33,7 +33,7 @@ const NO_MODEL_ITEMS: RetryModelItems =
 
 /** Upstream's ghost model trigger (`TriggerButton variant="ghost"`), in local tokens. */
 const MODEL_TRIGGER_CLASS =
-	"inline-flex h-6 shrink min-w-0 max-w-[9rem] cursor-pointer items-center justify-start rounded-r5 px-2 text-[13px]/[19px] text-ink-muted hover:text-primary hover:bg-alpha-2 aria-expanded:bg-alpha-2 hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
+	"inline-flex h-6 shrink min-w-0 max-w-[9rem] cursor-pointer items-center justify-start rounded-r5 px-2 text-body text-ink-muted hover:text-primary hover:bg-alpha-2 aria-expanded:bg-alpha-2 hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
 
 export interface RecoveryHandlers
 {

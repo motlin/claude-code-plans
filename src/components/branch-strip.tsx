@@ -162,7 +162,7 @@ function pullRequestSummary(session: BranchStripSession)
 }
 
 const PR_REPOSITORY_BUTTON =
-	"inline-flex h-6 min-w-0 max-w-[160px] shrink cursor-pointer items-center rounded-r5 px-[5px] text-[13px] leading-[19px] opacity-60 transition-colors hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus data-[popup-open]:bg-fill-ghost-hover";
+	"inline-flex h-6 min-w-0 max-w-[160px] shrink cursor-pointer items-center rounded-r5 px-[5px] text-body opacity-60 transition-colors hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus data-[popup-open]:bg-fill-ghost-hover";
 
 const PR_STATE_ICONS =
 {
@@ -300,7 +300,7 @@ export function BranchStrip({
 					className={
 						pr === null
 							? "mb-2 flex min-h-10 min-w-0 items-center gap-1 rounded-r7 bg-alpha-1 p-2 text-[13px]"
-							: "flex min-h-10 min-w-0 items-center gap-[5px] rounded-r7 bg-alpha-1 p-2 text-[13px] leading-[19px] text-secondary"
+							: "flex min-h-10 min-w-0 items-center gap-[5px] rounded-r7 bg-alpha-1 p-2 text-body text-secondary"
 					}
 					style={
 						prColor === undefined

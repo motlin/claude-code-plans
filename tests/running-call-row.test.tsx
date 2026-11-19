@@ -445,7 +445,7 @@ describe("an in-flight call's row", () =>
 		).toStrictEqual(
 			{
 				className:
-					"shrink-0 cursor-pointer rounded-r3 text-[13px]/[19px] text-primary underline-offset-[3px] hover:underline",
+					"shrink-0 cursor-pointer rounded-r3 text-body text-primary underline-offset-[3px] hover:underline",
 				opened: [
 					[
 						{

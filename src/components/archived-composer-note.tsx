@@ -12,7 +12,7 @@ export function ArchivedComposerNote({sessionId}: {sessionId: string})
 		<div
 			role="note"
 			data-composer-stand-in=""
-			className="flex gap-[5px] w-full min-h-[40px] p-[8px] rounded-r7 bg-alpha-1 items-start py-[calc((40px-1lh)/2)] text-[13px]/[19px] band-enter"
+			className="flex gap-[5px] w-full min-h-[40px] p-[8px] rounded-r7 bg-alpha-1 items-start py-[calc((40px-1lh)/2)] text-body band-enter"
 		>
 			<div className="flex min-w-0 flex-1 flex-wrap gap-2 items-start">
 				<div className="min-w-0 flex-[1_1_32ch]">

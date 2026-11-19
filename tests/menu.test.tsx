@@ -180,7 +180,7 @@ describe("Menu", () =>
 							"rounded-r5",
 							"px-2",
 							"py-[2.5px]",
-							"text-[13px]/[19px]",
+							"text-body",
 							"[--shortcut-cap-ink:var(--menu-muted)]",
 						].includes(c),
 					),
@@ -194,7 +194,7 @@ describe("Menu", () =>
 					"rounded-r5",
 					"px-2",
 					"py-[2.5px]",
-					"text-[13px]/[19px]",
+					"text-body",
 					"[--shortcut-cap-ink:var(--menu-muted)]",
 				],
 				hint: ["ms-3", "gap-1.5"],
@@ -1854,7 +1854,7 @@ describe("MenuContent on a coarse pointer", () =>
 		"px-2.5",
 		"py-[2.5px]",
 		"py-1.5",
-		"text-[13px]/[19px]",
+		"text-body",
 		"text-[14px]/[20px]",
 		"rounded-r7",
 		"rounded-card",
@@ -1948,14 +1948,14 @@ describe("MenuContent on a coarse pointer", () =>
 	it("keeps the compact menu on a fine pointer", async () =>
 	{
 		stubPointer(false);
-		const compactItem = ["h-6", "items-center", "rounded-r5", "px-2", "py-[2.5px]", "text-[13px]/[19px]"];
+		const compactItem = ["h-6", "items-center", "rounded-r5", "px-2", "py-[2.5px]", "text-body"];
 		expect(await openCompactMenu()).toStrictEqual(
 			{
-				popup: ["rounded-r7", "text-[13px]/[19px]"],
+				popup: ["rounded-r7", "text-body"],
 				popupDensity: "compact",
 				item: compactItem,
 				icon: ["items-center", "[&_svg]:size-icon"],
-				subPopup: ["rounded-r7", "text-[13px]/[19px]"],
+				subPopup: ["rounded-r7", "text-body"],
 				subPopupDensity: "compact",
 				subItem: compactItem,
 			},
@@ -2391,7 +2391,7 @@ describe("Menu sheet gate (coarse pointer, width < 640px)", () =>
 		"py-[2.5px]",
 		"py-1.5",
 		"py-[9px]",
-		"text-[13px]/[19px]",
+		"text-body",
 		"text-[14px]/[20px]",
 		"text-[15px]/[22px]",
 	]);

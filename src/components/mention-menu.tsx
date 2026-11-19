@@ -16,7 +16,7 @@ const POPUP_CLASS =
 const GUTTER_CLASS = "p-1";
 
 const ROW_CLASS =
-	"flex h-6 w-full min-w-0 cursor-pointer items-center gap-1.5 rounded-r5 px-2 py-[2.5px] text-start text-[13px]/[19px] text-primary outline-none data-[highlighted]:bg-fill-ghost-hover";
+	"flex h-6 w-full min-w-0 cursor-pointer items-center gap-1.5 rounded-r5 px-2 py-[2.5px] text-start text-body text-primary outline-none data-[highlighted]:bg-fill-ghost-hover";
 
 /** Upstream `O4()`: the menu group-label base plus a flex row. */
 const GROUP_LABEL_CLASS = `${MENU_HEADER_CLASS} flex items-center gap-1.5 select-none`;

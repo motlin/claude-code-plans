@@ -975,7 +975,7 @@ describe("Composer @ file mentions", () =>
 			"rounded-r5",
 			"px-2",
 			"py-[2.5px]",
-			"text-[13px]/[19px]",
+			"text-body",
 			"cursor-pointer",
 			"text-start",
 		];

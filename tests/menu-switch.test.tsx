@@ -237,7 +237,7 @@ describe("MenuSwitchItem", () =>
 				ariaChecked: item.getAttribute("aria-checked"),
 				itemClasses: item.className
 					.split(" ")
-					.filter((c) => ["h-6", "px-2", "py-[2.5px]", "text-[13px]/[19px]", "gap-1.5"].includes(c)),
+					.filter((c) => ["h-6", "px-2", "py-[2.5px]", "text-body", "gap-1.5"].includes(c)),
 				label: [label?.className, label?.textContent],
 				trailing: trailing?.className,
 				switch: attributes(trailing?.querySelector('[role="switch"]') ?? null),
@@ -245,7 +245,7 @@ describe("MenuSwitchItem", () =>
 		).toStrictEqual(
 			{
 				ariaChecked: null,
-				itemClasses: ["h-6", "gap-1.5", "px-2", "py-[2.5px]", "text-[13px]/[19px]"],
+				itemClasses: ["h-6", "gap-1.5", "px-2", "py-[2.5px]", "text-body"],
 				label: ["min-w-0 flex-1 truncate", "Worktree"],
 				trailing: "ms-3 flex shrink-0 items-center gap-1.5",
 				switch:

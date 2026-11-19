@@ -88,7 +88,7 @@ describe("ArchivedComposerNote", () =>
 				text: "This session is archived. Unarchive it to keep working in this session.Unarchive",
 				standIn: "",
 				className:
-					"flex gap-[5px] w-full min-h-[40px] p-[8px] rounded-r7 bg-alpha-1 items-start py-[calc((40px-1lh)/2)] text-[13px]/[19px] band-enter",
+					"flex gap-[5px] w-full min-h-[40px] p-[8px] rounded-r7 bg-alpha-1 items-start py-[calc((40px-1lh)/2)] text-body band-enter",
 				button: "Unarchive",
 				buttonSize: "sm",
 				buttonClasses: ["h-5", "px-1.5", "text-[12px]/[17px]"],

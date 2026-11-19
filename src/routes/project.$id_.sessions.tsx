@@ -89,7 +89,7 @@ function ProjectSessionsPage()
 		<ProjectPage>
 			<ProjectPageHeader projectId={id} section="sessions" />
 			{branch && (
-				<p className="text-[13px] text-t6">
+				<p className="text-footnote text-t6">
 					{formatCount(sessions.length, "session")} on {branch}
 				</p>
 			)}

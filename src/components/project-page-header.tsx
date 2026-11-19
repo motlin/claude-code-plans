@@ -27,7 +27,7 @@ interface CountedTab
 
 /** Customize's "← Plugins" back link (upstream detail headers), 24px tall and inset by its own padding. */
 const BACK_LINK_CLASS =
-	"-ms-2 mb-2 inline-flex h-6 w-fit items-center gap-1.5 rounded-r6 px-2 text-[13px]/[19px] text-primary no-underline hover:bg-fill-ghost-hover";
+	"-ms-2 mb-2 inline-flex h-6 w-fit items-center gap-1.5 rounded-r6 px-2 text-body text-primary no-underline hover:bg-fill-ghost-hover";
 
 /** Every project page's content-width column, the max width the Scheduled tasks page uses. */
 export function ProjectPage({children}: {children: ReactNode})

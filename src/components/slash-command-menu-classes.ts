@@ -14,7 +14,7 @@ export const SLASH_DENSITY =
 	{
 		popup: "rounded-r7",
 		scroller: "p-1",
-		row: "h-6 items-center gap-1.5 rounded-r5 px-2 py-[2.5px] text-[13px]/[19px]",
+		row: "h-6 items-center gap-1.5 rounded-r5 px-2 py-[2.5px] text-body",
 		header: "px-2 py-1 text-[12px]/[15px] font-medium text-ink-muted whitespace-pre-line",
 		separator: "mx-2.5 my-1 h-px bg-border",
 		loading: "flex h-6 items-center gap-1.5 px-2",

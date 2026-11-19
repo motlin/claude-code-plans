@@ -1594,7 +1594,7 @@ describe("palette row actions card", () =>
 				density: positioner.getAttribute("data-density"),
 				itemClasses: within(card)
 					.getAllByRole("menuitem")
-					.map((item) => item.classList.contains("h-6") && item.classList.contains("text-[13px]/[19px]")),
+					.map((item) => item.classList.contains("h-6") && item.classList.contains("text-body")),
 			},
 		).toStrictEqual(
 			{

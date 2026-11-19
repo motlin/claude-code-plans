@@ -3,14 +3,14 @@ import type {ReactNode} from "react";
 /* Upstream's session rail card and row primitives, kept apart from the rail so pages reuse them without its dnd-kit chunk. */
 
 /** Upstream's lined row: `min-h-list-row` 32px, the 10px `--rail-word-gap` and the 8px `--rail-row-pad`. */
-const ROW_CLASS = "flex min-h-8 w-full min-w-0 items-center gap-2.5 rounded px-2 text-left text-[13px]/[19px]";
+const ROW_CLASS = "flex min-h-8 w-full min-w-0 items-center gap-2.5 rounded px-2 text-left text-body";
 
 /** Rows that act get upstream's ghost hover, alpha press and focus ring. */
 export const RAIL_ROW_ACTION_CLASS = `${ROW_CLASS} cursor-pointer hover:bg-fill-ghost-hover active:bg-alpha-2 hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus`;
 
 /** Upstream's lined Environment folder and branch menu buttons: `h-list-row` 32px, padded row pad + 20px icon + word gap = 38px past the overlaid icon. */
 export const ENVIRONMENT_MENU_BUTTON_CLASS =
-	"flex h-8 w-full min-w-0 items-center justify-start gap-2.5 rounded ps-[38px] pe-2 text-left text-[13px]/[19px] cursor-pointer hover:bg-fill-ghost-hover active:bg-alpha-2 data-popup-open:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
+	"flex h-8 w-full min-w-0 items-center justify-start gap-2.5 rounded ps-[38px] pe-2 text-left text-body cursor-pointer hover:bg-fill-ghost-hover active:bg-alpha-2 data-popup-open:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
 
 /** Upstream's trailing state spans (Connectors' "Off" and "Authenticate"): a footnote without tabular digits. */
 const HINT_TONE_CLASS =

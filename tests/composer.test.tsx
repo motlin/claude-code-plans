@@ -1004,7 +1004,7 @@ describe("Composer", () =>
 						padding: pick(textarea, ["py-1", "pl-1"]),
 						minHeight: textarea.style.minHeight,
 					},
-					chin: pick(chin, ["mt-1.5", "min-h-6", "text-[13px]/[20px]", "text-secondary"]),
+					chin: pick(chin, ["mt-1.5", "min-h-6", "text-body", "text-secondary"]),
 					mode: pick(document.querySelector("[data-chin-mode]"), ["h-6", "px-1.5", "text-secondary-control"]),
 					model:
 					{
@@ -1033,7 +1033,7 @@ describe("Composer", () =>
 						padding: ["py-1", "pl-1"],
 						minHeight: "28px",
 					},
-					chin: ["mt-1.5", "min-h-6", "text-[13px]/[20px]", "text-secondary"],
+					chin: ["mt-1.5", "min-h-6", "text-body", "text-secondary"],
 					mode: ["h-6", "px-1.5", "text-secondary-control"],
 					model:
 					{
@@ -1291,7 +1291,7 @@ describe("Composer", () =>
 						track: meter.classList.contains("bg-alpha-2"),
 						fill: (meter.firstElementChild as HTMLElement | null)?.style.transform,
 					})),
-					popup: [...dialog.classList].filter((name) => /^(?:w-|p-|text-\[)/.test(name)),
+					popup: [...dialog.classList].filter((name) => /^(?:w-|p-|text-\[|text-body$)/.test(name)),
 					usageBars: [...dialog.querySelectorAll<HTMLElement>("[data-usage-bars]")].map((bars) => (
 					{
 						surface: bars.dataset["usageBars"],
@@ -1332,7 +1332,7 @@ describe("Composer", () =>
 							fill: "translateX(calc(var(--_meter-dir,-1) * (100% - min(100%, max(65%, 4px)))))",
 						},
 					],
-					popup: ["w-[360px]", "p-0", "text-[13px]/[19px]"],
+					popup: ["w-[360px]", "p-0", "text-body"],
 					usageBars: [
 						{
 							surface: "popover",

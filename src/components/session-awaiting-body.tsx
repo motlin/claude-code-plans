@@ -135,7 +135,7 @@ function ReplyBox({
 					maxHeight: "4lh",
 					paddingInlineEnd: "calc(28px + 8px)",
 				}}
-				className="block w-full resize-none bg-transparent text-[13px]/[19px] text-primary outline-none [field-sizing:content] placeholder:text-ink-muted"
+				className="block w-full resize-none bg-transparent text-body text-primary outline-none [field-sizing:content] placeholder:text-ink-muted"
 			/>
 			<div className="pointer-events-none absolute inset-0 flex items-end justify-end p-0.5">
 				<button
@@ -349,7 +349,7 @@ function PlanBody({planFilename}: {planFilename: string | null})
 }
 
 const PERMISSION_BUTTON_CLASS =
-	"h-7 rounded-control-sm px-2 text-[13px]/[19px] transition-colors disabled:opacity-50 hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
+	"h-7 rounded-control-sm px-2 text-body transition-colors disabled:opacity-50 hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
 
 /** A tool permission prompt, allowed or denied in the live pane like the docked permission card. */
 function PermissionBody({sessionId, message, writable}: {sessionId: string; message: string; writable: boolean})

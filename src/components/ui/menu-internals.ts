@@ -23,7 +23,7 @@ export const DENSITY_CLASSES =
 	{
 		popup: "rounded-r7",
 		scroller: "",
-		text: "text-[13px]/[19px]",
+		text: "text-body",
 		item: "rounded-r5 px-2 py-[2.5px]",
 		singleLine: "h-6 items-center",
 		/* Upstream pads two-line rows' bottom (h-control − body size − footnote leading + footnote size) / 2: 4px compact. */

@@ -142,21 +142,27 @@ describe("ComposerChinFrame", () =>
 		]);
 	});
 
-	it("gives the row upstream's comfortable margin and narrow caption, while the chin buttons pin 13px/20px", () =>
+	it("gives the row upstream's comfortable margin and narrow caption, while the row scales text-body to 13px/20px for its text-body chin buttons", () =>
 	{
 		const row = COMPOSER_CHIN_ROW_CLASS.split(" ");
 		const button = CHIN_BUTTON_CLASS.split(" ");
 
 		expect(
 			{
-				rowHas: ["mt-1.5", "comfortable:mt-2", "@max-[25rem]:text-caption", "[--cmp-chin-row-h:1.5rem]"].map(
-					(name) => row.includes(name),
-				),
-				buttonHas: ["text-[13px]/[20px]"].map((name) => button.includes(name)),
+				rowHas: [
+					"mt-1.5",
+					"comfortable:mt-2",
+					"@max-[25rem]:text-caption",
+					"[--cmp-chin-row-h:1.5rem]",
+					"[--upstream-text-body:calc(0.8125rem*var(--cds-rem-scale,1))]",
+					"[--upstream-leading-body:calc(1.25rem*var(--cds-rem-scale,1))]",
+					"text-body",
+				].map((name) => row.includes(name)),
+				buttonHas: ["text-body"].map((name) => button.includes(name)),
 			},
 		).toStrictEqual(
 			{
-				rowHas: [true, true, true, true],
+				rowHas: [true, true, true, true, true, true, true],
 				buttonHas: [true],
 			},
 		);

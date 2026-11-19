@@ -385,7 +385,7 @@ export function WaitingForInputNotice({
 			role="status"
 			aria-label={title}
 			data-waiting-input-notice
-			className="flex items-start gap-2 rounded-r7 bg-surface-2 p-3 text-[13px]/[19px] text-primary shadow-[var(--approval-card-shadow)]"
+			className="flex items-start gap-2 rounded-r7 bg-surface-2 p-3 text-body text-primary shadow-[var(--approval-card-shadow)]"
 		>
 			<span aria-hidden="true" className="flex h-[19px] shrink-0 items-center">
 				<StatusPulse kind="awaiting" />

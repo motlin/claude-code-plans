@@ -636,7 +636,7 @@ describe("SessionTitlebar chrome", () =>
 
 		expect(
 			{
-				titleType: ["text-[13px]/[19px]", "font-medium"].every((name) => title.classList.contains(name)),
+				titleType: ["text-body", "font-medium"].every((name) => title.classList.contains(name)),
 				repositoryPill: titlebar.querySelector("[data-origin-pill='repository']"),
 				headerBorder: headerClasses.filter((name) => /^border(-|$)/.test(name)),
 				headerBottomPadding: headerClasses.filter((name) => /^(pb|py|p)-/.test(name)),
@@ -946,7 +946,6 @@ describe("SessionTitlebar title and chevron", () =>
 					"comfortable:h-[var(--cds-h-control)]",
 					"comfortable:px-3",
 					"comfortable:rounded-r6",
-					"comfortable:text-[14px]/[20px]",
 				],
 				chevron: ["comfortable:rounded-r6", "comfortable:size-7"],
 			},

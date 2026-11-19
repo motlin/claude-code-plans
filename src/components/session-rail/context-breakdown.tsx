@@ -615,7 +615,7 @@ export function ContextBreakdownBody({
 		<StackedMeterGroup categories={meterCategories} size="sm" formatValue={formatTokenCount}>
 			<div className="flex flex-col">
 				<div className="flex flex-col gap-1 px-2 pt-1 pb-1.5">
-					<div className="flex min-w-0 items-baseline justify-between gap-2 text-[13px]/[19px]">
+					<div className="flex min-w-0 items-baseline justify-between gap-2 text-body">
 						<span className="shrink-0 text-primary tabular-nums">{rounded}% used</span>
 						<span
 							data-rail-context-summary=""

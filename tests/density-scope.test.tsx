@@ -110,9 +110,7 @@ async function openMenu()
 	);
 	return {
 		scope: menu.parentElement?.closest("[data-density]")?.getAttribute("data-density"),
-		item: item.className
-			.split(" ")
-			.filter((c) => ["h-6", "h-8", "text-[13px]/[19px]", "text-[14px]/[20px]"].includes(c)),
+		item: item.className.split(" ").filter((c) => ["h-6", "h-8", "text-body", "text-[14px]/[20px]"].includes(c)),
 	};
 }
 
@@ -355,7 +353,7 @@ describe("portals inherit their opener's density", () =>
 		expect(await openMenu()).toStrictEqual(
 			{
 				scope: "compact",
-				item: ["h-6", "text-[13px]/[19px]"],
+				item: ["h-6", "text-body"],
 			},
 		);
 	});

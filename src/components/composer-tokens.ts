@@ -31,11 +31,12 @@ export const COMPOSER_CHIN_SLIDE_CLASS =
 
 /**
  * The chin row (rp `H`, `data-size="xs" data-touch-size`): 6px under the card (8px at comfortable), its inline pads
- * drawn in by the touch grow (globals.css), and caption-sized text in a chin of 25rem or less. The slots' buttons pin
- * 13px/20px, as upstream's trailing wrapper does, so the caption only reaches bare row text.
+ * drawn in by the touch grow (globals.css), and caption-sized text in a chin of 25rem or less. Like upstream's trailing
+ * wrapper (`my`), it scales the body type to 13px/20px through the variables (local `--upstream-text-body`/
+ * `--upstream-leading-body`), and the slots' buttons stay in text-body, so the caption only reaches bare row text.
  */
 export const COMPOSER_CHIN_ROW_CLASS =
-	"flex min-h-6 items-center gap-0 mt-1.5 comfortable:mt-2 ps-[calc(var(--cmp-chin-start)_-_var(--cmp-chin-touch-grow,0px))] pe-[calc(var(--cmp-chin-end)_-_var(--cmp-chin-touch-grow,0px))] [--cmp-chin-start:7px] [--cmp-chin-end:10px] [--cmp-chin-row-h:1.5rem] text-[13px]/[20px] text-secondary @max-[25rem]:text-caption";
+	"flex min-h-6 items-center gap-0 mt-1.5 comfortable:mt-2 ps-[calc(var(--cmp-chin-start)_-_var(--cmp-chin-touch-grow,0px))] pe-[calc(var(--cmp-chin-end)_-_var(--cmp-chin-touch-grow,0px))] [--cmp-chin-start:7px] [--cmp-chin-end:10px] [--cmp-chin-row-h:1.5rem] [--upstream-text-body:calc(0.8125rem*var(--cds-rem-scale,1))] [--upstream-leading-body:calc(1.25rem*var(--cds-rem-scale,1))] text-body text-secondary @max-[25rem]:text-caption";
 
 /** The chin's leading slot wrapper. */
 export const COMPOSER_CHIN_LEADING_CLASS = "flex items-center self-start";
@@ -53,7 +54,7 @@ export const CHIN_LEADING_LESS_TRAILING_CLASS =
  * (`text-secondary-control`: secondary with color off) at the control weight.
  */
 export const CHIN_BUTTON_CLASS =
-	"flex h-6 min-w-0 items-center justify-center rounded-r4 text-[13px]/[20px] text-secondary-control font-control-regular transition-colors hover:bg-fill-ghost-hover hover:text-primary aria-expanded:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
+	"flex h-6 min-w-0 items-center justify-center rounded-r4 text-body text-secondary-control font-control-regular transition-colors hover:bg-fill-ghost-hover hover:text-primary aria-expanded:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
 
 /** Upstream's footer pills: 24px tall at both densities, the radius 5px → 6px at comfortable. */
 export const CHIN_TRIGGER_CLASS = `${CHIN_BUTTON_CLASS} truncate px-1.5 comfortable:rounded-r5`;

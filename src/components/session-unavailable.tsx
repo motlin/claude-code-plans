@@ -27,7 +27,7 @@ export function SessionUnavailable({
 		<div className="flex h-full flex-col">
 			<div aria-hidden="true" className="h-8 shrink-0" />
 			<div className="h-full flex flex-col items-center justify-center px-4">
-				<div className="flex w-full max-w-md flex-col items-start gap-3 text-[13px]/[19px]">
+				<div className="flex w-full max-w-md flex-col items-start gap-3 text-body">
 					<h2 className="text-pretty text-[20px]/[25px] font-normal text-primary">{heading}</h2>
 					<p role={alert ? "alert" : undefined} className="text-pretty text-secondary">
 						{children}

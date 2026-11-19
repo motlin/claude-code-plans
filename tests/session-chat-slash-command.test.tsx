@@ -327,7 +327,7 @@ describe("SessionChat slash-command chip", () =>
 				description: "Run a fabricated prompt on a recurring interval",
 				side: "top",
 				className:
-					"flex w-[280px] max-w-[calc(100vw-16px)] flex-col gap-1 rounded-r7 bg-[var(--menu-bg)] p-3 text-[13px]/[19px] text-primary shadow-[var(--menu-shadow)] outline-none",
+					"flex w-[280px] max-w-[calc(100vw-16px)] flex-col gap-1 rounded-r7 bg-[var(--menu-bg)] p-3 text-body text-primary shadow-[var(--menu-shadow)] outline-none",
 			},
 		);
 	});

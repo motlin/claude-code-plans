@@ -454,7 +454,7 @@ describe("SplitDropdownButton", () =>
 			"items-center",
 			"h-6",
 			"px-2",
-			"text-[13px]/[19px]",
+			"text-body",
 			"rounded-r5",
 			"rounded-e-none",
 			"min-w-0",
@@ -841,7 +841,7 @@ describe("SplitDropdownButton", () =>
 						"h-[var(--split-h)]",
 						"min-w-0",
 						"shrink",
-						"text-[13px]/[19px]",
+						"text-body",
 						"ps-2",
 						"pe-[5px]",
 						...FIZZY_HOVER,
@@ -944,7 +944,7 @@ describe("SplitDropdownButton", () =>
 			return {
 				h: group().style.getPropertyValue("--split-h"),
 				root: [...group().classList].filter((name) => name.startsWith("rounded")),
-				primary: [...primary().classList].filter((name) => /^(h-|px-|text-\[|rounded-r)/.test(name)),
+				primary: [...primary().classList].filter((name) => /^(h-|px-|text-\[|text-body$|rounded-r)/.test(name)),
 				caret: [...caret().classList].filter((name) => /^(h-|rounded-r)/.test(name)),
 				caretIcon: [...(caret().querySelector("svg")?.classList ?? [])].filter((name) =>
 					name.startsWith("size-"),
@@ -964,7 +964,7 @@ describe("SplitDropdownButton", () =>
 				{
 					h: "24px",
 					root: ["rounded-r5"],
-					primary: ["h-6", "px-2", "text-[13px]/[19px]", "rounded-r5"],
+					primary: ["h-6", "px-2", "text-body", "rounded-r5"],
 					caret: ["h-6", "rounded-r5"],
 					caretIcon: ["size-4"],
 				},
@@ -1004,7 +1004,7 @@ describe("SplitDropdownButton", () =>
 				{
 					h: "28px",
 					root: ["rounded-r6"],
-					primary: ["h-7", "px-2", "text-[13px]/[19px]", "rounded-r6"],
+					primary: ["h-7", "px-2", "text-body", "rounded-r6"],
 					caret: ["h-7", "rounded-r6"],
 					caretIcon: ["size-4"],
 				},

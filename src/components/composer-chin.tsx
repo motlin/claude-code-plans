@@ -114,7 +114,7 @@ function ContextSection(props: Parameters<typeof UsagePopoverContextSection>[0])
 
 /** Upstream's 2026-10-20 usage popover: r10, and up to 640px (or the room left) tall before its own scroll. */
 const POPUP_CLASS =
-	"w-[360px] max-w-[calc(100vw-2rem)] max-h-[min(var(--available-height),640px)] rounded-r7 bg-[var(--menu-bg)] p-0 text-[13px]/[19px] text-primary shadow-[var(--menu-shadow)] outline-none";
+	"w-[360px] max-w-[calc(100vw-2rem)] max-h-[min(var(--available-height),640px)] rounded-r7 bg-[var(--menu-bg)] p-0 text-body text-primary shadow-[var(--menu-shadow)] outline-none";
 
 function UsagePopoverBody({
 	usage,

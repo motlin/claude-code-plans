@@ -418,7 +418,7 @@ function contextCard(inputs: SessionRailInputs, connectors: readonly McpServerSu
 		body: (
 			<div className="flex flex-col">
 				<div className="flex flex-col gap-1 px-2 pt-1 pb-1.5">
-					<div className="flex min-w-0 items-baseline justify-between gap-2 text-[13px]/[19px]">
+					<div className="flex min-w-0 items-baseline justify-between gap-2 text-body">
 						<span className="shrink-0 text-primary tabular-nums">{rounded}% used</span>
 						<span
 							data-rail-context-summary=""
@@ -567,7 +567,7 @@ function connectorsCard(rows: readonly ConnectorRow[] | null, rememberedNone: bo
 }
 
 const SHOW_MORE_CLASS =
-	"flex min-h-8 w-full min-w-0 cursor-pointer items-center rounded px-2 text-start text-[13px]/[19px] text-ink-muted hover:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
+	"flex min-h-8 w-full min-w-0 cursor-pointer items-center rounded px-2 text-start text-body text-ink-muted hover:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
 
 interface ShowMoreState
 {
