@@ -26,6 +26,7 @@ import
 	recentSessionsInfiniteQueryOptions,
 	type SessionListItem,
 } from "../src/lib/api/sessions";
+import {PIN_STORAGE_KEY, pin} from "../src/lib/pin-store";
 import {DEFAULT_SESSION_LIST_PREFS, type SessionStatusFilter} from "../src/lib/session-groups";
 import {__unreadStoreTesting} from "../src/lib/unread-store";
 import {rowTitle} from "./sidebar-row-title";
@@ -212,6 +213,7 @@ afterEach(() =>
 	vi.unstubAllGlobals();
 	vi.restoreAllMocks();
 	__unreadStoreTesting.reset();
+	localStorage.removeItem(PIN_STORAGE_KEY);
 });
 
 describe("archive in the session row menu", () =>
@@ -463,12 +465,8 @@ describe("archive in the session row menu", () =>
 
 describe("⌥⌘A on the session page", () =>
 {
-	it("archives the session and toasts with Undo", async () =>
+	function pressArchiveChord(): void
 	{
-		await renderWithRouter(
-			<SessionTitleHeading sessionId={SESSION_ID} title="Fix the flaky test" archived={false} />,
-		);
-
 		fireEvent.keyDown(
 			document.body,
 			{
@@ -478,6 +476,15 @@ describe("⌥⌘A on the session page", () =>
 				altKey: true,
 			},
 		);
+	}
+
+	it("archives the session and toasts with Undo", async () =>
+	{
+		await renderWithRouter(
+			<SessionTitleHeading sessionId={SESSION_ID} title="Fix the flaky test" archived={false} />,
+		);
+
+		pressArchiveChord();
 
 		await waitFor(() =>
 		{
@@ -513,30 +520,47 @@ describe("⌥⌘A on the session page", () =>
 		});
 	});
 
-	it("unarchives an archived session and shows its Archived badge", async () =>
+	it("leaves an archived session archived, as upstream's chord never unarchives", async () =>
 	{
 		await renderWithRouter(<SessionTitleHeading sessionId={SESSION_ID} title="Fix the flaky test" archived />);
-		expect(screen.getByText("Archived").hasAttribute("data-archived-badge")).toBe(true);
 
-		fireEvent.keyDown(
-			document.body,
+		pressArchiveChord();
+		await flush();
+
+		expect(
 			{
-				key: "å",
-				code: "KeyA",
-				metaKey: true,
-				altKey: true,
+				calls: archiveCalls(),
+				badge: screen.getByText("Archived").hasAttribute("data-archived-badge"),
+			},
+		).toStrictEqual(
+			{
+				calls: [],
+				badge: true,
 			},
 		);
+	});
 
-		await waitFor(() =>
-		{
-			expect(archiveCalls()).toEqual([
-				{
-					url: ARCHIVED_URL,
-					method: "DELETE",
-				},
-			]);
-		});
+	it("does nothing on a pinned session", async () =>
+	{
+		pin(SESSION_ID);
+		await renderWithRouter(
+			<SessionTitleHeading sessionId={SESSION_ID} title="Fix the flaky test" archived={false} />,
+		);
+
+		pressArchiveChord();
+		await flush();
+
+		expect(
+			{
+				calls: archiveCalls(),
+				toasts: toastTexts(),
+			},
+		).toStrictEqual(
+			{
+				calls: [],
+				toasts: [],
+			},
+		);
 	});
 });
 

@@ -650,8 +650,23 @@ describe("folder section header menu", () =>
 		);
 		await flush();
 
-		expect((await waitFor(() => screen.getByRole("alertdialog"))).querySelector("h2")?.textContent).toBe(
-			"Archive all sessions in “foo”?",
+		const dialog = await waitFor(() => screen.getByRole("alertdialog"));
+		const describedBy = dialog.getAttribute("aria-describedby");
+
+		expect(
+			{
+				title: dialog.querySelector("h2")?.textContent,
+				description: describedBy === null ? null : document.getElementById(describedBy)?.textContent,
+				buttons: Array.from(dialog.querySelectorAll("button"), (button) => button.textContent),
+				focused: document.activeElement?.textContent,
+			},
+		).toStrictEqual(
+			{
+				title: "Archive all sessions in “foo”?",
+				description: "2 sessions will be archived.",
+				buttons: ["Cancel", "Archive all"],
+				focused: "Archive all",
+			},
 		);
 	});
 });

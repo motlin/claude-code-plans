@@ -742,7 +742,7 @@ describe("sidebar group header context menu", () =>
 			screen.getByRole(
 				"button",
 				{
-					name: "Archive",
+					name: "Archive all",
 				},
 			),
 		);

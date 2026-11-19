@@ -167,6 +167,7 @@ export function ProjectGroupHeader({
 					setDialog(open ? "archive-all" : null);
 				}}
 				label={group.label}
+				count={actions.archivableIds.length}
 				onConfirm={actions.archiveAll}
 			/>
 		</>

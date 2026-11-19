@@ -1,6 +1,7 @@
 import {useNavigate} from "@tanstack/react-router";
 import {type ReactNode, useState} from "react";
 
+import {bulkArchiveDescription} from "../../lib/bulk-archive-copy";
 import {requestHomeComposerFocus} from "../../lib/home-composer-focus";
 import type {SessionGroup, SessionGroupRow} from "../../lib/session-groups";
 import {ConfirmDialog} from "../confirm-dialog";
@@ -69,16 +70,19 @@ export function GroupBulkMenuItems({
 	);
 }
 
-/** Upstream's Archive all confirm for a section. */
+/** Upstream's Archive all confirm for a section: primary "Archive all", focused on open. */
 export function ArchiveAllConfirm({
 	open,
 	onOpenChange,
 	label,
+	count,
 	onConfirm,
 }: {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	label: string;
+	/** How many sessions Archive all will archive. */
+	count: number;
 	onConfirm: () => void;
 })
 {
@@ -87,7 +91,9 @@ export function ArchiveAllConfirm({
 			open={open}
 			onOpenChange={onOpenChange}
 			title={`Archive all sessions in “${label}”?`}
-			confirmLabel="Archive"
+			body={bulkArchiveDescription(count)}
+			confirmLabel="Archive all"
+			initialFocus="confirm"
 			onConfirm={onConfirm}
 		/>
 	);
@@ -152,6 +158,7 @@ export function GroupHeaderContextMenu({
 				open={confirmArchive}
 				onOpenChange={setConfirmArchive}
 				label={group.label}
+				count={actions.archivableIds.length}
 				onConfirm={actions.archiveAll}
 			/>
 		</>

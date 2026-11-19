@@ -804,12 +804,30 @@ describe("Archive all", () =>
 		await choose("GTD", "Archive all (2)");
 		const dialog = await waitFor(() => screen.getByRole("alertdialog"));
 
-		expect(dialog.querySelector("h2")?.textContent).toBe("Archive all sessions in “GTD”?");
+		const describedBy = dialog.getAttribute("aria-describedby");
+
+		expect(
+			{
+				title: dialog.querySelector("h2")?.textContent,
+				description: describedBy === null ? null : document.getElementById(describedBy)?.textContent,
+				buttons: Array.from(dialog.querySelectorAll("button"), (button) => button.textContent),
+				focused: document.activeElement?.textContent,
+				initialFocus: dialog.querySelector("[data-initial-focus]")?.textContent,
+			},
+		).toStrictEqual(
+			{
+				title: "Archive all sessions in “GTD”?",
+				description: "2 sessions will be archived.",
+				buttons: ["Cancel", "Archive all"],
+				focused: "Archive all",
+				initialFocus: "Archive all",
+			},
+		);
 		fireEvent.click(
 			screen.getByRole(
 				"button",
 				{
-					name: "Archive",
+					name: "Archive all",
 				},
 			),
 		);

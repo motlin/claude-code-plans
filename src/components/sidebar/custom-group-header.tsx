@@ -226,6 +226,7 @@ export function CustomGroupHeader({
 					setDialog(open ? "archive-all" : null);
 				}}
 				label={label}
+				count={actions.archivableIds.length}
 				onConfirm={actions.archiveAll}
 			/>
 		</>

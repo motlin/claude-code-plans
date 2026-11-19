@@ -112,6 +112,7 @@ export const ConfirmDialog = memo(function ConfirmDialog({
 				<button
 					ref={confirmRef}
 					type="button"
+					data-initial-focus={initialFocus === "confirm" ? "" : undefined}
 					disabled={confirmDisabled}
 					onClick={() =>
 					{
