@@ -326,7 +326,7 @@ describe("compaction marker", () =>
 			(candidate) => candidate.session === "01d132c8" && candidate.line === 1249,
 		)!;
 
-	it("draws 01d132c8:1261 inside the prose's span as upstream: a plain marker 12px under the prose, the span's actions after it", () =>
+	it("draws 01d132c8:1261 inside the prose's span as upstream: a plain marker the turn gap under the prose, the span's actions after it", () =>
 	{
 		const rows = Array.from(renderRecords(specimen().records).querySelectorAll("[data-testid=transcript-row]"));
 		expect(
@@ -467,8 +467,8 @@ describe("agent completion row placement", () =>
 describe("plain status marker gaps", () =>
 {
 	const styles = () => readFileSync(join(process.cwd(), "src", "styles", "globals.css"), "utf8");
-	const rule = (comment: string, padding: number) =>
-		new RegExp(`/\\* ${comment}[^*]*\\*/\\s*([^{]+)\\{\\s*padding-bottom: ${padding}px;`)
+	const statusRule = () =>
+		/\/\* Assistant prose followed by a status[^*]*\*\/\s*([^{]+)\{\s*padding-bottom: calc\(var\(--chat-turn-gap\) - var\(--cds-pad-xs\)\);/
 			.exec(styles())?.[1]
 			?.trim() ?? "[data-missing-rule]";
 	const rowIndex = (container: HTMLElement, element: Element) =>
@@ -482,7 +482,7 @@ describe("plain status marker gaps", () =>
 		["5f402159", 2267, []],
 		["5f402159", 2172, [0]],
 	])(
-		"leaves upstream's 16px between %s:%i's prose and its plain marker, not a tool status's 12px",
+		"leaves upstream's plain turn gap between %s:%i's prose and its plain marker, not a tool status's outset-reduced gap",
 		(session, line, prose) =>
 		{
 			const specimen = (rowSpecimens as RowSpecimen[]).find(
@@ -494,13 +494,15 @@ describe("plain status marker gaps", () =>
 				Array.from(container.querySelectorAll(selector), (element) => rowIndex(container, element));
 			expect(
 				{
-					marker: matched(rule("Assistant prose followed by a plain status marker", 16)),
-					status: matched(rule("Assistant prose followed by a status", 12)),
+					marker: matched("[data-precedes-turn-status=marker].pb-\\[var\\(--chat-turn-gap\\)\\]"),
+					status: matched(statusRule()),
+					markerRule: styles().includes(`[data-precedes-turn-status="marker"]`),
 				},
 			).toStrictEqual(
 				{
 					marker: prose,
 					status: [],
+					markerRule: false,
 				},
 			);
 		},
@@ -510,7 +512,7 @@ describe("plain status marker gaps", () =>
 		["5f402159", 2267, true],
 		["5f402159", 2172, false],
 	])(
-		"draws %s:%i's task-event row 20px tall, 16px above the next prose or 5px above the span's actions",
+		"draws %s:%i's task-event row 20px tall, the turn gap above the next prose or 5px above the span's actions",
 		(session, line, footer) =>
 		{
 			const specimen = (rowSpecimens as RowSpecimen[]).find(
@@ -530,12 +532,7 @@ describe("plain status marker gaps", () =>
 			).toStrictEqual(
 				{
 					markerPadding: false,
-					classes: [
-						"pb-4",
-						"comfortable:pb-5",
-						"has-[>[data-assistant-span-footer]]:pb-[var(--chat-turn-gap)]",
-						"[&>[data-assistant-span-footer]]:mt-[5px]",
-					],
+					classes: ["pb-[var(--chat-turn-gap)]", "[&>[data-assistant-span-footer]]:mt-[5px]"],
 					footer,
 				},
 			);
@@ -726,7 +723,7 @@ describe("background task stopped row", () =>
 
 describe("agent completion row", () =>
 {
-	it("draws 5f402159:2172 inside the reply's span as upstream: a plain secondary row with no bubble or disclosure, 16px under the prose, the span's actions after the next prose", () =>
+	it("draws 5f402159:2172 inside the reply's span as upstream: a plain secondary row with no bubble or disclosure, the turn gap under the prose, the span's actions after the next prose", () =>
 	{
 		const specimen = (rowSpecimens as RowSpecimen[]).find(
 			(candidate) => candidate.session === "5f402159" && candidate.line === 2172,

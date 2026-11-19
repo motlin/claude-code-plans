@@ -4826,8 +4826,8 @@ html[data-reduce-motion="true"] [data-cds="ShimmerText"][data-shimmer-mode="fall
 	}
 }
 
-/* A standalone tool row followed by prose shares the assistant span: upstream leaves
-   12px here in every status, collapsed or expanded. End-of-span actions and changes keep their turn gap. */
+/* A standalone tool row followed by prose shares the assistant span: upstream leaves the turn gap less
+   the TurnStatus pad-xs outset (14px, 12px compact) here in every status, collapsed or expanded. End-of-span actions and changes keep their turn gap. */
 .transcript-text
 	[data-perf-row="assistant_tool"][data-assistant-span]:has(+ [data-perf-row="assistant_text"])
 	> [data-record-index]:has(
@@ -4835,38 +4835,27 @@ html[data-reduce-motion="true"] [data-cds="ShimmerText"][data-shimmer-mode="fall
 		> [data-turn-status-frame] > [data-standalone-tool-row]
 	):not(:has([data-assistant-span-footer], [data-turn-changes-card]))
 {
-	padding-bottom: 12px;
+	padding-bottom: calc(var(--chat-turn-gap) - var(--cds-pad-xs));
 }
 
-/* A grouped tool summary followed by prose shares the assistant span: upstream leaves
-   12px there too, collapsed or expanded. The span's footer keeps its turn gap. */
+/* A grouped tool summary followed by prose shares the assistant span: upstream leaves the turn gap less
+   the TurnStatus pad-xs outset there too, collapsed or expanded. The span's footer keeps its turn gap. */
 .transcript-text
 	[data-perf-row="assistant_tool"][data-assistant-span]:has(+ [data-perf-row="assistant_text"])
 	> [data-grouped-tool-row]:not(:has([data-assistant-span-footer], [data-turn-changes-card]))
 {
-	padding-bottom: 12px;
+	padding-bottom: calc(var(--chat-turn-gap) - var(--cds-pad-xs));
 }
 
 /* Assistant prose followed by a status in its own span (React sets the marker only then):
-   upstream leaves 12px above the status. A held span footer keeps its turn gap. */
+   upstream leaves the turn gap less the TurnStatus pad-xs outset above the status. A held span footer keeps its turn gap. */
 .transcript-text
 	[data-perf-row="assistant_text"][data-assistant-span]
 	> [data-record-index][data-precedes-turn-status=""]:not(
 		:has([data-assistant-span-footer], [data-turn-changes-card])
 	)
 {
-	padding-bottom: 12px;
-}
-
-/* Assistant prose followed by a plain status marker in its own span (a compaction, a stopped or finished
-   background agent): upstream leaves 16px, as the marker has no 4px outset. A held span footer keeps its turn gap. */
-.transcript-text
-	[data-perf-row="assistant_text"][data-assistant-span]
-	> [data-record-index][data-precedes-turn-status="marker"]:not(
-		:has([data-assistant-span-footer], [data-turn-changes-card])
-	)
-{
-	padding-bottom: 16px;
+	padding-bottom: calc(var(--chat-turn-gap) - var(--cds-pad-xs));
 }
 
 /* Settings search deep link (#settings/<tab>/<row>), copied from claude.ai/code: about 300ms after

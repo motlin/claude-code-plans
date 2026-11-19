@@ -1784,13 +1784,13 @@ describe("idle-period background command failures", () =>
 		);
 	});
 
-	it("opens the row's 16px assistant-column gap to upstream's comfortable 20px (coarse pointer)", () =>
+	it("opens the row's assistant-column gap to upstream's turn gap token (20px comfortable, 16px compact)", () =>
 	{
 		const container = renderLines(doAllFailedIdleRecords(), "normal", [worker]);
 		const row = container.querySelector("[data-task-event-row]");
 		expect(
 			(row?.getAttribute("class") ?? "").split(" ").filter((name) => /^(comfortable:)?pb-/.test(name)),
-		).toStrictEqual(["pb-4", "comfortable:pb-5"]);
+		).toStrictEqual(["pb-[var(--chat-turn-gap)]"]);
 	});
 
 	it("labels a lone failed command as failed", () =>

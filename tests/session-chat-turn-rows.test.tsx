@@ -468,7 +468,7 @@ describe("SessionChat turn rows", () =>
 			return rows;
 		}
 
-		it("closes an ordinary or slash-command prompt onto its same-source first reply with upstream's six-pixel boundary in Normal and Thinking, leaving Verbose on the turn gap", () =>
+		it("closes an ordinary or slash-command prompt onto its same-source first reply with upstream's gap-xs boundary (8px comfortable, 6px compact) in Normal and Thinking, leaving Verbose on the turn gap", () =>
 		{
 			const unchanged = (line: string, perfRow: string, turnGap: boolean | undefined) => (
 			{
@@ -483,7 +483,7 @@ describe("SessionChat turn rows", () =>
 				line,
 				perfRow,
 				replyBoundary: "",
-				className: "pt-p5",
+				className: "pt-[var(--cds-gap-xs)]",
 				turnGap,
 			});
 			const collapsed = [

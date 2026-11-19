@@ -323,12 +323,13 @@ describe("assistant display-span actions", () =>
 		);
 	});
 
-	it("matches the 12px standalone-tool continuation rule in globals.css against a rendered completed tool row, collapsed or expanded", () =>
+	it("matches the turn-gap-less-outset standalone-tool continuation rule in globals.css against a rendered completed tool row, collapsed or expanded", () =>
 	{
 		const styles = readFileSync(join(process.cwd(), "src", "styles", "globals.css"), "utf8");
-		const selector = /\/\* A standalone tool row followed by prose[^*]*\*\/\s*([^{]+)\{\s*padding-bottom: 12px;/
-			.exec(styles)?.[1]
-			?.trim();
+		const selector =
+			/\/\* A standalone tool row followed by prose[^*]*\*\/\s*([^{]+)\{\s*padding-bottom: calc\(var\(--chat-turn-gap\) - var\(--cds-pad-xs\)\);/
+				.exec(styles)?.[1]
+				?.trim();
 		const view = render(
 			<div className="transcript-text">
 				{chat([...command("example-command"), text("example-conclusion", "Example conclusion.")])}
@@ -353,12 +354,13 @@ describe("assistant display-span actions", () =>
 		);
 	});
 
-	it("matches the 12px grouped-tool continuation rule in globals.css against status-led grouped rows that continue into prose, collapsed or expanded", () =>
+	it("matches the turn-gap-less-outset grouped-tool continuation rule in globals.css against status-led grouped rows that continue into prose, collapsed or expanded", () =>
 	{
 		const styles = readFileSync(join(process.cwd(), "src", "styles", "globals.css"), "utf8");
-		const selector = /\/\* A grouped tool summary followed by prose[^*]*\*\/\s*([^{]+)\{\s*padding-bottom: 12px;/
-			.exec(styles)?.[1]
-			?.trim();
+		const selector =
+			/\/\* A grouped tool summary followed by prose[^*]*\*\/\s*([^{]+)\{\s*padding-bottom: calc\(var\(--chat-turn-gap\) - var\(--cds-pad-xs\)\);/
+				.exec(styles)?.[1]
+				?.trim();
 		const view = render(
 			<div className="transcript-text">
 				{chat([
@@ -415,12 +417,13 @@ describe("assistant display-span actions", () =>
 		);
 	});
 
-	it("matches the 12px prose-to-status rule in globals.css only against prose continuing into a status in its own span", () =>
+	it("matches the turn-gap-less-outset prose-to-status rule in globals.css only against prose continuing into a status in its own span", () =>
 	{
 		const styles = readFileSync(join(process.cwd(), "src", "styles", "globals.css"), "utf8");
-		const selector = /\/\* Assistant prose followed by a status[^*]*\*\/\s*([^{]+)\{\s*padding-bottom: 12px;/
-			.exec(styles)?.[1]
-			?.trim();
+		const selector =
+			/\/\* Assistant prose followed by a status[^*]*\*\/\s*([^{]+)\{\s*padding-bottom: calc\(var\(--chat-turn-gap\) - var\(--cds-pad-xs\)\);/
+				.exec(styles)?.[1]
+				?.trim();
 		const toolUse = (uuid: string, name: string, input: object, sessionId = "example-main") => (
 		{
 			type: "assistant",
@@ -521,12 +524,15 @@ describe("assistant display-span actions", () =>
 		);
 	});
 
-	it("draws a PreToolUse hook's message as prose inside the assistant span, 12px from the failed call above and the call below, keeping the turn gap before a prompt", () =>
+	it("draws a PreToolUse hook's message as prose inside the assistant span, the turn gap less the row outset from the failed call above and the call below, keeping the turn gap before a prompt", () =>
 	{
 		const styles = readFileSync(join(process.cwd(), "src", "styles", "globals.css"), "utf8");
 		const rule = (comment: string) =>
-			new RegExp(`/\\* ${comment}[^*]*\\*/\\s*([^{]+)\\{\\s*padding-bottom: 12px;`).exec(styles)?.[1]?.trim() ??
-			"[data-missing-rule]";
+			new RegExp(
+				`/\\* ${comment}[^*]*\\*/\\s*([^{]+)\\{\\s*padding-bottom: calc\\(var\\(--chat-turn-gap\\) - var\\(--cds-pad-xs\\)\\);`,
+			)
+				.exec(styles)?.[1]
+				?.trim() ?? "[data-missing-rule]";
 		const hookMessage = (uuid: string) => (
 		{
 			type: "attachment",

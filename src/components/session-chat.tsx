@@ -1752,7 +1752,7 @@ function GroupedToolCallEntry({
 	if (lastBatch === undefined)
 		return notices.length === 0 ? null : <BackgroundNoticeRows notices={notices} footer={footer} />;
 
-	// Upstream's 12px below a group is 16px less its TurnStatus outset. A lone Agent row has no
+	// Upstream's gap below a group is the turn gap less its TurnStatus pad-xs outset. A lone Agent row has no
 	// outset, so a group ending with one keeps its turn gap.
 	const lastCalls = lastBatch.calls;
 	const endsWithStatus = lastCalls.length !== 1 || notices.length > 0 || lastCalls[0]?.name !== "Agent";
@@ -2444,7 +2444,7 @@ function TaskEventRunRow({
 		<div
 			data-task-event-row=""
 			data-record-index={recordIndex}
-			className="group/msg flex flex-col w-full pb-4 comfortable:pb-5 has-[>[data-assistant-span-footer]]:pb-[var(--chat-turn-gap)] [&>[data-assistant-span-footer]]:mt-[5px]"
+			className="group/msg flex flex-col w-full pb-[var(--chat-turn-gap)] [&>[data-assistant-span-footer]]:mt-[5px]"
 		>
 			<TaskEventRunStatus events={events} />
 			{footer}
@@ -2469,7 +2469,7 @@ function ArtifactWatchEndedRow({
 	return (
 		<div
 			data-record-index={recordIndex}
-			className="group/msg flex flex-col w-full pb-4 comfortable:pb-5 has-[>[data-assistant-span-footer]]:pb-[var(--chat-turn-gap)] [&>[data-assistant-span-footer]]:mt-[5px]"
+			className="group/msg flex flex-col w-full pb-[var(--chat-turn-gap)] [&>[data-assistant-span-footer]]:mt-[5px]"
 		>
 			<TurnStatusFrame leading={false}>
 				<div data-turn-status="" data-find-omitted="" className={TURN_STATUS_CLASS}>
@@ -2514,7 +2514,7 @@ function ContextRefreshRow({
 	return (
 		<div
 			data-record-index={recordIndex}
-			className="group/msg flex flex-col w-full pb-4 comfortable:pb-5 has-[>[data-assistant-span-footer]]:pb-[var(--chat-turn-gap)] [&>[data-assistant-span-footer]]:mt-[5px]"
+			className="group/msg flex flex-col w-full pb-[var(--chat-turn-gap)] [&>[data-assistant-span-footer]]:mt-[5px]"
 		>
 			<TurnStatusFrame leading={false}>
 				<div data-turn-status="" data-find-omitted="" className={TURN_STATUS_CLASS}>
@@ -4360,8 +4360,8 @@ function buildSessionListEntries(
 				getSourceSessionId(replyHead, renderProps.sessionId)
 		);
 	};
-	// Upstream leaves 12px between prose and a status in the same assistant span (16px above a plain
-	// marker), never across a span, a question card or a tasks view.
+	// Upstream leaves the turn gap less the pad-xs outset between prose and a status in the same assistant
+	// span (the plain turn gap above a marker), never across a span, a question card or a tasks view.
 	const precedesStatus = (index: number): OpeningStatus | null =>
 	{
 		const span = entries[index]?.assistantSpan;
@@ -5142,7 +5142,7 @@ function VirtualizedSessionEntries({
 							data-cds={entry.isPrompt ? undefined : "AssistantMessage"}
 							data-cds-reply-type={replyType && entry.kind.startsWith("assistant") ? "" : undefined}
 							data-reply-boundary={entry.opensReply ? "" : undefined}
-							className={entry.opensReply ? "pt-p5" : undefined}
+							className={entry.opensReply ? "pt-[var(--cds-gap-xs)]" : undefined}
 							data-transcript-entry-index={index}
 							data-testid="transcript-row"
 							data-perf-row={entry.kind}
