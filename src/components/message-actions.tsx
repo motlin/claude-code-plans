@@ -67,8 +67,22 @@ export interface MessageActionsProps
 	getHtml?: (() => string | undefined) | undefined;
 }
 
+/**
+ * Upstream's MessageActions bar sizing. A `data-size="xs"` bar sets no height of its own: globals.css maps its
+ * --cds-h-control onto --cds-h-control--xs (20px, 24px comfortable), and every item is `h-control` tall. On touch
+ * the bar raises that token to 32px and wraps, and its items overlap 4px above and below so the row stays 24px.
+ */
+const XS_BAR_SIZE = [
+	"touch:flex-wrap",
+	"touch:[--cds-h-control--xs:calc(2rem*var(--cds-rem-scale,1))]",
+	"touch:h-auto",
+	"touch:min-h-[calc(1.5rem*var(--cds-rem-scale,1))]",
+	"touch:gap-y-[calc(0.5rem*var(--cds-rem-scale,1))]",
+	"touch:*:-my-[calc(0.25rem*var(--cds-rem-scale,1))]",
+].join(" ");
+
 const BAR_CLASS = [
-	"flex h-6 items-center gap-0 select-none comfortable:h-8",
+	`flex items-center gap-0 select-none ${XS_BAR_SIZE}`,
 	// Upstream's toolbar turns a hovered button's icon primary, except a pressed one, which keeps its accent ink.
 	"[&_button:hover:not([aria-pressed=true]):not(:disabled)]:text-primary",
 	"opacity-0 pointer-events-none",
@@ -96,10 +110,14 @@ const BAR_CLASS = [
 	"motion-safe:pointer-coarse:transition-none",
 ].join(" ");
 
-/* Upstream's toolbar controls are icon-only ghost cds Buttons, so a disabled one takes its icon-only disabled look. */
-const BUTTON_CLASS = `flex size-6 cursor-pointer items-center justify-center rounded-r5 text-plain-secondary outline-none hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus transition-colors hover:bg-fill-ghost-hover aria-pressed:bg-upstream-accent-pressed aria-pressed:text-upstream-accent ${CDS_BUTTON_DISABLED} ${CDS_ICON_ONLY_DISABLED} comfortable:size-8 comfortable:rounded-r6`;
+/*
+ * Upstream's toolbar controls are icon-only ghost cds `size="xs"` Buttons: `h-control w-control` on the bar's xs
+ * scale, at --cds-radius--xs. A disabled one takes the icon-only disabled look.
+ */
+const BUTTON_CLASS = `flex h-control w-control cursor-pointer items-center justify-center rounded-[var(--cds-radius--xs)] text-plain-secondary outline-none hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus transition-colors hover:bg-fill-ghost-hover aria-pressed:bg-upstream-accent-pressed aria-pressed:text-upstream-accent ${CDS_BUTTON_DISABLED} ${CDS_ICON_ONLY_DISABLED}`;
 
-const ICON_CLASS = "size-4 comfortable:size-5";
+/* Upstream's Icon is an inline 1rem glyph at every density and on touch. */
+const ICON_CLASS = "size-4";
 
 const COPIED_MS = 2000;
 
@@ -368,12 +386,12 @@ function timeClass(inner: "left" | "right", panels: boolean): string
 		// no comfortable ps-3 on top (panels makes every scope comfortable locally).
 		const inset = panels ? "ps-2 ms-1" : "ps-2";
 		const comfortableInset = panels ? "" : " comfortable:ps-3";
-		return `flex h-6 items-center ${inset} text-body text-ink-muted tabular-nums outline-none comfortable:h-8${comfortableInset}`;
+		return `flex h-control items-center ${inset} text-body text-ink-muted tabular-nums outline-none${comfortableInset}`;
 	}
 	// Upstream's panels + flat-look rule: `display:block; align-content:center` and an uppercase first letter.
 	return panels
-		? "block h-6 content-center pe-[6px] text-[11px]/[17px] text-ink-muted tabular-nums outline-none first-letter:uppercase comfortable:h-8"
-		: "flex h-6 items-center pe-[6px] text-[11px]/[17px] text-ink-muted tabular-nums outline-none comfortable:h-8";
+		? "block h-control content-center pe-[6px] text-[11px]/[17px] text-ink-muted tabular-nums outline-none first-letter:uppercase"
+		: "flex h-control items-center pe-[6px] text-[11px]/[17px] text-ink-muted tabular-nums outline-none";
 }
 
 /** The relative time, with the absolute time and the turn's details in its tooltip. */
@@ -507,10 +525,9 @@ function ActionBar({
 /**
  * A step body's toolbar (upstream's MessageActions in a TurnStatus.Step `actions` slot, e.g. "Thinking actions"):
  * a roving toolbar whose reveal globals.css keys to the body's `[data-cds-actions-scope]`, not to the message row.
- * On touch it is always shown, 24px tall with 32px buttons, as upstream's `touch:` sizes.
+ * On touch it is always shown, a 24px row of 32px buttons, as upstream's `touch:` sizes.
  */
-const STEP_BAR_CLASS =
-	"flex items-center select-none [&_button:hover:not([aria-pressed=true]):not(:disabled)]:text-primary pointer-coarse:h-6 [@media(hover:none)]:h-6 pointer-coarse:[&_button]:size-8 [@media(hover:none)]:[&_button]:size-8";
+const STEP_BAR_CLASS = `flex items-center select-none [&_button:hover:not([aria-pressed=true]):not(:disabled)]:text-primary ${XS_BAR_SIZE}`;
 
 export function StepActions({label, children}: {label: string; children: ReactNode})
 {
@@ -693,7 +710,7 @@ function ReadByClaudeReceipt()
 					aria-hidden="true"
 					data-testid="epitaxy-row-words-end"
 					// Upstream's `[time~&:not(:last-child)]:flex`; the local <time> sits inside its tooltip anchor.
-					className="hidden min-h-6 items-center self-center pe-0.5 text-caption text-muted-as-secondary before:content-['·'] [:has(>time)~&:not(:last-child)]:flex comfortable:min-h-8"
+					className="hidden min-h-control items-center self-center pe-0.5 text-caption text-muted-as-secondary before:content-['·'] [:has(>time)~&:not(:last-child)]:flex"
 				/>
 			)}
 		</>
@@ -785,8 +802,7 @@ function CancelEditAction({onCancel}: {onCancel: () => Promise<void> | void})
 }
 
 /** Upstream `Mv`: the caption words in a waiting row's toolbar. */
-const ROW_WORDS_CLASS =
-	"flex min-h-6 items-center self-center text-caption text-muted-as-secondary comfortable:min-h-8";
+const ROW_WORDS_CLASS = "flex min-h-control items-center self-center text-caption text-muted-as-secondary";
 
 /**
  * Upstream's "Delivered" (`Kv`), first in a stacked row's hover group once the host has the
@@ -802,7 +818,7 @@ function DeliveredReceipt()
 			<span
 				aria-hidden
 				data-testid="epitaxy-row-words-end"
-				className="flex min-h-6 items-center self-center pe-0.5 text-caption text-muted-as-secondary before:content-['·'] comfortable:min-h-8"
+				className="flex min-h-control items-center self-center pe-0.5 text-caption text-muted-as-secondary before:content-['·']"
 			/>
 		</>
 	);
@@ -853,7 +869,7 @@ export function WaitingMessageActions({
 			tabIndex={-1}
 			data-testid="user-message-actions"
 			data-size="xs"
-			className="flex items-center select-none"
+			className={`flex items-center select-none ${XS_BAR_SIZE}`}
 			onFocus={onFocus}
 			onKeyDown={onKeyDown}
 		>
@@ -878,7 +894,7 @@ function UnreadReceipt()
 	return (
 		<span
 			data-testid="epitaxy-receipt-at-rest"
-			className="text-body text-ink-muted tabular-nums flex min-h-6 items-center self-center ps-[5px] epitaxy-hint-fade-in"
+			className="text-body text-ink-muted tabular-nums flex min-h-control items-center self-center ps-[5px] epitaxy-hint-fade-in"
 		>
 			<ReceiptMark
 				label="Unread"

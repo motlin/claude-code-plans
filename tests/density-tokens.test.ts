@@ -99,7 +99,7 @@ describe("density type tokens", () =>
 					"--upstream-text-heading": "15px",
 					"--upstream-leading-heading": "20px",
 				},
-				comfortableDeclarations: 47,
+				comfortableDeclarations: 49,
 				compact:
 				{
 					"--upstream-text-body": "13px",
@@ -115,7 +115,7 @@ describe("density type tokens", () =>
 					"--upstream-text-heading": "14px",
 					"--upstream-leading-heading": "18px",
 				},
-				compactDeclarations: 47,
+				compactDeclarations: 49,
 				caption: "var(--upstream-text-caption)",
 				captionLeading: "var(--upstream-leading-caption)",
 			},
@@ -146,6 +146,46 @@ describe("control height token", () =>
 				compact: "calc(1.5rem * var(--cds-rem-scale, 1))",
 				panelsComfortable:
 					'[data-cds-fizzy-lake~="panels"][data-density="comfortable"],\n\t[data-cds-fizzy-lake~="panels"] [data-density="comfortable"]\n\t{\n\t\t--cds-h-control: calc(1.75rem * var(--cds-rem-scale, 1));\n\t\t--cds-button-pad-max: calc(0.5625rem * var(--cds-rem-scale, 1));\n\t',
+			},
+		);
+	});
+});
+
+describe("xs control tokens", () =>
+{
+	it("copies upstream's --cds-h-control--xs (20px compact, 24px comfortable and on :root) and --cds-radius--xs (5px / 6px), which a MessageActions bar maps onto --cds-h-control", () =>
+	{
+		const pair = (source: string) => (
+		{
+			height: token(source, "--cds-h-control--xs"),
+			radius: token(source, "--cds-radius--xs"),
+		});
+
+		expect(
+			{
+				root: pair(block(":root")),
+				comfortable: pair(block('[data-density="comfortable"]')),
+				compact: pair(block('[data-density="compact"]')),
+				bar: token(block('[data-cds="MessageActions"][data-size="xs"]'), "--cds-h-control"),
+			},
+		).toStrictEqual(
+			{
+				root:
+				{
+					height: "calc(1.5rem * var(--cds-rem-scale, 1))",
+					radius: "0.375rem",
+				},
+				comfortable:
+				{
+					height: "calc(1.5rem * var(--cds-rem-scale, 1))",
+					radius: "0.375rem",
+				},
+				compact:
+				{
+					height: "calc(1.25rem * var(--cds-rem-scale, 1))",
+					radius: "0.3125rem",
+				},
+				bar: "var(--cds-h-control--xs)",
 			},
 		);
 	});

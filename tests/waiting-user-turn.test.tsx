@@ -181,7 +181,7 @@ describe("WaitingUserTurn", () =>
 				{
 					leading: true,
 					className:
-						"text-body text-ink-muted tabular-nums flex min-h-6 items-center self-center ps-[5px] epitaxy-hint-fade-in",
+						"text-body text-ink-muted tabular-nums flex min-h-control items-center self-center ps-[5px] epitaxy-hint-fade-in",
 					label: "Unread",
 					tabIndex: 0,
 					icon: true,
@@ -262,14 +262,14 @@ describe("WaitingUserTurn", () =>
 					ariaHidden: "true",
 					text: "Delivered",
 					className:
-						"flex min-h-6 items-center self-center text-caption text-muted-as-secondary comfortable:min-h-8 pe-1.5",
+						"flex min-h-control items-center self-center text-caption text-muted-as-secondary pe-1.5",
 				},
 				dot:
 				{
 					afterDelivered: true,
 					ariaHidden: "true",
 					className:
-						"flex min-h-6 items-center self-center pe-0.5 text-caption text-muted-as-secondary before:content-['·'] comfortable:min-h-8",
+						"flex min-h-control items-center self-center pe-0.5 text-caption text-muted-as-secondary before:content-['·']",
 				},
 			},
 		]);
@@ -953,7 +953,9 @@ describe("Cancel and edit on a browser-held waiting row", () =>
 			{
 				toolbar: row === null ? null : toolbarControls(row),
 				wrapper: cancel?.closest(".epitaxy-hint-fade-in")?.className,
-				button: cancel?.className.split(" ").filter((name) => ["size-6", "rounded-r5"].includes(name)),
+				button: cancel?.className
+					.split(" ")
+					.filter((name) => ["h-control", "w-control", "rounded-[var(--cds-radius--xs)]"].includes(name)),
 				icon: cancel?.querySelector("svg") !== null,
 			},
 		).toStrictEqual(
@@ -990,7 +992,7 @@ describe("Cancel and edit on a browser-held waiting row", () =>
 					],
 				},
 				wrapper: "epitaxy-hint-fade-in flex items-center gap-[3px]",
-				button: ["size-6", "rounded-r5"],
+				button: ["h-control", "w-control", "rounded-[var(--cds-radius--xs)]"],
 				icon: true,
 			},
 		);

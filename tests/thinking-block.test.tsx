@@ -547,7 +547,7 @@ describe("thinking step, opened in place", () =>
 				size: "xs",
 				tabIndex: "-1",
 				toolbarClass:
-					"flex items-center select-none [&_button:hover:not([aria-pressed=true]):not(:disabled)]:text-primary pointer-coarse:h-6 [@media(hover:none)]:h-6 pointer-coarse:[&_button]:size-8 [@media(hover:none)]:[&_button]:size-8",
+					"flex items-center select-none [&_button:hover:not([aria-pressed=true]):not(:disabled)]:text-primary touch:flex-wrap touch:[--cds-h-control--xs:calc(2rem*var(--cds-rem-scale,1))] touch:h-auto touch:min-h-[calc(1.5rem*var(--cds-rem-scale,1))] touch:gap-y-[calc(0.5rem*var(--cds-rem-scale,1))] touch:*:-my-[calc(0.25rem*var(--cds-rem-scale,1))]",
 				buttons: [
 					{
 						label: "Copy as quote",

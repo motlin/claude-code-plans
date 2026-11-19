@@ -9,6 +9,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import
 {
 	AssistantMessageActions,
+	QuoteCopyAction,
 	StepActions,
 	UserMessageActions,
 	WaitingMessageActions,
@@ -162,28 +163,69 @@ describe("AssistantMessageActions", () =>
 		);
 	});
 
-	it("grows to upstream's comfortable 32px buttons, 20px icons and 32px time slot under a comfortable scope (coarse pointer)", () =>
+	it("sizes every bar on upstream's xs control scale (20px, 24px comfortable, 32px touch) and wraps the touch bar onto a 24px row", () =>
 	{
-		const {container} = render(
+		const sizing = (element: Element | null | undefined) =>
+			(element?.getAttribute("class") ?? "")
+				.split(" ")
+				.filter((name) => /^(?:touch:|comfortable:|h-|w-|size-|min-h-|rounded-)/.test(name));
+		const assistant = render(
 			<AssistantMessageActions message={MESSAGE} text="Hello" timestamp={TIMESTAMP} details={[]} />,
-		);
-		const comfortable = (element: Element | null | undefined) =>
-			(element?.getAttribute("class") ?? "").split(" ").filter((name) => name.startsWith("comfortable:"));
+		).container;
+		const user = render(
+			<UserMessageActions message={MESSAGE} text="Hello" timestamp={TIMESTAMP} details={[]} readByClaude />,
+		).container;
+		const waiting = render(<WaitingMessageActions text="Hi" stacked hostHasIt />).container;
+		const step = render(
+			<StepActions label="Thinking actions">
+				<QuoteCopyAction quote="q" onCopied={() => undefined} />
+			</StepActions>,
+		).container;
+		const touchBar = [
+			"touch:flex-wrap",
+			"touch:[--cds-h-control--xs:calc(2rem*var(--cds-rem-scale,1))]",
+			"touch:h-auto",
+			"touch:min-h-[calc(1.5rem*var(--cds-rem-scale,1))]",
+			"touch:gap-y-[calc(0.5rem*var(--cds-rem-scale,1))]",
+			"touch:*:-my-[calc(0.25rem*var(--cds-rem-scale,1))]",
+		];
+		const xsButton = ["h-control", "w-control", "rounded-[var(--cds-radius--xs)]"];
 
 		expect(
 			{
-				bar: comfortable(bar(container)),
-				button: comfortable(button(container, "Copy")),
-				icon: comfortable(button(container, "Copy").querySelector("svg")),
-				time: comfortable(container.querySelector("time")),
+				assistantBar: sizing(bar(assistant)),
+				userBar: sizing(user.querySelector("[data-testid=user-message-actions]")),
+				waitingBar: sizing(waiting.querySelector("[role=toolbar]")),
+				stepBar: sizing(step.querySelector("[role=toolbar]")),
+				copy: sizing(button(assistant, "Copy")),
+				fork: sizing(button(assistant, "Fork from here")),
+				rewind: sizing(button(waiting, "Rewind to here")),
+				receipt: sizing(button(user, "Read by Claude")),
+				quote: sizing(step.querySelector("button")),
+				icon: sizing(button(assistant, "Copy").querySelector("svg")),
+				assistantTime: sizing(assistant.querySelector("time")),
+				userTime: sizing(user.querySelector("time")),
+				separator: sizing(user.querySelector("[data-testid=epitaxy-row-words-end]")),
+				delivered: sizing(waiting.querySelector("[data-testid=epitaxy-receipt-on-hover]")),
+				deliveredSeparator: sizing(waiting.querySelector("[data-testid=epitaxy-row-words-end]")),
 			},
 		).toStrictEqual(
 			{
-				bar: ["comfortable:h-8"],
-				button: ["comfortable:size-8", "comfortable:rounded-r6"],
-				icon: ["comfortable:size-5"],
-				// Panels' ms-1 already brings the time to upstream's 12px, so no comfortable ps-3 on top.
-				time: ["comfortable:h-8"],
+				assistantBar: touchBar,
+				userBar: touchBar,
+				waitingBar: touchBar,
+				stepBar: touchBar,
+				copy: xsButton,
+				fork: xsButton,
+				rewind: xsButton,
+				receipt: xsButton,
+				quote: xsButton,
+				icon: ["size-4"],
+				assistantTime: ["h-control"],
+				userTime: ["h-control"],
+				separator: ["min-h-control"],
+				delivered: ["min-h-control"],
+				deliveredSeparator: ["min-h-control"],
 			},
 		);
 	});
@@ -743,7 +785,7 @@ describe("UserMessageActions", () =>
 		]);
 	});
 
-	it("without panels: dates a week-old message as upstream's user <time> does: 11px caption ink in a 24px slot, relative before", () =>
+	it("without panels: dates a week-old message as upstream's user <time> does: 11px caption ink in an xs-control slot, relative before", () =>
 	{
 		const time = (timestamp: string) =>
 		{
@@ -761,8 +803,7 @@ describe("UserMessageActions", () =>
 			unmount();
 			return result;
 		};
-		const slot =
-			"flex h-6 items-center pe-[6px] text-[11px]/[17px] text-ink-muted tabular-nums outline-none comfortable:h-8";
+		const slot = "flex h-control items-center pe-[6px] text-[11px]/[17px] text-ink-muted tabular-nums outline-none";
 
 		expect([
 			time("2026-09-26T10:00:00.000Z"),
@@ -839,7 +880,7 @@ describe("UserMessageActions", () =>
 				infoTip: receipt.hasAttribute("data-info-tip"),
 				hasPopup: receipt.getAttribute("aria-haspopup"),
 				icon: receipt.querySelector("svg")?.getAttribute("class")?.split(" ").includes("lucide-check-check"),
-				button: ["size-6", "hover:bg-transparent"].every((c) => classes.includes(c)),
+				button: ["h-control", "w-control", "hover:bg-transparent"].every((c) => classes.includes(c)),
 				infoTipSpacing: ["p-1", "-m-1"].some((c) => classes.includes(c)),
 			},
 		).toStrictEqual(
@@ -853,7 +894,7 @@ describe("UserMessageActions", () =>
 		);
 	});
 
-	it("without panels: spaces the receipt as a plain 24px toolbar button in a gapless bar, overlapping nothing", () =>
+	it("without panels: spaces the receipt as a plain xs-control toolbar button in a gapless bar, overlapping nothing", () =>
 	{
 		const {container} = render(
 			<PanelsOff>
@@ -861,7 +902,9 @@ describe("UserMessageActions", () =>
 			</PanelsOff>,
 		);
 		const spacing = (element: Element) =>
-			(element.getAttribute("class") ?? "").split(" ").filter((c) => /^-?(?:[pm][xyseltrb]?|gap|size)-/.test(c));
+			(element.getAttribute("class") ?? "")
+				.split(" ")
+				.filter((c) => /^-?(?:[pm][xyseltrb]?|gap|size|[hw])-/.test(c));
 		const items = Array.from(bar(container).querySelectorAll("button, time")).map((element) => [
 			element.tagName === "TIME" ? "time" : (element.getAttribute("aria-label") ?? ""),
 			spacing(element),
@@ -876,11 +919,11 @@ describe("UserMessageActions", () =>
 			{
 				bar: ["gap-0"],
 				items: [
-					["time", ["pe-[6px]"]],
-					["Read by Claude", ["size-6"]],
-					["Copy", ["size-6"]],
-					["Rewind to here", ["size-6"]],
-					["Fork from here", ["size-6"]],
+					["time", ["h-control", "pe-[6px]"]],
+					["Read by Claude", ["h-control", "w-control"]],
+					["Copy", ["h-control", "w-control"]],
+					["Rewind to here", ["h-control", "w-control"]],
+					["Fork from here", ["h-control", "w-control"]],
 				],
 			},
 		);
@@ -1379,7 +1422,7 @@ describe("message action toolbar sizing and reveal", () =>
 		);
 	});
 
-	it("sizes buttons 24px with radius 6 and 16px icons, the assistant time a 24px 13px/19px flex box and the user time 11px/17px, each padded on its inner side", () =>
+	it("sizes buttons on the xs control with the xs radius and 16px icons, the assistant time an xs-control 13px/19px flex box and the user time 11px/17px, each padded on its inner side", () =>
 	{
 		const assistant = render(
 			<AssistantMessageActions message={MESSAGE} text="Hello" timestamp={TIMESTAMP} details={[]} />,
@@ -1394,12 +1437,14 @@ describe("message action toolbar sizing and reveal", () =>
 
 		expect(
 			{
-				button: ["size-6", "rounded-r5"].every((c) => copy.className.split(" ").includes(c)),
+				button: ["h-control", "w-control", "rounded-[var(--cds-radius--xs)]"].every((c) =>
+					copy.className.split(" ").includes(c),
+				),
 				icon: copy.querySelector("svg")!.getAttribute("class")!.split(" ").includes("size-4"),
-				assistantTime: ["flex", "h-6", "items-center", "text-body", "text-ink-muted", "ps-2"].every((c) =>
+				assistantTime: ["flex", "h-control", "items-center", "text-body", "text-ink-muted", "ps-2"].every((c) =>
 					assistantTime.includes(c),
 				),
-				userTime: ["text-[11px]/[17px]", "h-6", "text-ink-muted", "pe-[6px]"].every((c) =>
+				userTime: ["text-[11px]/[17px]", "h-control", "text-ink-muted", "pe-[6px]"].every((c) =>
 					userTime.includes(c),
 				),
 			},
@@ -1413,7 +1458,7 @@ describe("message action toolbar sizing and reveal", () =>
 		);
 	});
 
-	it("lays the bar out as upstream's 24px toolbar: no inter-button gap, 6px under the prose and 2px left of it on assistant turns", () =>
+	it("lays the bar out as upstream's heightless xs toolbar: no inter-button gap, 6px under the prose and 2px left of it on assistant turns", () =>
 	{
 		const has = (classes: string[], wanted: readonly string[]) => wanted.filter((c) => classes.includes(c));
 		const assistant = bar(
@@ -1424,7 +1469,7 @@ describe("message action toolbar sizing and reveal", () =>
 		const user = bar(
 			render(<UserMessageActions message={MESSAGE} text="Hi" timestamp={TIMESTAMP} details={[]} />).container,
 		).className.split(" ");
-		const wanted = ["gap-0", "h-6", "mt-xs", "-ms-[2px]", "gap-g1", "pt-[4px]"] as const;
+		const wanted = ["gap-0", "h-6", "h-control", "mt-xs", "-ms-[2px]", "gap-g1", "pt-[4px]"] as const;
 
 		expect(
 			{
@@ -1433,8 +1478,8 @@ describe("message action toolbar sizing and reveal", () =>
 			},
 		).toStrictEqual(
 			{
-				assistant: ["gap-0", "h-6", "mt-xs", "-ms-[2px]"],
-				user: ["gap-0", "h-6"],
+				assistant: ["gap-0", "mt-xs", "-ms-[2px]"],
+				user: ["gap-0"],
 			},
 		);
 	});
@@ -1448,7 +1493,7 @@ describe("message action toolbar sizing and reveal", () =>
 
 		expect(
 			{
-				scales: classes.filter((c) => c.includes("scale")),
+				scales: classes.filter((c) => /(?:^|:)-?scale-/.test(c)),
 				restDelay: classes.includes("motion-safe:delay-100"),
 				missing: [
 					"motion-safe:transition-opacity",
@@ -1964,7 +2009,7 @@ describe("message actions states (upstream 2026-11-01)", () =>
 				{
 					ariaHidden: "true",
 					className:
-						"hidden min-h-6 items-center self-center pe-0.5 text-caption text-muted-as-secondary before:content-['·'] [:has(>time)~&:not(:last-child)]:flex comfortable:min-h-8",
+						"hidden min-h-control items-center self-center pe-0.5 text-caption text-muted-as-secondary before:content-['·'] [:has(>time)~&:not(:last-child)]:flex",
 				},
 			},
 		);
@@ -2019,10 +2064,10 @@ describe("message actions states (upstream 2026-11-01)", () =>
 			},
 		).toStrictEqual(
 			{
-				user: "block h-6 content-center pe-[6px] text-[11px]/[17px] text-ink-muted tabular-nums outline-none first-letter:uppercase comfortable:h-8",
+				user: "block h-control content-center pe-[6px] text-[11px]/[17px] text-ink-muted tabular-nums outline-none first-letter:uppercase",
 				assistantCased: false,
 				userOff:
-					"flex h-6 items-center pe-[6px] text-[11px]/[17px] text-ink-muted tabular-nums outline-none comfortable:h-8",
+					"flex h-control items-center pe-[6px] text-[11px]/[17px] text-ink-muted tabular-nums outline-none",
 			},
 		);
 	});
@@ -2225,7 +2270,7 @@ describe("pointer-forked receipt mark (user-row-read-receipt T1)", () =>
 		);
 	});
 
-	it("fine pointer: a stacked waiting row's Unread is a dimmed 24px button whose click shows its tooltip and marks it popup-open", () =>
+	it("fine pointer: a stacked waiting row's Unread is a dimmed xs-control button whose click shows its tooltip and marks it popup-open", () =>
 	{
 		stubPointer(false);
 		const {container} = render(
@@ -2238,7 +2283,9 @@ describe("pointer-forked receipt mark (user-row-read-receipt T1)", () =>
 		const at =
 		{
 			infoTip: unread.hasAttribute("data-info-tip"),
-			button: ["size-6", "opacity-50", "data-[popup-open]:opacity-100"].every((c) => classes.includes(c)),
+			button: ["h-control", "w-control", "opacity-50", "data-[popup-open]:opacity-100"].every((c) =>
+				classes.includes(c),
+			),
 		};
 		fireEvent.click(unread);
 		expect(
