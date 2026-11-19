@@ -116,6 +116,29 @@ export function ownsTyping(element: Element | null): boolean
 	return element?.closest(OWNS_TYPING_SELECTOR) != null;
 }
 
+const BUTTONISH_INPUT_TYPES = new Set(["button", "submit", "reset", "checkbox", "radio"]);
+
+const BUTTONISH_ROLES = new Set([
+	"button",
+	"checkbox",
+	"radio",
+	"switch",
+	"menuitem",
+	"menuitemcheckbox",
+	"menuitemradio",
+	"option",
+]);
+
+/** Upstream's `cP`: a control that Space presses, toggles or picks, so a typed Space stays with it. */
+export function isButtonish(element: Element | null): boolean
+{
+	if (element === null) return false;
+	const tag = element.tagName;
+	if (tag === "BUTTON" || tag === "SUMMARY" || tag === "SELECT") return true;
+	if (element instanceof HTMLInputElement) return BUTTONISH_INPUT_TYPES.has(element.type);
+	return BUTTONISH_ROLES.has(element.getAttribute("role") ?? "");
+}
+
 const MODAL_LAYER_SELECTOR = [
 	'[role="menu"]',
 	'[role="listbox"]',

@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 
 import {cleanup, fireEvent, render, screen} from "@testing-library/react";
-import {afterEach, describe, expect, it} from "vite-plus/test";
+import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import {Composer} from "../src/components/composer";
+import {presenceTrust} from "../src/lib/stray-input-presence";
 
 afterEach(() =>
 {
@@ -171,6 +172,102 @@ describe("type-to-focus", () =>
 					value: "r",
 					focused: true,
 				},
+			},
+		);
+	});
+
+	it("routes Space from a focused link or plain focusable div, but not from a button, checkbox, switch, menuitem or option", () =>
+	{
+		render(
+			<>
+				<a href="#x">Link</a>
+				<div tabIndex={-1} data-testid="plain">
+					Plain
+				</div>
+				<button type="button">Press</button>
+				<input type="checkbox" aria-label="Check" />
+				<div role="switch" aria-checked="false" tabIndex={0} aria-label="Toggle" />
+				<div role="menuitem" tabIndex={0}>
+					Item
+				</div>
+				<div role="option" aria-selected="false" tabIndex={0}>
+					Option
+				</div>
+				<details>
+					<summary>Summary</summary>
+				</details>
+				<Composer
+					variant="session"
+					draftKey="session-alice"
+					onSend={() =>
+					{
+					}}
+				/>
+			</>,
+		);
+		const spaceFrom = (element: HTMLElement): string =>
+		{
+			const textarea = prompts()[0]!;
+			textarea.value = "";
+			element.focus();
+			fireEvent.keyDown(
+				element,
+				{
+					key: " ",
+				},
+			);
+			return textarea.value;
+		};
+
+		expect(
+			{
+				link: spaceFrom(
+					screen.getByRole(
+						"link",
+						{
+							name: "Link",
+						},
+					),
+				),
+				plain: spaceFrom(screen.getByTestId("plain")),
+				button: spaceFrom(
+					screen.getByRole(
+						"button",
+						{
+							name: "Press",
+						},
+					),
+				),
+				checkbox: spaceFrom(
+					screen.getByRole(
+						"checkbox",
+						{
+							name: "Check",
+						},
+					),
+				),
+				switch: spaceFrom(
+					screen.getByRole(
+						"switch",
+						{
+							name: "Toggle",
+						},
+					),
+				),
+				menuitem: spaceFrom(screen.getByText("Item")),
+				option: spaceFrom(screen.getByText("Option")),
+				summary: spaceFrom(screen.getByText("Summary")),
+			},
+		).toStrictEqual(
+			{
+				link: " ",
+				plain: " ",
+				button: "",
+				checkbox: "",
+				switch: "",
+				menuitem: "",
+				option: "",
+				summary: "",
 			},
 		);
 	});
@@ -370,6 +467,88 @@ describe("type-to-focus", () =>
 			{
 				value: "",
 				focused: false,
+			},
+		);
+	});
+
+	it("drops keys and pastes after focus was inside an iframe, until a press and click in the page", () =>
+	{
+		render(
+			<>
+				<iframe title="Preview" sandbox="" />
+				<button type="button">Outside</button>
+				<Composer
+					variant="session"
+					draftKey="session-alice"
+					onSend={() =>
+					{
+					}}
+				/>
+			</>,
+		);
+		const iframe = screen.getByTitle("Preview");
+		iframe.focus();
+		// jsdom moves focus into an iframe without the focusin a browser fires on it.
+		fireEvent.focusIn(iframe);
+		// jsdom can't blur a focused iframe, so leave it through another control.
+		screen
+			.getByRole(
+				"button",
+				{
+					name: "Outside",
+				},
+			)
+			.focus();
+		fireEvent.focusOut(iframe);
+		blurToBody();
+
+		const key = fireEvent.keyDown(
+			document.body,
+			{
+				key: "a",
+			},
+		);
+		const pasted = paste(document.body, "b");
+		const away = state(prompts()[0]!);
+		// jsdom can't make trusted events, so trust everything for the press that ends the wait.
+		vi.spyOn(presenceTrust, "isTrusted").mockReturnValue(true);
+		fireEvent.pointerDown(document.body);
+		fireEvent.click(
+			document.body,
+			{
+				detail: 1,
+			},
+		);
+		vi.restoreAllMocks();
+		blurToBody();
+		fireEvent.keyDown(
+			document.body,
+			{
+				key: "c",
+			},
+		);
+
+		expect(
+			{
+				key,
+				pasted,
+				away,
+				back: state(prompts()[0]!),
+			},
+		).toStrictEqual(
+			{
+				key: true,
+				pasted: true,
+				away:
+				{
+					value: "",
+					focused: false,
+				},
+				back:
+				{
+					value: "c",
+					focused: true,
+				},
 			},
 		);
 	});
