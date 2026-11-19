@@ -655,7 +655,11 @@ const streamCutCauseChoices =
 	stale_connection: true,
 } satisfies Record<z.infer<typeof StreamCutCauseSchema>, true>;
 
-/** Not consumed yet — `madeBy` (who produced the message) on assistant records is only validated. */
+/**
+ * Not consumed — `madeBy` (who produced the message) on assistant records is only validated. Its one
+ * value is "model", which every assistant message already is, so a badge would carry no information;
+ * show one only when a non-model producer joins this enum.
+ */
 const madeByChoices =
 {
 	model: true,
