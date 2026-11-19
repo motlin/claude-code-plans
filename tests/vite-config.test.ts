@@ -106,6 +106,32 @@ describe("vite config", () =>
 	});
 });
 
+// vp's bundled oxfmt cannot express the project's next-line brace style, so letting `vp check --fix` format
+// rewrites every file. oxfmt-next-line (`just format`) is the only formatter.
+describe("vp check formatting", () =>
+{
+	it("never formats, in the config default or the gate's check task", () =>
+	{
+		expect(
+			{
+				checkDefaults: viteConfig.check,
+				checkTask: viteConfig.run?.tasks?.["check"],
+			},
+		).toStrictEqual(
+			{
+				checkDefaults:
+				{
+					fmt: false,
+				},
+				checkTask:
+				{
+					command: "vp check",
+				},
+			},
+		);
+	});
+});
+
 describe("typecheck task cache", () =>
 {
 	it("never caches tsc, whose native file reads vp's input tracking cannot see", () =>

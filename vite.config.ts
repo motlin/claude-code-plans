@@ -73,10 +73,9 @@ export default defineConfig(
 				// none: vp check resolves this config, and the TanStack router generator writes the tree in configResolved
 				// before linting starts. typeCheck: true below makes vp check the gate's only type check, so `just verify`
 				// does not also run tsc.
-				// `just format` runs oxfmt-next-line; vp check would otherwise reformat everything with vp fmt defaults.
 				check:
 				{
-					command: "vp check --no-fmt",
+					command: "vp check",
 				},
 				// tsc 7 is a native Go binary whose file reads vp's auto input tracking never sees, so a cached
 				// run would replay an old success for a tree that no longer type-checks.
@@ -120,6 +119,12 @@ export default defineConfig(
 					},
 				},
 			},
+		},
+		// vp's bundled oxfmt cannot express the project's next-line brace style (.oxfmtrc.json), so a formatting
+		// `vp check --fix` would rewrite every file. `just format` (oxfmt-next-line) is the only formatter.
+		check:
+		{
+			fmt: false,
 		},
 		lint:
 		{
