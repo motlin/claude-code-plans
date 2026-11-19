@@ -3315,6 +3315,13 @@ main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-reg
 	width: var(--cds-h-control);
 }
 
+/* Upstream's size-control: a square control, the density control height on both sides. */
+@utility size-control
+{
+	width: var(--cds-h-control);
+	height: var(--cds-h-control);
+}
+
 /* Upstream's min-h-control: a row at least one control tall. */
 @utility min-h-control
 {
@@ -4800,8 +4807,13 @@ html[data-reduce-motion="true"] [data-cds="ShimmerText"][data-shimmer-mode="fall
 }
 
 /* Upstream .cds-root [data-size=xs] { --cds-h-control: var(--cds-h-control--xs) }, scoped to the MessageActions
-   bars until the other local xs scopes (composer chin, Cards, diff-file buttons) are checked against it. */
+   bars and the vertical tab bar's tab X until the other local xs scopes (composer chin, Cards, diff-file buttons) are checked against it. */
 [data-cds="MessageActions"][data-size="xs"]
+{
+	--cds-h-control: var(--cds-h-control--xs);
+}
+
+[data-view-tab-bar] [data-size="xs"]
 {
 	--cds-h-control: var(--cds-h-control--xs);
 }

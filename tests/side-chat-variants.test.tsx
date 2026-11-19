@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import {act, cleanup, fireEvent, render, screen, within} from "@testing-library/react";
+import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import {afterEach, beforeAll, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 vi.mock("@tanstack/react-router", () => (
@@ -12,7 +12,7 @@ import {TileHost} from "../src/components/panes/tile-host";
 import {SideChat} from "../src/components/side-chat";
 import {preloadSideChatPanel} from "../src/components/side-chat-panel-module";
 import {ToastProvider} from "../src/components/toast";
-import {askSideChat, getSideChat, openSideChat, resetSideChatStore} from "../src/lib/side-chat-store";
+import {askSideChat, getSideChat, openSideChat, resetSideChatStore, setSideChatMode} from "../src/lib/side-chat-store";
 
 // The deferred chunks these tests render, loaded up front as the page warms them before first use.
 beforeAll(async () =>
@@ -108,6 +108,37 @@ function dockedPane(): HTMLElement | null
 	return document.querySelector<HTMLElement>('[data-pane-root][data-pane-kind="side-chat"]');
 }
 
+function sideChatTab(): HTMLElement
+{
+	const tab = dockedPane()?.querySelector<HTMLElement>('[role="tab"]');
+	if (tab === null || tab === undefined) throw new Error("No side chat tab");
+	return tab;
+}
+
+function sideChatTabBox(): HTMLElement
+{
+	const box = dockedPane()?.querySelector<HTMLElement>("[data-vtb-id]");
+	if (box === null || box === undefined) throw new Error("No side chat tab box");
+	return box;
+}
+
+function openDocked()
+{
+	renderInHost();
+	act(() =>
+	{
+		openSideChat(SESSION_ID);
+		setSideChatMode(SESSION_ID, "docked");
+	});
+}
+
+function menuOutline(menu: HTMLElement): (string | null)[]
+{
+	return [...menu.querySelectorAll('[role="menuitem"], [role="separator"]')].map((node) =>
+		node.getAttribute("role") === "separator" ? "---" : node.textContent,
+	);
+}
+
 /** Where the Q/A history is visible: floating card, docked pane, or neither. */
 function snapshot()
 {
@@ -182,24 +213,31 @@ describe("SideChat variants", () =>
 			),
 		);
 		const docked = snapshot();
-		const dockedTitle = dockedPane()?.querySelector("h2")?.textContent;
+		const dockedTitle = dockedPane()?.querySelector("[data-vtb-label]")?.textContent;
+		const dockedMarked = dockedPane()?.querySelector('[data-side-session-pane=""]') !== null;
 
+		fireEvent.contextMenu(sideChatTab());
 		fireEvent.click(
-			screen.getByRole(
-				"button",
-				{
-					name: "Undock side chat",
-				},
+			await waitFor(() =>
+				screen.getByRole(
+					"menuitem",
+					{
+						name: "Undock side chat",
+					},
+				),
 			),
 		);
 		const refloated = snapshot();
+		const floatingMarked = floatingCard()?.querySelector('[data-side-session-pane=""]') !== null;
 
 		expect(
 			{
 				floating,
 				docked,
 				dockedTitle,
+				dockedMarked,
 				refloated,
+				floatingMarked,
 			},
 		).toEqual(
 			{
@@ -218,6 +256,7 @@ describe("SideChat variants", () =>
 					history: HISTORY,
 				},
 				dockedTitle: "Side chat",
+				dockedMarked: true,
 				refloated:
 				{
 					mode: "floating",
@@ -225,6 +264,7 @@ describe("SideChat variants", () =>
 					docked: false,
 					history: HISTORY,
 				},
+				floatingMarked: true,
 			},
 		);
 	});
@@ -246,14 +286,9 @@ describe("SideChat variants", () =>
 			),
 		);
 
-		fireEvent.click(
-			within(dockedPane() ?? document.body).getByRole(
-				"button",
-				{
-					name: "Close side chat",
-				},
-			),
-		);
+		const closeButton = dockedPane()?.querySelector<HTMLElement>('button[aria-label="Close side chat"]');
+		if (closeButton === null || closeButton === undefined) throw new Error("No Close side chat button");
+		fireEvent.click(closeButton);
 		const closed =
 		{
 			...snapshot(),
@@ -331,6 +366,7 @@ describe("SideChat variants", () =>
 				.queryAllByRole("listitem")
 				.map((item) => item.textContent),
 			openCalls: open.mock.calls.length,
+			marked: popup.document.body.querySelector('[data-side-session-pane=""]') !== null,
 		};
 
 		act(() =>
@@ -354,6 +390,7 @@ describe("SideChat variants", () =>
 					docked: false,
 					history: HISTORY,
 					openCalls: 1,
+					marked: true,
 				},
 				returned:
 				{
@@ -396,6 +433,291 @@ describe("SideChat variants", () =>
 				floating: true,
 				docked: false,
 				history: HISTORY,
+			},
+		);
+	});
+
+	it("draws the docked header as upstream's one-tab Side chat strip beside the host's Expand and Close", () =>
+	{
+		openDocked();
+		const pane = dockedPane();
+		if (pane === null) throw new Error("No docked pane");
+		const tablist = pane.querySelector<HTMLElement>('[role="tablist"]');
+		const box = sideChatTabBox();
+		const tab = sideChatTab();
+		const hintId = tab.getAttribute("aria-describedby");
+		const hint = hintId === null ? null : document.getElementById(hintId);
+		const close = box.querySelector<HTMLElement>('button[aria-label="Close side chat"]');
+		const header = pane.querySelector<HTMLElement>("[data-pane-corner-row]");
+
+		expect(
+			{
+				toolbar: pane.querySelector('[role="toolbar"]')?.getAttribute("aria-label"),
+				tablist:
+				{
+					label: tablist?.getAttribute("aria-label"),
+					pillHeight: tablist?.style.getPropertyValue("--vtb-pill-h"),
+					pillCorner: tablist?.style.getPropertyValue("--vtb-pill-corner"),
+				},
+				boxes: pane.querySelectorAll("[data-vtb-id]").length,
+				box:
+				{
+					id: box.getAttribute("data-vtb-id"),
+					selected: box.getAttribute("data-selected"),
+					solo: box.getAttribute("data-vtb-solo"),
+					noIcon: box.getAttribute("data-vtb-no-icon"),
+					width: box.style.width,
+					flexBasis: box.style.flexBasis,
+				},
+				tab:
+				{
+					tabIndex: tab.getAttribute("tabindex"),
+					selected: tab.getAttribute("aria-selected"),
+					posinset: tab.getAttribute("aria-posinset"),
+					setsize: tab.getAttribute("aria-setsize"),
+					label: tab.querySelector("[data-vtb-label]")?.textContent,
+				},
+				hint:
+				{
+					srOnly: hint?.classList.contains("sr-only"),
+					text: hint?.textContent,
+				},
+				close:
+				{
+					tabIndex: close?.getAttribute("tabindex"),
+					hidden: close?.getAttribute("aria-hidden"),
+					size: close?.getAttribute("data-size"),
+				},
+				actions: [...(pane.querySelector("[data-pane-actions]")?.querySelectorAll("button") ?? [])].map(
+					(button) => button.getAttribute("aria-label"),
+				),
+				leftovers:
+				{
+					heading: header?.querySelector("h2") ?? null,
+					shortcut: header?.querySelector('[data-cds="Shortcut"]') ?? null,
+					buttons: ["Clear side chat", "Undock side chat", "Open in new window"].filter(
+						(label) => header?.querySelector(`button[aria-label="${label}"]`) !== null,
+					),
+				},
+			},
+		).toStrictEqual(
+			{
+				toolbar: "Side chat controls",
+				tablist:
+				{
+					label: "Side chat tabs",
+					pillHeight: "var(--cds-h-control)",
+					pillCorner: "var(--cds-radius)",
+				},
+				boxes: 1,
+				box:
+				{
+					id: `side-chat:${SESSION_ID}`,
+					selected: "true",
+					solo: "true",
+					noIcon: "",
+					width: "180px",
+					flexBasis: "180px",
+				},
+				tab:
+				{
+					tabIndex: "0",
+					selected: "true",
+					posinset: "1",
+					setsize: "1",
+					label: "Side chat",
+				},
+				hint:
+				{
+					srOnly: true,
+					text: "Press Delete or Backspace to close the side chat. A working side chat is stopped first.",
+				},
+				close:
+				{
+					tabIndex: "-1",
+					hidden: "true",
+					size: "xs",
+				},
+				actions: ["Expand", "Close"],
+				leftovers:
+				{
+					heading: null,
+					shortcut: null,
+					buttons: [],
+				},
+			},
+		);
+	});
+
+	it("announces a working side chat inside the tab label", async () =>
+	{
+		openDocked();
+		vi.stubGlobal(
+			"fetch",
+			vi.fn(
+				async () =>
+					new Promise<Response>(() =>
+					{
+						// Never answers, so the entry stays pending.
+					}),
+			),
+		);
+		act(() =>
+		{
+			void askSideChat(SESSION_ID, "Still thinking?");
+		});
+		await waitFor(() =>
+		{
+			expect(sideChatTab().querySelector("[data-vtb-label]")?.textContent).toBe("Side chat, Working");
+		});
+	});
+
+	it.each(["Delete", "Backspace"])("closes the side chat with %s on the focused tab", (key) =>
+	{
+		openDocked();
+		const event = new KeyboardEvent(
+			"keydown",
+			{
+				key,
+				bubbles: true,
+				cancelable: true,
+			},
+		);
+		act(() =>
+		{
+			sideChatTab().dispatchEvent(event);
+		});
+		expect(
+			{
+				prevented: event.defaultPrevented,
+				open: getSideChat(SESSION_ID).open,
+				docked: dockedPane() !== null,
+			},
+		).toStrictEqual(
+			{
+				prevented: true,
+				open: false,
+				docked: false,
+			},
+		);
+	});
+
+	it("ignores an auto-repeated or modified Delete on the tab", () =>
+	{
+		openDocked();
+		fireEvent.keyDown(
+			sideChatTab(),
+			{
+				key: "Delete",
+				repeat: true,
+			},
+		);
+		fireEvent.keyDown(
+			sideChatTab(),
+			{
+				key: "Delete",
+				metaKey: true,
+			},
+		);
+		fireEvent.keyDown(
+			sideChatTab(),
+			{
+				key: "Backspace",
+				ctrlKey: true,
+			},
+		);
+		expect(
+			{
+				open: getSideChat(SESSION_ID).open,
+				docked: dockedPane() !== null,
+			},
+		).toStrictEqual(
+			{
+				open: true,
+				docked: true,
+			},
+		);
+	});
+
+	it("closes the side chat on a middle click of the tab, preventing its mousedown", () =>
+	{
+		openDocked();
+		const mouseDownAllowed = fireEvent.mouseDown(
+			sideChatTabBox(),
+			{
+				button: 1,
+			},
+		);
+		act(() =>
+		{
+			sideChatTabBox().dispatchEvent(
+				new MouseEvent(
+					"auxclick",
+					{
+						button: 1,
+						bubbles: true,
+					},
+				),
+			);
+		});
+		expect(
+			{
+				mouseDownAllowed,
+				open: getSideChat(SESSION_ID).open,
+				docked: dockedPane() !== null,
+			},
+		).toStrictEqual(
+			{
+				mouseDownAllowed: false,
+				open: false,
+				docked: false,
+			},
+		);
+	});
+
+	it("opens the tab menu on right-click with the local dock actions above Close", async () =>
+	{
+		openDocked();
+		fireEvent.contextMenu(
+			sideChatTab(),
+			{
+				clientX: 20,
+				clientY: 20,
+			},
+		);
+		const menu = await waitFor(() => screen.getByRole("menu"));
+		const opened =
+		{
+			outline: menuOutline(menu),
+			popupOpen: sideChatTabBox().hasAttribute("data-popup-open"),
+			pressed: sideChatTabBox().hasAttribute("data-pressed"),
+		};
+
+		fireEvent.click(
+			within(menu).getByRole(
+				"menuitem",
+				{
+					name: "Close side chat",
+				},
+			),
+		);
+
+		expect(
+			{
+				opened,
+				open: getSideChat(SESSION_ID).open,
+				docked: dockedPane() !== null,
+			},
+		).toStrictEqual(
+			{
+				opened:
+				{
+					outline: ["Undock side chat", "Open in new window", "---", "Close side chat"],
+					popupOpen: true,
+					pressed: true,
+				},
+				open: false,
+				docked: false,
 			},
 		);
 	});

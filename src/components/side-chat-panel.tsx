@@ -1,17 +1,5 @@
 import {useNavigate} from "@tanstack/react-router";
-import
-{
-	ArrowUp,
-	Check,
-	Copy,
-	ExternalLink,
-	GitBranch,
-	PanelRight,
-	PictureInPicture2,
-	Square,
-	Trash2,
-	X,
-} from "lucide-react";
+import {ArrowUp, Check, Copy, ExternalLink, GitBranch, PanelRight, Square, Trash2, X} from "lucide-react";
 import {type ReactNode, useEffect, useRef, useState} from "react";
 
 import {useShortcutKeys} from "../hooks/use-shortcut";
@@ -33,7 +21,9 @@ import {CARD_BODY_CLASS, CARD_CLASS, CARD_FILL_CLASS, TILE_CLASS, TILE_REMOVE_CL
 import {MarkdownArticle} from "./markdown-article";
 import {ExcerptQuote} from "./excerpt-quote";
 import {MessageExcerptTiles} from "./message-excerpt-tiles";
+import {PaneHeaderRow} from "./panes/pane-header-row";
 import type {PaneChrome} from "./panes/pane-registry";
+import {SideChatTabStrip} from "./side-chat-tab-strip";
 import {useToast} from "./toast-context";
 import {Shortcut} from "./ui/shortcut";
 import {Tooltip} from "./ui/tooltip";
@@ -70,7 +60,9 @@ export function SideChatPanel({
 	const inputRef = useRef<HTMLTextAreaElement>(null);
 	const listRef = useRef<HTMLOListElement>(null);
 	const [draft, setDraft] = useState("");
-	const pending = entries.some((entry) => entry.status === "pending");
+	const pendingEntry = entries.find((entry) => entry.status === "pending");
+	const pending = pendingEntry !== undefined;
+	const workingStatus = pendingEntry === undefined ? null : pendingEntry.stopping === true ? "Stopping…" : "Working";
 	const lastEntry = entries.at(-1);
 
 	// Opening, and each excerpt the transcript selection bar sends, lands focus in the input.
@@ -95,6 +87,7 @@ export function SideChatPanel({
 
 	return (
 		<div
+			data-side-session-pane=""
 			className="flex min-h-0 flex-1 flex-col"
 			onKeyDownCapture={(event) =>
 			{
@@ -104,65 +97,62 @@ export function SideChatPanel({
 				closeSideChat(sessionId);
 			}}
 		>
-			<header className="relative flex items-center gap-1 border-b-[0.5px] border-strong px-3 py-2">
-				{chrome?.moveHandle}
-				<h2 className="flex-1 truncate text-body font-medium text-primary">Side chat</h2>
-				{variant !== "popout" && <Shortcut keys={shortcut.keys} className="mr-1" />}
-				{entries.length > 0 && (
+			{variant === "docked" ? (
+				<PaneHeaderRow
+					label="Side chat"
+					title={<SideChatTabStrip sessionId={sessionId} status={workingStatus} />}
+					actions={chrome?.controls}
+					moveHandle={chrome?.moveHandle}
+				/>
+			) : (
+				<header className="relative flex items-center gap-1 border-b-[0.5px] border-strong px-3 py-2">
+					<h2 className="flex-1 truncate text-body font-medium text-primary">Side chat</h2>
+					{variant !== "popout" && <Shortcut keys={shortcut.keys} className="mr-1" />}
+					{entries.length > 0 && (
+						<HeaderButton
+							label="Clear side chat"
+							onClick={() =>
+							{
+								clearSideChat(sessionId);
+							}}
+						>
+							<Trash2 className="size-3.5" aria-hidden="true" />
+						</HeaderButton>
+					)}
+					{variant === "floating" && canDock && (
+						<HeaderButton
+							label="Dock side chat"
+							onClick={() =>
+							{
+								setSideChatMode(sessionId, "docked");
+							}}
+						>
+							<PanelRight className="size-3.5" aria-hidden="true" />
+						</HeaderButton>
+					)}
+					{variant !== "popout" && (
+						<HeaderButton
+							label="Open in new window"
+							onClick={() =>
+							{
+								setSideChatMode(sessionId, "popout");
+							}}
+						>
+							<ExternalLink className="size-3.5" aria-hidden="true" />
+						</HeaderButton>
+					)}
 					<HeaderButton
-						label="Clear side chat"
+						label="Close side chat"
+						ariaKeyShortcuts={variant === "popout" ? undefined : shortcut.ariaKeyShortcuts}
 						onClick={() =>
 						{
-							clearSideChat(sessionId);
+							closeSideChat(sessionId);
 						}}
 					>
-						<Trash2 className="size-3.5" aria-hidden="true" />
+						<X className="size-4" aria-hidden="true" />
 					</HeaderButton>
-				)}
-				{variant === "floating" && canDock && (
-					<HeaderButton
-						label="Dock side chat"
-						onClick={() =>
-						{
-							setSideChatMode(sessionId, "docked");
-						}}
-					>
-						<PanelRight className="size-3.5" aria-hidden="true" />
-					</HeaderButton>
-				)}
-				{variant === "docked" && (
-					<HeaderButton
-						label="Undock side chat"
-						onClick={() =>
-						{
-							setSideChatMode(sessionId, "floating");
-						}}
-					>
-						<PictureInPicture2 className="size-3.5" aria-hidden="true" />
-					</HeaderButton>
-				)}
-				{variant !== "popout" && (
-					<HeaderButton
-						label="Open in new window"
-						onClick={() =>
-						{
-							setSideChatMode(sessionId, "popout");
-						}}
-					>
-						<ExternalLink className="size-3.5" aria-hidden="true" />
-					</HeaderButton>
-				)}
-				<HeaderButton
-					label="Close side chat"
-					ariaKeyShortcuts={variant === "popout" ? undefined : shortcut.ariaKeyShortcuts}
-					onClick={() =>
-					{
-						closeSideChat(sessionId);
-					}}
-				>
-					<X className="size-4" aria-hidden="true" />
-				</HeaderButton>
-			</header>
+				</header>
+			)}
 			<p className="border-b-[0.5px] border-strong px-3 py-1.5 text-caption text-t6">
 				Sees {messageCount} messages from main chat · read-only
 			</p>
