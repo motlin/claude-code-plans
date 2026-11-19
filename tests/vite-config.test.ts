@@ -231,7 +231,7 @@ describe("quiet output", () =>
 				silent: vitestConfig.test?.silent,
 				projects: vitestConfig.test?.projects?.map((project): unknown =>
 					typeof project === "object" && "test" in project
-						? [project.test.name, project.test.isolate]
+						? [project.test.name, project.test.isolate, project.test.setupFiles]
 						: project,
 				),
 				reportCompressedSize: viteConfig.build?.reportCompressedSize,
@@ -244,9 +244,11 @@ describe("quiet output", () =>
 				reporters: process.env["GITHUB_ACTIONS"] === "true" ? ["minimal", "github-actions"] : ["minimal"],
 				silent: "passed-only",
 				projects: [
-					["shared", false],
-					["shared-dom", false],
-					["isolated", true],
+					["shared", false, ["tests/setup.ts"]],
+					["shared-dom", false, ["tests/setup.ts"]],
+					["mocked", false, ["tests/reset-modules.ts", "tests/setup.ts"]],
+					["mocked-dom", false, ["tests/reset-modules.ts", "tests/setup.ts"]],
+					["isolated", true, ["tests/setup.ts"]],
 				],
 				reportCompressedSize: false,
 				chunkSizeWarningLimit: 850,

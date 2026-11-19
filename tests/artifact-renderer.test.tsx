@@ -20,6 +20,8 @@ vi.mock("../src/components/settings-context", () => (
 		settings:
 		{
 			showDebug: false,
+			codeThemeLight: "claude-light",
+			codeThemeDark: "claude-dark",
 		},
 	}),
 }));

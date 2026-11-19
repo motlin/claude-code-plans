@@ -177,3 +177,10 @@ export function presenceOf(win: Window): Presence
 	}
 	return presence;
 }
+
+/** Stops and forgets the window's presence watcher, so the next use starts a fresh one as a new page would. */
+export function forgetPresence(win: Window): void
+{
+	presences.get(win)?.dispose();
+	presences.delete(win);
+}

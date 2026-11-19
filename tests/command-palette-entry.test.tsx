@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+// @vitest-isolate: after any earlier file in the worker suspended a Suspense boundary, the retried palette download here never leaves its loading shell.
 
 import {act, cleanup, render, screen} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";

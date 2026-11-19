@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+// @vitest-isolate: its render and commit counts are ratcheted against ceilings, so they must not depend on what an earlier file in the worker already loaded.
 
 import {QueryClient} from "@tanstack/react-query";
 import

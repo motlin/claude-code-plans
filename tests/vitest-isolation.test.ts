@@ -2,11 +2,11 @@ import {mkdtempSync, mkdirSync, writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import path from "node:path";
 import {describe, expect, it} from "vite-plus/test";
-import {needsIsolation, partitionTestFiles, runsInDom} from "../scripts/vitest-isolation";
+import {needsIsolation, needsModuleReset, partitionTestFiles, runsInDom} from "../scripts/vitest-isolation";
 
-describe("needsIsolation", () =>
+describe("needsIsolation and needsModuleReset", () =>
 {
-	it("isolates files that replace modules, rename the process or ask for it, but shares files that only stub globals", () =>
+	it("isolates files that rename the process or ask for it, and reloads modules for files that replace them", () =>
 	{
 		const sources =
 		{
@@ -21,17 +21,57 @@ describe("needsIsolation", () =>
 		};
 
 		expect(
-			Object.fromEntries(Object.entries(sources).map(([name, source]) => [name, needsIsolation(source)])),
+			Object.fromEntries(
+				Object.entries(sources).map(([name, source]) => [
+					name,
+					{
+						isolate: needsIsolation(source),
+						resetModules: needsModuleReset(source),
+					},
+				]),
+			),
 		).toStrictEqual(
 			{
-				plain: false,
-				jsdom: false,
-				mock: true,
-				doMock: true,
-				resetModules: true,
-				stubGlobal: false,
-				processTitle: true,
-				marked: true,
+				plain:
+				{
+					isolate: false,
+					resetModules: false,
+				},
+				jsdom:
+				{
+					isolate: false,
+					resetModules: false,
+				},
+				mock:
+				{
+					isolate: false,
+					resetModules: true,
+				},
+				doMock:
+				{
+					isolate: false,
+					resetModules: true,
+				},
+				resetModules:
+				{
+					isolate: false,
+					resetModules: true,
+				},
+				stubGlobal:
+				{
+					isolate: false,
+					resetModules: false,
+				},
+				processTitle:
+				{
+					isolate: true,
+					resetModules: false,
+				},
+				marked:
+				{
+					isolate: true,
+					resetModules: false,
+				},
 			},
 		);
 	});
@@ -50,7 +90,7 @@ describe("runsInDom", () =>
 
 describe("partitionTestFiles", () =>
 {
-	it("splits test files under the directory into shared, shared jsdom and isolated lists by content", () =>
+	it("splits test files under the directory into shared, mocked and isolated lists, node and jsdom, by content", () =>
 	{
 		const root = mkdtempSync(path.join(tmpdir(), "vitest-isolation-"));
 		mkdirSync(
@@ -67,13 +107,19 @@ describe("partitionTestFiles", () =>
 			path.join(root, "tests", "mocked-dom.test.tsx"),
 			`// @vitest-environment jsdom\nvi.mock("node:fs");\n`,
 		);
+		writeFileSync(
+			path.join(root, "tests", "marked-mock.test.ts"),
+			`// @vitest-isolate: asserts a first load\nvi.mock("node:fs");\n`,
+		);
 		writeFileSync(path.join(root, "tests", "helper.ts"), `vi.mock("node:fs");\n`);
 
 		expect(partitionTestFiles(root, "tests")).toStrictEqual(
 			{
 				shared: ["tests/db/query.test.ts", "tests/plain.test.ts"],
 				sharedDom: ["tests/dom.test.tsx"],
-				isolated: ["tests/mocked-dom.test.tsx", "tests/mocked.test.ts"],
+				mocked: ["tests/mocked.test.ts"],
+				mockedDom: ["tests/mocked-dom.test.tsx"],
+				isolated: ["tests/marked-mock.test.ts"],
 			},
 		);
 	});

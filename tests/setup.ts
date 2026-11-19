@@ -149,6 +149,14 @@ if (typeof window !== "undefined")
 	{
 		resetLandingWindow(window);
 	});
+	// The window's one presence watcher marks it away for good after a window blur while the page holds focus, which
+	// jsdom always reports, so a file that blurs the window would leave type-to-focus off for every later file in a
+	// shared-dom worker. Forget it, as a fresh page starts present.
+	const {forgetPresence} = await import("../src/lib/stray-input-presence");
+	afterEach(() =>
+	{
+		forgetPresence(window);
+	});
 	// A menu pin requests the "drag to pin" coach mark in a module-level flag, which keeps a later file's empty Pinned
 	// section open as the hint instead of an inert stub. Close it, as a fresh page starts without the request.
 	const {closeDragPinHint} = await import("../src/lib/drag-pin-hint");

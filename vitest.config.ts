@@ -13,7 +13,7 @@ export default defineConfig(
 		{
 			globals: true,
 			testTimeout: 15000,
-			setupFiles: ["tests/setup.ts"],
+			// Each project names its setup files: a project's list would go after this one, and tests/reset-modules.ts must run first.
 			// Day and hour bucketing follows the local zone, so pin it to keep counts and bytes equal on every machine.
 			env:
 			{
@@ -31,6 +31,7 @@ export default defineConfig(
 					test:
 					{
 						name: "shared",
+						setupFiles: ["tests/setup.ts"],
 						include: [...testFiles.shared, "scripts/*.test.mjs"],
 						isolate: false,
 					},
@@ -41,8 +42,32 @@ export default defineConfig(
 					test:
 					{
 						name: "shared-dom",
+						setupFiles: ["tests/setup.ts"],
 						include: testFiles.sharedDom,
 						environment: "jsdom",
+						isolate: false,
+					},
+				},
+				// Files that mock modules share a worker's environment and node_modules too, but load their source modules
+				// afresh, so no mock outlives the file that made it.
+				{
+					extends: true,
+					test:
+					{
+						name: "mocked",
+						include: testFiles.mocked,
+						setupFiles: ["tests/reset-modules.ts", "tests/setup.ts"],
+						isolate: false,
+					},
+				},
+				{
+					extends: true,
+					test:
+					{
+						name: "mocked-dom",
+						include: testFiles.mockedDom,
+						environment: "jsdom",
+						setupFiles: ["tests/reset-modules.ts", "tests/setup.ts"],
 						isolate: false,
 					},
 				},
@@ -51,6 +76,7 @@ export default defineConfig(
 					test:
 					{
 						name: "isolated",
+						setupFiles: ["tests/setup.ts"],
 						include: testFiles.isolated,
 						isolate: true,
 					},

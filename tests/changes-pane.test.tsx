@@ -3110,6 +3110,9 @@ describe("ChangesPane review findings bar (upstream c9bd7af9c zw)", () =>
 
 	function renderReviewPane()
 	{
+		// The diff hydrates its file through fetch; a failed read retries 2s later, after this file ends, into whatever
+		// fetch the next file in a shared worker stubbed. Hold the read open instead: these tests show only the patch.
+		vi.stubGlobal("fetch", async () => new Promise<never>(() => {}));
 		openReviewInChanges(SESSION, REVIEW);
 		const queryClient = new QueryClient(
 			{
