@@ -1624,7 +1624,6 @@ describe("CommandPalette shell", () =>
 			Reflect.deleteProperty(HTMLElement.prototype, "animate");
 			Reflect.deleteProperty(HTMLElement.prototype, "getAnimations");
 			setKeyboardShortcutsOpen(false);
-			for (const layer of document.querySelectorAll("[data-palette-exit-copy]")) layer.remove();
 		});
 
 		function exitLayers()
@@ -1690,6 +1689,37 @@ describe("CommandPalette shell", () =>
 			await pressOpen(composer);
 
 			expect(exitLayers()).toStrictEqual([]);
+		});
+
+		it("drops a still-fading copy and its safety timer when the palette unmounts", async () =>
+		{
+			const dialog = await openPalette();
+			fireEvent.keyDown(
+				within(dialog).getByRole("combobox"),
+				{
+					key: "Escape",
+					code: "Escape",
+				},
+			);
+			await waitFor(() =>
+			{
+				expect(exitLayers()).toHaveLength(1);
+			});
+			const clearTimeout = vi.spyOn(window, "clearTimeout");
+
+			cleanup();
+
+			expect(
+				{
+					layers: exitLayers(),
+					cleared: clearTimeout.mock.calls.length > 0,
+				},
+			).toStrictEqual(
+				{
+					layers: [],
+					cleared: true,
+				},
+			);
 		});
 
 		it("hands the scrim to the Keyboard shortcuts dialog opened 100ms after the close", async () =>

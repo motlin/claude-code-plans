@@ -1390,6 +1390,13 @@ class PaletteExitSnapshot extends Component<
 		}
 	}
 
+	/** Leaving the page drops a copy still fading, with its safety timer, so neither outlives the palette. */
+	override componentWillUnmount(): void
+	{
+		this.copy?.remove();
+		this.copy = null;
+	}
+
 	override render(): null
 	{
 		return null;

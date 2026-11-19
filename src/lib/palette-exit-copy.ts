@@ -339,10 +339,17 @@ export function makePaletteExitCopy(popup: HTMLElement): PaletteExitCopy | null
 		scrim,
 	};
 	let frame = 0;
+	// Cancel only a frame this copy queued: the safety timer path never queues one, and a torn-down window may no
+	// longer carry cancelAnimationFrame.
+	const cancelFrame = () =>
+	{
+		if (frame !== 0) view.cancelAnimationFrame(frame);
+		frame = 0;
+	};
 	const removeAll = () =>
 	{
 		view.clearTimeout(safety);
-		view.cancelAnimationFrame(frame);
+		cancelFrame();
 		live?.layer.remove();
 		live?.scrimLayer?.remove();
 		live = null;
@@ -357,7 +364,7 @@ export function makePaletteExitCopy(popup: HTMLElement): PaletteExitCopy | null
 	};
 	const scrimFinished = () =>
 	{
-		view.cancelAnimationFrame(frame);
+		cancelFrame();
 		live?.scrimLayer?.remove();
 		scrimDone = true;
 		if (panelDone) removeAll();
@@ -379,7 +386,7 @@ export function makePaletteExitCopy(popup: HTMLElement): PaletteExitCopy | null
 	{
 		const fading = live?.scrim;
 		if (fading === null || fading === undefined) return;
-		view.cancelAnimationFrame(frame);
+		cancelFrame();
 		fading
 			.animate(
 				[

@@ -5,6 +5,7 @@ import
 {
 	freezeScroll,
 	makePaletteExitCopy,
+	type PaletteExitCopy,
 	PALETTE_EXIT_COPY_ATTR,
 	PALETTE_EXIT_DURATION_FALLBACK_MS,
 	PALETTE_EXIT_EASE_FALLBACK,
@@ -98,6 +99,21 @@ function uninstallAnimate()
 {
 	Reflect.deleteProperty(HTMLElement.prototype, "animate");
 	Reflect.deleteProperty(HTMLElement.prototype, "getAnimations");
+}
+
+/** Every copy a test made, so afterEach can drop its layers and real safety timer before they reach a later file. */
+const madeCopies: PaletteExitCopy[] = [];
+
+function makeCopy(popup: HTMLElement): PaletteExitCopy | null
+{
+	const copy = makePaletteExitCopy(popup);
+	if (copy !== null) madeCopies.push(copy);
+	return copy;
+}
+
+function removeMadeCopies()
+{
+	for (const copy of madeCopies.splice(0)) copy.remove();
 }
 
 /** A Base UI-shaped portal: the backdrop then the popup, as the palette mounts them. */
@@ -318,6 +334,7 @@ describe("makePaletteExitCopy (upstream km)", () =>
 
 	afterEach(() =>
 	{
+		removeMadeCopies();
 		uninstallAnimate();
 		document.body.innerHTML = "";
 		document.documentElement.removeAttribute("data-reduce-motion");
@@ -330,14 +347,14 @@ describe("makePaletteExitCopy (upstream km)", () =>
 		uninstallAnimate();
 		const {popup} = mountPalette();
 
-		expect(makePaletteExitCopy(popup)).toBeNull();
+		expect(makeCopy(popup)).toBeNull();
 	});
 
 	it("bails out under reduced motion (OS query or html[data-reduce-motion])", () =>
 	{
 		const {popup} = mountPalette();
 		document.documentElement.setAttribute("data-reduce-motion", "true");
-		const byAttribute = makePaletteExitCopy(popup);
+		const byAttribute = makeCopy(popup);
 		document.documentElement.removeAttribute("data-reduce-motion");
 		Object.defineProperty(
 			window,
@@ -350,7 +367,7 @@ describe("makePaletteExitCopy (upstream km)", () =>
 				}),
 			},
 		);
-		const byQuery = makePaletteExitCopy(popup);
+		const byQuery = makeCopy(popup);
 		Reflect.deleteProperty(window, "matchMedia");
 
 		expect([byAttribute, byQuery, exitLayers()]).toStrictEqual([null, null, []]);
@@ -364,10 +381,10 @@ describe("makePaletteExitCopy (upstream km)", () =>
 		card.style.setProperty("scale", "0.97");
 		popup.append(card);
 
-		expect(makePaletteExitCopy(popup)).toBeNull();
+		expect(makeCopy(popup)).toBeNull();
 		card.style.setProperty("scale", "1");
 		popup.style.setProperty("scale", "0.98");
-		expect(makePaletteExitCopy(popup)).toBeNull();
+		expect(makeCopy(popup)).toBeNull();
 	});
 
 	it("bails out mid-animation", () =>
@@ -379,24 +396,24 @@ describe("makePaletteExitCopy (upstream km)", () =>
 			} as Animation,
 		];
 
-		expect(makePaletteExitCopy(popup)).toBeNull();
+		expect(makeCopy(popup)).toBeNull();
 	});
 
 	it("bails out past 750 descendants or at zero size", () =>
 	{
 		const big = mountPalette(PALETTE_EXIT_MAX_ELEMENTS);
-		const tooBig = makePaletteExitCopy(big.popup);
+		const tooBig = makeCopy(big.popup);
 		const small = mountPalette();
 		stubRect(small.popup, rect(0, 0, 0, 0));
 
-		expect([tooBig, makePaletteExitCopy(small.popup), exitLayers()]).toStrictEqual([null, null, []]);
+		expect([tooBig, makeCopy(small.popup), exitLayers()]).toStrictEqual([null, null, []]);
 	});
 
 	it("builds an inert layer holding the scrim then a fixed panel clone at the live rect", () =>
 	{
 		const {popup} = mountPalette();
 
-		expect(makePaletteExitCopy(popup)).not.toBeNull();
+		expect(makeCopy(popup)).not.toBeNull();
 
 		const layers = exitLayers();
 		const panel = layers[0]!.lastElementChild as HTMLElement;
@@ -457,7 +474,7 @@ describe("makePaletteExitCopy (upstream km)", () =>
 	it("plays upstream's fade and scale, then removes the layer when the panel finishes", async () =>
 	{
 		const {popup} = mountPalette();
-		const copy = makePaletteExitCopy(popup)!;
+		const copy = makeCopy(popup)!;
 
 		copy.play();
 
@@ -517,7 +534,7 @@ describe("makePaletteExitCopy (upstream km)", () =>
 		popup.style.setProperty("--cds-dur-base", "0.3s");
 		popup.style.setProperty("--cds-ease-out", "linear");
 
-		makePaletteExitCopy(popup)!.play();
+		makeCopy(popup)!.play();
 
 		expect(animateCalls.map(({options}) => options)).toStrictEqual([
 			{
@@ -537,11 +554,11 @@ describe("makePaletteExitCopy (upstream km)", () =>
 	{
 		vi.useFakeTimers();
 		const first = mountPalette();
-		makePaletteExitCopy(first.popup)!.remove();
+		makeCopy(first.popup)!.remove();
 		expect(exitLayers()).toStrictEqual([]);
 
 		const second = mountPalette();
-		makePaletteExitCopy(second.popup)!.play();
+		makeCopy(second.popup)!.play();
 		vi.advanceTimersByTime(599);
 		expect(exitLayers()).toHaveLength(1);
 		vi.advanceTimersByTime(1);
@@ -579,6 +596,7 @@ describe("scrim hand-off to the next overlay (upstream km's k loop)", () =>
 
 	afterEach(() =>
 	{
+		removeMadeCopies();
 		uninstallAnimate();
 		document.body.innerHTML = "";
 		vi.restoreAllMocks();
@@ -601,7 +619,7 @@ describe("scrim hand-off to the next overlay (upstream km's k loop)", () =>
 	{
 		const {popup} = mountPalette();
 
-		makePaletteExitCopy(popup);
+		makeCopy(popup);
 
 		expect(exitLayers().map((layer) => layer.childElementCount)).toStrictEqual([2]);
 	});
@@ -611,7 +629,7 @@ describe("scrim hand-off to the next overlay (upstream km's k loop)", () =>
 		const {popup} = mountPalette();
 		noteOverlayOpening(100);
 
-		makePaletteExitCopy(popup);
+		makeCopy(popup);
 
 		const layers = exitLayers();
 		expect(
@@ -637,7 +655,7 @@ describe("scrim hand-off to the next overlay (upstream km's k loop)", () =>
 		const {popup} = mountPalette();
 		noteOverlayOpening(100);
 
-		makePaletteExitCopy(popup);
+		makeCopy(popup);
 
 		expect(exitLayers().map((layer) => layer.childElementCount)).toStrictEqual([2]);
 	});
@@ -646,7 +664,7 @@ describe("scrim hand-off to the next overlay (upstream km's k loop)", () =>
 	{
 		const {popup} = mountPalette();
 		noteOverlayOpening(100);
-		const copy = makePaletteExitCopy(popup)!;
+		const copy = makeCopy(popup)!;
 		copy.play();
 		const [scrimLayer, panelLayer] = exitLayers();
 		const scrim = scrimLayer!.firstElementChild as HTMLElement;
@@ -672,7 +690,7 @@ describe("scrim hand-off to the next overlay (upstream km's k loop)", () =>
 	{
 		const {popup} = mountPalette();
 		noteOverlayOpening(100);
-		makePaletteExitCopy(popup)!.play();
+		makeCopy(popup)!.play();
 		const [scrimLayer] = exitLayers();
 		const scrim = scrimLayer!.firstElementChild as HTMLElement;
 		const backdrop = incomingBackdrop("0.5");
@@ -707,7 +725,7 @@ describe("scrim hand-off to the next overlay (upstream km's k loop)", () =>
 	{
 		const {popup} = mountPalette();
 		noteOverlayOpening(100);
-		makePaletteExitCopy(popup)!.play();
+		makeCopy(popup)!.play();
 		const [scrimLayer] = exitLayers();
 
 		vi.advanceTimersByTime(499);
@@ -741,7 +759,7 @@ describe("scrim hand-off to the next overlay (upstream km's k loop)", () =>
 	{
 		const {popup} = mountPalette();
 		noteOverlayOpening(100);
-		makePaletteExitCopy(popup)!.play();
+		makeCopy(popup)!.play();
 
 		vi.advanceTimersByTime(1299);
 		expect(exitLayers()).toHaveLength(2);
