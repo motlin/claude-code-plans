@@ -16,7 +16,20 @@ export interface TextRange
 export interface MarkedText
 {
 	text: string;
-	match: TextRange | null;
+	matches: TextRange[];
+}
+
+/**
+ * Upstream `nD`'s snippet: the lead before the first hit (cut behind "…" on a long line), the hit with
+ * the whitespace before it, and the tail; match ranges are relative to the hit and the tail.
+ */
+export interface SnippetParts
+{
+	lead: string;
+	hit: string;
+	hitMatches: TextRange[];
+	tail: string;
+	tailMatches: TextRange[];
 }
 
 export interface ContentSearchMatch
@@ -24,7 +37,7 @@ export interface ContentSearchMatch
 	line: number;
 	/** The whole line, whitespace collapsed and trimmed. */
 	text: string;
-	snippet: MarkedText;
+	snippet: SnippetParts;
 }
 
 export interface ContentSearchGroup
@@ -71,8 +84,10 @@ export const EMPTY_CONTENT_SEARCH_RESULTS: ContentSearchResults =
 	failed: false,
 };
 
-/** Upstream's lead context before the match in a snippet. */
+/** Upstream's `ZE`: lead context before the hit in a snippet. */
 const SNIPPET_LEAD = 26;
+/** Upstream's `QE`: a forward cut stops this many characters short of the hit. */
+const SNIPPET_MIN_LEAD = 10;
 const MATCHES_PER_FILE = 5;
 /** Upstream's `JE` limits: the host asks for 241 matches and the list shows at most 200. */
 const RAW_MATCH_LIMIT = 241;
@@ -99,25 +114,26 @@ function unescapeHtml(value: string): string
 	return value.replace(/&(?:amp|lt|gt|quot|#39);/g, (entity) => HTML_ENTITIES[entity] ?? entity);
 }
 
-/** Turns the search API's escaped `<mark>` snippet into plain text and its first highlighted range. */
+/** Turns the search API's escaped `<mark>` snippet into plain text and its highlighted ranges. */
 export function parseMarkedSnippet(html: string): MarkedText
 {
 	let text = "";
-	let match: TextRange | null = null;
+	const matches: TextRange[] = [];
 	for (const [index, part] of html.split(/<\/?mark>/).entries())
 	{
 		const plain = unescapeHtml(part);
-		if (index % 2 === 1 && match === null)
-			match =
-			{
-				start: text.length,
-				end: text.length + plain.length,
-			};
+		if (index % 2 === 1 && plain !== "")
+			matches.push(
+				{
+					start: text.length,
+					end: text.length + plain.length,
+				},
+			);
 		text += plain;
 	}
 	return {
 		text,
-		match,
+		matches,
 	};
 }
 
@@ -126,47 +142,133 @@ function collapse(value: string): string
 	return value.replace(/\s+/g, " ");
 }
 
-/**
- * Upstream's snippet window: whitespace collapsed, at most 26 characters of
- * lead before the match, the cut snapped forward to the next word start, and
- * a leading "…" when anything was cut.
- */
-export function windowSnippet(text: string, match: TextRange | null): MarkedText
+/** Upstream `XE`: ranges shifted onto the trimmed text, clamped, empty ones dropped. */
+function trimRanges(text: string, ranges: readonly TextRange[]): TextRange[]
 {
-	if (match === null)
-		return {
-			text: collapse(text).trim(),
-			match: null,
-		};
-	const before = collapse(text.slice(0, match.start)).trimStart();
-	const matched = collapse(text.slice(match.start, match.end));
-	const after = collapse(text.slice(match.end)).trimEnd();
-	if (before.length <= SNIPPET_LEAD)
-	{
-		return {
-			text: `${before}${matched}${after}`,
-			match:
-			{
-				start: before.length,
-				end: before.length + matched.length,
-			},
-		};
-	}
-	let cut = before.length - SNIPPET_LEAD;
-	if (before[cut - 1] !== " ")
-	{
-		const nextSpace = before.indexOf(" ", cut);
-		if (nextSpace !== -1) cut = nextSpace + 1;
-	}
-	const lead = `${ELLIPSIS}${before.slice(cut)}`;
-	return {
-		text: `${lead}${matched}${after}`,
-		match:
+	const leading = text.length - text.trimStart().length;
+	const length = text.trim().length;
+	return ranges
+		.map(({start, end}) => (
 		{
-			start: lead.length,
-			end: lead.length + matched.length,
-		},
+			start: Math.max(0, start - leading),
+			end: Math.min(length, end - leading),
+		}))
+		.filter((range) => range.end > range.start);
+}
+
+/** Upstream `$E`: whitespace runs collapsed to one space, ranges mapped onto the result. */
+function collapseRanges(text: string, ranges: readonly TextRange[]): MarkedText
+{
+	let collapsed = "";
+	const offsets: number[] = [];
+	let inSpace = false;
+	for (const char of text.split(""))
+	{
+		offsets.push(collapsed.length);
+		const space = /\s/.test(char);
+		if (!space) collapsed += char;
+		else if (!inSpace) collapsed += " ";
+		inSpace = space;
+	}
+	offsets.push(collapsed.length);
+	return {
+		text: collapsed,
+		matches: ranges
+			.map(({start, end}) => (
+			{
+				start: offsets[start] ?? 0,
+				end: offsets[end] ?? 0,
+			}))
+			.filter((range) => range.end > range.start),
 	};
+}
+
+/** Upstream `eD`: `[0-9A-Za-z_]`. */
+function isWordCode(code: number): boolean
+{
+	return (code >= 48 && code <= 57) || (code >= 65 && code <= 90) || (code >= 97 && code <= 122) || code === 95;
+}
+
+/** Upstream `tD`: a word character meets a non-word one at `index`. */
+function isWordBoundary(text: string, index: number): boolean
+{
+	return isWordCode(text.charCodeAt(index - 1)) !== isWordCode(text.charCodeAt(index));
+}
+
+const LOW_SURROGATE_FIRST = 0xdc00;
+const LOW_SURROGATE_LAST = 0xdfff;
+
+/** Upstream `nD`: splits a collapsed line around its first hit, cutting a lead longer than 26 characters. */
+function splitSnippet(text: string, matches: readonly TextRange[]): SnippetParts
+{
+	const [first, ...rest] = matches;
+	if (first === undefined)
+		return {
+			lead: "",
+			hit: "",
+			hitMatches: [],
+			tail: text,
+			tailMatches: [],
+		};
+	const parts = (cut: number, prefix: string): SnippetParts =>
+	{
+		let hitStart = first.start;
+		while (hitStart > cut && /\s/.test(text.charAt(hitStart - 1))) hitStart -= 1;
+		return {
+			lead: `${prefix}${text.slice(cut, hitStart)}`,
+			hit: text.slice(hitStart, first.end),
+			hitMatches: [
+				{
+					start: first.start - hitStart,
+					end: first.end - hitStart,
+				},
+			],
+			tail: text.slice(first.end),
+			tailMatches: rest.map(({start, end}) => (
+			{
+				start: start - first.end,
+				end: end - first.end,
+			})),
+		};
+	};
+	if (first.start <= SNIPPET_LEAD) return parts(0, "");
+	const anchor = first.start - SNIPPET_LEAD;
+	let backward: number | undefined;
+	for (let index = anchor; index > anchor - SNIPPET_LEAD && index > 0; index -= 1)
+	{
+		if (isWordBoundary(text, index))
+		{
+			backward = index;
+			break;
+		}
+	}
+	let forward: number | undefined;
+	for (let index = anchor + 1; index <= first.start - SNIPPET_MIN_LEAD; index += 1)
+	{
+		if (isWordBoundary(text, index))
+		{
+			forward = index;
+			break;
+		}
+	}
+	let cut =
+		forward !== undefined && (backward === undefined || forward - anchor <= anchor - backward)
+			? forward
+			: (backward ?? anchor);
+	while (cut < first.start && /\s/.test(text.charAt(cut))) cut += 1;
+	const code = text.charCodeAt(cut);
+	if (code >= LOW_SURROGATE_FIRST && code <= LOW_SURROGATE_LAST) cut += 1;
+	return parts(cut, ELLIPSIS);
+}
+
+/**
+ * Upstream's match-row snippet (`XE` → `$E` → `nD`): the line trimmed and its whitespace collapsed,
+ * then split into lead, hit and tail, the lead cut to a word boundary behind "…" when long.
+ */
+export function windowSnippet(text: string, matches: readonly TextRange[]): SnippetParts
+{
+	const collapsed = collapseRanges(text.trim(), trimRanges(text, matches));
+	return splitSnippet(collapsed.text, collapsed.matches);
 }
 
 /** Smart case: an all-lower-case query ignores case, otherwise every word must match exactly. */
@@ -221,7 +323,7 @@ export function groupContentSearchResults(result: FileSearchResult, cwd: string,
 			{
 				line: match.lineNumber,
 				text: collapse(marked.text).trim(),
-				snippet: windowSnippet(marked.text, marked.match),
+				snippet: windowSnippet(marked.text, marked.matches),
 			};
 			shown += 1;
 			if (group === undefined)

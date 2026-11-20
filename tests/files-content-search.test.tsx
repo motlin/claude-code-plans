@@ -8,6 +8,7 @@ import type {ComponentProps} from "react";
 import {FileTypeIconSetContext} from "../src/components/file-type-icon-set-context";
 import {FilesTree, FilesTreeColumn} from "../src/components/files/files-tree";
 import {SettingsProvider} from "../src/components/settings-provider";
+import {ToastProvider} from "../src/components/toast";
 import type {FileSearchResult} from "../src/lib/api/search";
 import
 {
@@ -24,7 +25,6 @@ import
 	windowSnippet,
 } from "../src/lib/files-content-search";
 import {installLocalStorage} from "./fake-storage";
-import {TOUCH_REVEAL} from "../src/lib/touch-reveal";
 
 class FakeObserver
 {
@@ -62,28 +62,33 @@ describe("parseContentSearchQuery", () =>
 
 describe("parseMarkedSnippet", () =>
 {
-	it("unescapes the server's HTML and finds the first highlighted range", () =>
+	it("unescapes the server's HTML and finds every highlighted range", () =>
 	{
 		expect(
 			parseMarkedSnippet("if (a &lt; b &amp;&amp; <mark>needle</mark>) &quot;x&#39;s&quot; <mark>needle</mark>"),
 		).toStrictEqual(
 			{
 				text: `if (a < b && needle) "x's" needle`,
-				match:
-				{
-					start: 13,
-					end: 19,
-				},
+				matches: [
+					{
+						start: 13,
+						end: 19,
+					},
+					{
+						start: 27,
+						end: 33,
+					},
+				],
 			},
 		);
 	});
 
-	it("returns no match when nothing is highlighted", () =>
+	it("returns no matches when nothing is highlighted", () =>
 	{
 		expect(parseMarkedSnippet("plain &gt; text")).toStrictEqual(
 			{
 				text: "plain > text",
-				match: null,
+				matches: [],
 			},
 		);
 	});
@@ -91,129 +96,166 @@ describe("parseMarkedSnippet", () =>
 
 describe("windowSnippet", () =>
 {
-	it("keeps a short lead as is, with whitespace collapsed and trimmed", () =>
+	const at = (text: string, needle: string) =>
 	{
-		const text = "    const   value =\tneedle;  ";
-		expect(
-			windowSnippet(
-				text,
-				{
-					start: 20,
-					end: 26,
-				},
-			),
-		).toStrictEqual(
+		const start = text.indexOf(needle);
+		return [
 			{
-				text: "const value = needle;",
-				match:
-				{
-					start: 14,
-					end: 20,
-				},
+				start,
+				end: start + needle.length,
 			},
-		);
-	});
+		];
+	};
+	const emojiLine = `${"\u{1F600}".repeat(30)} needle`;
 
-	it("keeps a lead of exactly 26 characters", () =>
-	{
-		const lead = "abcdefghijklmnopqrstuvwxy ";
-		expect(
-			windowSnippet(
-				`${lead}needle`,
-				{
-					start: 26,
-					end: 32,
-				},
-			),
-		).toStrictEqual(
+	it.each([
+		[
+			"a short lead stays whole, trimmed and collapsed, its trailing space moving into the hit",
+			"    const   value =\tneedle;  ",
+			at("    const   value =\tneedle;  ", "needle"),
 			{
-				text: `${lead}needle`,
-				match:
-				{
-					start: 26,
-					end: 32,
-				},
+				lead: "const value =",
+				hit: " needle",
+				hitMatches: [
+					{
+						start: 1,
+						end: 7,
+					},
+				],
+				tail: ";",
+				tailMatches: [],
 			},
-		);
-	});
-
-	it("cuts a long lead to at most 26 characters, snapped to a word start, behind an ellipsis", () =>
-	{
-		const text = "aaaa bbbb cccc dddd eeee ffff gggg needle tail";
-		expect(
-			windowSnippet(
-				text,
-				{
-					start: 35,
-					end: 41,
-				},
-			),
-		).toStrictEqual(
+		],
+		[
+			"a long lead is cut at the nearer word boundary, skipping the space, behind an ellipsis",
+			"aaaa bbbb cccc dddd eeee ffff gggg needle tail",
+			at("aaaa bbbb cccc dddd eeee ffff gggg needle tail", "needle"),
 			{
-				text: "…cccc dddd eeee ffff gggg needle tail",
-				match:
-				{
-					start: 26,
-					end: 32,
-				},
+				lead: "…cccc dddd eeee ffff gggg",
+				hit: " needle",
+				hitMatches: [
+					{
+						start: 1,
+						end: 7,
+					},
+				],
+				tail: " tail",
+				tailMatches: [],
 			},
-		);
-	});
-
-	it("cuts exactly at 26 characters when the cut already falls on a word start", () =>
-	{
-		const text = "aaaaaaa bbbb cccc dddd eeee fffff needle";
-		expect(
-			windowSnippet(
-				text,
-				{
-					start: 34,
-					end: 40,
-				},
-			),
-		).toStrictEqual(
+		],
+		[
+			"a word to punctuation change is a boundary too",
+			"const result = someObject.methodCall(argumentValue).needle",
+			at("const result = someObject.methodCall(argumentValue).needle", "needle"),
 			{
-				text: "…bbbb cccc dddd eeee fffff needle",
-				match:
-				{
-					start: 27,
-					end: 33,
-				},
+				lead: "…methodCall(argumentValue).",
+				hit: "needle",
+				hitMatches: [
+					{
+						start: 0,
+						end: 6,
+					},
+				],
+				tail: "",
+				tailMatches: [],
 			},
-		);
-	});
-
-	it("cuts mid-word when the lead has no word boundary to snap to", () =>
-	{
-		const text = `${"x".repeat(40)}needle`;
-		expect(
-			windowSnippet(
-				text,
-				{
-					start: 40,
-					end: 46,
-				},
-			),
-		).toStrictEqual(
+		],
+		[
+			"the backward boundary wins when it is nearer",
+			"return foo.barBaz(quxValue, otherThing) + needle",
+			at("return foo.barBaz(quxValue, otherThing) + needle", "needle"),
 			{
-				text: `…${"x".repeat(26)}needle`,
-				match:
-				{
-					start: 27,
-					end: 33,
-				},
+				lead: "…(quxValue, otherThing) +",
+				hit: " needle",
+				hitMatches: [
+					{
+						start: 1,
+						end: 7,
+					},
+				],
+				tail: "",
+				tailMatches: [],
 			},
-		);
-	});
-
-	it("returns the collapsed text when there is no match", () =>
-	{
-		expect(windowSnippet("  a   b  ", null)).toStrictEqual(
+		],
+		[
+			"no boundary cuts exactly 26 before the match",
+			`${"x".repeat(40)}needle`,
+			at(`${"x".repeat(40)}needle`, "needle"),
 			{
-				text: "a b",
-				match: null,
+				lead: `…${"x".repeat(26)}`,
+				hit: "needle",
+				hitMatches: [
+					{
+						start: 0,
+						end: 6,
+					},
+				],
+				tail: "",
+				tailMatches: [],
 			},
-		);
+		],
+		[
+			"a cut on a low surrogate steps past it",
+			emojiLine,
+			at(emojiLine, "needle"),
+			{
+				lead: `…${"\u{1F600}".repeat(12)}`,
+				hit: " needle",
+				hitMatches: [
+					{
+						start: 1,
+						end: 7,
+					},
+				],
+				tail: "",
+				tailMatches: [],
+			},
+		],
+		[
+			"later matches are kept in the tail",
+			"needle and needle again needle",
+			[0, 11, 24].map((start) => (
+			{
+				start,
+				end: start + 6,
+			})),
+			{
+				lead: "",
+				hit: "needle",
+				hitMatches: [
+					{
+						start: 0,
+						end: 6,
+					},
+				],
+				tail: " and needle again needle",
+				tailMatches: [
+					{
+						start: 5,
+						end: 11,
+					},
+					{
+						start: 18,
+						end: 24,
+					},
+				],
+			},
+		],
+		[
+			"no match leaves the collapsed line as the tail",
+			"  a   b  ",
+			[],
+			{
+				lead: "",
+				hit: "",
+				hitMatches: [],
+				tail: "a b",
+				tailMatches: [],
+			},
+		],
+	])("%s", (_name, text, matches, expected) =>
+	{
+		expect(windowSnippet(text, matches)).toStrictEqual(expected);
 	});
 });
 
@@ -307,12 +349,16 @@ describe("groupContentSearchResults", () =>
 								text: "const needle = 1;",
 								snippet:
 								{
-									text: "const needle = 1;",
-									match:
-									{
-										start: 6,
-										end: 12,
-									},
+									lead: "const",
+									hit: " needle",
+									hitMatches: [
+										{
+											start: 1,
+											end: 7,
+										},
+									],
+									tail: " = 1;",
+									tailMatches: [],
 								},
 							},
 							{
@@ -320,12 +366,16 @@ describe("groupContentSearchResults", () =>
 								text: "return Needle;",
 								snippet:
 								{
-									text: "return Needle;",
-									match:
-									{
-										start: 7,
-										end: 13,
-									},
+									lead: "return",
+									hit: " Needle",
+									hitMatches: [
+										{
+											start: 1,
+											end: 7,
+										},
+									],
+									tail: ";",
+									tailMatches: [],
 								},
 							},
 						],
@@ -341,12 +391,16 @@ describe("groupContentSearchResults", () =>
 							text: `line ${line} needle`,
 							snippet:
 							{
-								text: `line ${line} needle`,
-								match:
-								{
-									start: 7,
-									end: 13,
-								},
+								lead: `line ${line}`,
+								hit: " needle",
+								hitMatches: [
+									{
+										start: 1,
+										end: 7,
+									},
+								],
+								tail: "",
+								tailMatches: [],
 							},
 						})),
 					},
@@ -773,11 +827,13 @@ function renderTree()
 	render(
 		<QueryClientProvider client={queryClient}>
 			<SettingsProvider>
-				<FileTypeIconSetContext value="pierre">
-					<FilesTreeColumn>
-						<FilesTree sessionId="content-session" cwd="/repo" onOpenFile={onOpenFile} onAsk={onAsk} />
-					</FilesTreeColumn>
-				</FileTypeIconSetContext>
+				<ToastProvider>
+					<FileTypeIconSetContext value="pierre">
+						<FilesTreeColumn>
+							<FilesTree sessionId="content-session" cwd="/repo" onOpenFile={onOpenFile} onAsk={onAsk} />
+						</FilesTreeColumn>
+					</FileTypeIconSetContext>
+				</ToastProvider>
 			</SettingsProvider>
 		</QueryClientProvider>,
 	);
@@ -815,7 +871,20 @@ afterEach(() =>
 
 describe("FilesTree content search", () =>
 {
-	it("uses upstream's placeholder and describes ? content search in the hint", () =>
+	function typeFilter(value: string): void
+	{
+		fireEvent.change(
+			filterInput(),
+			{
+				target:
+				{
+					value,
+				},
+			},
+		);
+	}
+
+	it("uses upstream's content-search placeholder and hint", () =>
 	{
 		renderTree();
 		const input = filterInput();
@@ -827,36 +896,48 @@ describe("FilesTree content search", () =>
 			},
 		).toStrictEqual(
 			{
-				placeholder: "Search files…",
-				hint: "Results update as you type. Start with ? to search file contents. Press Down Arrow to go to results, and Up Arrow on the first result to return here.",
+				placeholder: "Filter, or ? to search in files",
+				hint: "Results update as you type. Press Down Arrow to go to results, and Up Arrow on the first result to return here.",
 			},
 		);
 	});
 
-	it("reveals each match's hover-only Ask about this button on touch", async () =>
+	it("puts Ask about this first in a match row's context menu, with no hover button", async () =>
 	{
-		renderTree();
-		fireEvent.change(
-			filterInput(),
+		const {onAsk} = renderTree();
+		typeFilter("?needle");
+		await screen.findByText("a.ts");
+		const row = document.querySelector<HTMLElement>('[data-content-match][data-row-index="0"]')!;
+		const hoverButtons = screen.queryAllByRole(
+			"button",
 			{
-				target:
-				{
-					value: "?needle",
-				},
+				name: "Ask about this",
+			},
+		).length;
+		fireEvent.contextMenu(
+			row,
+			{
+				clientX: 40,
+				clientY: 50,
 			},
 		);
-		await screen.findByText("a.ts");
+		const items = await screen.findAllByRole("menuitem");
+		const firstItem = items[0]?.textContent;
+		fireEvent.click(items[0]!);
 
 		expect(
-			screen
-				.getAllByRole(
-					"button",
-					{
-						name: "Ask about this",
-					},
-				)
-				.every((button) => button.className.includes(TOUCH_REVEAL)),
-		).toBe(true);
+			{
+				hoverButtons,
+				firstItem,
+				asks: onAsk.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				hoverButtons: 0,
+				firstItem: "Ask about this",
+				asks: [["In src/a.ts at line 3: `const needle = 1;` — explain what this does and where it’s used."]],
+			},
+		);
 	});
 
 	it("draws upstream's 12px file-type icon on each matched file row", async () =>
@@ -907,7 +988,7 @@ describe("FilesTree content search", () =>
 
 	it("routes a ? query to the file content search scoped to the working directory", async () =>
 	{
-		const {onOpenFile, onAsk} = renderTree();
+		const {onOpenFile} = renderTree();
 		fireEvent.change(
 			filterInput(),
 			{
@@ -938,14 +1019,6 @@ describe("FilesTree content search", () =>
 				key: "Enter",
 			},
 		);
-		fireEvent.click(
-			screen.getAllByRole(
-				"button",
-				{
-					name: "Ask about this",
-				},
-			)[0]!,
-		);
 
 		expect(
 			{
@@ -955,7 +1028,6 @@ describe("FilesTree content search", () =>
 				),
 				groups,
 				opens: onOpenFile.mock.calls,
-				asks: onAsk.mock.calls,
 			},
 		).toStrictEqual(
 			{
@@ -983,7 +1055,6 @@ describe("FilesTree content search", () =>
 						},
 					],
 				],
-				asks: [["In src/a.ts at line 3: `const needle = 1;` — explain what this does and where it’s used."]],
 			},
 		);
 	});
@@ -1000,21 +1071,25 @@ describe("FilesTree content search", () =>
 				},
 			},
 		);
-		expect(await screen.findByText("No matches in file contents")).toBeTruthy();
-	});
-
-	function typeFilter(value: string): void
-	{
-		fireEvent.change(
-			filterInput(),
+		await screen.findByText(
+			"No matches in file contents",
 			{
-				target:
-				{
-					value,
-				},
+				selector: "div",
 			},
 		);
-	}
+		const status = filterInput().closest("[data-cds=Field]")?.parentElement?.querySelector("p[role=status]");
+		expect(
+			{
+				className: status?.className,
+				text: status?.textContent,
+			},
+		).toStrictEqual(
+			{
+				className: "sr-only",
+				text: "No matches in file contents",
+			},
+		);
+	});
 
 	function searchResult(
 		files: FileSearchResult["files"],
@@ -1068,7 +1143,12 @@ describe("FilesTree content search", () =>
 		};
 		renderTree();
 		typeFilter("?needle");
-		const message = await screen.findByText("Couldn’t search in files.");
+		const message = await screen.findByText(
+			"Couldn’t search in files.",
+			{
+				selector: "div",
+			},
+		);
 		const before =
 		{
 			messageClass: message.className,
@@ -1137,10 +1217,20 @@ describe("FilesTree content search", () =>
 				: undefined;
 		renderTree();
 		typeFilter("?pending");
-		await screen.findByText("The search didn’t finish. No matches so far.");
+		await screen.findByText(
+			"The search didn’t finish. No matches so far.",
+			{
+				selector: "div",
+			},
+		);
 		const unfinishedRetry = retryButton()?.textContent;
 		typeFilter("?nothing");
-		await screen.findByText("No matches in file contents");
+		await screen.findByText(
+			"No matches in file contents",
+			{
+				selector: "div",
+			},
+		);
 
 		expect(
 			{
@@ -1278,5 +1368,360 @@ describe("FilesTree content search", () =>
 				retry: null,
 			},
 		);
+	});
+
+	/** Holds the content search until `release` is called, answering with SEARCH_RESPONSE. */
+	function deferSearch():
+	{
+		release: () => void;
+	}
+	{
+		const gate:
+		{
+			release: () => void;
+		} =
+		{
+			release: () =>
+			{
+			},
+		};
+		const held = new Promise<void>((resolve) =>
+		{
+			gate.release = resolve;
+		});
+		searchResponder = async () =>
+		{
+			await held;
+			return Response.json(SEARCH_RESPONSE);
+		};
+		return gate;
+	}
+
+	function contentRequestCount(): number
+	{
+		return requests.filter((request) => request.startsWith("/api/search/files")).length;
+	}
+
+	function firstMatch(): HTMLElement | null
+	{
+		return document.querySelector<HTMLElement>('[data-content-match][data-row-index="0"]');
+	}
+
+	it("spins in the filter's start slot with Searching files while the first fetch runs", async () =>
+	{
+		const gate = deferSearch();
+		renderTree();
+		typeFilter("?needle");
+		const slot = () => filterInput().parentElement?.querySelector(".grid.size-4");
+		await vi.waitFor(() =>
+		{
+			expect(slot()?.querySelector("[role=status]")?.textContent).toBe("Searching files");
+		});
+		const searching = slot()?.querySelector("svg") ?? null;
+		gate.release();
+		await screen.findByText("a.ts");
+
+		expect(
+			{
+				searching,
+				statusAfter: slot()?.querySelector("[role=status]") ?? null,
+				iconAfter: slot()?.querySelector("svg") !== null,
+			},
+		).toStrictEqual(
+			{
+				searching: null,
+				statusAfter: null,
+				iconAfter: true,
+			},
+		);
+	});
+
+	it("waits 250ms after typing before searching file contents", async () =>
+	{
+		renderTree();
+		typeFilter("?needle");
+		await new Promise((resolve) =>
+		{
+			setTimeout(resolve, 180);
+		});
+		const early = contentRequestCount();
+		await vi.waitFor(() =>
+		{
+			expect(contentRequestCount()).toBe(1);
+		});
+		expect(early).toBe(0);
+	});
+
+	it("moves focus to the first match on Enter", async () =>
+	{
+		renderTree();
+		typeFilter("?needle");
+		await screen.findByText("a.ts");
+		fireEvent.keyDown(
+			filterInput(),
+			{
+				key: "Enter",
+			},
+		);
+		expect(document.activeElement).toBe(firstMatch());
+	});
+
+	it("remembers an Enter pressed before the results arrive and focuses the first match when they land", async () =>
+	{
+		const gate = deferSearch();
+		renderTree();
+		typeFilter("?needle");
+		fireEvent.keyDown(
+			filterInput(),
+			{
+				key: "Enter",
+			},
+		);
+		const before = document.activeElement === filterInput() || document.activeElement === document.body;
+		gate.release();
+		await screen.findByText("a.ts");
+		await vi.waitFor(() =>
+		{
+			expect(document.activeElement).toBe(firstMatch());
+		});
+		expect(before).toBe(true);
+	});
+
+	it("returns focus to the element focused before the filter on Escape with an empty query", () =>
+	{
+		renderTree();
+		const outside = document.createElement("button");
+		document.body.append(outside);
+		outside.focus();
+		filterInput().focus();
+		fireEvent.keyDown(
+			filterInput(),
+			{
+				key: "Escape",
+			},
+		);
+		const focused = document.activeElement;
+		outside.remove();
+		expect(focused).toBe(outside);
+	});
+
+	it("draws upstream's match rows: line-number column sized to the widest line, a lead/hit/tail snippet with every hit marked, and a More matches row", async () =>
+	{
+		searchResponder = async () =>
+			Promise.resolve(
+				Response.json(
+					searchResult([
+						searchFile("/repo/big.txt", 9, [
+							{
+								lineNumber: 4,
+								snippet: "<mark>needle</mark> and <mark>needle</mark>",
+							},
+							{
+								lineNumber: 12,
+								snippet: "line 12 <mark>needle</mark>",
+							},
+						]),
+					]),
+				),
+			);
+		renderTree();
+		typeFilter("?needle");
+		await screen.findByText("big.txt");
+		const row = firstMatch()!;
+		const primary = row.querySelector("[data-tree-primary]");
+		const [lineNumber, snippet] = [...(primary?.children ?? [])];
+		const more = document.querySelector<HTMLElement>("[data-content-more]");
+		const fileRow = document.querySelector("[data-content-file]");
+
+		expect(
+			{
+				row:
+				{
+					tag: row.tagName,
+					role: row.getAttribute("role"),
+					level: row.getAttribute("aria-level"),
+					treeRow: row.hasAttribute("data-tree-row"),
+					className: row.className,
+					style: row.getAttribute("style"),
+				},
+				primary:
+				{
+					tag: primary?.tagName,
+					className: primary?.className,
+				},
+				lineNumber:
+				{
+					className: lineNumber?.className,
+					widest: lineNumber?.getAttribute("data-widest"),
+					text: lineNumber?.textContent,
+				},
+				snippet:
+				{
+					dir: snippet?.getAttribute("dir"),
+					className: snippet?.className,
+					parts: [...(snippet?.children ?? [])].map((part) => (
+					{
+						dir: part.getAttribute("dir"),
+						className: part.className,
+						text: part.textContent,
+					})),
+				},
+				marks: [...row.querySelectorAll("mark")].map((mark) => (
+				{
+					className: mark.className,
+					text: mark.textContent,
+				})),
+				more:
+				{
+					hidden: more?.getAttribute("aria-hidden"),
+					className: more?.className,
+					style: more?.getAttribute("style"),
+					spans: [...(more?.children ?? [])].map((span) => (
+					{
+						className: span.className,
+						widest: span.getAttribute("data-widest"),
+						text: span.textContent,
+					})),
+					describesFile: fileRow?.getAttribute("aria-describedby") === more?.id,
+				},
+			},
+		).toStrictEqual(
+			{
+				row:
+				{
+					tag: "DIV",
+					role: "treeitem",
+					level: "2",
+					treeRow: true,
+					className:
+						"cds-reset flex w-full items-center gap-xs rounded text-body font-normal font-control select-none outline-none relative h-[var(--file-tree-row-h,var(--cds-h-control))] py-0 focus-visible:outline-hidden focus-visible:shadow-focus bg-transparent text-primary hover:bg-fill-ghost-hover data-[pressed]:bg-fill-ghost-hover",
+					style: "padding-inline: 20px 8px;",
+				},
+				primary:
+				{
+					tag: "BUTTON",
+					className:
+						"flex flex-1 min-w-0 items-baseline gap-1 text-start bg-transparent border-0 outline-none hide-focus-ring rounded-r2 before:absolute before:inset-0 before:content-['']",
+				},
+				lineNumber:
+				{
+					className:
+						"min-w-[2.5ch] tabular-nums after:invisible after:block after:h-0 after:overflow-hidden after:content-[attr(data-widest)] shrink-0 text-footnote text-muted-as-secondary text-end",
+					widest: "12",
+					text: "4",
+				},
+				snippet:
+				{
+					dir: "ltr",
+					className: "flex min-w-0 overflow-hidden whitespace-pre text-code text-primary",
+					parts: [
+						{
+							dir: null,
+							className: "max-w-full shrink-0 overflow-hidden text-ellipsis",
+							text: "needle",
+						},
+						{
+							dir: null,
+							className: "min-w-[2ch] shrink-[9999] overflow-hidden text-ellipsis",
+							text: " and needle",
+						},
+					],
+				},
+				marks: [
+					{
+						className: "bg-upstream-accent-pressed text-inherit rounded-sm",
+						text: "needle",
+					},
+					{
+						className: "bg-upstream-accent-pressed text-inherit rounded-sm",
+						text: "needle",
+					},
+				],
+				more:
+				{
+					hidden: "true",
+					className: "flex items-center gap-1 h-control text-footnote text-muted-as-secondary select-none",
+					style: "padding-inline: 20px 8px;",
+					spans: [
+						{
+							className:
+								"min-w-[2.5ch] tabular-nums after:invisible after:block after:h-0 after:overflow-hidden after:content-[attr(data-widest)] shrink-[9999]",
+							widest: "12",
+							text: "",
+						},
+						{
+							className: "min-w-0 truncate",
+							widest: null,
+							text: "More matches in this file.",
+						},
+					],
+					describesFile: true,
+				},
+			},
+		);
+	});
+
+	it("puts a long line's cut lead in an rtl span so it ellipsizes from the left", async () =>
+	{
+		searchResponder = async () =>
+			Promise.resolve(
+				Response.json(
+					searchResult([
+						searchFile("/repo/src/a.ts", 1, [
+							{
+								lineNumber: 3,
+								snippet: "aaaa bbbb cccc dddd eeee ffff gggg <mark>needle</mark> tail",
+							},
+						]),
+					]),
+				),
+			);
+		renderTree();
+		typeFilter("?needle");
+		await screen.findByText("a.ts");
+		const lead = firstMatch()?.querySelector("[data-tree-primary] > span[dir=ltr] > span[dir=rtl]");
+
+		expect(
+			{
+				className: lead?.className,
+				inner: lead?.firstElementChild?.getAttribute("dir"),
+				text: lead?.textContent,
+			},
+		).toStrictEqual(
+			{
+				className: "min-w-0 overflow-hidden text-ellipsis",
+				inner: "ltr",
+				text: "…cccc dddd eeee ffff gggg",
+			},
+		);
+	});
+
+	it("opens a match as a kept tab on double-click and middle-click", async () =>
+	{
+		const {onOpenFile} = renderTree();
+		typeFilter("?needle");
+		await screen.findByText("a.ts");
+		const primary = firstMatch()!.querySelector<HTMLElement>("[data-tree-primary]")!;
+		fireEvent.doubleClick(primary);
+		fireEvent(
+			primary,
+			new MouseEvent(
+				"auxclick",
+				{
+					bubbles: true,
+					button: 1,
+				},
+			),
+		);
+		const kept =
+		{
+			pin: true,
+			line: 3,
+			findQuery: "needle",
+		};
+		expect(onOpenFile.mock.calls).toStrictEqual([
+			["src/a.ts", kept],
+			["src/a.ts", kept],
+		]);
 	});
 });

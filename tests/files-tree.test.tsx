@@ -882,7 +882,7 @@ describe("FilesTree density", () =>
 				goUpText: true,
 				goUpFill: true,
 				goUpFirstChild: true,
-				placeholder: "Search files…",
+				placeholder: "Filter files…",
 				type: null,
 				field: "flex flex-col gap-xs font-sans min-w-0 flex-1",
 				shell: "TextInput",

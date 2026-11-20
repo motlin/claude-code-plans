@@ -16,7 +16,7 @@ import {useDebouncedValue} from "../../hooks/use-debounced-value";
 import {useFileColumnResize} from "../../hooks/use-file-column-resize";
 import {type SessionFilesResponse, sessionFilesQueryOptions} from "../../lib/api/session-files";
 import type {AttachContextHandler} from "../../lib/context-attach";
-import {parseContentSearchQuery} from "../../lib/files-content-search";
+import {CONTENT_SEARCH_MESSAGES, parseContentSearchQuery} from "../../lib/files-content-search";
 import {FileTypeIcon} from "../file-type-icon";
 import {useFileColumnOnRight} from "./file-column-side";
 import {useSettings} from "../settings-context";
@@ -25,11 +25,18 @@ import {ContextMenu, ContextMenuTrigger, MenuContent} from "../ui/menu";
 import {FILE_COLUMN_HANDLE_Z, FileColumnEdgeHandle} from "../ui/file-column-edge-handle";
 import {FileColumnResizeShield} from "../ui/file-column-resize-shield";
 import {Icon} from "../ui/icon";
+import {Spinner} from "../ui/spinner";
 import {ResizeHandle} from "../ui/resize-handle";
 import {RESIZE_HANDLE_HALF_CLIP_CLASS} from "../ui/resize-pill";
 import {Field, TextInput} from "../ui/text-input";
 import {Tooltip} from "../ui/tooltip";
-import {type ContentMatchOpenOptions, ContentSearchResults} from "./content-search-results";
+import
+{
+	type ContentMatchOpenOptions,
+	type ContentSearchNav,
+	type ContentSearchState,
+	ContentSearchResults,
+} from "./content-search-results";
 import {TreeRowMenuItems} from "./file-context-menu";
 
 /** Upstream's 24px row pitch; each row's hover box is 19px tall inside it. */
@@ -38,7 +45,14 @@ const OVERSCAN_ROWS = 8;
 /** Assumed viewport height until the tree has been measured (and in jsdom, which never lays out). */
 const FALLBACK_VIEWPORT_HEIGHT = 480;
 const QUERY_DEBOUNCE_MS = 120;
+/** Upstream `$T`: a "?" content query waits longer than path filtering. */
+const CONTENT_QUERY_DEBOUNCE_MS = 250;
 const PARTIAL_FOOTER = "Some entries may not be listed. Keep typing to narrow.";
+const IDLE_CONTENT_SEARCH: ContentSearchState =
+{
+	outcome: undefined,
+	searching: false,
+};
 
 type WorkspaceEntry = Extract<
 	SessionFilesResponse,
@@ -191,7 +205,12 @@ export function FilesTree({
 	const [localQuery, setLocalQuery] = useState("");
 	const query = controlledQuery ?? localQuery;
 	const setQuery = onQueryChange ?? setLocalQuery;
-	const debouncedQuery = useDebouncedValue(query, QUERY_DEBOUNCE_MS);
+	// "?" searches file contents under the working directory instead of paths.
+	const contentQuery = cwd === undefined ? null : parseContentSearchQuery(query);
+	const debouncedQuery = useDebouncedValue(
+		query,
+		contentQuery === null ? QUERY_DEBOUNCE_MS : CONTENT_QUERY_DEBOUNCE_MS,
+	);
 	const localInputRef = useRef<HTMLInputElement>(null);
 	const inputRef = filterRef ?? localInputRef;
 	const treeRef = useRef<HTMLDivElement>(null);
@@ -203,9 +222,10 @@ export function FilesTree({
 	const [focusRequest, setFocusRequest] = useState(0);
 	const [scrollTop, setScrollTop] = useState(0);
 	const [viewportHeight, setViewportHeight] = useState(FALLBACK_VIEWPORT_HEIGHT);
-	const focusFirstMatchRef = useRef<(() => boolean) | null>(null);
-	// "?" searches file contents under the working directory instead of paths.
-	const contentQuery = cwd === undefined ? null : parseContentSearchQuery(query);
+	const contentNavRef = useRef<ContentSearchNav | null>(null);
+	const [contentSearch, setContentSearch] = useState<ContentSearchState>(IDLE_CONTENT_SEARCH);
+	/** Upstream `ye`: what had focus before the filter, which Escape on an empty filter returns to. */
+	const focusedBeforeRef = useRef<HTMLElement | null>(null);
 
 	// A drill-in or "Go up" changes only the folder, so it skips the typing debounce.
 	const requested = parseTreeQuery(parseTreeQuery(query).search === "" ? query : debouncedQuery);
@@ -291,7 +311,12 @@ export function FilesTree({
 	{
 		if (event.key === "ArrowDown" && contentQuery !== null)
 		{
-			if (focusFirstMatchRef.current?.() === true) event.preventDefault();
+			if (contentNavRef.current?.focusFirst() === true) event.preventDefault();
+		}
+		else if (event.key === "Enter" && !event.repeat && contentQuery !== null && contentQuery !== "")
+		{
+			event.preventDefault();
+			contentNavRef.current?.focusFirstWhenSettled();
 		}
 		else if (event.key === "ArrowDown" && entries.length > 0)
 		{
@@ -303,6 +328,14 @@ export function FilesTree({
 			event.preventDefault();
 			event.stopPropagation();
 			changeQuery("");
+		}
+		else if (event.key === "Escape")
+		{
+			focusedBeforeRef.current?.focus(
+				{
+					preventScroll: true,
+				},
+			);
 		}
 	}
 
@@ -404,14 +437,27 @@ export function FilesTree({
 							changeQuery(event.target.value);
 						}}
 						onKeyDown={handleInputKeyDown}
-						placeholder="Search files…"
+						onFocus={(event) =>
+						{
+							focusedBeforeRef.current =
+								event.relatedTarget instanceof HTMLElement ? event.relatedTarget : null;
+						}}
+						onBlur={() =>
+						{
+							focusedBeforeRef.current = null;
+						}}
+						placeholder={cwd === undefined ? "Filter files…" : "Filter, or ? to search in files"}
 						style={
 						{
 							textOverflow: "ellipsis",
 						}}
 						slotStart={
 							<span className="grid size-4 shrink-0 place-items-center">
-								<Icon name="Search" size="sm" />
+								{contentQuery !== null && contentSearch.searching ? (
+									<Spinner size="sm" label="Searching files" />
+								) : (
+									<Icon name="Search" size="sm" />
+								)}
 							</span>
 						}
 						clearable
@@ -423,20 +469,28 @@ export function FilesTree({
 					/>
 				</Field>
 				<p id={hintId} className="sr-only">
-					Results update as you type.{cwd === undefined ? "" : " Start with ? to search file contents."} Press
-					Down Arrow to go to results, and Up Arrow on the first result to return here.
+					Results update as you type. Press Down Arrow to go to results, and Up Arrow on the first result to
+					return here.
+				</p>
+				<p role="status" className="sr-only">
+					{contentQuery !== null && contentSearch.outcome !== undefined
+						? CONTENT_SEARCH_MESSAGES[contentSearch.outcome]
+						: null}
 				</p>
 			</div>
 			{contentQuery !== null && cwd !== undefined ? (
 				<ContentSearchResults
 					query={contentQuery}
+					debouncedQuery={parseContentSearchQuery(debouncedQuery) ?? ""}
 					cwd={cwd}
 					inputRef={inputRef}
-					focusFirstRef={focusFirstMatchRef}
+					navRef={contentNavRef}
 					onOpenFile={onOpenFile}
 					onAsk={onAsk}
+					onAttachContext={onAttachContext}
 					capNoteId={capNoteId}
 					onCapNoteShownChange={setCapNoteShown}
+					onSearchStateChange={setContentSearch}
 				/>
 			) : (
 				<>

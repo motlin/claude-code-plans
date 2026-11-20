@@ -1,5 +1,4 @@
 import {keepPreviousData, replaceEqualDeep, useQuery} from "@tanstack/react-query";
-import {MessageSquare} from "lucide-react";
 import
 {
 	type KeyboardEvent,
@@ -7,15 +6,15 @@ import
 	type RefObject,
 	useCallback,
 	useEffect,
+	useId,
 	useLayoutEffect,
 	useRef,
 	useState,
 } from "react";
 
-import {useDebouncedValue} from "../../hooks/use-debounced-value";
 import {fetchFileSearch} from "../../lib/api/search";
+import type {AttachContextHandler} from "../../lib/context-attach";
 import {isRecord} from "../../lib/narrow";
-import {TOUCH_REVEAL} from "../../lib/touch-reveal";
 import
 {
 	askAboutPrompt,
@@ -28,12 +27,14 @@ import
 	EMPTY_CONTENT_SEARCH_RESULTS,
 	groupContentSearchResults,
 	keepResultsOnFailedRefetch,
-	type MarkedText,
+	type SnippetParts,
+	type TextRange,
 } from "../../lib/files-content-search";
 import {FileTypeIcon} from "../file-type-icon";
 import {RetryButton} from "../retry-button";
+import {ContextMenu, ContextMenuTrigger, MenuContent, MenuItem} from "../ui/menu";
+import {TreeRowMenuItems} from "./file-context-menu";
 
-const QUERY_DEBOUNCE_MS = 120;
 /** Upstream's content query `staleTime`. */
 const STALE_TIME_MS = 5000;
 /** Upstream `nc(0)`: the tree's depth-0 inline padding, on the cap note and the someMissing retry. */
@@ -41,6 +42,24 @@ const DEPTH_ZERO_PADDING =
 {
 	paddingInline: 8,
 };
+/** Upstream `nc(1)`: a match row's and the More matches row's depth-1 inline padding. */
+const DEPTH_ONE_PADDING =
+{
+	paddingInlineStart: 20,
+	paddingInlineEnd: 8,
+};
+/**
+ * Upstream's match row: the menu-row base (`NJ`) merged with the tree row (`JT`) and its ghost paint (`lc`).
+ * The base's density padding is dropped, since the depth padding is inline.
+ */
+const MATCH_ROW_CLASS =
+	"cds-reset flex w-full items-center gap-xs rounded text-body font-normal font-control select-none outline-none relative h-[var(--file-tree-row-h,var(--cds-h-control))] py-0 focus-visible:outline-hidden focus-visible:shadow-focus bg-transparent text-primary hover:bg-fill-ghost-hover data-[pressed]:bg-fill-ghost-hover";
+/** Upstream `XT`: the row's primary button, whose `before:` box makes the whole row clickable. */
+const MATCH_PRIMARY_CLASS =
+	"flex flex-1 min-w-0 items-baseline gap-1 text-start bg-transparent border-0 outline-none hide-focus-ring rounded-r2 before:absolute before:inset-0 before:content-['']";
+/** Upstream `ZT`: a line-number column as wide as `data-widest`, the group's widest line number. */
+const LINE_NUMBER_SIZER_CLASS =
+	"min-w-[2.5ch] tabular-nums after:invisible after:block after:h-0 after:overflow-hidden after:content-[attr(data-widest)]";
 
 /** Upstream `AD`: the query data is a content search result. */
 function isResults(value: unknown): value is Results
@@ -91,17 +110,37 @@ interface ContentSearchResultsProps
 {
 	/** The content query, without the leading "?". */
 	query: string;
+	/** The query once the filter has held steady; "" while it is not a "?" query yet. */
+	debouncedQuery: string;
 	cwd: string;
 	inputRef: RefObject<HTMLInputElement | null>;
-	/** Set to a function that focuses the first match; false when there is none. */
-	focusFirstRef: RefObject<(() => boolean) | null>;
+	/** Set to the filter's ways into the matches. */
+	navRef: RefObject<ContentSearchNav | null>;
 	onOpenFile?: ((relPath: string, options: ContentMatchOpenOptions) => void) | undefined;
 	/** Puts the "Ask about this" prompt into the chat input, unsent. */
 	onAsk?: ((prompt: string) => void) | undefined;
+	onAttachContext?: AttachContextHandler | undefined;
 	/** The id the cap note takes, so the filter input can point `aria-describedby` at it. */
 	capNoteId: string;
 	/** Told whether the cap note is showing. */
 	onCapNoteShownChange?: ((shown: boolean) => void) | undefined;
+	/** Told the outcome the filter announces and whether its spinner shows. */
+	onSearchStateChange?: ((state: ContentSearchState) => void) | undefined;
+}
+
+export interface ContentSearchNav
+{
+	/** ArrowDown: focuses the first match; false when there is none. */
+	focusFirst: () => boolean;
+	/** Enter: focuses the first match once results for the query as typed have settled. */
+	focusFirstWhenSettled: () => void;
+}
+
+export interface ContentSearchState
+{
+	outcome: ContentSearchOutcome | undefined;
+	/** Upstream `cn`: fetching with no settled data, so the filter shows its spinner. */
+	searching: boolean;
 }
 
 /** Upstream `RD`: a centred one-line message in the results area. */
@@ -156,16 +195,47 @@ function SearchRetry({
 	);
 }
 
-function Snippet({snippet}: {snippet: MarkedText})
+/** Upstream `Ss`: text with its matches marked. */
+function Marked({text, matches}: {text: string; matches: readonly TextRange[]})
 {
-	const {text, match} = snippet;
-	if (match === null) return <>{text}</>;
+	const parts: ReactNode[] = [];
+	let at = 0;
+	for (const {start, end} of matches)
+	{
+		if (start > at) parts.push(text.slice(at, start));
+		parts.push(
+			<mark key={start} className="bg-upstream-accent-pressed text-inherit rounded-sm">
+				{text.slice(start, end)}
+			</mark>,
+		);
+		at = end;
+	}
+	if (at < text.length) parts.push(text.slice(at));
+	return <>{parts}</>;
+}
+
+/** Upstream's snippet: an rtl lead that ellipsizes from the left, the hit kept whole, and a tail that gives way first. */
+function Snippet({snippet}: {snippet: SnippetParts})
+{
+	const {lead, hit, hitMatches, tail, tailMatches} = snippet;
 	return (
-		<>
-			{text.slice(0, match.start)}
-			<mark className="rounded-r3 bg-accent-100/25 text-primary">{text.slice(match.start, match.end)}</mark>
-			{text.slice(match.end)}
-		</>
+		<span dir="ltr" className="flex min-w-0 overflow-hidden whitespace-pre text-code text-primary">
+			{lead !== "" && (
+				<span dir="rtl" className="min-w-0 overflow-hidden text-ellipsis">
+					<span dir="ltr">{lead}</span>
+				</span>
+			)}
+			{hit !== "" && (
+				<span className="max-w-full shrink-0 overflow-hidden text-ellipsis">
+					<Marked text={hit} matches={hitMatches} />
+				</span>
+			)}
+			{tail !== "" && (
+				<span className="min-w-[2ch] shrink-[9999] overflow-hidden text-ellipsis">
+					<Marked text={tail} matches={tailMatches} />
+				</span>
+			)}
+		</span>
 	);
 }
 
@@ -186,16 +256,18 @@ function parentDir(relPath: string): string
  */
 export function ContentSearchResults({
 	query,
+	debouncedQuery,
 	cwd,
 	inputRef,
-	focusFirstRef,
+	navRef,
 	onOpenFile,
 	onAsk,
+	onAttachContext,
 	capNoteId,
 	onCapNoteShownChange,
+	onSearchStateChange,
 }: ContentSearchResultsProps)
 {
-	const debouncedQuery = useDebouncedValue(query, QUERY_DEBOUNCE_MS);
 	const search = useQuery(
 		{
 			...contentSearchQueryOptions(debouncedQuery, cwd),
@@ -204,6 +276,9 @@ export function ContentSearchResults({
 		},
 	);
 	const listRef = useRef<HTMLDivElement>(null);
+	const moreIdPrefix = useId();
+	/** Upstream `mn`: the query an early Enter asked to focus the first match of. */
+	const queuedFocusRef = useRef<string | null>(null);
 
 	const results = query === "" ? null : (search.data ?? null);
 	// Upstream `sn`: the outcome message waits for settled data for the query as typed.
@@ -217,6 +292,7 @@ export function ContentSearchResults({
 				},
 			)
 		: undefined;
+	const searching = search.isFetching && !(search.data !== undefined && !search.isPlaceholderData);
 	const capNote = results === null || results.groups.length === 0 ? null : contentSearchCapNote(results);
 
 	useEffect(() =>
@@ -224,6 +300,25 @@ export function ContentSearchResults({
 		onCapNoteShownChange?.(capNote !== null);
 	}, [capNote, onCapNoteShownChange]);
 	useEffect(() => () => onCapNoteShownChange?.(false), [onCapNoteShownChange]);
+	useEffect(() =>
+	{
+		onSearchStateChange?.(
+			{
+				outcome,
+				searching,
+			},
+		);
+	}, [outcome, searching, onSearchStateChange]);
+	useEffect(
+		() => () =>
+			onSearchStateChange?.(
+				{
+					outcome: undefined,
+					searching: false,
+				},
+			),
+		[onSearchStateChange],
+	);
 
 	const focusList = useCallback(() =>
 	{
@@ -265,26 +360,44 @@ export function ContentSearchResults({
 		listRef.current?.querySelector<HTMLElement>(`[data-row-index="${index}"]`)?.focus();
 	}
 
+	function focusFirst(): boolean
+	{
+		if (rows.length === 0) return false;
+		focusRow(0);
+		return true;
+	}
+
 	useEffect(() =>
 	{
-		focusFirstRef.current = () =>
+		navRef.current =
 		{
-			if (rows.length === 0) return false;
-			focusRow(0);
-			return true;
+			focusFirst,
+			focusFirstWhenSettled: () =>
+			{
+				if (settled) focusFirst();
+				else queuedFocusRef.current = query;
+			},
 		};
 		return () =>
 		{
-			focusFirstRef.current = null;
+			navRef.current = null;
 		};
 	});
 
-	function openMatch(relPath: string, match: ContentSearchMatch): void
+	// Upstream applies a queued Enter once results for that query land.
+	useEffect(() =>
+	{
+		if (!settled || queuedFocusRef.current === null) return;
+		if (queuedFocusRef.current === query) focusFirst();
+		queuedFocusRef.current = null;
+	});
+
+	function openMatch(relPath: string, match: ContentSearchMatch, pin: boolean): void
 	{
 		onOpenFile?.(
 			relPath,
 			{
-				pin: false,
+				pin,
 				line: match.line,
 				findQuery: debouncedQuery,
 			},
@@ -320,7 +433,7 @@ export function ContentSearchResults({
 			const row = rows[index];
 			if (row === undefined) return;
 			event.preventDefault();
-			openMatch(row.relPath, row.match);
+			openMatch(row.relPath, row.match, false);
 		}
 	}
 
@@ -353,9 +466,10 @@ export function ContentSearchResults({
 			aria-label="File content matches"
 			className="min-h-0 flex-1 overflow-y-auto px-1 py-1.25 outline-none"
 		>
-			{results.groups.map((group) =>
+			{results.groups.map((group, groupIndex) =>
 			{
 				const dir = parentDir(group.relPath);
+				const moreId = `${moreIdPrefix}-${groupIndex}`;
 				return (
 					<div key={group.path} role="group" aria-label={group.relPath} className="pb-1">
 						<button
@@ -363,6 +477,7 @@ export function ContentSearchResults({
 							tabIndex={-1}
 							data-content-file
 							title={group.relPath}
+							aria-describedby={group.more ? moreId : undefined}
 							onClick={() =>
 								onOpenFile?.(
 									group.relPath,
@@ -390,51 +505,88 @@ export function ContentSearchResults({
 							const index = rowIndex;
 							rowIndex += 1;
 							return (
-								<div
-									key={match.line}
-									role="treeitem"
-									aria-level={2}
-									aria-selected={false}
-									tabIndex={-1}
-									data-content-match
-									data-row-index={index}
-									onKeyDown={(event) =>
-									{
-										handleRowKeyDown(event, index);
-									}}
-									onClick={() =>
-									{
-										openMatch(group.relPath, match);
-									}}
-									className="group/match flex min-h-6 cursor-pointer items-baseline gap-2 rounded-r5 py-0.5 pr-1 pl-6 text-footnote outline-none hover:bg-fill-ghost-hover focus-visible:bg-fill-ghost-hover"
-								>
-									<span className="shrink-0 font-mono text-ink-muted tabular-nums">{match.line}</span>
-									<span className="min-w-0 flex-1 truncate font-mono text-secondary">
-										<Snippet snippet={match.snippet} />
-									</span>
-									{onAsk !== undefined && (
+								<ContextMenu key={match.line}>
+									<ContextMenuTrigger
+										data-tree-row
+										role="treeitem"
+										aria-level={2}
+										aria-selected={false}
+										tabIndex={-1}
+										data-content-match
+										data-row-index={index}
+										onKeyDown={(event: KeyboardEvent<HTMLDivElement>) =>
+										{
+											handleRowKeyDown(event, index);
+										}}
+										className={MATCH_ROW_CLASS}
+										style={DEPTH_ONE_PADDING}
+									>
 										<button
 											type="button"
+											data-tree-primary
 											tabIndex={-1}
-											aria-label="Ask about this"
-											title="Ask about this"
 											onClick={(event) =>
 											{
-												event.stopPropagation();
-												onAsk(askAboutPrompt(group.relPath, match.line, match.text));
+												openMatch(group.relPath, match, event.metaKey || event.ctrlKey);
 											}}
-											className={`flex size-5 shrink-0 cursor-pointer items-center justify-center self-center rounded-r3 text-t6 opacity-0 group-hover/match:opacity-100 group-focus-visible/match:opacity-100 hover:text-primary ${TOUCH_REVEAL}`}
+											onDoubleClick={() =>
+											{
+												openMatch(group.relPath, match, true);
+											}}
+											onMouseDown={(event) =>
+											{
+												if (event.button === 1) event.preventDefault();
+											}}
+											onAuxClick={(event) =>
+											{
+												if (event.button === 1) openMatch(group.relPath, match, true);
+											}}
+											className={MATCH_PRIMARY_CLASS}
 										>
-											<MessageSquare aria-hidden="true" className="size-3" />
+											<span
+												className={`${LINE_NUMBER_SIZER_CLASS} shrink-0 text-footnote text-muted-as-secondary text-end`}
+												data-widest={group.maxLine}
+											>
+												{match.line}
+											</span>
+											<Snippet snippet={match.snippet} />
 										</button>
-									)}
-								</div>
+									</ContextMenuTrigger>
+									<MenuContent>
+										{onAsk !== undefined && (
+											<MenuItem
+												onSelect={() =>
+												{
+													onAsk(askAboutPrompt(group.relPath, match.line, match.text));
+												}}
+											>
+												Ask about this
+											</MenuItem>
+										)}
+										<TreeRowMenuItems
+											path={group.path}
+											cwd={cwd}
+											isDirectory={false}
+											onAttachContext={onAttachContext}
+										/>
+									</MenuContent>
+								</ContextMenu>
 							);
 						})}
 						{group.more && (
-							<p data-content-more className="py-0.5 pl-6 text-footnote text-ink-muted select-none">
-								More matches in this file.
-							</p>
+							<div
+								id={moreId}
+								aria-hidden
+								data-content-more
+								className="flex items-center gap-1 h-control text-footnote text-muted-as-secondary select-none"
+								style={DEPTH_ONE_PADDING}
+							>
+								<span
+									className={`${LINE_NUMBER_SIZER_CLASS} shrink-[9999]`}
+									data-widest={group.maxLine}
+								/>
+								<span className="min-w-0 truncate">More matches in this file.</span>
+							</div>
 						)}
 					</div>
 				);
