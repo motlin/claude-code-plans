@@ -5,7 +5,9 @@ import {cleanup, fireEvent, render, waitFor} from "@testing-library/react";
 import {renderToStaticMarkup} from "react-dom/server";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {FileRefsProvider} from "../src/components/file-refs-context";
+import {PaneHostContext, type PaneHostApi} from "../src/components/panes/pane-host-context";
 import {SessionChat} from "../src/components/session-chat";
+import {CHANGES_SCOPE_REQUEST_EVENT} from "../src/lib/changes-scope-request";
 import type {FileRef} from "../src/lib/file-refs";
 import {summarizeToolCalls, summarizeToolCallStats} from "../src/lib/session-utils";
 import {processTranscript} from "../src/lib/transcript";
@@ -154,23 +156,13 @@ function summaryLabel(html: string): string
 	return labelId === undefined ? "" : (root.querySelector(`[id="${labelId}"]`)?.textContent ?? "");
 }
 
-/** The group header's diff stat pill: each segment's ink and text, and the screen-reader line. */
-function statSpans(html: string):
-{
-	segments: string[];
-	srOnly: string | null;
-}
+/** The group header's text diff stat: each child's text (the visible non-zero sides, then the sr line). */
+function statSpans(html: string): string[]
 {
 	const button = document.createElement("div");
 	button.innerHTML = summaryButton(html);
-	const pill = button.querySelector("[data-diff-stat-pill]");
-	return {
-		segments: [...(pill?.querySelectorAll("[data-diff-stat-segment]") ?? [])].map(
-			(segment) =>
-				`${segment.className.split(" ").find((name) => name.startsWith("text-diff-")) ?? ""}:${segment.textContent}`,
-		),
-		srOnly: pill?.querySelector(".sr-only")?.textContent ?? null,
-	};
+	const stat = button.querySelector('[data-cds="DiffIndicator"][data-variant="text"]');
+	return [...(stat?.children ?? [])].map((child) => child.textContent);
 }
 
 describe("SendMessage in a group header", () =>
@@ -556,7 +548,7 @@ describe("failed edits in diff stats", () =>
 	{
 		text: string | null;
 		stats: (string | null)[];
-		pill?: boolean;
+		indicator?: boolean;
 	}
 	{
 		const {lines: transcript, toolResultMap} = processTranscript(toolRunRecords([call]));
@@ -571,7 +563,7 @@ describe("failed edits in diff stats", () =>
 		);
 		const row = container.querySelector<HTMLElement>("[data-tool-row]")!;
 		const text = row.querySelector(".group\\/tool")?.textContent ?? null;
-		const stats = Array.from(row.querySelectorAll("[class*='text-diff-']"), (span) => span.textContent);
+		const stats = Array.from(row.querySelectorAll("[class*='text-git-']"), (span) => span.textContent);
 		return stats.length === 0
 			?
 				{
@@ -582,11 +574,11 @@ describe("failed edits in diff stats", () =>
 				{
 					text,
 					stats,
-					pill: row.querySelector("[data-diff-stat-pill]") !== null,
+					indicator: row.querySelector('[data-cds="DiffIndicator"][data-variant="text"]') !== null,
 				};
 	}
 
-	it("counts a lone Write row's created lines as a group does, in upstream's stat pill", () =>
+	it("counts a lone Write row's created lines as a group does, in upstream's text stat without the zero side", () =>
 	{
 		expect(
 			lonePathRow(
@@ -602,9 +594,9 @@ describe("failed edits in diff stats", () =>
 			),
 		).toStrictEqual(
 			{
-				text: "Createdx.mjs+2−02 added, 0 removed",
-				stats: ["+2", "−0"],
-				pill: true,
+				text: "Createdx.mjs+22 added, 0 removed",
+				stats: ["+2"],
+				indicator: true,
 			},
 		);
 	});
@@ -654,6 +646,27 @@ describe("failed edits in diff stats", () =>
 	});
 });
 
+const READ_EDIT_RUN: FakeCall[] = [
+	{
+		id: "t1",
+		name: "Read",
+		input:
+		{
+			file_path: "/repo/a.ts",
+		},
+	},
+	{
+		id: "t2",
+		name: "Edit",
+		input:
+		{
+			file_path: "/repo/b.ts",
+			old_string: "a\nb\nc",
+			new_string: "d",
+		},
+	},
+];
+
 describe("ToolCallSummary stats and ink", () =>
 {
 	it('shows "Ran 3 commands (1 failed)" in the collapsed summary label', () =>
@@ -693,11 +706,7 @@ describe("ToolCallSummary stats and ink", () =>
 		).toStrictEqual(
 			{
 				label: "Ran 3 commands (1 failed)",
-				stats:
-				{
-					segments: [],
-					srOnly: null,
-				},
+				stats: [],
 			},
 		);
 	});
@@ -951,60 +960,37 @@ describe("ToolCallSummary stats and ink", () =>
 		);
 	});
 
-	it("renders diff stats as upstream's trailing two-tone pill, separate from the label", () =>
+	it("renders diff stats as upstream's text DiffIndicator in a trailing seat, separate from the label", () =>
 	{
-		const html = renderRun([
-			{
-				id: "t1",
-				name: "Read",
-				input:
-				{
-					file_path: "/repo/a.ts",
-				},
-			},
-			{
-				id: "t2",
-				name: "Edit",
-				input:
-				{
-					file_path: "/repo/b.ts",
-					old_string: "a\nb\nc",
-					new_string: "d",
-				},
-			},
-		]);
+		const html = renderRun(READ_EDIT_RUN);
 		const container = document.createElement("div");
 		container.innerHTML = summaryButton(html);
-		const pill = container.querySelector("[data-diff-stat-pill]");
+		const stat = container.querySelector('[data-cds="DiffIndicator"]');
 		expect(
 			{
 				label: summaryLabel(html),
 				stats: statSpans(html),
-				wrapper: pill?.className,
-				chip: pill?.firstElementChild?.className,
-				segments: [...(pill?.querySelectorAll("[data-diff-stat-segment]") ?? [])].map(
-					(segment) => segment.className,
-				),
+				seat: stat?.parentElement?.className,
+				indicator: stat?.className,
+				attrs: [stat?.getAttribute("data-size"), stat?.getAttribute("data-variant"), stat?.getAttribute("dir")],
+				inks: [...(stat?.querySelectorAll("[aria-hidden=true]") ?? [])].map((side) => side.className),
+				pill: container.querySelector("[data-diff-stat-pill]"),
 			},
 		).toStrictEqual(
 			{
 				label: "Read a file, edited a file",
-				stats:
-				{
-					segments: ["text-diff-added:+1", "text-diff-removed:−3"],
-					srOnly: "1 added, 3 removed",
-				},
-				wrapper: "ms-1 inline-flex h-[1lh] shrink-0 items-center text-ink-muted tabular-nums",
-				chip: "inline-flex h-4 overflow-clip rounded-r3 text-[10px]/[13px] font-medium",
-				segments: [
-					"flex items-center gap-[1px] px-1 text-diff-added bg-diff-added/20",
-					"flex items-center gap-[1px] px-1 text-diff-removed bg-diff-removed/20",
-				],
+				stats: ["+1", "−3", "1 added, 3 removed"],
+				seat: "inline-flex h-[1lh] min-w-0 shrink-0 items-center overflow-visible text-secondary tabular-nums",
+				indicator:
+					"inline-flex items-center gap-xs shrink-0 text-caption leading-[round(1.25em,1px)] font-sans font-medium [font-variant-numeric:tabular-nums_lining-nums] rounded-chip border-0 p-0",
+				attrs: ["xs", "text", "ltr"],
+				inks: ["text-git-added", "text-git-removed"],
+				pill: null,
 			},
 		);
 	});
 
-	it('shows "+0 −28" when only lines were removed', () =>
+	it('shows "−28" alone when only lines were removed', () =>
 	{
 		const removed = Array.from(
 			{
@@ -1032,12 +1018,7 @@ describe("ToolCallSummary stats and ink", () =>
 				},
 			},
 		]);
-		expect(statSpans(html)).toStrictEqual(
-			{
-				segments: ["text-diff-added:+0", "text-diff-removed:−28"],
-				srOnly: "0 added, 28 removed",
-			},
-		);
+		expect(statSpans(html)).toStrictEqual(["−28", "0 added, 28 removed"]);
 	});
 
 	it("uses muted ink with a secondary hover on the collapsed label", () =>
@@ -1454,6 +1435,204 @@ describe("in-flight tool rows", () =>
 		const button = summaryButton(html).replaceAll(/ id="[^"]*"/g, "");
 		expect(button).toContain(
 			'<span data-cds="ShimmerText" data-shimmering="true" data-variant="secondary" class="relative text-body truncate min-w-0">Polling PR #1954 for new activity from Don or Moh<span data-cds-shimmer-clone="" aria-hidden="true" data-find-omitted="" inert="">Polling PR #1954 for new activity from Don or Moh</span></span>',
+		);
+	});
+});
+
+const openPane = vi.fn<(kind: string) => void>();
+const HOST =
+{
+	openPane,
+	closePane: vi.fn<(kind: string) => void>(),
+	togglePane: vi.fn<(kind: string) => void>(),
+	isOpen: () => false,
+	openKinds: [],
+} as unknown as PaneHostApi;
+
+describe("the step stat is upstream's View changes link", () =>
+{
+	beforeEach(() =>
+	{
+		openPane.mockClear();
+	});
+
+	function renderHosted(calls: FakeCall[], hosted = true): HTMLElement
+	{
+		const {lines, toolResultMap} = processTranscript(toolRunRecords(calls));
+		const chat = (
+			<SessionChat
+				sessionId="test-session"
+				lines={lines}
+				toolResultMap={toolResultMap}
+				showCompactSummaries
+				showTranscriptOnly
+				shouldScrollToEnd={false}
+			/>
+		);
+		return render(hosted ? <PaneHostContext.Provider value={HOST}>{chat}</PaneHostContext.Provider> : chat)
+			.container;
+	}
+
+	it("draws a settled group's stat as a role=button TextLink outside the toggle, with upstream's label and underline", () =>
+	{
+		const container = renderHosted(READ_EDIT_RUN);
+		const links = [...container.querySelectorAll('[aria-label^="View changes"]')];
+		const link = links[0];
+		expect(
+			{
+				count: links.length,
+				label: link?.getAttribute("aria-label"),
+				role: link?.getAttribute("role"),
+				tabIndex: link?.getAttribute("tabindex"),
+				title: link?.getAttribute("title"),
+				keepsPin: link?.hasAttribute("data-transcript-keeps-pin"),
+				inToggle: link?.closest("button[aria-expanded]") !== null,
+				className: link?.className,
+				underline: link?.firstElementChild?.className,
+				stats: [...(link?.querySelector('[data-cds="DiffIndicator"]')?.children ?? [])].map(
+					(child) => child.textContent,
+				),
+			},
+		).toStrictEqual(
+			{
+				count: 1,
+				label: "View changes, 1 added, 3 removed",
+				role: "button",
+				tabIndex: "0",
+				title: "",
+				keepsPin: true,
+				inToggle: false,
+				className:
+					"cursor-pointer group/changes no-underline rounded-xs text-inherit focus-visible:outline-hidden hide-focus-ring focus-visible:shadow-focus",
+				underline:
+					"relative flex after:absolute after:inset-x-0 after:bottom-px after:border-b after:border-transparent group-hover/changes:after:border-current group-focus-visible/changes:after:border-current touch:after:border-current/65",
+				stats: ["+1", "−3", "1 added, 3 removed"],
+			},
+		);
+	});
+
+	it("opens Changes on the turn when clicked, without toggling the group", () =>
+	{
+		const scopes: string[] = [];
+		const onScope = (event: Event) =>
+		{
+			scopes.push(
+				(
+					event as CustomEvent<
+					{
+						scope: string;
+					}>
+				).detail.scope,
+			);
+		};
+		window.addEventListener(CHANGES_SCOPE_REQUEST_EVENT, onScope);
+		const container = renderHosted(READ_EDIT_RUN);
+		fireEvent.click(container.querySelector('[aria-label^="View changes"]')!);
+		window.removeEventListener(CHANGES_SCOPE_REQUEST_EVENT, onScope);
+		expect(
+			{
+				opened: openPane.mock.calls,
+				scopes,
+				expanded: container.querySelector("button[aria-expanded]")?.getAttribute("aria-expanded"),
+			},
+		).toStrictEqual(
+			{
+				opened: [["changes"]],
+				scopes: ["turn:a-t1"],
+				expanded: "false",
+			},
+		);
+	});
+
+	it("opens Changes on Enter and Space without toggling the group", () =>
+	{
+		const container = renderHosted(READ_EDIT_RUN);
+		const link = container.querySelector('[aria-label^="View changes"]')!;
+		fireEvent.keyDown(
+			link,
+			{
+				key: "Enter",
+			},
+		);
+		fireEvent.keyDown(
+			link,
+			{
+				key: " ",
+			},
+		);
+		expect(
+			{
+				opened: openPane.mock.calls,
+				expanded: container.querySelector("button[aria-expanded]")?.getAttribute("aria-expanded"),
+			},
+		).toStrictEqual(
+			{
+				opened: [["changes"], ["changes"]],
+				expanded: "false",
+			},
+		);
+	});
+
+	it("leaves the stat unlinked while a call is pending, and without a pane host", () =>
+	{
+		const pending = renderHosted([
+			...READ_EDIT_RUN,
+			{
+				id: "t3",
+				name: "Bash",
+				input:
+				{
+					command: "sleep 9",
+				},
+				pending: true,
+			},
+		]);
+		const pendingLinks = pending.querySelectorAll('[aria-label^="View changes"]').length;
+		cleanup();
+		const unhosted = renderHosted(READ_EDIT_RUN, false);
+		expect(
+			{
+				pendingLinks,
+				unhostedLinks: unhosted.querySelectorAll('[aria-label^="View changes"]').length,
+				unhostedStat: unhosted.querySelector('[data-cds="DiffIndicator"]')?.textContent,
+			},
+		).toStrictEqual(
+			{
+				pendingLinks: 0,
+				unhostedLinks: 0,
+				unhostedStat: "+1−31 added, 3 removed",
+			},
+		);
+	});
+
+	it("links a settled lone Edit row's stat, and a click opens Changes without expanding the row", () =>
+	{
+		const container = renderHosted([
+			{
+				id: "t1",
+				name: "Edit",
+				input:
+				{
+					file_path: "/repo/b.ts",
+					old_string: "a\nb",
+					new_string: "c",
+				},
+			},
+		]);
+		const link = container.querySelector('[aria-label^="View changes"]');
+		fireEvent.click(link!);
+		expect(
+			{
+				label: link?.getAttribute("aria-label"),
+				opened: openPane.mock.calls,
+				expanded: container.querySelector("[data-tool-row] [aria-expanded]")?.getAttribute("aria-expanded"),
+			},
+		).toStrictEqual(
+			{
+				label: "View changes, 1 added, 2 removed",
+				opened: [["changes"]],
+				expanded: "false",
+			},
 		);
 	});
 });

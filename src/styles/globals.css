@@ -432,6 +432,8 @@ html[data-interface-font="dyslexic"]
 	--radius-r7: 10px;
 	/* Upstream --radius-card: calc(var(--cds-radius) + .25rem): 10px compact / 12px comfortable. */
 	--radius-card: calc(var(--upstream-radius) + 0.25rem);
+	/* Upstream cds rounded-chip (DiffIndicator, xs Badge): 4.5px */
+	--radius-chip: 4.5px;
 	/* Upstream cds xs Card (the composer attachment tile): 9px inside the 10px tile */
 	--radius-card-xs: 9px;
 	/* Upstream claude.ai/code — size sm Button (hover card option chips) */
@@ -5916,6 +5918,14 @@ html[data-reduce-motion="true"] [data-cds="SkeletonGroup"][data-hold="delayed"]
 	)
 {
 	pointer-events: auto;
+}
+
+/* Upstream (cds-type-experiment-gate): under reply-type a text DiffIndicator inherits the row's size and leading
+   rather than its own text-caption. */
+[data-cds-reply-type] [data-cds="DiffIndicator"][data-variant="text"]
+{
+	font-size: inherit;
+	line-height: inherit;
 }
 
 /* Upstream `[data-cds=AssistantMessage][data-cds-reply-type] [data-cds=TurnStatus] > div:first-child` and the

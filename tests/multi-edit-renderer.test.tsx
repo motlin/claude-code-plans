@@ -228,10 +228,11 @@ describe("MultiEdit diff stats", () =>
 			/>,
 		);
 
-		const added = container.querySelector(".text-diff-added");
-		const removed = container.querySelector(".text-diff-removed");
-		expect(added?.textContent).toBe("+4");
-		expect(removed?.textContent).toBe("−3");
+		expect(
+			[...(container.querySelector('[data-cds="DiffIndicator"]')?.children ?? [])].map(
+				(side) => side.textContent,
+			),
+		).toStrictEqual(["+4", "−3", "4 added, 3 removed"]);
 	});
 
 	it("aggregates MultiEdit stats into the collapsed turn summary", () =>

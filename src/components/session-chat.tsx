@@ -85,7 +85,7 @@ import {useBackgroundTasksOpener} from "./background-tasks-opener-context";
 import {useClaudeEvents} from "../hooks/use-claude-events";
 import {BlockedCallContext} from "./tool-renderers/blocked-call-context";
 import {ToolAwaitingResultContext} from "./tool-renderers/tool-awaiting-result-context";
-import {ChevronIcon, DiffStatPill, TerminalOutput} from "./tool-renderers/shared";
+import {ChevronIcon, TerminalOutput} from "./tool-renderers/shared";
 import {SystemBanner, type CompactMetadata} from "./system-banner";
 import {compactBoundaryLabel, localCommandOutput} from "./system-banner-text";
 import {ArtifactLinkBanner, ArtifactWatchBanner} from "./artifact-banner";
@@ -235,6 +235,7 @@ import
 } from "../lib/user-trailing";
 import {WorkingMark} from "./working-mark";
 import {StepScreenshotStrip, StepScreenshots} from "./step-screenshot-strip";
+import {StepDiffStat} from "./step-diff-stat";
 import {Tooltip} from "./ui/tooltip";
 
 function getSourceSessionId(line: SessionLine, fallbackSessionId: string): string
@@ -8560,7 +8561,15 @@ function ToolCallRow({
 					View live output
 				</button>
 			)}
-			{diffStats && <DiffStatPill added={diffStats.added} removed={diffStats.removed} />}
+			{diffStats && (
+				<StepDiffStat
+					added={diffStats.added}
+					removed={diffStats.removed}
+					sessionId={sessionId}
+					turnUuid={firstMember.sourceUuid}
+					mayLink={!busy && (rowState === "done" || rowState === "failed")}
+				/>
+			)}
 			{agentModel !== null && (
 				// Upstream trails a settled Agent step with the subagent's model.
 				<span
@@ -9129,14 +9138,18 @@ function ToolCallSummary({
 
 	// Upstream's settled header moves a trailing sole file into the row's meta slot (c24951e9f `j`):
 	// "Ran 2 commands, read" + a link to input-debug.png. A file link can't sit inside the
-	// toggle, so the row then holds the label and meta beside a toggle of just the pill and chevron.
+	// toggle, so the row then holds the label, meta and stat beside a toggle of just the chevron.
 	const fileMeta =
 		!busy && summary.failed === 0 && summary.trailing === null ? splitTrailingFile(summary.segments) : undefined;
-	const markedMotion = fileMeta === undefined && marked && !hasGroupMedia;
-	// The row is the toggle itself unless a meta slot splits them; the row then paints the ring while its toggle
-	// has keyboard focus, as upstream's stretched toggle `::after` does.
+	// Upstream `Hpe`/`Epe`: a settled group's stat is the "View changes" link, which can't sit inside the toggle either.
+	const paneHost = useOptionalPaneHost();
+	const statMayLink = !busy && pendingCall === undefined;
+	const split = fileMeta !== undefined || (statMayLink && paneHost !== null && hasDiffStats(summary));
+	const markedMotion = !split && marked && !hasGroupMedia;
+	// The row is the toggle itself unless a meta slot or the stat link splits them; the row then paints the ring
+	// while its toggle has keyboard focus, as upstream's stretched toggle `::after` does.
 	let rowFocus = SPLIT_ROW_FOCUS;
-	if (fileMeta === undefined) rowFocus = markedMotion ? TURN_STATUS_ROW_FOCUS_RING : TURN_STATUS_ROW_FOCUS;
+	if (!split) rowFocus = markedMotion ? TURN_STATUS_ROW_FOCUS_RING : TURN_STATUS_ROW_FOCUS;
 	const rowClass = `relative group/tool flex items-center ${hasGroupMedia ? "max-w-full min-w-0" : summaryLayout} gap-g1 text-left cursor-pointer ${rowFocus}`;
 	const rowStyle = hasGroupMedia ? undefined : TURN_STATUS_ROW_STYLE;
 	let labelledBy = `${statusId}-label`;
@@ -9147,89 +9160,99 @@ function ToolCallSummary({
 				: `${statusId}-label ${statusId}-meta ${statusId}-busy`;
 	else if (fileMeta !== undefined) labelledBy = `${statusId}-label ${statusId}-meta`;
 
+	const labelSpan = (
+		<span className={`inline-flex items-center gap-g3 min-w-0 ${ink}`}>
+			{held.state === "busy" && marked ? (
+				// Upstream leads a busy group header like a busy row: the call's mark, its label, elapsed, sr "running".
+				<TurnStatusMarkSlot motion="busy">
+					<WorkingMark activity={toolMarkActivity(held.pendingCall.name, held.pendingCall.input)} />
+				</TurnStatusMarkSlot>
+			) : null}
+			{/* One slot for both, so the busy label cross-fades into the counted line (a node label, keyed done|). */}
+			<MorphSlot
+				id={`${statusId}-label`}
+				swapKey={
+					held.state === "busy"
+						? turnStatusSwapKey("busy", held.runningText)
+						: turnStatusSwapKey("done", null)
+				}
+				// Upstream's phrases seat sits on the slot of a settled lone-phrases line.
+				attrs={!busy && summary.trailing === null ? PHRASES_SEAT : undefined}
+				className="min-w-0 max-w-full"
+			>
+				{held.state === "busy" ? (
+					<ShimmerText ref={busyRowCut} variant="secondary" className="text-body truncate min-w-0">
+						{held.runningText}
+					</ShimmerText>
+				) : (
+					<CountedLine segments={summary.segments} trailing={summary.trailing} />
+				)}
+			</MorphSlot>
+			{heldSubject !== undefined && (
+				<span id={`${statusId}-meta`} className="text-body text-primary truncate min-w-0">
+					<bdi>{heldSubject}</bdi>
+				</span>
+			)}
+			{held.state === "busy" ? (
+				<>
+					<RunningElapsed startedAt={held.pendingCall.startedAt} />
+					<span id={`${statusId}-busy`} className="sr-only">
+						running
+					</span>
+				</>
+			) : null}
+		</span>
+	);
+	const stat = hasDiffStats(summary) ? (
+		<StepDiffStat
+			added={summary.added}
+			removed={summary.removed}
+			sessionId={sessionId}
+			turnUuid={calls[0]?.sourceUuid ?? ""}
+			mayLink={statMayLink}
+		/>
+	) : null;
 	const toggle = (
 		<button
 			type="button"
 			aria-expanded={expanded}
 			aria-controls={bodyId}
 			aria-labelledby={labelledBy}
-			// With a meta slot the row's own click toggles, so the button's bubbles up to it.
-			onClick={fileMeta === undefined ? toggleExpanded : undefined}
-			data-cds-row={fileMeta === undefined ? "" : undefined}
+			// In a split row the row's own click toggles, so the button's bubbles up to it.
+			onClick={split ? undefined : toggleExpanded}
+			data-cds-row={split ? undefined : ""}
 			data-cds-row-toggle=""
 			className={
-				fileMeta === undefined
-					? `${rowClass}${markedMotion ? ` ${TURN_STATUS_ROW_MARKED_MOTION}` : ""}`
-					: "flex shrink-0 items-center gap-g1 cursor-pointer outline-none hide-focus-ring focus-visible:outline-hidden"
+				split
+					? "flex shrink-0 items-center gap-g1 cursor-pointer outline-none hide-focus-ring focus-visible:outline-hidden"
+					: `${rowClass}${markedMotion ? ` ${TURN_STATUS_ROW_MARKED_MOTION}` : ""}`
 			}
-			style={fileMeta === undefined ? rowStyle : undefined}
+			style={split ? undefined : rowStyle}
 		>
-			{fileMeta === undefined && (
-				<span className={`inline-flex items-center gap-g3 min-w-0 ${ink}`}>
-					{held.state === "busy" && marked ? (
-						// Upstream leads a busy group header like a busy row: the call's mark, its label, elapsed, sr "running".
-						<TurnStatusMarkSlot motion="busy">
-							<WorkingMark activity={toolMarkActivity(held.pendingCall.name, held.pendingCall.input)} />
-						</TurnStatusMarkSlot>
-					) : null}
-					{/* One slot for both, so the busy label cross-fades into the counted line (a node label, keyed done|). */}
-					<MorphSlot
-						id={`${statusId}-label`}
-						swapKey={
-							held.state === "busy"
-								? turnStatusSwapKey("busy", held.runningText)
-								: turnStatusSwapKey("done", null)
-						}
-						// Upstream's phrases seat sits on the slot of a settled lone-phrases line.
-						attrs={!busy && summary.trailing === null ? PHRASES_SEAT : undefined}
-						className="min-w-0 max-w-full"
-					>
-						{held.state === "busy" ? (
-							<ShimmerText ref={busyRowCut} variant="secondary" className="text-body truncate min-w-0">
-								{held.runningText}
-							</ShimmerText>
-						) : (
-							<CountedLine segments={summary.segments} trailing={summary.trailing} />
-						)}
-					</MorphSlot>
-					{heldSubject !== undefined && (
-						<span id={`${statusId}-meta`} className="text-body text-primary truncate min-w-0">
-							<bdi>{heldSubject}</bdi>
-						</span>
-					)}
-					{held.state === "busy" ? (
-						<>
-							<RunningElapsed startedAt={held.pendingCall.startedAt} />
-							<span id={`${statusId}-busy`} className="sr-only">
-								running
-							</span>
-						</>
-					) : null}
-				</span>
-			)}
-			{hasDiffStats(summary) && <DiffStatPill added={summary.added} removed={summary.removed} />}
+			{!split && labelSpan}
+			{!split && stat}
 			<span className={`shrink-0 ${ink} ${TURN_STATUS_CHEVRON_COMFORTABLE}`}>
 				<ChevronIcon expanded={expanded} size={12} />
 			</span>
 		</button>
 	);
 
-	const header =
-		fileMeta === undefined ? (
-			toggle
-		) : (
-			// oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- the row's click mirrors the toggle button, which keyboard users reach
-			<div
-				data-cds-row=""
-				title={fileMeta.file.path}
-				onClick={(event) =>
-				{
-					if (event.target instanceof Element && event.target.closest("[data-file-ref]") !== null) return;
-					toggleExpanded();
-				}}
-				className={rowClass}
-				style={rowStyle}
-			>
+	const header = split ? (
+		// oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- the row's click mirrors the toggle button, which keyboard users reach
+		<div
+			data-cds-row=""
+			title={fileMeta?.file.path}
+			onClick={(event) =>
+			{
+				if (event.target instanceof Element && event.target.closest("[data-file-ref]") !== null) return;
+				toggleExpanded();
+			}}
+			className={rowClass}
+			style={rowStyle}
+		>
+			{fileMeta === undefined ? (
+				labelSpan
+			) : (
 				<span id={`${statusId}-text`} className={`flex min-w-0 gap-xs group/phrases items-center ${ink}`}>
 					<MorphSlot
 						id={`${statusId}-label`}
@@ -9261,9 +9284,13 @@ function ToolCallSummary({
 						/>
 					</span>
 				</span>
-				{toggle}
-			</div>
-		);
+			)}
+			{stat}
+			{toggle}
+		</div>
+	) : (
+		toggle
+	);
 
 	const status = (
 		<div ref={rootRef} data-tool-row="" data-turn-status="" data-find-omitted="" className={TURN_STATUS_CLASS}>

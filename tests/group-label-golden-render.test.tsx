@@ -190,10 +190,10 @@ interface RowSpecimen
 	skip?: string;
 }
 
-/** A row label part's text, with a diff stat's counts spaced as they read: "+59 −0". */
+/** A row label part's text, with a diff stat's counts spaced as they read: "+1 −1". */
 function spanText(span: Element): string
 {
-	const counts = Array.from(span.querySelectorAll("[class*='text-diff-']"), (count) => count.textContent);
+	const counts = Array.from(span.querySelectorAll("[class*='text-git-']"), (count) => count.textContent);
 	return counts.length > 0 ? counts.join(" ") : span.textContent;
 }
 

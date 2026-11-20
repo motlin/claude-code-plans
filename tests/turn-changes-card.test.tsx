@@ -1732,9 +1732,9 @@ describe("SessionChat end-of-turn card", () =>
 				/>
 			</SettingsProvider>,
 		);
-		expect([...container.querySelectorAll("[data-diff-stat-pill]")].map((pill) => pill.textContent)).toStrictEqual([
-			"+4−44 added, 4 removed",
-		]);
+		expect(
+			[...container.querySelectorAll('[data-cds="DiffIndicator"]')].map((stat) => stat.textContent),
+		).toStrictEqual(["+4−44 added, 4 removed"]);
 	});
 
 	it("offers Undo only on the last turn's card, and on none when the session is archived", () =>

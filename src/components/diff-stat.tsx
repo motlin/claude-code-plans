@@ -89,3 +89,45 @@ export function PrDiffStat({additions, deletions}: {additions: number; deletions
 		</span>
 	);
 }
+
+/** Upstream cds DiffIndicator `Dh`: the text variant's base classes. */
+const DIFF_INDICATOR_TEXT_CLASS =
+	"inline-flex items-center gap-xs shrink-0 text-caption leading-[round(1.25em,1px)] font-sans font-medium [font-variant-numeric:tabular-nums_lining-nums] rounded-chip border-0 p-0";
+
+/**
+ * Upstream cds DiffIndicator `variant:"text"` (`Rh` → `Oh`): only the non-zero sides are drawn ("+52", no "−0"),
+ * U+2212 for the minus, with the counts spelled out for screen readers. Nothing when both are 0.
+ */
+export function DiffIndicatorText({
+	additions,
+	deletions,
+	label,
+}: {
+	additions: number;
+	deletions: number;
+	label?: string | undefined;
+})
+{
+	if (additions === 0 && deletions === 0) return null;
+	return (
+		<span
+			data-cds="DiffIndicator"
+			data-size="xs"
+			data-variant="text"
+			dir="ltr"
+			className={DIFF_INDICATOR_TEXT_CLASS}
+		>
+			{additions > 0 && (
+				<span aria-hidden="true" className="text-git-added">
+					+{additions}
+				</span>
+			)}
+			{deletions > 0 && (
+				<span aria-hidden="true" className="text-git-removed">
+					−{deletions}
+				</span>
+			)}
+			<span className="sr-only">{label ?? `${additions} added, ${deletions} removed`}</span>
+		</span>
+	);
+}

@@ -141,7 +141,7 @@ const EDIT_RECORD =
 
 describe("Edit tool row stats", () =>
 {
-	it("draws upstream's tabular-nums stat pill on the row, as in an edit group", () =>
+	it("draws upstream's text DiffIndicator on the row, as in an edit group", () =>
 	{
 		const {lines, toolResultMap} = processTranscript([EDIT_RECORD]);
 		const html = renderToStaticMarkup(
@@ -155,8 +155,7 @@ describe("Edit tool row stats", () =>
 		);
 
 		expect(html).toContain(
-			'<span data-diff-stat-pill="" class="ms-1 inline-flex h-[1lh] shrink-0 items-center text-ink-muted tabular-nums">',
+			'<span class="inline-flex h-[1lh] min-w-0 shrink-0 items-center overflow-visible text-secondary tabular-nums"><span data-cds="DiffIndicator" data-size="xs" data-variant="text" dir="ltr" class="inline-flex items-center gap-xs shrink-0 text-caption leading-[round(1.25em,1px)] font-sans font-medium [font-variant-numeric:tabular-nums_lining-nums] rounded-chip border-0 p-0"><span aria-hidden="true" class="text-git-added">+2</span><span aria-hidden="true" class="text-git-removed">−1</span><span class="sr-only">2 added, 1 removed</span></span></span>',
 		);
-		expect(html).toContain('<span class="sr-only">2 added, 1 removed</span>');
 	});
 });
