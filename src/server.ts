@@ -100,6 +100,14 @@ void (async () =>
 		stopStallMonitor = null;
 		await closeWatcher();
 		await shutdownDb();
+	}).catch((err: unknown) =>
+	{
+		// A previous instance (a dev worker thread vite never closed) still holds
+		// the databases. Opening them beside it would make this instance's scan
+		// fail on SQLITE_BUSY, and any request would open them lazily, so end
+		// this instance: in a worker, exit() stops only this thread.
+		console.error("Server takeover failed; exiting so a restart can start cleanly:", err);
+		process.exit(1);
 	});
 	// A call rather than a property read: the signal aborts during the awaits between checks.
 	const stopped = (): boolean => stopping.aborted;

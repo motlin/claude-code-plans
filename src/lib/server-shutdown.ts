@@ -151,7 +151,9 @@ export function listenForTakeover(teardown: ShutdownHook): () => void
 
 /**
  * Ask every other server instance in this process to tear down, and wait until
- * each one that answers within `ackWindowMs` has released its handles.
+ * each one that answers within `ackWindowMs` has released its handles. Rejects
+ * if one is still holding them after `releaseTimeoutMs`: the caller must not
+ * open the databases while it may still hold the write lock.
  */
 export async function requestTakeover({
 	ackWindowMs = DEFAULT_ACK_WINDOW_MS,
@@ -166,14 +168,18 @@ export async function requestTakeover({
 	const requestId = randomUUID();
 	const stopping = new Set<string>();
 	const released = new Set<string>();
-	return new Promise((resolve) =>
+	return new Promise((resolve, reject) =>
 	{
 		let windowClosed = false;
-		const finish = () =>
+		const close = () =>
 		{
 			clearTimeout(windowTimer);
 			clearTimeout(releaseTimer);
 			channel.close();
+		};
+		const finish = () =>
+		{
+			close();
 			resolve();
 		};
 		const finishIfReleased = () =>
@@ -195,8 +201,12 @@ export async function requestTakeover({
 		}, ackWindowMs);
 		const releaseTimer = setTimeout(() =>
 		{
-			console.error("Timed out waiting for the previous server instance to shut down");
-			finish();
+			close();
+			reject(
+				new Error(
+					`The previous server instance did not release its databases within ${releaseTimeoutMs}ms; refusing to open them alongside it`,
+				),
+			);
 		}, releaseTimeoutMs);
 		channel.postMessage(
 			{
@@ -212,6 +222,8 @@ export async function requestTakeover({
  * instance: hooks left in this thread's registry by an earlier evaluation of
  * the SSR entry, and instances in other worker threads. When a later instance
  * requests a takeover, this one runs its own hooks.
+ *
+ * Rejects when an instance in another thread never releases its handles.
  *
  * The hook is registered at once, so a shutdown that begins mid-takeover still
  * runs it. The returned signal aborts when the hook starts: startup that is

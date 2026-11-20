@@ -3155,6 +3155,65 @@ describe("indexer", () =>
 		);
 	});
 
+	it("stops between subagent files once the scan is aborted, so a restarting server's shutdown is prompt", async () =>
+	{
+		const sessionId = "session-alice";
+		const projectDir = join(testDir, "-tmp-alice-project");
+		const subagentsDir = join(projectDir, sessionId, "subagents");
+		mkdirSync(
+			subagentsDir,
+			{
+				recursive: true,
+			},
+		);
+		writeFileSync(
+			join(projectDir, `${sessionId}.jsonl`),
+			jsonl(
+				{
+					type: "user",
+					message:
+					{
+						content: "Ask Alice",
+					},
+				},
+			),
+		);
+		for (const agent of ["agent-a1", "agent-a2"])
+		{
+			writeFileSync(
+				join(subagentsDir, `${agent}.jsonl`),
+				jsonl(
+					{
+						type: "assistant",
+						timestamp: "2000-01-01T00:00:00.000Z",
+						message:
+						{
+							content: "Work",
+						},
+					},
+				),
+			);
+		}
+		const controller = new AbortController();
+
+		const scan = fullScan(
+			db.index,
+			db.summaries,
+			testDir,
+			undefined,
+			undefined,
+			async (directoryPath) =>
+			{
+				if (directoryPath === subagentsDir) controller.abort();
+				return readdir(directoryPath);
+			},
+			controller.signal,
+		);
+
+		await expect(scan).rejects.toThrow("This operation was aborted");
+		expect(db.index.select().from(schema.subagents).all()).toStrictEqual([]);
+	});
+
 	it("extracts cwd from JSONL attachment lines", async () =>
 	{
 		const projectDir = join(testDir, "-Users-craig-projects-app");

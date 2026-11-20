@@ -2854,8 +2854,14 @@ export async function fullScan(
 	// discovered paths match indexed_files and pruning compares like with like.
 	const projectsDir = canonicalPath(configuredProjectsDir);
 	// Each step names itself for the dev event-loop stall monitor and runs once.
+	// It stops the scan first once aborted: a session can hold thousands of
+	// subagent files, and a restarting server waits for this scan to stop
+	// before the next instance may open the databases.
 	const step = async <T>(label: string, run: () => T | Promise<T>): Promise<T> =>
-		trackActivity(`scan ${label}`, async () => run());
+	{
+		signal?.throwIfAborted();
+		return trackActivity(`scan ${label}`, async () => run());
+	};
 
 	indexingInProgress = true;
 	initialBuildInProgress =

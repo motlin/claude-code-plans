@@ -166,6 +166,23 @@ describe("server shutdown hooks", () =>
 		expect(teardowns).toBe(1);
 	});
 
+	it("requestTakeover rejects, rather than letting the new instance open the databases alongside it, when a previous instance never releases", async () =>
+	{
+		const stop = listenForTakeover(async () => new Promise(() => {}));
+
+		const takeover = requestTakeover(
+			{
+				ackWindowMs: 20,
+				releaseTimeoutMs: 60,
+			},
+		);
+
+		await expect(takeover).rejects.toThrow(
+			"The previous server instance did not release its databases within 60ms; refusing to open them alongside it",
+		);
+		stop();
+	});
+
 	it("requestTakeover resolves when the ack window closes, not at the release timeout, when no other instance is running", async () =>
 	{
 		vi.useFakeTimers();
