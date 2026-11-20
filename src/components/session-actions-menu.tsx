@@ -604,8 +604,10 @@ export function SessionActionsMenu({
 	const renameAfterClose = useRenameAfterMenuClose(rename.startEditing);
 	const {requestRename} = renameAfterClose;
 	const [newGroupOpen, setNewGroupOpen] = useState(false);
+	const [newGroupMounted, setNewGroupMounted] = useState(false);
 	const newGroupAfterClose = useRenameAfterMenuClose(() =>
 	{
+		setNewGroupMounted(true);
 		setNewGroupOpen(true);
 	});
 	// The rows a bulk New group… moves, captured when the menu asked for the dialog.
@@ -720,7 +722,9 @@ export function SessionActionsMenu({
 					</MenuContent>
 				</Menu>
 			</div>
-			<NewGroupDialog open={newGroupOpen} onOpenChange={setNewGroupOpen} onCreate={createGroupWithRow} />
+			{newGroupMounted && (
+				<NewGroupDialog open={newGroupOpen} onOpenChange={setNewGroupOpen} onCreate={createGroupWithRow} />
+			)}
 		</RowRenameContext.Provider>
 	);
 }
