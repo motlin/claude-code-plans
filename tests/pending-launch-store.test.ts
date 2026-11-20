@@ -23,6 +23,7 @@ const LAUNCH =
 
 afterEach(() =>
 {
+	vi.useRealTimers();
 	__pendingLaunchTesting.reset();
 });
 
@@ -30,6 +31,11 @@ describe("pending-launch store", () =>
 {
 	it("publishes a launch, its herdr id, then drops it on settle or clear, notifying subscribers each time", () =>
 	{
+		vi.useFakeTimers(
+			{
+				now: 1_795_000_000_000,
+			},
+		);
 		const listener = vi.fn<() => void>();
 		const unsubscribe = subscribePendingLaunches(listener);
 
@@ -83,7 +89,7 @@ describe("pending-launch store", () =>
 				settled: [],
 				cleared: 1,
 				notified: 5,
-				settledAt: Date.now(),
+				settledAt: 1_795_000_000_000,
 				otherSettledAt: undefined,
 			},
 		);
