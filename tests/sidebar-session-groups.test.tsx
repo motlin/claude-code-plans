@@ -29,6 +29,14 @@ import {__unreadStoreTesting, syncUnseenFromSummaries} from "../src/lib/unread-s
 import {__awaitingAckTesting, ack} from "../src/lib/awaiting-ack-store";
 import {registerLiveApproval} from "../src/lib/live-approval-sessions";
 import {installLocalStorage} from "./fake-storage";
+import
+{
+	__pendingLaunchTesting,
+	addPendingLaunch,
+	readPendingLaunches,
+	setPendingLaunchSessionId,
+	settlePendingLaunch,
+} from "../src/lib/pending-launch-store";
 import {PIN_STORAGE_KEY} from "../src/lib/pin-store";
 import {readProjectOrder} from "../src/lib/project-order-store";
 import {readFileSync} from "node:fs";
@@ -3555,6 +3563,226 @@ describe("SessionGroups hover cards", () =>
 		const {container} = await renderGroups([session("b1", "Blocked one", "blocked", 3)]);
 		const card = await hoverRow(container, "Blocked one");
 		expect(card.getAttribute("data-kind")).toBe("blocked");
+	});
+});
+
+// Upstream `A_.pending` / `RM` / `UT(pending, 1500)` + `CR`: the tab that launched a session shows a skeleton row until
+// the session's real row arrives, and only that row's first title reveals.
+describe("SessionGroups pending launch row", () =>
+{
+	const LAUNCH =
+	{
+		projectId: "-projects-new",
+		projectName: "project-new",
+		cwd: "/projects/new",
+		opens: true,
+	};
+
+	function setSessions(queryClient: QueryClient, sessions: unknown[])
+	{
+		act(() =>
+		{
+			for (const status of ["active", "all"] as const)
+			{
+				queryClient.setQueryData(
+					recentSessionsInfiniteQueryOptions(undefined, status).queryKey,
+					{
+						pages: [
+							RecentSessionsResponse.parse(
+								{
+									sessions,
+									nextCursor: null,
+								},
+							),
+						],
+						pageParams: [null],
+					},
+				);
+			}
+		});
+	}
+
+	function workingRows(container: HTMLElement): HTMLElement[]
+	{
+		return [
+			...container.querySelectorAll<HTMLElement>(
+				'[data-group-key="state-working"] [data-group-rows] > [data-row-key]',
+			),
+		];
+	}
+
+	afterEach(() =>
+	{
+		__pendingLaunchTesting.reset();
+	});
+
+	it("leads Working with a selected skeleton row reading Running, then swaps it for the launched session's row with no duplicate", async () =>
+	{
+		const key = addPendingLaunch(
+			{
+				...LAUNCH,
+				since: Date.now(),
+			},
+		);
+		const {container, queryClient} = await renderGroups(FIXTURE);
+		const [first] = workingRows(container);
+		const main = first!.querySelector("[data-row-main-button]")!;
+		const pending =
+		{
+			rowKeys: workingRows(container).map((row) => row.getAttribute("data-row-key")),
+			tag: main.tagName,
+			selected: main.getAttribute("data-selected"),
+			skeletons: main.querySelectorAll("[data-row-label] [data-cds=Skeleton][aria-hidden=true]").length,
+			statuses: within(first!)
+				.getAllByRole("status")
+				.map((status) => status.textContent),
+			mark: first!.querySelector("[data-row-decoration] [role=img]")?.getAttribute("aria-label"),
+			menus: first!.querySelectorAll("[data-session-actions] button[aria-haspopup]").length,
+		};
+
+		setSessions(queryClient, [...FIXTURE, session("new", "Fix the flaky test", "working", 0)]);
+
+		await waitFor(() =>
+		{
+			expect(readPendingLaunches()).toStrictEqual([]);
+		});
+		expect(
+			{
+				pending,
+				after: workingRows(container).map((row) => row.getAttribute("data-row-key")),
+				links: [...container.querySelectorAll('[data-group-key="state-working"] a[data-row-main-button]')].map(
+					(link) => link.getAttribute("href"),
+				),
+				skeletons: container.querySelectorAll("[data-row-label] [data-cds=Skeleton]").length,
+			},
+		).toStrictEqual(
+			{
+				pending:
+				{
+					rowKeys: [key, "w1"],
+					tag: "SPAN",
+					selected: "focused",
+					skeletons: 1,
+					statuses: ["Loading", " Running"],
+					mark: "Running",
+					menus: 0,
+				},
+				after: ["new", "w1"],
+				links: ["/session/new", "/session/w1"],
+				skeletons: 0,
+			},
+		);
+	});
+
+	it("links the skeleton row to the session once herdr names it", async () =>
+	{
+		const key = addPendingLaunch(
+			{
+				...LAUNCH,
+				since: Date.now(),
+				opens: false,
+			},
+		);
+		const {container} = await renderGroups(FIXTURE);
+		act(() =>
+		{
+			setPendingLaunchSessionId(key, "s-herdr");
+		});
+		const main = workingRows(container)[0]!.querySelector("[data-row-main-button]")!;
+
+		expect(
+			{
+				tag: main.tagName,
+				href: main.getAttribute("href"),
+				selected: main.getAttribute("data-selected"),
+			},
+		).toStrictEqual(
+			{
+				tag: "A",
+				href: "/session/s-herdr",
+				selected: null,
+			},
+		);
+	});
+
+	it("reveals only the launched row's first title, for 1500 ms after its launch settled", async () =>
+	{
+		vi.useFakeTimers(
+			{
+				shouldAdvanceTime: true,
+			},
+		);
+		try
+		{
+			const key = addPendingLaunch(
+				{
+					...LAUNCH,
+					since: Date.now(),
+				},
+			);
+			settlePendingLaunch(key, "new");
+			const {container, queryClient} = await renderGroups([
+				...FIXTURE,
+				session("new", "Fix the flaky test", "done", 0),
+			]);
+			const label = () => container.querySelector('[data-row-key="new"] [data-row-label] .relative')!;
+			const revealing =
+			{
+				revealing: label().querySelectorAll("[data-revealing]").length,
+				srCopy: label().querySelector(":scope > .sr-only")?.textContent,
+			};
+			setSessions(queryClient, [
+				...FIXTURE.map((row) =>
+					row.id === "w1"
+						?
+							{
+								...row,
+								title: "Working renamed",
+							}
+						: row,
+				),
+				session("new", "Fix the flaky test", "done", 0),
+			]);
+			const renamed = container.querySelector('[data-row-key="w1"] [data-row-label]')!;
+			const otherRow = renamed.querySelectorAll("[data-revealing], [aria-hidden=true] > span").length;
+
+			act(() =>
+			{
+				vi.advanceTimersByTime(1500);
+			});
+
+			expect(
+				{
+					revealing,
+					otherRow,
+					after:
+					{
+						revealing: label().querySelectorAll("[data-revealing]").length,
+						graphemes: label().querySelectorAll("[aria-hidden=true] > span").length,
+						text: label().firstChild?.nodeType === Node.TEXT_NODE ? label().firstChild?.textContent : null,
+					},
+				},
+			).toStrictEqual(
+				{
+					revealing:
+					{
+						revealing: 1,
+						srCopy: "Fix the flaky test",
+					},
+					otherRow: 0,
+					after:
+					{
+						revealing: 0,
+						graphemes: 0,
+						text: "Fix the flaky test",
+					},
+				},
+			);
+		}
+		finally
+		{
+			vi.useRealTimers();
+		}
 	});
 });
 

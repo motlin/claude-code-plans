@@ -13,6 +13,7 @@ import
 import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import type {ReactElement} from "react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
+import {__pendingLaunchTesting, launchSettledAt, readPendingLaunches} from "../src/lib/pending-launch-store";
 import {Composer} from "../src/components/composer";
 import {HOME_RECENT_LIMIT} from "../src/components/home/home-composer";
 import {NewSessionShortcut} from "../src/components/new-session-shortcut";
@@ -358,6 +359,7 @@ describe("HomeComposer", () =>
 		launchResponse = async () => new Promise<Response>(() => {});
 		TestEventSource.current = null;
 		setPendingLaunchGroup(null);
+		__pendingLaunchTesting.reset();
 		installLocalStorage();
 		vi.stubGlobal("EventSource", TestEventSource);
 		vi.spyOn(navigator, "userAgent", "get").mockReturnValue(MAC_UA);
@@ -1565,6 +1567,12 @@ describe("HomeComposer", () =>
 			{
 				host: lineHost(),
 				line: line(),
+				pending: readPendingLaunches().map(({key, sessionId, ...launch}) => (
+				{
+					...launch,
+					keyed: key === `launch:${launch.since}`,
+					sessionId,
+				})),
 			};
 			await act(async () =>
 			{
@@ -1586,10 +1594,30 @@ describe("HomeComposer", () =>
 			{
 				expect(line()?.textContent).toContain("Infra");
 			});
-			expect(whileStarting).toStrictEqual(
+			expect(
 				{
-					host: null,
-					line: null,
+					whileStarting,
+					pendingAfter: readPendingLaunches(),
+				},
+			).toStrictEqual(
+				{
+					whileStarting:
+					{
+						host: null,
+						line: null,
+						pending: [
+							{
+								projectId: "-users-dev-it-s",
+								projectName: "it's",
+								cwd: "/users/dev/it's",
+								since: expect.any(Number),
+								opens: true,
+								keyed: true,
+								sessionId: null,
+							},
+						],
+					},
+					pendingAfter: [],
 				},
 			);
 		});
@@ -1874,6 +1902,17 @@ describe("HomeComposer", () =>
 		{
 			expect(router.state.location.pathname).toBe("/session/new-session");
 		});
+		expect(
+			{
+				pending: readPendingLaunches(),
+				settled: launchSettledAt("new-session") !== undefined,
+			},
+		).toStrictEqual(
+			{
+				pending: [],
+				settled: true,
+			},
+		);
 	});
 
 	it("adds the launched session to the custom group whose + started it", async () =>

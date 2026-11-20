@@ -35,6 +35,13 @@ import
 } from "../../lib/home-composer-focus";
 import {findLaunchedSession, type PendingLaunch} from "../../lib/palette-start-session";
 import {assignLaunchedSession, setPendingLaunchGroup, usePendingLaunchGroup} from "../../lib/session-group-store";
+import
+{
+	addPendingLaunch,
+	clearPendingLaunch,
+	setPendingLaunchSessionId,
+	settlePendingLaunch,
+} from "../../lib/pending-launch-store";
 import {Composer} from "../composer";
 import {LazySendRejectedCard} from "../lazy-send-rejected-card";
 import {loadSendRejectedCard} from "../send-rejected-card-loader";
@@ -132,6 +139,8 @@ export function HomeComposer({
 		| (PendingLaunch &
 		  {
 				worktree: boolean;
+				/** The sidebar's skeleton row for this launch (pending-launch store). */
+				key: string;
 		  })
 		| null
 	>(null);
@@ -307,6 +316,7 @@ export function HomeComposer({
 		const id = findLaunchedSession(activeSessions.values(), pendingLaunch);
 		if (id === null) return;
 		setPendingLaunch(null);
+		settlePendingLaunch(pendingLaunch.key, id);
 		assignLaunchedSession(id);
 		void navigate(
 			{
@@ -419,6 +429,15 @@ export function HomeComposer({
 		// A new start clears the last failure's card, as upstream does.
 		setStartFailure(null);
 		setLaunching(true);
+		const key = addPendingLaunch(
+			{
+				projectId: project.id,
+				projectName: project.name,
+				cwd: request.cwd,
+				since,
+				opens: !stay,
+			},
+		);
 		try
 		{
 			// Headless: the app spawns and owns the CLI instead of opening a terminal tab for it.
@@ -426,6 +445,7 @@ export function HomeComposer({
 			// The launch ends this draft, so its Worktree override goes back to the preference and its agent goes.
 			worktree.endDraft();
 			setSelectedAgent(undefined);
+			if (sessionId !== null) setPendingLaunchSessionId(key, sessionId);
 			if (stay)
 			{
 				if (sessionId === null) setPendingLaunchGroup(null);
@@ -445,6 +465,7 @@ export function HomeComposer({
 						since,
 						sessionId,
 						worktree: worktree.useWorktree,
+						key,
 					},
 				);
 			}
@@ -460,6 +481,7 @@ export function HomeComposer({
 						message: "Copied command — no terminal to launch in",
 					},
 				);
+				clearPendingLaunch(key);
 				return;
 			}
 			restoreFailedStart(prompt, error);
@@ -471,15 +493,18 @@ export function HomeComposer({
 				error.sessionId !== undefined
 			)
 			{
+				setPendingLaunchSessionId(key, error.sessionId);
 				setPendingLaunch(
 					{
 						cwd: request.cwd,
 						since,
 						sessionId: error.sessionId,
 						worktree: worktree.useWorktree,
+						key,
 					},
 				);
 			}
+			else clearPendingLaunch(key);
 		}
 		finally
 		{

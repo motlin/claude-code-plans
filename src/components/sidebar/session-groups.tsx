@@ -77,7 +77,8 @@ import
 } from "./session-group-section";
 import {requestRevealRow} from "./reveal-row-store";
 import {useLoadMoreFocus} from "./use-load-more-focus";
-import {type SidebarSessionRow, toGroupRow} from "./sidebar-session-row";
+import {type SidebarSessionRow, toGroupRow, toPendingLaunchRow} from "./sidebar-session-row";
+import {findLaunchedRow, settlePendingLaunch, usePendingLaunches} from "../../lib/pending-launch-store";
 import {SidebarSelectionContext, type SidebarSelectionApi} from "./selection-context";
 import {SectionViewMenu} from "./section-view-menu";
 import type {ProjectReorder} from "./project-group-header";
@@ -209,10 +210,26 @@ export function SessionGroups({
 	// row draws the error, read or not, until that ack (upstream `Q$`).
 	const ackVersion = useAwaitingAckVersion();
 	const liveApprovalIds = useLiveApprovalIds();
+	const pendingLaunches = usePendingLaunches();
+	// A pending launch whose session's row has arrived settles: the skeleton row gives way to the real one.
+	useEffect(() =>
+	{
+		if (data === undefined) return;
+		const sessions = data.pages.flatMap((page) => page.sessions);
+		for (const launch of pendingLaunches)
+		{
+			const id = findLaunchedRow(sessions, launch);
+			if (id !== null) settlePendingLaunch(launch.key, id);
+		}
+	}, [data, pendingLaunches]);
 	const split = useMemo(() =>
 	{
 		if (data === undefined) return undefined;
-		const rows = data.pages.flatMap((page) =>
+		const sessions = data.pages.flatMap((page) => page.sessions);
+		const launching = pendingLaunches
+			.filter((launch) => findLaunchedRow(sessions, launch) === null)
+			.map(toPendingLaunchRow);
+		const loaded = data.pages.flatMap((page) =>
 			page.sessions.map((session) =>
 				toGroupRow(
 					withAnsweredHold(
@@ -225,6 +242,7 @@ export function SessionGroups({
 				),
 			),
 		);
+		const rows = [...launching, ...loaded];
 		return splitPinned(
 			rows,
 			{
@@ -235,7 +253,17 @@ export function SessionGroups({
 		);
 		// ackVersion re-runs the memo when an ack changes; ackedAt reads the store.
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [data, answeredIds, ackVersion, liveApprovalIds, prefs.sortBy, prefs.sortDirection, pinnedIds, pinnedOrder]);
+	}, [
+		data,
+		pendingLaunches,
+		answeredIds,
+		ackVersion,
+		liveApprovalIds,
+		prefs.sortBy,
+		prefs.sortDirection,
+		pinnedIds,
+		pinnedOrder,
+	]);
 
 	const toast = useToast();
 	const {settings, setSetting} = useSettings();

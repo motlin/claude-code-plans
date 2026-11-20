@@ -78,6 +78,9 @@ import {JumpHint} from "./jump-hint";
 import type {SidebarSessionRow} from "./sidebar-session-row";
 import {useSectionHold} from "./use-section-hold";
 import {ROVING_ITEM_PROPS} from "./use-roving-focus";
+import {SessionTitleSkeleton} from "./session-title-skeleton";
+import {RevealText} from "../reveal-text";
+import {type PendingLaunchEntry, useLaunchTitleReveal} from "../../lib/pending-launch-store";
 
 /** The section's unarchived sessions, family members included, for Archive all. */
 /** The section's rows with each family's nested sessions after its head. */
@@ -580,23 +583,27 @@ export function GroupSection({
 									aria-describedby={awaitingDescribedBy(row)}
 									className="df-drag-shiftable relative"
 								>
-									<SessionRowLink
-										row={row}
-										selected={row.sessionId === activeItemId}
-										pinnedIds={pinnedIds}
-										envGlyph={envGlyph}
-										place={place}
-										awaitingHintId={awaitingHintId}
-										{...(nested === undefined
-											? {}
-											:
-												{
-													nameSuffix: (
-														<FamilyCaret headId={row.sessionId} title={row.title} />
-													),
-													familyHead: true,
-												})}
-									/>
+									{row.pendingLaunch === undefined ? (
+										<SessionRowLink
+											row={row}
+											selected={row.sessionId === activeItemId}
+											pinnedIds={pinnedIds}
+											envGlyph={envGlyph}
+											place={place}
+											awaitingHintId={awaitingHintId}
+											{...(nested === undefined
+												? {}
+												:
+													{
+														nameSuffix: (
+															<FamilyCaret headId={row.sessionId} title={row.title} />
+														),
+														familyHead: true,
+													})}
+										/>
+									) : (
+										<PendingLaunchRow row={row} launch={row.pendingLaunch} envGlyph={envGlyph} />
+									)}
 									<JumpHint rowKey={row.sessionId} />
 								</div>
 								{nested !== undefined && (
@@ -1272,6 +1279,7 @@ function SessionRowLink({
 	const {settings} = useSettings();
 	const blocked = row.bucket === "blocked";
 	const attention = useRowAttention(row.session, selected);
+	const revealTitle = useLaunchTitleReveal(row.sessionId);
 	// Upstream draws no PR tail on pinned rows.
 	const prTail =
 		pinnedIds === undefined && settings.sessionListPrefs.showPrStatus && row.session.prStatus !== undefined
@@ -1290,7 +1298,7 @@ function SessionRowLink({
 	const rowTitleLabel = (
 		<SessionRowTitle
 			render={(title) => (
-				<FadeLabel text={title} attention={attention} still={selected || multiSelected}>
+				<FadeLabel text={title} attention={attention} still={selected || multiSelected} reveal={revealTitle}>
 					{/* Upstream's o_: archived rows get a sr-only " Archived" right after the title, no pill */}
 					{row.archived && <span className="sr-only"> Archived</span>}
 					<SidebarRowSrText session={row.session} paneSelected={selected} />
@@ -1351,7 +1359,7 @@ function SessionRowLink({
 						})}
 				// Upstream's row shell owns the background. The selected tint keys off the link's data-selected
 				// (which nav-scroll and roving focus watch), so switching rows mutates no extra attribute.
-				className="rounded-[var(--sb-radius)] hover:bg-[var(--sb-hover)] has-[:focus-visible]:bg-[var(--sb-hover)] data-[menu-open=true]:bg-[var(--sb-hover)] data-[context-menu-open=true]:bg-[var(--sb-hover)] has-[[data-row-main-button][data-selected=focused]]:bg-[var(--sb-session-selected)] hover:has-[[data-row-main-button][data-selected=focused]]:bg-[var(--selected-hover,var(--sb-session-selected))]"
+				className={ROW_SHELL_CLASS}
 				{...(pinnedIds === undefined
 					? {}
 					:
@@ -1417,6 +1425,64 @@ function SessionRowLink({
 	);
 }
 
+/** The row shell's background recipe, shared by session rows and the pending launch row. */
+const ROW_SHELL_CLASS =
+	"rounded-[var(--sb-radius)] hover:bg-[var(--sb-hover)] has-[:focus-visible]:bg-[var(--sb-hover)] data-[menu-open=true]:bg-[var(--sb-hover)] data-[context-menu-open=true]:bg-[var(--sb-hover)] has-[[data-row-main-button][data-selected=focused]]:bg-[var(--sb-session-selected)] hover:has-[[data-row-main-button][data-selected=focused]]:bg-[var(--selected-hover,var(--sb-session-selected))]";
+
+const ROW_MAIN_CLASS = `${ROW_CLASS} text-secondary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--color-accent-100),0_0_6px_0_color-mix(in_srgb,var(--color-accent-100)_20%,transparent)] data-[selected=focused]:text-primary data-[multi-selected]:bg-[var(--sb-session-selected)] data-[multi-selected]:text-primary`;
+
+/**
+ * Upstream's optimistic spawn row (`EY` while `rowKey in A_.pending`): a launch this tab started, drawn in Working
+ * before its session has a row. The title is the `RM` skeleton with its sr "Loading", beside the persistent " Running"
+ * status and the running mark. It has no menu or hover card, and links to the session only once herdr names it.
+ */
+function PendingLaunchRow({
+	row,
+	launch,
+	envGlyph,
+}: {
+	row: SidebarSessionRow;
+	launch: PendingLaunchEntry;
+	envGlyph: boolean;
+})
+{
+	const selected = launch.opens;
+	const titleLine = (
+		<>
+			<span data-row-label className="min-w-0 flex-1 ps-2">
+				<FadeLabel text="" skeleton>
+					<SidebarRowSrText session={row.session} paneSelected={selected} />
+				</FadeLabel>
+			</span>
+			<span className="shrink-0 flex items-center gap-1.5 text-xs text-muted-as-secondary me-[calc(var(--sb-row-ctl-inset)+var(--sb-row-ctl)-var(--sb-row-px))]" />
+		</>
+	);
+	return (
+		<div data-row="" data-session-actions="" className={`group/session-row relative ${ROW_SHELL_CLASS}`}>
+			{launch.sessionId === null ? (
+				<span data-row-main-button data-selected={selected ? "focused" : undefined} className={ROW_MAIN_CLASS}>
+					{titleLine}
+				</span>
+			) : (
+				<Link
+					to="/session/$id"
+					params={
+					{
+						id: launch.sessionId,
+					}}
+					{...ROVING_ITEM_PROPS}
+					data-row-main-button
+					data-selected={selected ? "focused" : undefined}
+					className={ROW_MAIN_CLASS}
+				>
+					{titleLine}
+				</Link>
+			)}
+			<SidebarRowDecoration session={row.session} envGlyph={envGlyph} paneSelected={selected} />
+		</div>
+	);
+}
+
 /**
  * Upstream `ZP`: a working row's title in the strong ShimmerText, phase-locked to the other running
  * shimmers. The selected row's title (`still`) keeps the span but does not sweep.
@@ -1441,11 +1507,17 @@ export function FadeLabel({
 	text,
 	attention,
 	still = false,
+	reveal = false,
+	skeleton = false,
 	children,
 }: {
 	text: string;
 	attention?: RowAttention | undefined;
 	still?: boolean;
+	/** Draw the title through upstream's grapheme reveal (`CR`), first text included: a just-launched row's title. */
+	reveal?: boolean;
+	/** The title is still unknown: upstream's `RM` skeleton stands in for the text. */
+	skeleton?: boolean;
 	children?: ReactNode;
 })
 {
@@ -1487,7 +1559,15 @@ export function FadeLabel({
 		<span ref={ref} dir="auto" className="dframe-fade-label" data-overflowing={overflowing ? "" : undefined}>
 			<span ref={textRef} className="inline-block whitespace-nowrap align-top">
 				<span className="relative" data-attention={attention}>
-					{attention === "working" ? <WorkingTitle text={text} still={still} /> : text}
+					{skeleton ? (
+						<SessionTitleSkeleton />
+					) : reveal ? (
+						<RevealText text={text} />
+					) : attention === "working" ? (
+						<WorkingTitle text={text} still={still} />
+					) : (
+						text
+					)}
 					{children}
 				</span>
 			</span>
