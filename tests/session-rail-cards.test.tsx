@@ -3654,6 +3654,145 @@ describe("Context card breakdown", () =>
 		});
 	});
 
+	describe("stale engine", () =>
+	{
+		const STALE: ContextBreakdown =
+		{
+			...BREAKDOWN,
+			categories: [
+				{
+					name: "Messages",
+					tokens: 100_000,
+					kind: "used",
+				},
+				{
+					name: "Free space",
+					tokens: 100_000,
+					kind: "free",
+				},
+			],
+			totalTokens: 100_000,
+			rawMaxTokens: 200_000,
+			percentage: 50,
+			source: "mod",
+			autoCompactThreshold: 200_000,
+			autocompactSource: "auto",
+			model: "claude-opus-5",
+		};
+
+		async function renderStale(breakdown: Partial<ContextBreakdown>, engineVersion: string | null)
+		{
+			await renderCards(
+				{
+					...INPUTS,
+					usage: null,
+					engineVersion,
+					breakdown:
+					{
+						...STALE,
+						...breakdown,
+					},
+				},
+			);
+			const wrapper = body().querySelector<HTMLElement>("[data-rail-context-stale]");
+			const notice = body().querySelector<HTMLElement>("[data-rail-context-notice]");
+			const rollup = screen
+				.getByRole(
+					"button",
+					{
+						name: /^Context/,
+					},
+				)
+				.querySelector<HTMLElement>("[data-rail-summary]");
+			const warningIcon = rollup?.querySelector("[data-cds='Icon']");
+			return {
+				wrapperClass: wrapper?.className ?? null,
+				wrapperText: wrapper?.textContent ?? null,
+				beforeFooter: wrapper?.nextElementSibling?.matches("[data-rail-context-updated]") ?? null,
+				rowClass: notice?.parentElement?.className ?? null,
+				iconClass: notice?.previousElementSibling?.getAttribute("class") ?? null,
+				noticeClass: notice?.className ?? null,
+				headline: body().querySelector("[data-rail-context-summary]")?.parentElement?.textContent,
+				rollup: rollup?.textContent,
+				rollupTextClass: rollup?.querySelector(".text-warning")?.className ?? null,
+				rollupIconClass: warningIcon?.getAttribute("class") ?? null,
+				rollupIconAlt: warningIcon?.getAttribute("aria-label") ?? null,
+				meter: rollup?.querySelector("[data-testid='rail-meter']") !== null,
+			};
+		}
+
+		it("shows upstream's Limited until Claude Code updates row and the warning rollup when the engine limits the window", async () =>
+		{
+			expect(
+				await renderStale(
+					{
+						autocompactSource: "unknown-model",
+						model: "claude-opus-5-5",
+					},
+					"2.1.400",
+				),
+			).toStrictEqual(
+				{
+					wrapperClass: "px-xs py-xs text-footnote text-secondary",
+					wrapperText: "Limited until Claude Code updates",
+					beforeFooter: true,
+					rowClass: "flex items-center gap-sm",
+					iconClass:
+						"lucide lucide-triangle-exclamation-point lucide-alert-triangle lucide-triangle-alert shrink-0 text-fill-warning",
+					noticeClass: "min-w-0 flex-1",
+					headline: "50% used100k / 200k",
+					rollup: "100k / 200k",
+					rollupTextClass: "min-w-0 truncate text-warning",
+					rollupIconClass:
+						"lucide lucide-triangle-exclamation-point lucide-alert-triangle lucide-triangle-alert shrink-0 text-fill-warning",
+					rollupIconAlt: "Limited until Claude Code updates",
+					meter: false,
+				},
+			);
+		});
+
+		it("explains a misreported window and measures against the real one when the engine is only out of date", async () =>
+		{
+			expect(await renderStale({}, "2.1.218")).toStrictEqual(
+				{
+					wrapperClass: "px-xs py-xs text-footnote text-secondary",
+					wrapperText:
+						"The context limit shown is this session\u2019s actual limit. The engine running this session is out of date and misreports this model\u2019s context window. Update Claude Code where this session runs to fix it.",
+					beforeFooter: true,
+					rowClass: null,
+					iconClass: null,
+					noticeClass: null,
+					headline: "10% used100k / 1M",
+					rollup: "10%",
+					rollupTextClass: null,
+					rollupIconClass: null,
+					rollupIconAlt: null,
+					meter: true,
+				},
+			);
+		});
+
+		it("shows no notice for an up-to-date engine", async () =>
+		{
+			expect(await renderStale({}, "2.1.219")).toStrictEqual(
+				{
+					wrapperClass: null,
+					wrapperText: null,
+					beforeFooter: null,
+					rowClass: null,
+					iconClass: null,
+					noticeClass: null,
+					headline: "50% used100k / 200k",
+					rollup: "50%",
+					rollupTextClass: null,
+					rollupIconClass: null,
+					rollupIconAlt: null,
+					meter: true,
+				},
+			);
+		});
+	});
+
 	describe("compact action", () =>
 	{
 		const COMPACT_INPUTS: SessionRailInputs =

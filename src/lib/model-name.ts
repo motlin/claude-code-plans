@@ -5,6 +5,15 @@
  */
 export const SYNTHETIC_MODEL = "<synthetic>";
 
+/** A model id without its `[1m]` window suffix or `-YYYYMMDD` date: `claude-opus-5-20261001[1m]` -> `claude-opus-5`. */
+export function baseModelId(raw: string): string
+{
+	return raw
+		.trim()
+		.replace(/\[[^\]]*\]$/, "")
+		.replace(/-\d{8}$/, "");
+}
+
 /**
  * Shorten a raw model id to the display name upstream puts on a subagent row:
  * `claude-haiku-4-5-20251001` -> `Haiku 4.5`.
@@ -22,9 +31,7 @@ export function formatModelName(raw: string | null | undefined): string | null
 	const trimmed = raw.trim();
 	if (!trimmed || trimmed === SYNTHETIC_MODEL) return null;
 
-	const withoutWindow = trimmed.replace(/\[[^\]]*\]$/, "");
-	const withoutVendor = withoutWindow.replace(/^claude-/, "");
-	const withoutDate = withoutVendor.replace(/-\d{8}$/, "");
+	const withoutDate = baseModelId(trimmed).replace(/^claude-/, "");
 
 	const [family, ...version] = withoutDate.split("-");
 	if (!family) return null;

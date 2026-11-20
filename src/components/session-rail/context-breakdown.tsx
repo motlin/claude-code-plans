@@ -18,6 +18,7 @@ import {buildContextLegend, type ContextBreakdown, type ContextLegendRow} from "
 import type {McpServerSummary} from "../../lib/api/customize";
 import {toConnectorSlug} from "../../lib/customize/mcp-tool-permissions";
 import {toMdSlug} from "../../lib/md-slug";
+import type {StaleEngine} from "../../lib/stale-engine";
 import {StackedMeter, StackedMeterGroup, StackedMeterSwatch} from "../ui/stacked-meter";
 import {Icon} from "../ui/icon";
 import {Tooltip} from "../ui/tooltip";
@@ -564,6 +565,32 @@ function keyed(rows: readonly ContextLegendRow[]):
 			row,
 		};
 	});
+}
+
+/** Upstream's `vr` label without a desktop updater (`J8Wukb`); also the rail rollup's warning. */
+export const STALE_ENGINE_LIMITED_LABEL = "Limited until Claude Code updates";
+
+/**
+ * Upstream's stale-engine notice `_r` in the Context section's wrapper (c2d611398 `X`): the enforced warning row `vr`,
+ * or the web sentence (`VXumwR`) when the engine only misreports the window. Local has no desktop updater, so neither
+ * "Smaller context window" with its Update button nor the desktop "Restart the app" sentence applies.
+ */
+export function StaleEngineNotice({staleEngine, inset}: {staleEngine: StaleEngine; inset: "px-xs" | "px-lg"})
+{
+	return (
+		<div data-rail-context-stale="" className={`${inset} py-xs text-footnote text-secondary`}>
+			{staleEngine.enforced ? (
+				<div className="flex items-center gap-sm">
+					<Icon name="Warning" size="xs" className="shrink-0 text-fill-warning" />
+					<span data-rail-context-notice="" className="min-w-0 flex-1">
+						{STALE_ENGINE_LIMITED_LABEL}
+					</span>
+				</div>
+			) : (
+				"The context limit shown is this session\u2019s actual limit. The engine running this session is out of date and misreports this model\u2019s context window. Update Claude Code where this session runs to fix it."
+			)}
+		</div>
+	);
 }
 
 /** Upstream's headline block (c2d611398 `X`): the headline over its meter. */

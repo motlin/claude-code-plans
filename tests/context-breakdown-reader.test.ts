@@ -187,6 +187,8 @@ const expectedBreakdown: ContextBreakdown =
 	fetchedAt: "2026-10-30T03:50:12.000Z",
 	source: "mod",
 	autoCompactThreshold: 967_000,
+	autocompactSource: "model-default",
+	model: "claude-haiku-5-5",
 };
 
 describe("ContextMirrorFileSchema", () =>

@@ -179,7 +179,7 @@ const CONTEXT_WINDOWS: ReadonlyArray<readonly [RegExp, number]> = [
 	[/^claude-(opus|sonnet|fable)-5(-|$)/, 1_000_000],
 ];
 
-function contextWindowSizeForModel(modelId: string): number
+export function contextWindowSizeForModel(modelId: string): number
 {
 	return CONTEXT_WINDOWS.find(([pattern]) => pattern.test(modelId))?.[1] ?? DEFAULT_CONTEXT_WINDOW;
 }

@@ -345,6 +345,70 @@ describe("usage popover context section", () =>
 		);
 	});
 
+	it("shows the stale-engine notice in the px-lg inset before the stale footer (upstream c2d611398 X)", () =>
+	{
+		const notice = (breakdown: ContextBreakdown, engineVersion: string | null) =>
+		{
+			renderRing(
+				CONTEXT_ONLY,
+				{
+					...NO_CONTEXT,
+					breakdown,
+					engineVersion,
+				},
+			);
+			const node = openPopover().querySelector("[data-rail-context-stale]");
+			const found =
+				node === null
+					? null
+					:
+						{
+							text: node.textContent,
+							className: node.className,
+							beforeFooter: node.nextElementSibling?.matches("[data-usage-context-updated]") ?? false,
+						};
+			cleanup();
+			return found;
+		};
+		const limited: ContextBreakdown =
+		{
+			...BREAKDOWN,
+			categories: [
+				{
+					name: "Messages",
+					tokens: 100_000,
+					kind: "used",
+				},
+				{
+					name: "Free space",
+					tokens: 100_000,
+					kind: "free",
+				},
+			],
+			totalTokens: 100_000,
+			rawMaxTokens: 200_000,
+			fetchedAt: "2026-11-04T11:00:00.000Z",
+			autocompactSource: "unknown-model",
+			model: "claude-opus-5-5",
+		};
+		expect(
+			{
+				limited: notice(limited, "2.1.400"),
+				fresh: notice(BREAKDOWN, "2.1.400"),
+			},
+		).toStrictEqual(
+			{
+				limited:
+				{
+					text: "Limited until Claude Code updates",
+					className: "px-lg py-xs text-footnote text-secondary",
+					beforeFooter: true,
+				},
+				fresh: null,
+			},
+		);
+	});
+
 	describe("compact row", () =>
 	{
 		const withCompact = (state: CompactActionState, onCompact = vi.fn<() => void>()): UsageRingContext => (

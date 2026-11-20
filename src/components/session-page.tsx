@@ -23,6 +23,7 @@ import {Minimize2} from "lucide-react";
 import {SessionTileFrame} from "./session-tile-frame";
 import {latestBreakdown, preferNewerBreakdown, railContextPercent} from "../lib/context-breakdown";
 import {sessionContextBreakdownQueryOptions} from "../lib/api/context-breakdown";
+import {latestRecordVersion, resolveStaleEngine} from "../lib/stale-engine";
 import {customizeMcpServersQueryOptions, sessionConnectors} from "../lib/api/customize";
 import {usageQueryOptions} from "../lib/api/usage";
 import {focusComposer, getComposerText, refillComposer, refillRejectedSend, takeBackSend} from "../lib/context-attach";
@@ -1007,6 +1008,9 @@ function SessionView({
 		isError: modBreakdownFailed,
 	} = useQuery(sessionContextBreakdownQueryOptions(sessionId));
 	const contextBreakdown = preferNewerBreakdown(commandBreakdown, modBreakdown);
+	// The CLI running the session, for the Context section's stale-engine notice: the live statusline's, else the transcript's.
+	const recordVersion = useMemo(() => latestRecordVersion(transcript.records), [transcript.records]);
+	const engineVersion = statusline?.version ?? recordVersion;
 	// A statusline without `rate_limits` leaves the ring to the account's plan limits.
 	const {data: accountUsage} = useQuery(usageQueryOptions);
 	const composerChin = useMemo(
@@ -2109,7 +2113,10 @@ function SessionView({
 		if (compactSendPendingRef.current) return;
 		void sendCompact(compactDeps);
 	}, [compactDeps]);
-	const railContextPct = railContextPercent(composerChin.usage, contextBreakdown);
+	const railContextPct = railContextPercent(
+		composerChin.usage,
+		contextBreakdown === null ? null : resolveStaleEngine(contextBreakdown, engineVersion).breakdown,
+	);
 	const compactReach = canTypeCompact ? (herdrReconnecting ? "detached" : "live") : "dormant";
 	const compactResponding = workingMarkerState.status !== "idle" || compactSendPending || promptCardPending;
 	const compactInFlight = staleCompactEpisode !== null;
@@ -2138,6 +2145,7 @@ function SessionView({
 		() => (
 		{
 			breakdown: contextBreakdown,
+			engineVersion,
 			breakdownFetching: modBreakdownFetching,
 			working: workingMarkerState.status !== "idle",
 			homeRoot: data.homeRoot,
@@ -2150,6 +2158,7 @@ function SessionView({
 		}),
 		[
 			contextBreakdown,
+			engineVersion,
 			modBreakdownFetching,
 			workingMarkerState.status,
 			data.homeRoot,
@@ -2852,6 +2861,7 @@ function SessionView({
 										canToggleRemoteControl: promptBehavior.hasLivePane && herdr.writesEnabled,
 										usage: composerChin.usage,
 										breakdown: contextBreakdown,
+										engineVersion,
 										openMemoryDialog: composerMemory.open,
 										compact:
 										{

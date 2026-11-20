@@ -64,6 +64,8 @@ export function breakdownFromMirror(file: ContextMirrorFile): ContextBreakdown
 		fetchedAt: file.fetchedAt,
 		source: "mod",
 		autoCompactThreshold: mirrorAutoCompactThreshold(breakdown),
+		autocompactSource: breakdown.autocompactSource,
+		model: breakdown.model,
 	};
 }
 

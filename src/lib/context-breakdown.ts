@@ -1,4 +1,4 @@
-import type {ContextUsageTwin} from "./schemas";
+import type {ContextUsageTwin, ContextWindowSource} from "./schemas";
 import {ContextUsageTwinSchema} from "./runtime-schemas";
 import {autoCompactThreshold} from "./compact-action";
 
@@ -39,6 +39,10 @@ export interface ContextBreakdown
 	source: "context-command" | "mod";
 	/** Upstream `Xa`: the token count auto-compact fires at, null when it is off or unknown. */
 	autoCompactThreshold: number | null;
+	/** How the CLI settled the window (the mod's `autocompactSource`); the `/context` twin has none. */
+	autocompactSource?: ContextWindowSource | undefined;
+	/** The model the CLI measured the window for (the mod's `model`); the `/context` twin has none. */
+	model?: string | undefined;
 }
 
 /** The "Autocompact buffer" row's tokens: the headroom auto-compact keeps below the window. */

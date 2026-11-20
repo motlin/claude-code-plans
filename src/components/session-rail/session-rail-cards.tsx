@@ -36,6 +36,7 @@ import {autoCompactHint, type CompactActionState} from "../../lib/compact-action
 import {buildContextLegend, contextRefreshHint, type ContextBreakdown} from "../../lib/context-breakdown";
 import {formatContextSummary, formatTokenCount, formatUpdatedAgo, type ComposerUsage} from "../../lib/composer-state";
 import {prGlyph, type PrStatus} from "../../lib/pr-status";
+import {resolveStaleEngine} from "../../lib/stale-engine";
 import {requestFileOpen} from "../../lib/file-open-requests";
 import {formatCount} from "../../lib/pluralize";
 import {useRailNoConnectors} from "../../lib/rail-no-connectors";
@@ -60,7 +61,14 @@ import {ConnectorLetterTile} from "../connector-letter-tile";
 import {FileTypeIcon} from "../file-type-icon";
 import {usePaneHost} from "../panes/pane-host-context";
 import {CompactActionRow} from "./compact-action-row";
-import {CONTEXT_HEADLINE_BLOCK_CLASS, ContextBreakdownBody, ContextHeadline} from "./context-breakdown";
+import
+{
+	CONTEXT_HEADLINE_BLOCK_CLASS,
+	ContextBreakdownBody,
+	ContextHeadline,
+	STALE_ENGINE_LIMITED_LABEL,
+	StaleEngineNotice,
+} from "./context-breakdown";
 import {useToast} from "../toast-context";
 import {Menu, MenuContent, MenuItem, MenuTrigger} from "../ui/menu";
 import {Skeleton} from "../ui/skeleton";
@@ -89,6 +97,8 @@ export interface SessionRailInputs
 	usage: ComposerUsage | null;
 	/** The newest `/context` run's per-category breakdown, null when none or stale. */
 	breakdown: ContextBreakdown | null;
+	/** The CLI version running the session, for the stale-engine notice; null or absent when unknown. */
+	engineVersion?: string | null | undefined;
 	/** Opens the Memory dialog; null when this session page can't show it (upstream's panel-store `openMemoryDialog`). */
 	openMemoryDialog?: (() => void) | null;
 	/** The Context card's Compact session row: its availability and the `/compact` send. */
@@ -378,13 +388,25 @@ function compactRow(inputs: SessionRailInputs, threshold: number | null): React.
 /** Upstream's rail Context card: "N% used" over the token summary, a 4px meter, and when the usage was last updated. */
 function contextCard(inputs: SessionRailInputs, connectors: readonly McpServerSummary[]): RailCard
 {
-	const {usage, working, breakdown} = inputs;
-	if (breakdown !== null)
+	const {usage, working} = inputs;
+	if (inputs.breakdown !== null)
 	{
+		const {staleEngine, breakdown} = resolveStaleEngine(inputs.breakdown, inputs.engineVersion ?? null);
 		const liveTokens = usage?.contextTokens ?? null;
+		const {usedTokens, usedPct} = buildContextLegend(breakdown, liveTokens);
 		return {
 			id: "context",
-			rollupPct: Math.min(100, Math.round(buildContextLegend(breakdown, liveTokens).usedPct)),
+			// Upstream's `zC`: the notice row turns the rollup into the warning-coloured token summary.
+			...(staleEngine?.enforced === true
+				?
+					{
+						summary: `${formatTokenCount(usedTokens)} / ${formatTokenCount(breakdown.rawMaxTokens)}`,
+						rollupWarning: STALE_ENGINE_LIMITED_LABEL,
+					}
+				:
+					{
+						rollupPct: Math.min(100, Math.round(usedPct)),
+					}),
 			body: (
 				<div className="flex flex-col">
 					<ContextBreakdownBody
@@ -395,6 +417,7 @@ function contextCard(inputs: SessionRailInputs, connectors: readonly McpServerSu
 						openMemory={inputs.openMemoryDialog ?? null}
 					/>
 					{compactRow(inputs, breakdown.autoCompactThreshold)}
+					{staleEngine !== null && <StaleEngineNotice staleEngine={staleEngine} inset="px-xs" />}
 					<ContextUpdated updatedAt={breakdown.fetchedAt} working={working} source={breakdown.source} />
 				</div>
 			),

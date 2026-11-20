@@ -2302,6 +2302,53 @@ describe("session rail card summary", () =>
 			},
 		);
 	});
+
+	it("draws a warning rollup as the warning-coloured summary and a Warning icon instead of the meter (upstream Ve)", () =>
+	{
+		render(
+			<SessionRail
+				sessionId="s1"
+				cards={[
+					{
+						id: "context",
+						summary: "190.2k / 200k",
+						rollupWarning: "Limited until Claude Code updates",
+						body: <p>context body</p>,
+					},
+				]}
+			/>,
+		);
+		const summary = screen
+			.getByRole(
+				"button",
+				{
+					name: /^Context/,
+				},
+			)
+			.querySelector<HTMLElement>("[data-rail-summary]");
+		const shell = summary?.firstElementChild;
+		const icon = shell?.querySelector("[data-cds='Icon']");
+		expect(
+			{
+				text: summary?.textContent,
+				shell: shell?.className,
+				textClass: shell?.firstElementChild?.className,
+				iconClass: icon?.getAttribute("class"),
+				iconAlt: icon?.getAttribute("aria-label"),
+				meter: summary?.querySelector("[data-testid='rail-meter']") ?? null,
+			},
+		).toStrictEqual(
+			{
+				text: "190.2k / 200k",
+				shell: "flex items-center justify-end gap-1.5",
+				textClass: "min-w-0 truncate text-warning",
+				iconClass:
+					"lucide lucide-triangle-exclamation-point lucide-alert-triangle lucide-triangle-alert shrink-0 text-fill-warning",
+				iconAlt: "Limited until Claude Code updates",
+				meter: null,
+			},
+		);
+	});
 });
 
 describe("session rail header menu", () =>

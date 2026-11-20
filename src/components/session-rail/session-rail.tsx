@@ -58,6 +58,7 @@ import
 	type RailSectionId,
 	type RailSectionsState,
 } from "../../lib/session-rail-store";
+import {Icon} from "../ui/icon";
 import {TooltipPortalContext} from "../ui/tooltip-portal-context";
 import
 {
@@ -78,6 +79,8 @@ export interface RailCard
 	summary?: string | undefined;
 	/** Upstream's percentage rollup: `N%` plus a 24x10 mini meter, in place of `summary`. */
 	rollupPct?: number | undefined;
+	/** Upstream's warning rollup: `summary` in the warning colour plus a Warning icon with this alt, in place of the percentage. */
+	rollupWarning?: string | undefined;
 	body: ReactNode;
 }
 
@@ -144,6 +147,21 @@ function RollupSummary({pct}: {pct: number})
 			</span>
 		</span>
 	);
+}
+
+/** Upstream's `Ve` (cdbb20c70): the header rollup as a warning, a percentage with its mini meter, or plain text. */
+function railSummary(card: RailCard): ReactNode
+{
+	if (card.rollupWarning !== undefined)
+	{
+		return (
+			<span className="flex items-center justify-end gap-1.5">
+				<span className="min-w-0 truncate text-warning">{card.summary}</span>
+				<Icon name="Warning" size="xs" className="shrink-0 text-fill-warning" alt={card.rollupWarning} />
+			</span>
+		);
+	}
+	return card.rollupPct === undefined ? card.summary : <RollupSummary pct={card.rollupPct} />;
 }
 
 /**
@@ -312,11 +330,7 @@ function RailSection({
 											: {})}
 										className={`ms-auto min-w-0 truncate ps-sm text-footnote font-normal text-muted-as-secondary group-hover/railtop:opacity-0 group-has-[[data-rail-grip]:focus-visible]/railtop:opacity-0 ${open ? "invisible" : ""}`}
 									>
-										{card.rollupPct === undefined ? (
-											card.summary
-										) : (
-											<RollupSummary pct={card.rollupPct} />
-										)}
+										{railSummary(card)}
 									</span>
 								)}
 								<span

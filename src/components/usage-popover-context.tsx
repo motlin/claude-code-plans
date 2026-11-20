@@ -8,8 +8,9 @@ import
 	formatUpdatedAgo,
 } from "../lib/composer-state";
 import {type ContextBreakdown, contextRefreshHint} from "../lib/context-breakdown";
+import {resolveStaleEngine} from "../lib/stale-engine";
 import {CompactActionRow} from "./session-rail/compact-action-row";
-import {ContextBreakdownCard} from "./session-rail/context-breakdown";
+import {ContextBreakdownCard, StaleEngineNotice} from "./session-rail/context-breakdown";
 import {usageFillClass} from "./session-rail/usage-fill";
 import {Icon} from "./ui/icon";
 import {Spinner} from "./ui/spinner";
@@ -19,6 +20,8 @@ export interface UsageRingContext
 {
 	/** The newest `/context` or mod breakdown, null when none or stale. */
 	breakdown: ContextBreakdown | null;
+	/** The CLI version running the session, for the stale-engine notice; null or absent when unknown. */
+	engineVersion?: string | null | undefined;
 	/** The breakdown query is loading. */
 	breakdownFetching: boolean;
 	/** A turn is running: the footer says the usage refreshes when it ends. */
@@ -88,7 +91,10 @@ export function UsagePopoverContextSection({
 	onCompact: () => void;
 })
 {
-	const breakdown = context?.breakdown ?? null;
+	const resolved =
+		context?.breakdown == null ? null : resolveStaleEngine(context.breakdown, context.engineVersion ?? null);
+	const breakdown = resolved?.breakdown ?? null;
+	const staleEngine = resolved?.staleEngine ?? null;
 	const fetching = context?.breakdownFetching ?? false;
 	const canExpand = breakdown !== null || fetching;
 	const tokens = usage.contextTokens ?? 0;
@@ -137,6 +143,7 @@ export function UsagePopoverContextSection({
 					onCompact={onCompact}
 				/>
 			)}
+			{staleEngine !== null && <StaleEngineNotice staleEngine={staleEngine} inset="px-lg" />}
 			{stale && (
 				<div data-usage-context-updated="" className="mt-pad-xs px-lg pb-xs text-footnote text-secondary">
 					Last updated{" "}

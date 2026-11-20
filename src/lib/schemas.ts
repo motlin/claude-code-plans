@@ -2243,6 +2243,8 @@ export const ContextWindowSourceSchema = z.enum([
 	"auto",
 ]);
 
+export type ContextWindowSource = z.infer<typeof ContextWindowSourceSchema>;
+
 /** The CLI's `ModelUsage`: the four token counts of one API response. */
 const ContextApiUsageSchema = z
 	.object(
