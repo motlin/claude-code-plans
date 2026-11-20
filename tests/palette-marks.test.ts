@@ -534,11 +534,11 @@ describe("fitPaletteEmptyView", () =>
 	{
 		const awaiting = rows("a", 9, "awaiting");
 		const plain = rows("p", 5);
-		// The organic recents pool is the 7 newest rows, which here are all leads.
+		// The organic recents pool is the 9 newest rows, which here are all leads.
 		const groups = fitPaletteEmptyView(
 			{
 				leads: awaiting,
-				recents: [...awaiting, ...plain].slice(0, 7),
+				recents: [...awaiting, ...plain].slice(0, 9),
 				actions: NEW_SESSION,
 			},
 		);
@@ -700,7 +700,7 @@ describe("fitPaletteEmptyView with the pinned jump row", () =>
 		return fitPaletteEmptyView(
 			{
 				leads,
-				recents: [...leads, ...plain].slice(0, 7),
+				recents: [...leads, ...plain].slice(0, 9),
 				actions: NEW_SESSION,
 				jump: JUMP,
 			},

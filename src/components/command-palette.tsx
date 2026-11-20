@@ -273,8 +273,8 @@ const GROUP_CLASS =
 /** Fetched deep enough that sessions needing attention surface even when they are not the newest. */
 export const PALETTE_RECENT_LIMIT = 25;
 
-/** Upstream's organic Recents pool, before the empty-view fitter trims it. */
-const RECENTS_POOL = 7;
+/** Upstream's empty-view Recents pool (`df = 9`), before the fitter trims it. */
+const RECENTS_POOL = 9;
 
 /**
  * Upstream debounces its server search by 500ms (`Vn(query,500)`) because that search is remote

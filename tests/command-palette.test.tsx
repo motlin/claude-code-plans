@@ -4262,6 +4262,106 @@ describe("CommandPalette shell", () =>
 		]);
 	});
 
+	it("gives a running lead past the 5-lead cap no Active group, leaving it to the Recents pool order", async () =>
+	{
+		const recent = new Date(Date.now() - 60_000).toISOString();
+		const running = recentSession(
+			"s-run",
+			"Running one",
+			"working",
+			{
+				mtime: recent,
+			},
+		);
+		const waiting = Array.from(
+			{
+				length: 5,
+			},
+			(_, index) => recentSession(`w-${index}`, `Waiting ${index}`, "blocked"),
+		);
+		const needsAttention: [string, string[]] = [
+			"Needs attention",
+			waiting.map((row) => `${row.title} Awaiting input`),
+		];
+
+		const buried = await openPalette([
+			recentSession("p-1", "Plain 1"),
+			recentSession("p-2", "Plain 2"),
+			running,
+			...waiting,
+		]);
+		await within(buried).findByRole(
+			"option",
+			{
+				name: /Waiting 0/,
+			},
+		);
+		expect(
+			{
+				groups: groupLabels(buried),
+				active: within(buried).queryByRole(
+					"group",
+					{
+						name: "Active",
+					},
+				),
+				running: within(buried).queryByRole(
+					"option",
+					{
+						name: /Running one/,
+					},
+				),
+			},
+		).toStrictEqual(
+			{
+				groups: [needsAttention, ["Recents", ["Plain 1", "Plain 2"]], ["Actions", ["New session"]]],
+				active: null,
+				running: null,
+			},
+		);
+		cleanup();
+
+		const leading = await openPalette([
+			running,
+			recentSession("p-1", "Plain 1"),
+			recentSession("p-2", "Plain 2"),
+			...waiting,
+		]);
+		await within(leading).findByRole(
+			"option",
+			{
+				name: /Running one/,
+			},
+		);
+		expect(
+			{
+				groups: groupLabels(leading),
+				active: within(leading).queryByRole(
+					"group",
+					{
+						name: "Active",
+					},
+				),
+				dot: markDot(
+					within(leading)
+						.getByRole(
+							"option",
+							{
+								name: /Running one/,
+							},
+						)
+						.querySelector("[data-palette-mark-dot]"),
+				),
+			},
+		).toStrictEqual(
+			{
+				groups: [needsAttention, ["Recents", ["Running one Running", "Plain 1"]], ["Actions", ["New session"]]],
+				active: null,
+				dot: BRAND_DOT,
+			},
+		);
+	});
+
 	it("rank-sorts recent leads and splits running ones into an Active group after Needs attention", async () =>
 	{
 		const recent = new Date(Date.now() - 60_000).toISOString();
@@ -6545,6 +6645,65 @@ describe("CommandPalette Recents from the per-tab visit MRU", () =>
 				label: "Untitled",
 			},
 		]);
+	});
+
+	it("keeps upstream's 9-row Recents pool, which the fitter trims to 8 rows beside New session", async () =>
+	{
+		const dialog = await openPalette(
+			Array.from(
+				{
+					length: 10,
+				},
+				(_, index) => recentSession(`s-${index}`, `Recent ${index}`),
+			),
+		);
+
+		await within(dialog).findByRole(
+			"option",
+			{
+				name: /Recent 0/,
+			},
+		);
+		expect(groupLabels(dialog)).toStrictEqual([
+			[
+				"Recents",
+				Array.from(
+					{
+						length: 8,
+					},
+					(_, index) => `Recent ${index}`,
+				),
+			],
+			["Actions", ["New session"]],
+		]);
+	});
+
+	it("keeps upstream's 9-row pool for visited recents too, fitted to 8 rows", async () =>
+	{
+		saveRecents(
+			Array.from(
+				{
+					length: 10,
+				},
+				(_, index) => entry("plan", `plan-${index}`, `/plan/plan-${index}`, `Plan ${index}`),
+			),
+		);
+		const dialog = await openPalette([]);
+
+		await within(dialog).findByRole(
+			"option",
+			{
+				name: /Plan 0/,
+			},
+		);
+		expect(recentsGroup(dialog).map((row) => row.label)).toStrictEqual(
+			Array.from(
+				{
+					length: 8,
+				},
+				(_, index) => `Plan ${index}`,
+			),
+		);
 	});
 
 	it("falls back to mtime-ordered sessions when the MRU is empty", async () =>
