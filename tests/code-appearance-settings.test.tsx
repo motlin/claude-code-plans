@@ -364,6 +364,8 @@ describe("Appearance settings ▸ Code", () =>
 				wrapper: trigger.closest("[data-settings-control] > div")?.className.split(" ").includes("w-56"),
 				trigger: trigger.textContent,
 				lastSlugs: slugs.slice(-2),
+				codeFontDescription: document.querySelector('[data-settings-row="code-font"] [data-settings-desc]')
+					?.textContent,
 				filter: screen.queryByRole("searchbox"),
 				options: screen.getAllByRole("option").map((option) => option.textContent),
 				selected: screen
@@ -378,6 +380,7 @@ describe("Appearance settings ▸ Code", () =>
 				wrapper: true,
 				trigger: "Default · 13 px",
 				lastSlugs: ["code-font", "code-font-size"],
+				codeFontDescription: "Use your own monospace font for code and the terminal.",
 				filter: null,
 				options: ["Default · 13 px", "11 px", "12 px", "13 px", "14 px", "15 px", "16 px", "18 px", "20 px"],
 				selected: ["Default · 13 px"],

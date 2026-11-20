@@ -204,7 +204,7 @@ afterEach(() =>
 
 describe("Claude Code settings ▸ Sessions", () =>
 {
-	it("renders section#local-sessions after Appearance with upstream's rows and copy", async () =>
+	it("renders upstream's merged groups: Appearance + Sessions behavior, then Local development, then Remote Control last", async () =>
 	{
 		vi.stubGlobal(
 			"fetch",
@@ -218,40 +218,97 @@ describe("Claude Code settings ▸ Sessions", () =>
 		await renderTab();
 		await settled();
 
-		const section = document.querySelector<HTMLElement>("section#local-sessions");
+		const rowsOf = (section: Element | null) =>
+			[...(section?.querySelectorAll<HTMLElement>("[data-settings-row]") ?? [])].map((r) => (
+			{
+				slug: r.dataset["settingsRow"],
+				title: r.querySelector(".settings-row-title")?.textContent,
+				description: r.querySelector("[data-settings-desc]")?.textContent,
+			}));
+		const shape = (element: Element): unknown =>
+			element.tagName === "SECTION"
+				?
+					{
+						section: element.id,
+						heading: element.querySelector("h3")?.textContent,
+						rows: rowsOf(element).map((r) => r.slug),
+					}
+				:
+					{
+						testId: element.getAttribute("data-testid"),
+						className: element.className,
+						children: [...element.children].map(shape),
+					};
+		const mergeGroup =
+			"mb-10 empty:hidden [&>section+section>[data-settings-group-header]]:hidden [&>section+section]:-mt-10 [&>section+section]:border-t [&>section+section[data-settings-section-titled]]:border-alpha-1";
+		const panel = document.querySelector("[data-testid=settle-code-sections]")?.parentElement;
+
 		expect(
 			{
-				sections: [...document.querySelectorAll("section[data-settings-section-titled]")].map((s) => s.id),
-				heading: section?.querySelector("h3")?.textContent,
-				rows: [...(section?.querySelectorAll<HTMLElement>("[data-settings-row]") ?? [])].map((r) => (
-				{
-					slug: r.dataset["settingsRow"],
-					title: r.querySelector(".settings-row-title")?.textContent,
-					description: r.querySelector("[data-settings-desc]")?.textContent,
-				})),
+				layout: [...(panel?.children ?? [])].map(shape),
+				legacySection: document.querySelector("section#local-sessions"),
+				behavior: rowsOf(document.querySelector("section#local-sessions-behavior")),
+				local: rowsOf(document.querySelector("section#local-sessions-local")),
 			},
 		).toStrictEqual(
 			{
-				sections: ["appearance", "remote-control", "local-sessions"],
-				heading: "Sessions",
-				rows: [
+				layout: [
 					{
-						slug: "allow-bypass-permissions-mode",
-						title: "Allow bypass permissions mode",
-						description:
-							"Bypass all permission checks and let Claude work uninterrupted. This works well for workflows like fixing lint errors or generating boilerplate code. Letting Claude run arbitrary commands is risky and can result in data loss, system corruption, or data exfiltration (e.g., via prompt injection attacks). See best practices for safe usage(opens in new tab)",
+						testId: "settle-code-sections",
+						className: "flow-root",
+						children: [
+							{
+								testId: null,
+								className: mergeGroup,
+								children: [
+									{
+										section: "appearance",
+										heading: "Appearance",
+										rows: ["default-transcript-view"],
+									},
+									{
+										section: "local-sessions-behavior",
+										heading: "Sessions",
+										rows: ["dynamic-workflows", "switch-models-local", "output-style"],
+									},
+								],
+							},
+						],
 					},
+					{
+						testId: "settle-code-sections-rest",
+						className: "flow-root mt-10 empty:hidden",
+						children: [
+							{
+								testId: null,
+								className: mergeGroup,
+								children: [
+									{
+										section: "local-sessions-local",
+										heading: "Local development",
+										rows: [
+											"allow-bypass-permissions-mode",
+											"archive-inactive-sessions",
+											"local-sandbox",
+											"strict-sandbox-mode",
+										],
+									},
+								],
+							},
+							{
+								section: "remote-control",
+								heading: "Remote Control",
+								rows: ["connect-new-sessions-to-remote-control"],
+							},
+						],
+					},
+				],
+				legacySection: null,
+				behavior: [
 					{
 						slug: "dynamic-workflows",
 						title: "Dynamic workflows",
-						description:
-							"Let Claude run multiple agents in parallel for complex tasks. Workflows can use a lot of your usage limit quickly.",
-					},
-					{
-						slug: "archive-inactive-sessions",
-						title: "Archive inactive sessions",
-						description:
-							"Automatically archive local sessions after a period of no activity. Sessions that are running or have background work are never archived, and a worktree with uncommitted changes is kept on disk.",
+						description: "Let Claude run several agents at once on complex tasks. Uses your limit faster.",
 					},
 					{
 						slug: "switch-models-local",
@@ -262,8 +319,21 @@ describe("Claude Code settings ▸ Sessions", () =>
 					{
 						slug: "output-style",
 						title: "Output style",
+						description: "How Claude structures its responses in new Code sessions.",
+					},
+				],
+				local: [
+					{
+						slug: "allow-bypass-permissions-mode",
+						title: "Allow bypass permissions mode",
 						description:
-							"How Claude structures its responses in Code sessions. Applies to new sessions; the session menu can override it for a single session.",
+							"Bypass all permission checks and let Claude work uninterrupted. This works well for workflows like fixing lint errors or generating boilerplate code. Letting Claude run arbitrary commands is risky and can result in data loss, system corruption, or data exfiltration (e.g., via prompt injection attacks). See best practices for safe usage(opens in new tab)",
+					},
+					{
+						slug: "archive-inactive-sessions",
+						title: "Archive inactive sessions",
+						description:
+							"Archive sessions after a stretch with no activity. Running sessions and uncommitted changes are kept.",
 					},
 					{
 						slug: "local-sandbox",
@@ -1225,7 +1295,7 @@ describe("Claude Code settings ▸ row chrome", () =>
 
 describe("Claude Code settings ▸ Remote Control", () =>
 {
-	it("renders section#remote-control before Sessions with one Connect new sessions switch row", async () =>
+	it("renders section#remote-control last with one Connect new sessions switch row", async () =>
 	{
 		vi.stubGlobal(
 			"fetch",
@@ -1243,7 +1313,7 @@ describe("Claude Code settings ▸ Remote Control", () =>
 		expect(
 			{
 				heading: section?.querySelector("h3")?.textContent,
-				nextSection: section?.nextElementSibling?.id,
+				nextSection: section?.nextElementSibling ?? null,
 				rows: [...(section?.querySelectorAll<HTMLElement>("[data-settings-row]") ?? [])].map((r) => (
 				{
 					slug: r.dataset["settingsRow"],
@@ -1255,13 +1325,12 @@ describe("Claude Code settings ▸ Remote Control", () =>
 		).toStrictEqual(
 			{
 				heading: "Remote Control",
-				nextSection: "local-sessions",
+				nextSection: null,
 				rows: [
 					{
 						slug: "connect-new-sessions-to-remote-control",
 						title: "Connect new sessions to Remote Control",
-						description:
-							"Sessions you start on this computer connect to Remote Control automatically, so you can continue them from other devices.",
+						description: "Pick up new sessions from other devices.",
 						switches: 1,
 					},
 				],

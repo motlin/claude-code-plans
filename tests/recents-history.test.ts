@@ -4,6 +4,7 @@ import
 	RECENTS_HISTORY_MAX,
 	RECENTS_HISTORY_STORAGE_KEY,
 	type RecentEntry,
+	hasSwitchableRecents,
 	loadRecents,
 	push,
 	remove,
@@ -371,6 +372,54 @@ describe("switcherRecents", () =>
 			},
 			session("b"),
 		]);
+	});
+});
+
+describe("hasSwitchableRecents", () =>
+{
+	// Upstream lists ⌃Q in the ⌘/ dialog only while the per-tab history can open something (`Mt`'s `PB()`).
+	it("is true only once the tab's history holds a session or project", () =>
+	{
+		const stored = (entries: RecentEntry[] | null) =>
+		{
+			const storage = new MemoryStorage();
+			if (entries !== null) storage.setItem(RECENTS_HISTORY_STORAGE_KEY, JSON.stringify(entries));
+			return hasSwitchableRecents(storage);
+		};
+		expect(
+			{
+				missing: stored(null),
+				empty: stored([]),
+				pagesOnly: stored([
+					{
+						key: "plan:p",
+						kind: "plan",
+						href: "/plan/p",
+					},
+					{
+						key: "memory:proj/notes",
+						kind: "memory",
+						href: "/memory/proj/notes",
+					},
+				]),
+				session: stored([session("a")]),
+				project: stored([
+					{
+						key: "project:proj",
+						kind: "project",
+						href: "/project/proj",
+					},
+				]),
+			},
+		).toStrictEqual(
+			{
+				missing: false,
+				empty: false,
+				pagesOnly: false,
+				session: true,
+				project: true,
+			},
+		);
 	});
 });
 

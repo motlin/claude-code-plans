@@ -1,9 +1,10 @@
 import {useTerminalCommandsMarked} from "../lib/terminal-marked-store";
 import {Keyboard} from "lucide-react";
-import {Fragment, useCallback, useEffect, useId, useRef, useState, type RefObject} from "react";
+import {Fragment, useCallback, useEffect, useId, useRef, useState, useSyncExternalStore, type RefObject} from "react";
 
 import {useIsMac, useIsWindows} from "../hooks/use-is-mac";
 import {useShortcut} from "../hooks/use-shortcut";
+import {hasSwitchableRecents} from "../lib/recents-history";
 import {platformBindings} from "../lib/shortcuts/match";
 import {bindingToKeys, SHORTCUT_IDS, SHORTCUTS, type ShortcutDefinition} from "../lib/shortcuts/registry";
 import
@@ -17,7 +18,13 @@ import
 import {Kbd, Shortcut} from "./ui/shortcut";
 import {shortcutSections} from "./keyboard-shortcut-sections";
 import {KeyboardShortcutsDialogFrame} from "./keyboard-shortcuts-dialog-frame";
-import {setKeyboardShortcutsOpen} from "./keyboard-shortcuts-open";
+import
+{
+	getKeyboardShortcutsOpen,
+	getServerKeyboardShortcutsOpen,
+	setKeyboardShortcutsOpen,
+	subscribeKeyboardShortcutsOpen,
+} from "./keyboard-shortcuts-open";
 import {GHOST_ICON_BUTTON} from "./ui/dialog-band";
 import {Icon} from "./ui/icon";
 import {TextInput} from "./ui/text-input";
@@ -255,12 +262,21 @@ export function KeyboardShortcutsDialog()
 	}, []);
 
 	const terminalCommandsMarked = useTerminalCommandsMarked();
+	// The dialog stays mounted once loaded, so subscribing to the open store re-reads the tab's recents on every
+	// open; nothing navigates while it is open.
+	const isOpen = useSyncExternalStore(
+		subscribeKeyboardShortcutsOpen,
+		getKeyboardShortcutsOpen,
+		getServerKeyboardShortcutsOpen,
+	);
+	const recentsOpen = isOpen && hasSwitchableRecents();
 	const sections = shortcutSections(
 		SHORTCUT_IDS,
 		(id) =>
 			SHORTCUTS[id].enabled &&
 			!("hiddenFromDialog" in SHORTCUTS[id]) &&
 			(!("when" in SHORTCUTS[id]) || terminalCommandsMarked) &&
+			(!("dialogGate" in SHORTCUTS[id]) || recentsOpen) &&
 			rowKeys(SHORTCUTS[id], isMac, isWindows).length > 0,
 	);
 	const matcher = shortcutMatcher(find, isMac);

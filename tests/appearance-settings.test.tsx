@@ -600,7 +600,7 @@ describe("Appearance settings", () =>
 						desc:
 						{
 							className: "sr-only",
-							text: "Maximum width of the transcript and composer columns.",
+							text: "How wide the conversation and message box can get.",
 						},
 						describedBy: true,
 					},
@@ -684,7 +684,7 @@ describe("Appearance settings", () =>
 				desc:
 				{
 					className: "text-body text-[var(--settings-muted)]",
-					text: "Maximum width of the transcript and composer columns.",
+					text: "How wide the conversation and message box can get.",
 				},
 			},
 			{
@@ -947,8 +947,7 @@ describe("Appearance settings", () =>
 				stored: "verbose",
 				thinking: "true",
 				checked: "Verbose",
-				description:
-					"Default transcript viewResetThe view sessions open in. Picking a view from a session’s Transcript view menu changes only that session.NormalThinkingVerbose",
+				description: "Default transcript viewResetHow much detail new sessions show.NormalThinkingVerbose",
 			},
 		);
 	});
@@ -1066,7 +1065,7 @@ describe("Transcript settings ▸ Custom state", () =>
 			{
 				before: null,
 				unaffected: null,
-				after: "Custom: these toggles differ from the Normal default transcript view (Claude Code ▸ Appearance).",
+				after: "Custom: these toggles differ from the Normal default transcript view (Code ▸ Appearance).",
 			},
 		);
 	});

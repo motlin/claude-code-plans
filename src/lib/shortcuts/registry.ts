@@ -62,6 +62,11 @@ export interface ShortcutDefinition
 	 * surface that owns the keys handles them itself, so nothing binds them through `useShortcut`.
 	 */
 	when?: "terminalCommandsMarked";
+	/**
+	 * Upstream lists the row only while this runtime condition holds, e.g. `Mt`'s `PB()` registry for ⌃Q.
+	 * Unlike `when`, the binding stays live whatever the gate says.
+	 */
+	dialogGate?: "switchableRecents";
 }
 
 function macAndNonMac(
@@ -222,6 +227,7 @@ export const SHORTCUTS =
 		],
 		ownerSlug: "switch-recents",
 		enabled: true,
+		dialogGate: "switchableRecents",
 	},
 	toggle_sidebar:
 	{

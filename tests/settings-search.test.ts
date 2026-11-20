@@ -168,8 +168,8 @@ describe("rankSettingsSections grouping", () =>
 				{
 					tab: "claude-code",
 					rows: [
-						["connect-new-sessions-to-remote-control", "Connect new sessions to Remote Control"],
 						["archive-inactive-sessions", "Archive inactive sessions"],
+						["connect-new-sessions-to-remote-control", "Connect new sessions to Remote Control"],
 					],
 				},
 			],
@@ -418,8 +418,8 @@ describe("rankSettingsSections", () =>
 					tab: "claude-code",
 					score: 7,
 					rows: [
-						["allow-bypass-permissions-mode", 2],
 						["switch-models-local", 2],
+						["allow-bypass-permissions-mode", 2],
 						["strict-sandbox-mode", 2],
 					],
 				},

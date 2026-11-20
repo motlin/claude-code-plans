@@ -153,6 +153,12 @@ export function switcherRecents(entries: readonly RecentEntry[]): SwitcherEntry[
 	return entries.filter(isSwitcherEntry);
 }
 
+/** Whether the ⌃Q switcher has anything to open in this tab (upstream's `ft("q").opens`, entries.length > 0). */
+export function hasSwitchableRecents(storage?: Storage | null): boolean
+{
+	return switcherRecents(storage === undefined ? loadRecents() : loadRecents(storage)).length > 0;
+}
+
 /** Moves `entry` to the front, dropping any older entry with its key; keeps 30 switchable and 30 other pages. */
 export function push(entries: readonly RecentEntry[], entry: RecentEntry): RecentEntry[]
 {

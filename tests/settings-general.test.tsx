@@ -186,7 +186,7 @@ describe("General settings ▸ Appearance", () =>
 					"motion",
 					"hide-chrome",
 				],
-				description: "Maximum width of the transcript and composer columns.",
+				description: "How wide the conversation and message box can get.",
 				width: [
 					{
 						name: "Narrow",
@@ -666,7 +666,7 @@ describe("Notifications settings", () =>
 		).toStrictEqual(
 			{
 				rows: ["response-completions", "code-permission-requests", "notification-sound"],
-				description: "Played when an OS banner is shown.",
+				description: "Plays when a notification appears.",
 				width: true,
 				before: "System sound",
 				options: [

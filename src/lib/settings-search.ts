@@ -99,23 +99,8 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
 	},
 	{
 		tab: "claude-code",
-		rowSlug: "connect-new-sessions-to-remote-control",
-		title: "Connect new sessions to Remote Control",
-	},
-	{
-		tab: "claude-code",
-		rowSlug: "allow-bypass-permissions-mode",
-		title: "Allow bypass permissions mode",
-	},
-	{
-		tab: "claude-code",
 		rowSlug: "dynamic-workflows",
 		title: "Dynamic workflows",
-	},
-	{
-		tab: "claude-code",
-		rowSlug: "archive-inactive-sessions",
-		title: "Archive inactive sessions",
 	},
 	{
 		tab: "claude-code",
@@ -131,6 +116,16 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
 	},
 	{
 		tab: "claude-code",
+		rowSlug: "allow-bypass-permissions-mode",
+		title: "Allow bypass permissions mode",
+	},
+	{
+		tab: "claude-code",
+		rowSlug: "archive-inactive-sessions",
+		title: "Archive inactive sessions",
+	},
+	{
+		tab: "claude-code",
 		rowSlug: "local-sandbox",
 		title: "Local sandbox",
 	},
@@ -138,6 +133,11 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
 		tab: "claude-code",
 		rowSlug: "strict-sandbox-mode",
 		title: "Strict sandbox mode",
+	},
+	{
+		tab: "claude-code",
+		rowSlug: "connect-new-sessions-to-remote-control",
+		title: "Connect new sessions to Remote Control",
 	},
 	{
 		tab: "transcript",

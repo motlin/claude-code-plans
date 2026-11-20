@@ -143,6 +143,7 @@ describe("KeyboardShortcutsDialog", () =>
 			setKeyboardShortcutsOpen(false);
 		});
 		cleanup();
+		sessionStorage.clear();
 		vi.restoreAllMocks();
 		vi.unstubAllGlobals();
 	});
@@ -292,6 +293,16 @@ describe("KeyboardShortcutsDialog", () =>
 	// Exhaustive on purpose: upstream's web dialog has no Ctrl+Shift+1…9 sidebar jump row (only the desktop app lists "Jump to session").
 	it("lists only enabled registry entries, grouped in upstream order", async () =>
 	{
+		sessionStorage.setItem(
+			"ccb-navigation-history",
+			JSON.stringify([
+				{
+					key: "session:00000000-0000-4000-8000-000000000001",
+					kind: "session",
+					href: "/session/00000000-0000-4000-8000-000000000001",
+				},
+			]),
+		);
 		const composer = renderWithComposer();
 		pressShortcutsKey(composer);
 
@@ -368,6 +379,55 @@ describe("KeyboardShortcutsDialog", () =>
 					"Next pane in terminal tab",
 					"Previous pane in terminal tab",
 				],
+			},
+		);
+	});
+
+	// Upstream advertises ⌃Q only while the tab's history can open something (`Mt`'s `PB()`); the key stays live.
+	it("hides Switch between recents until the tab's history holds a session, re-reading it on every open", async () =>
+	{
+		const {input, region} = await openDialog();
+		const generalStart = sectionRowLabels(region, "General").slice(0, 3);
+		typeQuery(input, "recents");
+		const searched = within(region).getByRole("status").textContent;
+		typeQuery(input, "");
+
+		act(() =>
+		{
+			setKeyboardShortcutsOpen(false);
+		});
+		sessionStorage.setItem(
+			"ccb-navigation-history",
+			JSON.stringify([
+				{
+					key: "session:00000000-0000-4000-8000-000000000001",
+					kind: "session",
+					href: "/session/00000000-0000-4000-8000-000000000001",
+				},
+			]),
+		);
+		act(() =>
+		{
+			setKeyboardShortcutsOpen(true);
+		});
+		const reopened = await screen.findByRole(
+			"region",
+			{
+				name: "Shortcuts",
+			},
+		);
+
+		expect(
+			{
+				generalStart,
+				searched,
+				reopenedStart: sectionRowLabels(reopened, "General").slice(0, 3),
+			},
+		).toStrictEqual(
+			{
+				generalStart: ["Search or start a session", "Search", "Toggle sidebar"],
+				searched: "No matching shortcuts",
+				reopenedStart: ["Search or start a session", "Search", "Switch between recents"],
 			},
 		);
 	});

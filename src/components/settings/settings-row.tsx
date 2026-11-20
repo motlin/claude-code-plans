@@ -18,6 +18,13 @@ function sectionId(title: string): string
 		.replaceAll(/^-|-$/g, "");
 }
 
+/**
+ * Upstream's merge-group class (`so`): sections sharing one box, where only the first section's header
+ * shows and a hairline separates the rest. `-mt-10`/`mb-10` are upstream's `xl` (40px).
+ */
+export const SETTINGS_MERGE_GROUP_CLASS =
+	"mb-10 empty:hidden [&>section+section>[data-settings-group-header]]:hidden [&>section+section]:-mt-10 [&>section+section]:border-t [&>section+section[data-settings-section-titled]]:border-alpha-1";
+
 export function SettingsSection({
 	id,
 	title,

@@ -68,7 +68,7 @@ import {HookSetup} from "../hook-setup";
 import {SegmentedControl} from "./segmented-control";
 import {SettingRowChrome} from "./setting-row-chrome";
 import {hasRowChrome, optionDefaultLabel, type SettingRowChromeProps} from "./setting-row-chrome-logic";
-import {SettingsRow, SettingsSection} from "./settings-row";
+import {SETTINGS_MERGE_GROUP_CLASS, SettingsRow, SettingsSection} from "./settings-row";
 import {Switch} from "./switch";
 import {useClaudeCodeSetting} from "./use-claude-code-setting";
 import {DisabledReason} from "../ui/disabled-reason";
@@ -297,7 +297,7 @@ function NotificationSoundRow()
 		<SettingsRow
 			slug="notification-sound"
 			title="Notification sound"
-			description="Played when an OS banner is shown."
+			description="Plays when a notification appears."
 		>
 			<div className="w-[160px]">
 				<ThemedCombobox
@@ -618,7 +618,7 @@ function AppearanceSection()
 			<SettingsRow
 				slug="default-transcript-view"
 				title="Default transcript view"
-				description="The view sessions open in. Picking a view from a session’s Transcript view menu changes only that session."
+				description="How much detail new sessions show."
 				labelAdornment={rowChrome(
 					{
 						modified: settings.verbosity !== DEFAULTS.verbosity,
@@ -646,7 +646,7 @@ function CustomTranscriptViewNote()
 
 	return (
 		<p role="status" className="py-3 text-body text-[var(--settings-muted)]">
-			Custom: these toggles differ from the {preset?.label} default transcript view (Claude Code ▸ Appearance).
+			Custom: these toggles differ from the {preset?.label} default transcript view (Code ▸ Appearance).
 		</p>
 	);
 }
@@ -795,7 +795,7 @@ function TranscriptWidthRow()
 		<AppearanceChoiceRow
 			slug="transcript-width"
 			title="Transcript width"
-			description="Maximum width of the transcript and composer columns."
+			description="How wide the conversation and message box can get."
 			typeLedDescription
 			value={settings.transcriptWidth}
 			options={TRANSCRIPT_WIDTH_OPTIONS}
@@ -1443,7 +1443,7 @@ function CodeAppearanceSection()
 			<SettingsRow
 				slug="code-font"
 				title="Code font"
-				description="Set a custom monospace font for code and terminal."
+				description="Use your own monospace font for code and the terminal."
 				labelAdornment={rowChrome(
 					{
 						modified: settings.codeFont !== DEFAULTS.codeFont,
@@ -1563,11 +1563,7 @@ function OutputStyleRow()
 		<SettingsRow
 			slug="output-style"
 			title="Output style"
-			description={
-				setting.loading
-					? "Loading…"
-					: "How Claude structures its responses in Code sessions. Applies to new sessions; the session menu can override it for a single session."
-			}
+			description={setting.loading ? "Loading…" : "How Claude structures its responses in new Code sessions."}
 			below={setting.writeFailed ? WRITE_FAILED_ALERT : undefined}
 			labelAdornment={rowChrome(
 				{
@@ -1618,7 +1614,7 @@ function ArchiveInactiveSessionsRow()
 			description={
 				setting.isPending
 					? "Loading…"
-					: "Automatically archive local sessions after a period of no activity. Sessions that are running or have background work are never archived, and a worktree with uncommitted changes is kept on disk."
+					: "Archive sessions after a stretch with no activity. Running sessions and uncommitted changes are kept."
 			}
 			below={save.isError ? WRITE_FAILED_ALERT : undefined}
 			labelAdornment={rowChrome(
@@ -1654,15 +1650,44 @@ function ArchiveInactiveSessionsRow()
 }
 
 /**
- * Upstream's desktop Sessions section (`#local-sessions`), whose rows write Claude Code's own
- * settings.json. Local sessions are Claude Code CLIs on this computer, so the rows apply here too.
- * Upstream moves Switch models under its Capabilities tab only when that tab exists, which it never
- * does locally, so the row stays here as upstream's own fallback.
+ * Upstream's desktop Sessions rows (`Dr`), split by part as in its grouped Code page (`xo`): "behavior"
+ * renders `#local-sessions-behavior` "Sessions" (header hidden by the merge group under Appearance), and
+ * "local" renders `#local-sessions-local` "Local development". The rows write Claude Code's own
+ * settings.json; local sessions are Claude Code CLIs on this computer, so they apply here too. Upstream
+ * moves Switch models under its Capabilities tab only when that tab exists, which it never does locally,
+ * so the row stays in the behavior part as upstream's own fallback.
  */
-function LocalSessionsSection()
+function LocalSessionsSection({part}: {part: "behavior" | "local"})
 {
+	if (part === "behavior")
+	{
+		return (
+			<SettingsSection id="local-sessions-behavior" title="Sessions">
+				<ClaudeCodeSwitchRow
+					slug="dynamic-workflows"
+					title="Dynamic workflows"
+					description="Let Claude run several agents at once on complex tasks. Uses your limit faster."
+					settingKey="enableWorkflows"
+					defaultOn
+					isOn={(value) => value !== false}
+					valueFor={(on) => (on ? undefined : false)}
+				/>
+				<ClaudeCodeSwitchRow
+					slug="switch-models-local"
+					title="Switch models in Claude Code on this computer"
+					description="When a message is flagged, switch without asking. When off, Claude asks first, or stops if it can’t ask."
+					settingKey="switchModelsOnFlag"
+					defaultOn
+					isOn={(value) => value !== false}
+					valueFor={(on) => (on ? undefined : false)}
+				/>
+				<OutputStyleRow />
+			</SettingsSection>
+		);
+	}
+
 	return (
-		<SettingsSection id="local-sessions" title="Sessions">
+		<SettingsSection id="local-sessions-local" title="Local development">
 			<ClaudeCodeSwitchRow
 				slug="allow-bypass-permissions-mode"
 				title="Allow bypass permissions mode"
@@ -1686,26 +1711,7 @@ function LocalSessionsSection()
 				managed={(state) => state.bypassPermissionsModeDisabled === true}
 				defaultOn={false}
 			/>
-			<ClaudeCodeSwitchRow
-				slug="dynamic-workflows"
-				title="Dynamic workflows"
-				description="Let Claude run multiple agents in parallel for complex tasks. Workflows can use a lot of your usage limit quickly."
-				settingKey="enableWorkflows"
-				defaultOn
-				isOn={(value) => value !== false}
-				valueFor={(on) => (on ? undefined : false)}
-			/>
 			<ArchiveInactiveSessionsRow />
-			<ClaudeCodeSwitchRow
-				slug="switch-models-local"
-				title="Switch models in Claude Code on this computer"
-				description="When a message is flagged, switch without asking. When off, Claude asks first, or stops if it can’t ask."
-				settingKey="switchModelsOnFlag"
-				defaultOn
-				isOn={(value) => value !== false}
-				valueFor={(on) => (on ? undefined : false)}
-			/>
-			<OutputStyleRow />
 			<ClaudeCodeSwitchRow
 				slug="local-sandbox"
 				title="Local sandbox"
@@ -1746,7 +1752,7 @@ function RemoteControlSection()
 			<ClaudeCodeSwitchRow
 				slug="connect-new-sessions-to-remote-control"
 				title="Connect new sessions to Remote Control"
-				description="Sessions you start on this computer connect to Remote Control automatically, so you can continue them from other devices."
+				description="Pick up new sessions from other devices."
 				settingKey="remoteControlAtStartup"
 				defaultOn={false}
 				isOn={(value) => value === true}
@@ -1756,13 +1762,23 @@ function RemoteControlSection()
 	);
 }
 
+/** Upstream's grouped Code page (`xo`): the settle-code-sections slot, then the -rest slot with Remote Control last. */
 export function ClaudeCodeSettings()
 {
 	return (
 		<>
-			<AppearanceSection />
-			<RemoteControlSection />
-			<LocalSessionsSection />
+			<div data-testid="settle-code-sections" className="flow-root">
+				<div className={SETTINGS_MERGE_GROUP_CLASS}>
+					<AppearanceSection />
+					<LocalSessionsSection part="behavior" />
+				</div>
+			</div>
+			<div data-testid="settle-code-sections-rest" className="flow-root mt-10 empty:hidden">
+				<div className={SETTINGS_MERGE_GROUP_CLASS}>
+					<LocalSessionsSection part="local" />
+				</div>
+				<RemoteControlSection />
+			</div>
 		</>
 	);
 }

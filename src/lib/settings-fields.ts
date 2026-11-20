@@ -261,7 +261,7 @@ export const FIELD_DEFINITIONS: FieldDefinition[] = [
 	{
 		key: "enableWorkflows",
 		label: "Dynamic workflows",
-		description: "Let Claude run multiple agents in parallel for complex tasks",
+		description: "Let Claude run several agents at once on complex tasks. Uses your limit faster.",
 		type: "boolean",
 		section: "Advanced",
 	},
