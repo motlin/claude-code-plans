@@ -5,6 +5,7 @@ import {asRecord} from "./narrow";
 import {SIGNATURE_BYTES} from "./incremental-jsonl";
 import {chainSkeleton, computeAbandoned, type AbandonedBranches} from "./transcript-chain";
 import {collectClaudeChapters, type ClaudeChapterEntry} from "./session-chapters";
+import {goalStatusRow, type GoalStatusRow} from "./session-goal";
 
 /**
  * A per-file index of a transcript JSONL: where each non-blank line sits, the
@@ -47,6 +48,12 @@ export interface TranscriptFileIndex
 	hidden: boolean[];
 	/** Claude's chapters across the whole file (session-chapters.ts), abandoned branches included. */
 	chapters: ClaudeChapterEntry[];
+	/** The file's `goal_status` rows (session-goal.ts), abandoned branches included, by line. */
+	goalRows:
+	{
+		recordIndex: number;
+		row: GoalStatusRow;
+	}[];
 }
 
 export interface OpenTranscriptFile
@@ -101,6 +108,14 @@ function appendLines(index: TranscriptFileIndex, buffer: Buffer, base: number): 
 			if (typeof uuid === "string") index.uuidLines.set(uuid, index.starts.length - 1);
 			index.countable.push(isCountableMessageRecord(record));
 			collectClaudeChapters(index.chapters, record, index.starts.length - 1);
+			const goalRow = goalStatusRow(record);
+			if (goalRow !== null)
+				index.goalRows.push(
+					{
+						recordIndex: index.starts.length - 1,
+						row: goalRow,
+					},
+				);
 			index.partialTail = newline === -1;
 		}
 		if (newline === -1) break;
@@ -168,6 +183,7 @@ function build(
 		},
 		hidden: [],
 		chapters: [],
+		goalRows: [],
 	};
 	appendLines(index, buffer, 0);
 	index.signature = signatureBefore(buffer, 0, index.consumed);
@@ -199,6 +215,7 @@ function extend(fd: number, index: TranscriptFileIndex, size: number, mtimeMs: n
 		const popped = index.starts.length;
 		if (typeof uuid === "string" && index.uuidLines.get(uuid) === popped) index.uuidLines.delete(uuid);
 		index.chapters = index.chapters.filter((chapter) => chapter.recordIndex !== popped);
+		index.goalRows = index.goalRows.filter((goalRow) => goalRow.recordIndex !== popped);
 		index.partialTail = false;
 	}
 	appendLines(index, appended.subarray(index.consumed - from), index.consumed);

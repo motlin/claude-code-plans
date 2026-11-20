@@ -1571,6 +1571,7 @@ function makeTranscriptCache(overrides?: Partial<TranscriptData>): TranscriptDat
 		cuts: [],
 		chainVersion: "v1",
 		chapters: [],
+		goalRows: [],
 		...overrides,
 	};
 }
@@ -1665,6 +1666,7 @@ describe("applySessionLinesAppended", () =>
 				cuts: [],
 				chainVersion: "v1",
 				chapters: [],
+				goalRows: [],
 			},
 		);
 	});
@@ -1760,6 +1762,66 @@ describe("applySessionLinesAppended", () =>
 				recordIndex: 3,
 			},
 		]);
+	});
+
+	it("adds an appended goal_status row to the cached goal rows", () =>
+	{
+		const queryClient = new QueryClient();
+		const early =
+		{
+			timestamp: "2001-01-01T00:00:00.000Z",
+			attachment:
+			{
+				met: false,
+				sentinel: true,
+				condition: "fake goal",
+			},
+		};
+		queryClient.setQueryData(
+			sessionQueryKeys.transcript("sess-1"),
+			makeTranscriptCache(
+				{
+					goalRows: [early],
+				},
+			),
+		);
+
+		applySessionLinesAppended(
+			queryClient,
+			"sess-1",
+			{
+				sessionId: "sess-1",
+				lines: [
+					{
+						type: "attachment",
+						uuid: "g-1",
+						timestamp: "2001-01-01T00:01:00.000Z",
+						attachment:
+						{
+							type: "goal_status",
+							met: false,
+							condition: "fake goal",
+							reason: "fake reason",
+						},
+					},
+				],
+			},
+		);
+
+		expect(queryClient.getQueryData<TranscriptData>(sessionQueryKeys.transcript("sess-1"))?.goalRows).toStrictEqual(
+			[
+				early,
+				{
+					timestamp: "2001-01-01T00:01:00.000Z",
+					attachment:
+					{
+						met: false,
+						condition: "fake goal",
+						reason: "fake reason",
+					},
+				},
+			],
+		);
 	});
 
 	it("marks the api request log stale only when api request records are appended", () =>
@@ -1881,6 +1943,7 @@ describe("applySessionLinesAppended", () =>
 				cuts: [],
 				chainVersion: "v1",
 				chapters: [],
+				goalRows: [],
 			},
 		);
 	});
@@ -1961,6 +2024,7 @@ describe("applySessionLinesAppended", () =>
 				cuts: [],
 				chainVersion: "v1",
 				chapters: [],
+				goalRows: [],
 			},
 		);
 	});
@@ -2033,6 +2097,7 @@ describe("applySessionLinesAppended", () =>
 				cuts: [],
 				chainVersion: "v1",
 				chapters: [],
+				goalRows: [],
 			},
 		);
 	});

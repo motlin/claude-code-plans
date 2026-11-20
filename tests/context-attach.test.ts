@@ -28,8 +28,10 @@ import
 	joinPrefill,
 	prefillComposer,
 	requestComposerShellLine,
+	prefillEmptyComposer,
+	prefillEmptyVerdict,
 	type ContextAttachment,
-	type ShellLineResult,
+	type PrefillResult,
 } from "../src/lib/context-attach";
 import
 {
@@ -1379,7 +1381,7 @@ describe("prefillComposer", () =>
 
 describe("requestComposerShellLine (upstream prefillEmptyShellLine)", () =>
 {
-	function shellHandle(prefillShell?: (command: string, ignoreStrayEnter: boolean) => ShellLineResult)
+	function shellHandle(prefillShell?: (command: string, ignoreStrayEnter: boolean) => PrefillResult)
 	{
 		return {
 			insertText: () =>
@@ -1404,7 +1406,7 @@ describe("requestComposerShellLine (upstream prefillEmptyShellLine)", () =>
 
 	it("passes the composer's result and the stray-Enter flag through", () =>
 	{
-		const prefillShell = vi.fn<(command: string, ignoreStrayEnter: boolean) => ShellLineResult>(() => "has_draft");
+		const prefillShell = vi.fn<(command: string, ignoreStrayEnter: boolean) => PrefillResult>(() => "has_draft");
 		const unregister = registerComposer("shell-draft", shellHandle(prefillShell));
 		expect(
 			{
@@ -1440,8 +1442,8 @@ describe("requestComposerShellLine (upstream prefillEmptyShellLine)", () =>
 
 	it("stops at the first composer that inserted it", () =>
 	{
-		const first = vi.fn<(command: string, ignoreStrayEnter: boolean) => ShellLineResult>(() => "inserted");
-		const second = vi.fn<(command: string, ignoreStrayEnter: boolean) => ShellLineResult>(() => "inserted");
+		const first = vi.fn<(command: string, ignoreStrayEnter: boolean) => PrefillResult>(() => "inserted");
+		const second = vi.fn<(command: string, ignoreStrayEnter: boolean) => PrefillResult>(() => "inserted");
 		const stopFirst = registerComposer("shell-two", shellHandle(first));
 		const stopSecond = registerComposer("shell-two", shellHandle(second));
 		expect(
@@ -1471,6 +1473,142 @@ describe("requestComposerShellLine (upstream prefillEmptyShellLine)", () =>
 			}),
 		);
 		expect(requestComposerShellLine("shell-throw", "ls")).toBe("unavailable");
+		unregister();
+	});
+});
+
+describe("prefillEmptyVerdict (upstream FNe)", () =>
+{
+	const idle =
+	{
+		bashMode: false,
+		sending: false,
+	};
+
+	it("writes into an empty or blank box, or over the replaceable text, and only focuses on the same text", () =>
+	{
+		expect(
+			{
+				empty: prefillEmptyVerdict("", "/goal fake goal", "/goal clear", idle),
+				blank: prefillEmptyVerdict("  \n", "/goal fake goal", "/goal clear", idle),
+				replaceable: prefillEmptyVerdict(" /goal clear ", "/goal fake goal", "/goal clear", idle),
+				same: prefillEmptyVerdict("/goal fake goal  ", " /goal fake goal", "/goal clear", idle),
+			},
+		).toStrictEqual(
+			{
+				empty: "write",
+				blank: "write",
+				replaceable: "write",
+				same: "focus",
+			},
+		);
+	});
+
+	it("refuses another draft, bash mode and a send in flight as has_draft", () =>
+	{
+		expect(
+			{
+				draft: prefillEmptyVerdict("other fake draft", "/goal clear", "/goal fake goal", idle),
+				noReplaceable: prefillEmptyVerdict("/goal fake goal", "/goal clear", undefined, idle),
+				bashMode: prefillEmptyVerdict(
+					"",
+					"/goal clear",
+					undefined,
+					{
+						bashMode: true,
+						sending: false,
+					},
+				),
+				sending: prefillEmptyVerdict(
+					"/goal clear",
+					"/goal clear",
+					undefined,
+					{
+						bashMode: false,
+						sending: true,
+					},
+				),
+			},
+		).toStrictEqual(
+			{
+				draft: "has_draft",
+				noReplaceable: "has_draft",
+				bashMode: "has_draft",
+				sending: "has_draft",
+			},
+		);
+	});
+});
+
+describe("prefillEmptyComposer (upstream prefillEmptyComposer)", () =>
+{
+	it("is unavailable with no composer mounted, or one that can't take it", () =>
+	{
+		const unregister = registerComposer(
+			"empty-home",
+			{
+				insertText: () =>
+				{
+				},
+				focus: () =>
+				{
+				},
+			},
+		);
+		expect(
+			{
+				none: prefillEmptyComposer("empty-none", "/goal clear"),
+				home: prefillEmptyComposer("empty-home", "/goal clear"),
+			},
+		).toStrictEqual(
+			{
+				none: "unavailable",
+				home: "unavailable",
+			},
+		);
+		unregister();
+	});
+
+	it("passes the text, replaceable text and stray-Enter flag through, and the composer's result back", () =>
+	{
+		const prefillEmpty = vi.fn<
+			(text: string, replaceable: string | undefined, ignoreStrayEnter: boolean) => PrefillResult
+		>(() => "has_draft");
+		const unregister = registerComposer(
+			"empty-draft",
+			{
+				insertText: () =>
+				{
+				},
+				focus: () =>
+				{
+				},
+				prefillEmpty,
+			},
+		);
+		expect(
+			{
+				plain: prefillEmptyComposer("empty-draft", "/goal clear"),
+				full: prefillEmptyComposer(
+					"empty-draft",
+					"/goal clear",
+					{
+						replaceable: "/goal fake goal",
+						ignoreStrayEnter: true,
+					},
+				),
+				calls: prefillEmpty.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				plain: "has_draft",
+				full: "has_draft",
+				calls: [
+					["/goal clear", undefined, false],
+					["/goal clear", "/goal fake goal", true],
+				],
+			},
+		);
 		unregister();
 	});
 });

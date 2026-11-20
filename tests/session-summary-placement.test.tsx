@@ -268,6 +268,7 @@ function seedSession(
 			cuts: [],
 			chainVersion: "v1",
 			chapters: [],
+			goalRows: [],
 		},
 	);
 	queryClient.setQueryData(sessionSubagentsQueryOptions(sessionId).queryKey, subagents);

@@ -1255,6 +1255,28 @@ const TaskStatusAttachmentPayload = z
 	)
 	.strict();
 
+/**
+ * The CLI's `/goal` record: `/goal <condition>` and `/goal clear` write a sentinel (met false / true), and each
+ * evaluator pass writes a check (not met with a reason, met, or failed with the run's totals).
+ */
+export const GoalStatusAttachmentPayload = z
+	.object(
+		{
+			type: z.literal("goal_status"),
+			met: z.boolean(),
+			condition: z.string(),
+			sentinel: z.boolean().optional(),
+			failed: z.boolean().optional(),
+			reason: z.string().optional(),
+			iterations: z.number().optional(),
+			durationMs: z.number().optional(),
+			tokens: z.number().optional(),
+		},
+	)
+	.strict();
+
+export type GoalStatusAttachment = z.infer<typeof GoalStatusAttachmentPayload>;
+
 const TodoReminderAttachmentPayload = z
 	.object(
 		{
@@ -1992,6 +2014,7 @@ export const AttachmentPayloadSchema = z.discriminatedUnion("type", [
 	DynamicSkillAttachmentPayload,
 	TaskReminderAttachmentPayload,
 	TaskStatusAttachmentPayload,
+	GoalStatusAttachmentPayload,
 	TodoReminderAttachmentPayload,
 	TotalTokensReminderAttachmentPayload,
 	TokenUsageAttachmentPayload,

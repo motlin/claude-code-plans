@@ -324,8 +324,35 @@ export function composePrompt(
 	return formatDiffAnnotations(comments, [...mentions, body === "" ? lead : `${lead}\n\n\n${body}`].join("\n\n"));
 }
 
-/** Upstream's `prefillEmptyShellLine` result: the command went in, a draft was in the way, or no bash line is possible. */
-export type ShellLineResult = "inserted" | "has_draft" | "unavailable";
+/**
+ * Upstream's empty-composer prefill result (`FNe` and `prefillEmptyShellLine`): the text went in, a draft was in the
+ * way, or the composer can't take it.
+ */
+export type PrefillResult = "inserted" | "has_draft" | "unavailable";
+
+/**
+ * Upstream `FNe`'s verdict on putting `text` into the box: `focus` when it already holds that text, `has_draft` when
+ * something else is there (a draft other than `replaceable`, bash mode, or a send in flight), else `write`.
+ */
+export function prefillEmptyVerdict(
+	draft: string,
+	text: string,
+	replaceable: string | undefined,
+	{
+		bashMode,
+		sending,
+	}:
+	{
+		bashMode: boolean;
+		sending: boolean;
+	},
+): "focus" | "write" | "has_draft"
+{
+	const current = draft.trim();
+	if (!bashMode && !sending && current === text.trim()) return "focus";
+	if (bashMode || sending || (current !== "" && current !== replaceable?.trim())) return "has_draft";
+	return "write";
+}
 
 /** A mounted composer: text requests land in its prompt, attachments as chips. */
 export interface ComposerHandle
@@ -352,7 +379,12 @@ export interface ComposerHandle
 	 * focuses, never touching a draft; `ignoreStrayEnter` swallows a stray ⌘⏎ or held Enter for 500 ms after.
 	 * Absent where bash mode isn't available.
 	 */
-	prefillShell?: (command: string, ignoreStrayEnter: boolean) => ShellLineResult;
+	prefillShell?: (command: string, ignoreStrayEnter: boolean) => PrefillResult;
+	/**
+	 * Upstream's `prefillEmptyComposer` (cc43287c9, `FNe`): puts text into an empty box, or in place of the
+	 * `replaceable` text, focused with the caret at the end and the slash menu closed; never touches another draft.
+	 */
+	prefillEmpty?: (text: string, replaceable: string | undefined, ignoreStrayEnter: boolean) => PrefillResult;
 	/** True while the composer is in bash mode; absent where bash mode isn't available. */
 	inBashMode?: () => boolean;
 }
@@ -1028,6 +1060,28 @@ export function focusComposer(sessionId: string): boolean
 	return handles.length > 0;
 }
 
+/** The session's composers' prefill results, in mount order, up to the first that isn't `unavailable`. */
+function firstPrefillResult(
+	sessionId: string,
+	prefill: (handle: ComposerHandle) => PrefillResult | undefined,
+): PrefillResult
+{
+	for (const handle of mounted(sessionId))
+	{
+		let result: PrefillResult = "unavailable";
+		try
+		{
+			result = prefill(handle) ?? "unavailable";
+		}
+		catch
+		{
+			// Upstream's resolver maps a throwing prefill to `no_shell` / unavailable.
+		}
+		if (result !== "unavailable") return result;
+	}
+	return "unavailable";
+}
+
 /** Hands a command to the session's composer as an empty-box bash line; the first composer that takes it wins. */
 export function requestComposerShellLine(
 	sessionId: string,
@@ -1036,22 +1090,28 @@ export function requestComposerShellLine(
 	{
 		ignoreStrayEnter?: boolean;
 	},
-): ShellLineResult
+): PrefillResult
 {
-	for (const handle of mounted(sessionId))
+	return firstPrefillResult(sessionId, (handle) => handle.prefillShell?.(command, opts?.ignoreStrayEnter ?? false));
+}
+
+/**
+ * Upstream's `prefillEmptyComposer`: puts text into the session's empty composer, or in place of `replaceable` (an
+ * earlier prefill of the same caller); the first composer that takes it wins.
+ */
+export function prefillEmptyComposer(
+	sessionId: string,
+	text: string,
+	opts?:
 	{
-		let result: ShellLineResult = "unavailable";
-		try
-		{
-			result = handle.prefillShell?.(command, opts?.ignoreStrayEnter ?? false) ?? "unavailable";
-		}
-		catch
-		{
-			// Upstream's resolver maps a throwing prefill to `no_shell`.
-		}
-		if (result !== "unavailable") return result;
-	}
-	return "unavailable";
+		replaceable?: string | undefined;
+		ignoreStrayEnter?: boolean;
+	},
+): PrefillResult
+{
+	return firstPrefillResult(sessionId, (handle) =>
+		handle.prefillEmpty?.(text, opts?.replaceable, opts?.ignoreStrayEnter ?? false),
+	);
 }
 
 const composerListeners = new Set<() => void>();

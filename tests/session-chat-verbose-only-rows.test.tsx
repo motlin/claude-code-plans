@@ -218,6 +218,15 @@ const RECORDS: unknown[] = [
 			size: "large",
 		},
 	),
+	attachment(
+		"att-goal",
+		{
+			type: "goal_status",
+			met: false,
+			sentinel: true,
+			condition: "fake goal",
+		},
+	),
 ];
 
 const DIAGNOSTIC_TEXT = [
@@ -232,6 +241,7 @@ const DIAGNOSTIC_TEXT = [
 	"Hook context: PostToolUse:Bash",
 	"Hook context: UserPromptSubmit",
 	"Workflow size: large",
+	"Goal set: fake goal",
 ];
 
 function renderRecords(records: unknown[], mode: TranscriptMode, showHookWarnings = true): HTMLElement

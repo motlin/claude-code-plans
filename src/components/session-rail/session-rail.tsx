@@ -82,6 +82,9 @@ export interface RailCard
 	/** Upstream's warning rollup: `summary` in the warning colour plus a Warning icon with this alt, in place of the percentage. */
 	rollupWarning?: string | undefined;
 	body: ReactNode;
+	/** Upstream's leaving card: its content went away, so it fades out and then calls `onLeft` to drop it. */
+	leaving?: boolean | undefined;
+	onLeft?: (() => void) | undefined;
 }
 
 const RAIL_DRAG_MODIFIERS = [lockRailDragToVerticalAxis];
@@ -223,6 +226,59 @@ function useRecordFirstCardHeight(sessionId: string, enabled: boolean): (node: H
 	return setNode;
 }
 
+/**
+ * Upstream `uv`: while `leaving`, the slot goes inert, focus inside it moves to the rail's scroller, and it fades
+ * out over 200ms before `onLeft` drops it (at once where WAAPI is missing).
+ */
+function useLeaveAnimation(slot: HTMLElement | null, leaving: boolean, onLeft: (() => void) | undefined): void
+{
+	const onLeftRef = useRef(onLeft);
+	onLeftRef.current = onLeft;
+	useEffect(() =>
+	{
+		if (!leaving || slot === null) return undefined;
+		slot.setAttribute("inert", "");
+		if (slot.contains(document.activeElement)) slot.closest<HTMLElement>("[tabindex='-1']")?.focus();
+		if (typeof slot.animate !== "function")
+		{
+			onLeftRef.current?.();
+			return () =>
+			{
+				slot.removeAttribute("inert");
+			};
+		}
+		const animation = slot.animate(
+			[
+				{
+					opacity: 0,
+				},
+			],
+			{
+				duration: 200,
+				easing: "ease-out",
+				fill: "forwards",
+			},
+		);
+		let done = false;
+		animation.finished.then(
+			() =>
+			{
+				if (!done) onLeftRef.current?.();
+			},
+			() =>
+			{
+				// Cancelled: the card came back or unmounted.
+			},
+		);
+		return () =>
+		{
+			done = true;
+			animation.cancel();
+			slot.removeAttribute("inert");
+		};
+	}, [slot, leaving]);
+}
+
 function RailSection({
 	sessionId,
 	card,
@@ -252,11 +308,14 @@ function RailSection({
 		},
 	);
 	const title = RAIL_SECTION_TITLES[card.id];
+	const [slot, setSlot] = useState<HTMLDivElement | null>(null);
+	useLeaveAnimation(slot, card.leaving === true, card.onLeft);
 	const slotRef = useCallback(
 		(node: HTMLDivElement | null) =>
 		{
 			setNodeRef(node);
 			recordRef(node);
+			setSlot(node);
 		},
 		[setNodeRef, recordRef],
 	);

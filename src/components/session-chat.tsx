@@ -5374,6 +5374,8 @@ const VERBOSE_ONLY_SUBTYPES = new Set([
 	"auto_mode_exit",
 	"hook_additional_context",
 	"workflow_size_guideline_change",
+	// R5-Q5 (a): upstream draws no goal_status row; the rail's Goal card carries the goal.
+	"goal_status",
 ]);
 const STOP_HOOK_EVENTS = new Set(["Stop", "SubagentStop"]);
 const SYSTEM_BANNER_SUBTYPES = new Set([

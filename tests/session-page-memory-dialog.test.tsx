@@ -201,6 +201,7 @@ async function renderSession()
 			cuts: [],
 			chainVersion: "v1",
 			chapters: [],
+			goalRows: [],
 		},
 	);
 	queryClient.setQueryData(sessionSubagentsQueryOptions(SESSION_ID).queryKey, []);

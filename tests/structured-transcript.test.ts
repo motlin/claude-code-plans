@@ -182,6 +182,7 @@ describe("readStructuredTranscript", () =>
 				cuts: [],
 				chainVersion: transcriptChainVersion([]),
 				chapters: [],
+				goalRows: [],
 			},
 		);
 	});
@@ -490,6 +491,7 @@ describe("readStructuredTranscript", () =>
 				cuts: [],
 				chainVersion: transcriptChainVersion([]),
 				chapters: [],
+				goalRows: [],
 			},
 		);
 	});
@@ -780,6 +782,74 @@ describe("readStructuredTranscript active chain", () =>
 						title: "Late chapter",
 						uuid: "a-5",
 						recordIndex: 5,
+					},
+				],
+			},
+		);
+	});
+
+	it("serves every goal_status row in the file, including those before the window, and not one on an abandoned branch", () =>
+	{
+		const goal = (index: number, parentUuid: string, condition: string) => (
+		{
+			type: "attachment",
+			uuid: `g-${index}`,
+			parentUuid,
+			timestamp: "2001-01-01T00:00:00.000Z",
+			attachment:
+			{
+				type: "goal_status",
+				met: false,
+				sentinel: true,
+				condition,
+			},
+		});
+		const prompt = (index: number, parentUuid: string | null, timestamp: string) => (
+		{
+			type: "user",
+			uuid: `u-${index}`,
+			parentUuid,
+			timestamp,
+			message:
+			{
+				role: "user",
+				content: `message ${index}`,
+			},
+		});
+		seedSession("goals", [
+			prompt(0, null, "2026-10-20T10:00:00.000Z"),
+			goal(1, "u-0", "early fake goal"),
+			prompt(2, "g-1", "2026-10-20T10:01:00.000Z"),
+			goal(3, "u-2", "abandoned fake goal"),
+			prompt(4, "g-1", "2026-10-20T10:02:00.000Z"),
+			prompt(5, "u-4", "2026-10-20T10:03:00.000Z"),
+		]);
+
+		const tail = readStructuredTranscript(
+			db.index,
+			"goals",
+			{
+				maxRecords: 1,
+			},
+		);
+
+		expect(
+			{
+				startIndex: tail.startIndex,
+				goalRows: tail.goalRows,
+			},
+		).toStrictEqual(
+			{
+				startIndex: 5,
+				goalRows: [
+					{
+						timestamp: "2001-01-01T00:00:00.000Z",
+						attachment:
+						{
+							met: false,
+							sentinel: true,
+							condition: "early fake goal",
+						},
 					},
 				],
 			},

@@ -1,6 +1,6 @@
 import {useQuery} from "@tanstack/react-query";
 import {Link} from "@tanstack/react-router";
-import {useEffect, useMemo, useRef, useState} from "react";
+import {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import
 {
 	AppWindow,
@@ -50,6 +50,7 @@ import
 	connectorsSummary,
 } from "../../lib/session-rail-connectors";
 import type {OutputFile} from "../../lib/session-outputs";
+import {goalTurnsSummary, type SessionGoal} from "../../lib/session-goal";
 import {type BackgroundTaskStop, useStoppingTaskIds} from "../../hooks/use-background-task-stop";
 import {useEventStreamStatus} from "../../hooks/use-claude-events";
 import {sessionEnvironment, terminalHostLabel} from "../../lib/session-environment";
@@ -73,8 +74,17 @@ import {useToast} from "../toast-context";
 import {Menu, MenuContent, MenuItem, MenuTrigger} from "../ui/menu";
 import {Skeleton} from "../ui/skeleton";
 import {RailChangesPrRow, RailChangesRow} from "./rail-changes-row";
-import {ENVIRONMENT_MENU_BUTTON_CLASS, RAIL_ROW_ACTION_CLASS, RailRow, RailRowContent} from "./rail-row";
+import
+{
+	ENVIRONMENT_MENU_BUTTON_CLASS,
+	RAIL_ROW_ACTION_CLASS,
+	RailRow,
+	RailRowContent,
+	ShowMoreButton,
+} from "./rail-row";
+import {useShowMore} from "./use-show-more";
 import {RemoteControlRow, RemoteControlRowPending, RemoteControlToggleRow} from "./remote-control-row";
+import {GoalBody} from "./goal-card";
 import {SessionRail, type RailCard} from "./session-rail";
 import {usageFillClass} from "./usage-fill";
 
@@ -117,6 +127,8 @@ export interface SessionRailInputs
 	taskStop?: BackgroundTaskStop | null;
 	pr: SessionDetailData["pr"] | null;
 	prStatus: PrStatus | null;
+	/** The session's active `/goal`, folded from its transcript's `goal_status` rows; null when none. */
+	goal: SessionGoal | null;
 }
 
 /** Upstream lists four background tasks before its Show more row. */
@@ -615,63 +627,6 @@ function connectorsCard(rows: readonly ConnectorRow[] | null, rememberedNone: bo
 	};
 }
 
-const SHOW_MORE_CLASS =
-	"flex min-h-8 w-full min-w-0 cursor-pointer items-center rounded px-2 text-start text-body text-ink-muted hover:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
-
-interface ShowMoreState
-{
-	expanded: boolean;
-	/** The first row the toggle reveals, which a keyboard press focuses. */
-	firstNewRow: (element: HTMLElement | null) => void;
-	toggle: (fromKeyboard: boolean) => void;
-}
-
-/** Upstream's in-place Show more: a keyboard expand focuses the first newly shown row. */
-function useShowMore(): ShowMoreState
-{
-	const [expanded, setExpanded] = useState(false);
-	const firstNewRow = useRef<HTMLElement | null>(null);
-	const focusFirstNew = useRef(false);
-	useEffect(() =>
-	{
-		if (!focusFirstNew.current) return;
-		focusFirstNew.current = false;
-		firstNewRow.current?.focus();
-	}, [expanded]);
-	return {
-		expanded,
-		firstNewRow: (element) =>
-		{
-			firstNewRow.current = element;
-		},
-		toggle: (fromKeyboard) =>
-		{
-			focusFirstNew.current = !expanded && fromKeyboard;
-			setExpanded(!expanded);
-		},
-	};
-}
-
-function ShowMoreButton({state}: {state: ShowMoreState})
-{
-	return (
-		<button
-			type="button"
-			aria-expanded={state.expanded}
-			className={SHOW_MORE_CLASS}
-			onClick={(event) =>
-			{
-				// A keyboard press (detail 0) moves focus to the first row it reveals.
-				state.toggle(event.detail === 0);
-			}}
-		>
-			<span data-rail-row-label="" className="min-w-0 truncate">
-				{state.expanded ? "Show less" : "Show more"}
-			</span>
-		</button>
-	);
-}
-
 /** Upstream lists five outputs before its Show more row. */
 const OUTPUTS_SHOWN = 5;
 
@@ -1127,10 +1082,47 @@ function backgroundTasksCard(inputs: SessionRailInputs): RailCard | null
 	};
 }
 
+/** Upstream's Goal card: shown while the session has an active `/goal`, kept mounted while it leaves. */
+function goalCard(sessionId: string, goal: SessionGoal | null, leaving: boolean, onLeft: () => void): RailCard | null
+{
+	if (goal === null) return null;
+	return {
+		id: "goal",
+		summary: goalTurnsSummary(goal.iterations),
+		leaving,
+		onLeft,
+		body: <GoalBody key={goal.setAt} sessionId={sessionId} goal={goal} />,
+	};
+}
+
+/**
+ * Upstream `lv`: the last value seen while `value` was present, so a card can fade out with its content after the
+ * value goes; `onLeft` drops it once the card has left.
+ */
+function useLeavingValue<T>(value: T | null):
+{
+	shown: T | null;
+	leaving: boolean;
+	onLeft: () => void;
+}
+{
+	const [kept, setKept] = useState(value);
+	if (value !== null && value !== kept) setKept(value);
+	const onLeft = useCallback(() =>
+	{
+		setKept(null);
+	}, []);
+	return {
+		shown: value ?? kept,
+		leaving: value === null && kept !== null,
+		onLeft,
+	};
+}
+
 /**
  * The rail's lazy chunk: the cards the session has content for, in upstream's
  * default order. Connectors, Servers and the working-copy diff are fetched only
- * while the rail is docked. Upstream's Goal card has no local source.
+ * while the rail is docked.
  */
 export function SessionRailCards({inputs}: {inputs: SessionRailInputs})
 {
@@ -1157,6 +1149,7 @@ export function SessionRailCards({inputs}: {inputs: SessionRailInputs})
 		},
 	).data?.stats;
 	const connectors = sessionConnectors(mcpServers ?? [], inputs.cwd);
+	const goal = useLeavingValue(inputs.goal);
 	const cards = [
 		{
 			id: "environment",
@@ -1168,6 +1161,7 @@ export function SessionRailCards({inputs}: {inputs: SessionRailInputs})
 					}),
 			body: <EnvironmentBody inputs={inputs} />,
 		} satisfies RailCard,
+		goalCard(inputs.sessionId, goal.shown, goal.leaving, goal.onLeft),
 		contextCard(inputs, connectors),
 		connectorCount === 0 && shownConnectorRows === null
 			? null

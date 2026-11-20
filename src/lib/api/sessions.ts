@@ -22,6 +22,7 @@ import {SessionUsageStatsSchema} from "../session-usage-stats";
 import {ApiRequestLogSchema} from "../api-request-log";
 import {ApiRequestMessagesSchema} from "../api-request-messages";
 import {ClaudeChapterEntrySchema} from "../session-chapters";
+import {GoalStatusRowSchema} from "../session-goal";
 import type {SessionStatusFilter} from "../session-groups";
 
 export const SessionSummaryStateSchema = z.enum(["idle", "working", "waiting", "unknown", "ended"]);
@@ -261,6 +262,8 @@ export const TranscriptResponse = z.object(
 		chainVersion: z.string(),
 		/** Claude's chapters across the whole file (session-chapters.ts), so the outline lists those on unloaded pages. */
 		chapters: z.array(ClaudeChapterEntrySchema),
+		/** The whole file's `goal_status` rows (session-goal.ts), so the rail's Goal card sees a goal set on an unloaded page. */
+		goalRows: z.array(GoalStatusRowSchema),
 	},
 );
 export type TranscriptData = z.infer<typeof TranscriptResponse>;
@@ -341,6 +344,7 @@ export function mergeTranscriptData(primary: TranscriptData, secondary: Transcri
 		cuts: [...cuts.values()],
 		chainVersion: primary.chainVersion,
 		chapters: primary.chapters,
+		goalRows: primary.goalRows,
 	};
 }
 

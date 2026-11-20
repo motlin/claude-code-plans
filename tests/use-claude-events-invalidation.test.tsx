@@ -555,6 +555,7 @@ describe("ClaudeEventsProvider SSE reconnect", () =>
 			cuts: [],
 			chainVersion: "v1",
 			chapters: [],
+			goalRows: [],
 		};
 		const tail: TranscriptData =
 		{
@@ -566,6 +567,7 @@ describe("ClaudeEventsProvider SSE reconnect", () =>
 			cuts: [],
 			chainVersion: "v1",
 			chapters: [],
+			goalRows: [],
 		};
 		const fetchMock = vi.fn<typeof fetch>(async () => Promise.resolve(Response.json(tail)));
 		vi.stubGlobal("fetch", fetchMock);
@@ -614,6 +616,7 @@ describe("ClaudeEventsProvider SSE reconnect", () =>
 					cuts: [],
 					chainVersion: "v1",
 					chapters: [],
+					goalRows: [],
 				},
 			);
 		});
@@ -1010,6 +1013,7 @@ describe("ClaudeEventsProvider transcript rewritten", () =>
 			cuts: [],
 			chainVersion: "v-1",
 			chapters: [],
+			goalRows: [],
 		});
 		const fresh = window(["u-2", "u-4"], 2);
 		vi.spyOn(globalThis, "fetch").mockImplementation(async () =>

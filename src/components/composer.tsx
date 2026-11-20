@@ -60,7 +60,8 @@ import
 	hydrateStagedChips,
 	recordSentAttachments,
 	registerComposer,
-	type ShellLineResult,
+	prefillEmptyVerdict,
+	type PrefillResult,
 	takeContextChips,
 	waitForPendingUploads,
 	useContextChips,
@@ -1552,6 +1553,8 @@ export function Composer({
 	// Upstream's stray-Enter guard (`Uc`): until this time, a held Enter or ⌘⏎ after a shell-line hand-off is swallowed.
 	const ignoreEnterUntilRef = useRef(0);
 	const canPrefillShell = onShellCommand !== undefined;
+	/** The slash menu's dismiss setter, declared below; an empty-box prefill keeps the menu closed over its `/command`. */
+	const dismissSlashRef = useRef<(dismissed: boolean) => void>(() => {});
 	/** Upstream `Tc`: a routed `!` into the empty composer enters bash mode instead of typing. */
 	const enterBashFromRoutedText = useCallback(
 		(text: string): boolean =>
@@ -1616,6 +1619,32 @@ export function Composer({
 						textareaRef.current?.focus();
 						return true;
 					},
+					prefillEmpty: (text, replaceable, ignoreStrayEnter) =>
+					{
+						const textarea = textareaRef.current;
+						if (textarea === null || textarea.disabled || textarea.readOnly) return "unavailable";
+						const verdict = prefillEmptyVerdict(
+							promptRef.current,
+							text,
+							replaceable,
+							{
+								bashMode: bashModeRef.current,
+								sending: waitingSendRef.current,
+							},
+						);
+						if (verdict === "has_draft") return "has_draft";
+						if (verdict === "write")
+						{
+							promptRef.current = text;
+							pendingCaretRef.current = text.length;
+							setCaret(text.length);
+							setPrompt(text);
+						}
+						dismissSlashRef.current(true);
+						textarea.focus();
+						if (ignoreStrayEnter) ignoreEnterUntilRef.current = Date.now() + STRAY_ENTER_MS;
+						return "inserted";
+					},
 					takeBack: (text) =>
 					{
 						if (refuseCommandInBox("takeBack")) return false;
@@ -1630,11 +1659,11 @@ export function Composer({
 					...(canPrefillShell
 						?
 							{
-								prefillShell: (command: string, ignoreStrayEnter: boolean): ShellLineResult =>
+								prefillShell: (command: string, ignoreStrayEnter: boolean): PrefillResult =>
 								{
 									const textarea = textareaRef.current;
 									if (textarea === null || textarea.disabled) return "unavailable";
-									const inserted = (): ShellLineResult =>
+									const inserted = (): PrefillResult =>
 									{
 										textarea.focus();
 										if (ignoreStrayEnter) ignoreEnterUntilRef.current = Date.now() + STRAY_ENTER_MS;
@@ -1696,6 +1725,7 @@ export function Composer({
 	const query = slash?.query.trim() ?? null;
 	// Esc dismisses the whole `/` trigger, as upstream does: typing more keeps it closed until the token is gone.
 	const [slashDismissed, setSlashDismissed] = useState(false);
+	dismissSlashRef.current = setSlashDismissed;
 	if (slashDismissed && slash === null) setSlashDismissed(false);
 	const slashKey = slash === null ? null : `${slash.start}\0${slash.query}`;
 	const [highlight, setHighlight] = useState<

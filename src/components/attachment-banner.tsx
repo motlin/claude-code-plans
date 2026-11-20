@@ -33,7 +33,7 @@ import {assertNever} from "../lib/assert-never";
 import {parsePeerMessage, peerOriginOf} from "../lib/agent-message";
 import {PeerMessageRow} from "./agent-message-row";
 import type {z} from "zod";
-import type {AttachmentPayload, RenderedRoleSchema} from "../lib/schemas";
+import type {AttachmentPayload, GoalStatusAttachment, RenderedRoleSchema} from "../lib/schemas";
 import {AttachmentPayloadSchema} from "../lib/runtime-schemas";
 import {formatTimestamp, formatRelativeTimestamp} from "../lib/timestamp-format";
 import {DebugLink} from "./debug-link";
@@ -816,6 +816,16 @@ function AttachmentContent({
 			);
 		}
 
+		// Verbose only: upstream draws no goal row, the rail's Goal card carries the state.
+		case "goal_status":
+			return (
+				<Banner
+					icon={<CircleCheck className="h-3.5 w-3.5" />}
+					label={`Goal ${goalStatusVerb(attachment)}: ${attachment.condition}`}
+					{...shared}
+				/>
+			);
+
 		// -- Commands --
 		case "queued_command":
 		{
@@ -995,6 +1005,14 @@ function AttachmentContent({
 		default:
 			return assertNever(attachment);
 	}
+}
+
+/** A goal_status row's verb: a sentinel sets or clears the goal, a check finds it met, not met, or failed. */
+function goalStatusVerb({sentinel, met, failed}: GoalStatusAttachment): string
+{
+	if (sentinel === true) return met ? "cleared" : "set";
+	if (failed === true) return "failed";
+	return met ? "met" : "not met";
 }
 
 const CONTEXT_ATTACHMENT_LABELS =

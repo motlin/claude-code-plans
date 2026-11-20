@@ -8,6 +8,7 @@ import
 {
 	attachContext,
 	prefillComposer,
+	prefillEmptyComposer,
 	requestComposerInsert,
 	requestComposerShellLine,
 	requestComposerTakeBack,
@@ -2220,6 +2221,132 @@ describe("Composer shell-line prefill (upstream prefillEmptyShellLine)", () =>
 		).toStrictEqual(
 			{
 				noPane: "unavailable",
+				disabled: "unavailable",
+			},
+		);
+	});
+});
+
+describe("Composer empty-box prefill (upstream prefillEmptyComposer)", () =>
+{
+	const SESSION = "session-alice";
+
+	function prefill(text: string, replaceable?: string): string
+	{
+		let result = "";
+		act(() =>
+		{
+			result = prefillEmptyComposer(
+				SESSION,
+				text,
+				{
+					replaceable,
+				},
+			);
+		});
+		return result;
+	}
+
+	function state(textarea: HTMLTextAreaElement)
+	{
+		return {
+			value: textarea.value,
+			caret: textarea.selectionStart,
+			focused: document.activeElement === textarea,
+			listboxes: screen.queryAllByRole("listbox").length,
+		};
+	}
+
+	it("puts the text into the empty box focused with the slash menu closed, then replaces its own earlier prefill", () =>
+	{
+		const {handlers, textarea} = renderComposer();
+		const edit = prefill("/goal fake goal", "/goal clear");
+		const afterEdit = state(textarea);
+		const clear = prefill("/goal clear", "/goal fake goal");
+		expect(
+			{
+				edit,
+				afterEdit,
+				clear,
+				afterClear: state(textarea),
+				toasts: handlers.toast.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				edit: "inserted",
+				afterEdit:
+				{
+					value: "/goal fake goal",
+					caret: 15,
+					focused: true,
+					listboxes: 0,
+				},
+				clear: "inserted",
+				afterClear:
+				{
+					value: "/goal clear",
+					caret: 11,
+					focused: true,
+					listboxes: 0,
+				},
+				toasts: [],
+			},
+		);
+	});
+
+	it("leaves another draft alone with has_draft and no toast", () =>
+	{
+		const {handlers, textarea} = renderComposer();
+		fireEvent.change(
+			textarea,
+			{
+				target:
+				{
+					value: "other fake draft",
+				},
+			},
+		);
+		expect(
+			{
+				result: prefill("/goal clear", "/goal fake goal"),
+				value: textarea.value,
+				toasts: handlers.toast.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				result: "has_draft",
+				value: "other fake draft",
+				toasts: [],
+			},
+		);
+	});
+
+	it("is has_draft in bash mode and unavailable while the composer is disabled", () =>
+	{
+		renderComposer(
+			{
+				onShellCommand: ALLOW,
+			},
+		);
+		act(() =>
+		{
+			requestComposerShellLine(SESSION, "ls");
+		});
+		const bashMode = prefill("/goal clear");
+		cleanup();
+		renderComposer(
+			{
+				disabled: true,
+			},
+		);
+		expect(
+			{
+				bashMode,
+				disabled: prefill("/goal clear"),
+			},
+		).toStrictEqual(
+			{
+				bashMode: "has_draft",
 				disabled: "unavailable",
 			},
 		);

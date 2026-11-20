@@ -1,5 +1,7 @@
 import type {ReactNode} from "react";
 
+import type {ShowMoreState} from "./use-show-more";
+
 /* Upstream's session rail card and row primitives, kept apart from the rail so pages reuse them without its dnd-kit chunk. */
 
 /** Upstream's lined row: `min-h-list-row` 32px, the 10px `--rail-word-gap` and the 8px `--rail-row-pad`. */
@@ -96,3 +98,28 @@ const RAIL_CARD_DIVIDER_CLASS =
 
 /** Upstream's lined card (`epitaxy-rail-lined`): py-md 8px, pb-sm 6px while open, the card ring, and the flat-rail hairline. */
 export const RAIL_CARD_CLASS = `group/railcard epitaxy-rail-lined flex shrink-0 flex-col pt-2 pb-2 data-open:pb-1.5 ${RAIL_CARD_RING_CLASS} ${RAIL_CARD_DIVIDER_CLASS}`;
+
+/** Upstream's rail Show more / Show less toggle. */
+const SHOW_MORE_CLASS =
+	"flex min-h-8 w-full min-w-0 cursor-pointer items-center rounded px-2 text-start text-body text-ink-muted hover:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
+
+/** Upstream's rail Show more / Show less row. */
+export function ShowMoreButton({state}: {state: ShowMoreState})
+{
+	return (
+		<button
+			type="button"
+			aria-expanded={state.expanded}
+			className={SHOW_MORE_CLASS}
+			onClick={(event) =>
+			{
+				// A keyboard press (detail 0) moves focus to the first row it reveals.
+				state.toggle(event.detail === 0);
+			}}
+		>
+			<span data-rail-row-label="" className="min-w-0 truncate">
+				{state.expanded ? "Show less" : "Show more"}
+			</span>
+		</button>
+	);
+}

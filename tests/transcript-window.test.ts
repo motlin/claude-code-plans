@@ -85,6 +85,7 @@ function window_(startIndex: number, count: number, overrides?: Partial<Transcri
 		cuts: [],
 		chainVersion: "v1",
 		chapters: [],
+		goalRows: [],
 		...overrides,
 	};
 }
@@ -128,6 +129,7 @@ describe("mergeTranscriptData", () =>
 				cuts: [cut],
 				chainVersion: "v2",
 				chapters: [],
+				goalRows: [],
 			},
 		);
 	});
@@ -153,6 +155,7 @@ describe("mergeTranscriptData", () =>
 				cuts: [],
 				chainVersion: "v1",
 				chapters: [],
+				goalRows: [],
 			},
 		);
 	});
@@ -195,6 +198,7 @@ describe("mergeTranscriptData", () =>
 				cuts: [],
 				chainVersion: "v1",
 				chapters: [],
+				goalRows: [],
 			},
 		);
 	});
@@ -227,6 +231,7 @@ describe("mergeTranscriptData", () =>
 				cuts: [],
 				chainVersion: cached.chainVersion,
 				chapters: [],
+				goalRows: [],
 			},
 		);
 		const appended = mergeTranscriptData(
@@ -240,6 +245,7 @@ describe("mergeTranscriptData", () =>
 				cuts: [],
 				chainVersion: rebroadcast.chainVersion,
 				chapters: [],
+				goalRows: [],
 			},
 		);
 
@@ -253,6 +259,7 @@ describe("mergeTranscriptData", () =>
 				cuts: [],
 				chainVersion: "v1",
 				chapters: [],
+				goalRows: [],
 			},
 		);
 	});
@@ -306,6 +313,7 @@ describe("fetchEarlierTranscript", () =>
 				cuts: [],
 				chainVersion: "v1",
 				chapters: [],
+				goalRows: [],
 			},
 		);
 	});
@@ -358,6 +366,7 @@ describe("fetchEarlierTranscript", () =>
 				cuts: [],
 				chainVersion: "v1",
 				chapters: [],
+				goalRows: [],
 			},
 		);
 	});
@@ -493,6 +502,7 @@ describe("fetchEarlierTranscript", () =>
 				cuts: [],
 				chainVersion: "v2",
 				chapters: [],
+				goalRows: [],
 			},
 		);
 	});

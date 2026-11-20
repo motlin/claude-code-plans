@@ -99,6 +99,7 @@ async function prepareShaped(fn: HotPathShapedFn, shape: string): Promise<() => 
 				cuts: [],
 				chainVersion: old.chainVersion,
 				chapters: [],
+				goalRows: [],
 			};
 			return () => mergeTranscriptData(old, appended);
 		}

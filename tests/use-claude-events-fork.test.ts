@@ -105,6 +105,7 @@ const twoPages: TranscriptData =
 	cuts: [],
 	chainVersion: "v-linear",
 	chapters: [],
+	goalRows: [],
 };
 
 function jsonResponse(body: unknown): Response
@@ -182,6 +183,7 @@ describe("applySessionLinesAppended on a live fork", () =>
 			],
 			chainVersion: "v-forked",
 			chapters: [],
+			goalRows: [],
 		};
 		const fetchSpy = vi
 			.spyOn(globalThis, "fetch")
@@ -307,6 +309,7 @@ describe("applySessionLinesAppended on a live fork", () =>
 			cuts: [],
 			chainVersion: "v-retracted",
 			chapters: [],
+			goalRows: [],
 		};
 		const fetchSpy = vi
 			.spyOn(globalThis, "fetch")
@@ -341,6 +344,7 @@ describe("applySessionLinesAppended on a live fork", () =>
 			cuts: [],
 			chainVersion: "v-linear",
 			chapters: [],
+			goalRows: [],
 		};
 		vi.spyOn(globalThis, "fetch").mockImplementation(async () => Promise.resolve(jsonResponse(tail)));
 		const {queryClient, unsubscribe} = observedClient(twoPages);
@@ -381,6 +385,7 @@ describe("transcriptQueryOptions refetch", () =>
 			cuts: [],
 			chainVersion: "v-switched",
 			chapters: [],
+			goalRows: [],
 		};
 		vi.spyOn(globalThis, "fetch").mockImplementation(async () => Promise.resolve(jsonResponse(tail)));
 		const {queryClient, unsubscribe} = observedClient(twoPages);

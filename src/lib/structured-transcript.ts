@@ -16,6 +16,7 @@ import
 } from "./transcript-file-index";
 import type {TranscriptCut} from "./api/sessions";
 import type {ClaudeChapterEntry} from "./session-chapters";
+import type {GoalStatusRow} from "./session-goal";
 
 export {parseTranscriptLine} from "./transcript-file-index";
 
@@ -56,6 +57,8 @@ export interface StructuredTranscript
 	chainVersion: string;
 	/** Claude's chapters across the whole file, not just this window, minus those on abandoned branches. */
 	chapters: ClaudeChapterEntry[];
+	/** The whole file's `goal_status` rows (session-goal.ts), minus those on abandoned branches. */
+	goalRows: GoalStatusRow[];
 }
 
 export interface TranscriptWindowOptions
@@ -92,6 +95,7 @@ const EMPTY_TRANSCRIPT: StructuredTranscript =
 	cuts: [],
 	chainVersion: transcriptChainVersion([]),
 	chapters: [],
+	goalRows: [],
 };
 
 /**
@@ -238,6 +242,7 @@ function readWindow(
 			cuts,
 			chainVersion: transcriptChainVersion(index.abandoned.cuts, index.abandoned.retracted),
 			chapters: index.chapters.filter((chapter) => index.hidden[chapter.recordIndex] !== true),
+			goalRows: index.goalRows.filter(({recordIndex}) => index.hidden[recordIndex] !== true).map(({row}) => row),
 		};
 	}
 	catch

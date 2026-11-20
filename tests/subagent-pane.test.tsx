@@ -121,6 +121,7 @@ const EMPTY_TRANSCRIPT: TranscriptData =
 	cuts: [],
 	chainVersion: "v1",
 	chapters: [],
+	goalRows: [],
 };
 
 class FakeObserver

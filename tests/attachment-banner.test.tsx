@@ -335,6 +335,13 @@ const MINIMAL_BY_TYPE: Record<string, AttachmentPayload> =
 		type: "session_cron_carry",
 		tasks: [],
 	},
+	goal_status:
+	{
+		type: "goal_status",
+		met: false,
+		sentinel: true,
+		condition: "fake goal",
+	},
 };
 
 describe("AttachmentBanner", () =>

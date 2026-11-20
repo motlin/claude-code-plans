@@ -1133,6 +1133,7 @@ const attachmentVariants =
 	dynamic_skill: true,
 	task_reminder: true,
 	task_status: true,
+	goal_status: true,
 	todo_reminder: true,
 	total_tokens_reminder: true,
 	edited_text_file: true,

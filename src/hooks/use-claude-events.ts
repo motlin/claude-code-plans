@@ -47,6 +47,7 @@ import
 } from "../lib/domain-event-payload-schemas";
 import {toMdSlug} from "../lib/md-slug";
 import {appendClaudeChapters} from "../lib/session-chapters";
+import {appendGoalStatusRows} from "../lib/session-goal";
 import {isPrompt} from "../lib/transcript-chain";
 import {getSubagentLifecycleKey, toSubagentSessionId} from "../lib/subagents";
 import {isLiveSessionState, type ActivityState} from "../lib/session-state";
@@ -1248,11 +1249,13 @@ function mergeAppendedLines(
 				cuts: [],
 				chainVersion: old.chainVersion,
 				chapters: [],
+				goalRows: [],
 			},
 		);
 		return {
 			...merged,
 			chapters: appendClaudeChapters(old.chapters, lines, startIndex),
+			goalRows: appendGoalStatusRows(old.goalRows, lines),
 		};
 	});
 }

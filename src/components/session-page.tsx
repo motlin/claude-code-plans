@@ -230,6 +230,7 @@ import {usePendingMessageJump} from "../hooks/use-pending-message-jump";
 import {useChapterJump} from "../hooks/use-chapter-jump";
 import {useSessionChapters} from "../lib/chapter-store";
 import {buildSessionChapters} from "../lib/session-chapters";
+import {activeGoal} from "../lib/session-goal";
 import {useMainScrollRestoration, type MainScrollRestorationSnapshot} from "../hooks/use-main-scroll-restoration";
 import
 {
@@ -712,6 +713,7 @@ function SessionView({
 		[transcript.records, transcript.startIndex, hiddenUuids, transcript.cuts],
 	);
 	const hasThinking = useMemo(() => sessionHasThinking(chainProcessed.lines), [chainProcessed.lines]);
+	const sessionGoal = useMemo(() => activeGoal(transcript.goalRows), [transcript.goalRows]);
 	const transcriptView = useTranscriptModeShortcut(
 		sessionId,
 		{
@@ -2874,6 +2876,7 @@ function SessionView({
 										taskStop: backgroundTaskStop,
 										pr: data.pr ?? null,
 										prStatus: data.prStatus ?? null,
+										goal: sessionGoal,
 									}}
 									runningBackgroundLaunches={runningBackgroundLaunches}
 									sessionId={sessionId}

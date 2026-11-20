@@ -59,6 +59,7 @@ function transcript(records: TranscriptRecord[], startIndex: number): Transcript
 		cuts: [],
 		chainVersion: "v-1",
 		chapters: [],
+		goalRows: [],
 	};
 }
 

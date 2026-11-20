@@ -449,6 +449,7 @@ describe("TerminalSession", () =>
 		cuts: [],
 		chainVersion: "v",
 		chapters: [],
+		goalRows: [],
 	});
 
 	it("holds until the transcript loads, then draws its lines", async () =>

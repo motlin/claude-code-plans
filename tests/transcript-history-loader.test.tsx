@@ -131,6 +131,7 @@ function mockPagedHistory()
 			cuts: [],
 			chainVersion: "v1",
 			chapters: [],
+			goalRows: [],
 		};
 		return Promise.resolve(
 			new Response(
@@ -157,6 +158,7 @@ const TAIL: TranscriptData =
 	cuts: [],
 	chainVersion: "v1",
 	chapters: [],
+	goalRows: [],
 };
 const EARLIER_PAGE: TranscriptData =
 {
@@ -168,6 +170,7 @@ const EARLIER_PAGE: TranscriptData =
 	cuts: [],
 	chainVersion: "v1",
 	chapters: [],
+	goalRows: [],
 };
 
 describe("TranscriptHistoryLoader", () =>
@@ -204,6 +207,7 @@ describe("TranscriptHistoryLoader", () =>
 					cuts: [],
 					chainVersion: "v1",
 					chapters: [],
+					goalRows: [],
 				},
 			);
 		});

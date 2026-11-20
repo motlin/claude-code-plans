@@ -3793,6 +3793,53 @@ describe("JsonlRecordSchema observed 2026-10-21 transcript fields", () =>
 		expect(JsonlRecordSchema.parse(record)).toStrictEqual(record);
 	});
 
+	it("parses goal_status attachments: the /goal sentinel, a not-met check, met and failed", () =>
+	{
+		const records = [
+			attachmentRecord(
+				{
+					type: "goal_status",
+					met: false,
+					sentinel: true,
+					condition: "fake goal",
+				},
+			),
+			attachmentRecord(
+				{
+					type: "goal_status",
+					met: false,
+					condition: "fake goal",
+					reason: "fake reason",
+				},
+			),
+			attachmentRecord(
+				{
+					type: "goal_status",
+					met: true,
+					condition: "fake goal",
+					reason: "fake reason",
+					iterations: 3,
+					durationMs: 1000,
+					tokens: 42,
+				},
+			),
+			attachmentRecord(
+				{
+					type: "goal_status",
+					met: false,
+					failed: true,
+					condition: "fake goal",
+					reason: "fake reason",
+					iterations: 3,
+					durationMs: 1000,
+					tokens: 42,
+				},
+			),
+		];
+
+		expect(records.map((record) => JsonlRecordSchema.parse(record))).toStrictEqual(records);
+	});
+
 	it("parses images inside api-request-blob messages", () =>
 	{
 		const record =

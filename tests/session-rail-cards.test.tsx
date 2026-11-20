@@ -4,7 +4,7 @@ import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {createMemoryHistory, createRootRoute, createRouter, RouterProvider} from "@tanstack/react-router";
 import {act, cleanup, fireEvent, render, renderHook, screen, within} from "@testing-library/react";
 import {useState} from "react";
-import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
+import {afterEach, beforeEach, describe, expect, it, onTestFinished, vi} from "vite-plus/test";
 
 import
 {
@@ -34,6 +34,7 @@ import
 import type {BackgroundTask} from "../src/lib/background-tasks";
 import type {CompactActionState} from "../src/lib/compact-action";
 import type {ContextBreakdown} from "../src/lib/context-breakdown";
+import {prefillEmptyVerdict, registerComposer} from "../src/lib/context-attach";
 import {toConnectorSlug} from "../src/lib/customize/mcp-tool-permissions";
 import {RAIL_NO_CONNECTORS_KEY} from "../src/lib/rail-no-connectors";
 import {DEFAULT_RAIL_SECTIONS_STATE, RAIL_SECTIONS_STORAGE_KEY} from "../src/lib/session-rail-store";
@@ -100,6 +101,7 @@ const BASE: SessionRailInputs =
 	},
 	pr: null,
 	prStatus: null,
+	goal: null,
 };
 
 const FULL: SessionRailInputs =
@@ -1410,6 +1412,414 @@ describe("Environment card", () =>
 				opened: [
 					["https://github.com/alice/avalonlogs/tree/alice/sync-upstream", "_blank", "noopener,noreferrer"],
 				],
+			},
+		);
+	});
+});
+
+describe("Goal card", () =>
+{
+	const GOAL =
+	{
+		condition: "fake goal",
+		iterations: 0,
+		setAt: 1,
+		editText: "fake goal",
+	};
+
+	function goalSection(): HTMLElement
+	{
+		return screen.getByRole(
+			"region",
+			{
+				name: /^Goal/,
+			},
+		);
+	}
+
+	function goalLines()
+	{
+		return [...goalSection().querySelectorAll("bdi")].map((line) => (
+		{
+			text: line.textContent,
+			className: line.className,
+		}));
+	}
+
+	/** A composer whose draft is `text`, prefilled the way the session composer does. */
+	function fakeComposer(draft = "")
+	{
+		const box =
+		{
+			text: draft,
+		};
+		unregisters.push(
+			registerComposer(
+				SESSION_ID,
+				{
+					insertText: () =>
+					{
+					},
+					focus: () =>
+					{
+					},
+					prefillEmpty: (text, replaceable) =>
+					{
+						const verdict = prefillEmptyVerdict(
+							box.text,
+							text,
+							replaceable,
+							{
+								bashMode: false,
+								sending: false,
+							},
+						);
+						if (verdict === "has_draft") return "has_draft";
+						box.text = text;
+						return "inserted";
+					},
+				},
+			),
+		);
+		return box;
+	}
+
+	it("comes second, open, with the condition and Not checked yet on two clamped lines", async () =>
+	{
+		rememberConnectors(
+			{
+				[SESSION_ID]:
+				{
+					none: true,
+					at: 1,
+				},
+			},
+		);
+		await renderCards(
+			{
+				...BASE,
+				goal: GOAL,
+			},
+		);
+
+		expect(
+			{
+				cards: cards().map(([id]) => id),
+				open: goalSection().hasAttribute("data-open"),
+				dir: goalSection().querySelector("bdi")?.parentElement?.getAttribute("dir"),
+				lines: goalLines(),
+				toggle: within(goalSection()).queryByRole(
+					"button",
+					{
+						name: "Show more",
+					},
+				),
+			},
+		).toStrictEqual(
+			{
+				cards: ["environment", "goal", "context"],
+				open: true,
+				dir: "auto",
+				lines: [
+					{
+						text: "fake goal",
+						className: "text-primary line-clamp-2",
+					},
+					{
+						text: "Not checked yet",
+						className: "text-footnote text-muted-as-secondary line-clamp-2",
+					},
+				],
+				toggle: null,
+			},
+		);
+	});
+
+	it("sums the turns in the header and adds the last check's reason to the status line", async () =>
+	{
+		await renderCards(
+			{
+				...BASE,
+				goal:
+				{
+					...GOAL,
+					iterations: 2,
+					lastReason: "fake reason",
+				},
+			},
+		);
+
+		expect(
+			{
+				summary: cards().find(([id]) => id === "goal")?.[1],
+				status: goalLines()[1]?.text,
+			},
+		).toStrictEqual(
+			{
+				summary: "2 turns",
+				status: "2 turns · last check: fake reason",
+			},
+		);
+	});
+
+	it("offers Show more when a line is cut, which drops both clamps and reads Show less", async () =>
+	{
+		vi.spyOn(HTMLElement.prototype, "scrollHeight", "get").mockReturnValue(60);
+		vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockReturnValue(40);
+		await renderCards(
+			{
+				...BASE,
+				goal: GOAL,
+			},
+		);
+		const toggle = within(goalSection()).getByRole(
+			"button",
+			{
+				name: "Show more",
+			},
+		);
+		const collapsed = toggle.getAttribute("aria-expanded");
+		fireEvent.click(toggle);
+
+		expect(
+			{
+				collapsed,
+				expanded: toggle.getAttribute("aria-expanded"),
+				label: toggle.textContent,
+				lines: goalLines().map((line) => line.className),
+			},
+		).toStrictEqual(
+			{
+				collapsed: "false",
+				expanded: "true",
+				label: "Show less",
+				lines: ["text-primary", "text-footnote text-muted-as-secondary"],
+			},
+		);
+	});
+
+	it("shows Edit goal and Clear goal only with a composer mounted, and only Clear without edit text", async () =>
+	{
+		const buttons = () =>
+			within(goalSection())
+				.queryAllByRole("button")
+				.map((button) => button.getAttribute("aria-label"))
+				.filter((label) => label?.endsWith(" goal"));
+		const rerender = await renderCards(
+			{
+				...BASE,
+				goal: GOAL,
+			},
+		);
+		const none = buttons();
+		act(() =>
+		{
+			fakeComposer();
+		});
+		const both = buttons();
+		const wrapper = goalSection().querySelector("[aria-label='Edit goal']")?.closest("div")?.className;
+		const {editText: _, ...noEditText} = GOAL;
+		rerender(
+			{
+				...BASE,
+				goal: noEditText,
+			},
+		);
+
+		expect(
+			{
+				none,
+				both,
+				wrapper,
+				clearOnly: buttons(),
+			},
+		).toStrictEqual(
+			{
+				none: [],
+				both: ["Edit goal", "Clear goal"],
+				wrapper:
+					"flex shrink-0 opacity-0 empty:hidden group-hover/railcard:opacity-100 group-has-[:focus-visible]/railcard:opacity-100 touch:opacity-100",
+				clearOnly: ["Clear goal"],
+			},
+		);
+	});
+
+	it("prefills /goal with the edit text, then /goal clear in its place, without a toast", async () =>
+	{
+		const box = fakeComposer();
+		await renderCards(
+			{
+				...BASE,
+				goal: GOAL,
+			},
+		);
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Edit goal",
+				},
+			),
+		);
+		const edited = box.text;
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Clear goal",
+				},
+			),
+		);
+
+		expect(
+			{
+				edited,
+				cleared: box.text,
+				refused: document.body.textContent.includes("Can’t"),
+			},
+		).toStrictEqual(
+			{
+				edited: "/goal fake goal",
+				cleared: "/goal clear",
+				refused: false,
+			},
+		);
+	});
+
+	it("leaves another draft alone and warns once, the edit refusal replacing the clear one", async () =>
+	{
+		const box = fakeComposer("other fake draft");
+		await renderCards(
+			{
+				...BASE,
+				goal: GOAL,
+			},
+		);
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Clear goal",
+				},
+			),
+		);
+		const clearToast = document.body.textContent.includes(
+			"Can’t clear the goal while the message box has a draft. You can send or clear the draft first.",
+		);
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Edit goal",
+				},
+			),
+		);
+		const text = document.body.textContent;
+
+		expect(
+			{
+				draft: box.text,
+				clearToast,
+				editToast: text.includes(
+					"Can’t edit the goal while the message box has a draft. You can send or clear it first.",
+				),
+				clearToastAfterEdit: text.includes("Can’t clear the goal while"),
+			},
+		).toStrictEqual(
+			{
+				draft: "other fake draft",
+				clearToast: true,
+				editToast: true,
+				clearToastAfterEdit: false,
+			},
+		);
+	});
+
+	it("fades the card out over 200ms when the goal ends, inert until the fade finishes", async () =>
+	{
+		let finish: () => void = () =>
+		{
+		};
+		const animate = vi.fn<
+			() =>
+			{
+				finished: Promise<void>;
+				cancel: () => void;
+			}
+		>(() => (
+		{
+			finished: new Promise<void>((resolve) =>
+			{
+				finish = resolve;
+			}),
+			cancel: () =>
+			{
+			},
+		}));
+		Object.defineProperty(
+			HTMLElement.prototype,
+			"animate",
+			{
+				configurable: true,
+				value: animate,
+			},
+		);
+		onTestFinished(() =>
+		{
+			Reflect.deleteProperty(HTMLElement.prototype, "animate");
+		});
+		const rerender = await renderCards(
+			{
+				...BASE,
+				goal: GOAL,
+			},
+		);
+		rerender(
+			{
+				...BASE,
+				goal: null,
+			},
+		);
+		const slot = document.querySelector("[data-rail-card='goal']");
+		const during =
+		{
+			mounted: slot !== null,
+			inert: slot?.hasAttribute("inert"),
+			calls: animate.mock.calls,
+		};
+		await act(async () =>
+		{
+			finish();
+			await Promise.resolve();
+		});
+
+		expect(
+			{
+				during,
+				after: document.querySelector("[data-rail-card='goal']"),
+			},
+		).toStrictEqual(
+			{
+				during:
+				{
+					mounted: true,
+					inert: true,
+					calls: [
+						[
+							[
+								{
+									opacity: 0,
+								},
+							],
+							{
+								duration: 200,
+								easing: "ease-out",
+								fill: "forwards",
+							},
+						],
+					],
+				},
+				after: null,
 			},
 		);
 	});

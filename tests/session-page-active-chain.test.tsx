@@ -310,6 +310,7 @@ async function renderSessionPage(
 			precedingMessageCount: 0,
 			chainVersion: "v1",
 			chapters: [],
+			goalRows: [],
 		},
 	);
 	queryClient.setQueryData(sessionSubagentsQueryOptions(SESSION_ID).queryKey, []);
