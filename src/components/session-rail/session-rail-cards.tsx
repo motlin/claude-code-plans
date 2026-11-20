@@ -34,7 +34,7 @@ import {writeClipboardText} from "../../lib/clipboard";
 import {toConnectorSlug} from "../../lib/customize/mcp-tool-permissions";
 import {autoCompactHint, type CompactActionState} from "../../lib/compact-action";
 import {buildContextLegend, contextRefreshHint, type ContextBreakdown} from "../../lib/context-breakdown";
-import {formatContextSummary, formatUpdatedAgo, type ComposerUsage} from "../../lib/composer-state";
+import {formatContextSummary, formatTokenCount, formatUpdatedAgo, type ComposerUsage} from "../../lib/composer-state";
 import {prGlyph, type PrStatus} from "../../lib/pr-status";
 import {requestFileOpen} from "../../lib/file-open-requests";
 import {formatCount} from "../../lib/pluralize";
@@ -60,7 +60,7 @@ import {ConnectorLetterTile} from "../connector-letter-tile";
 import {FileTypeIcon} from "../file-type-icon";
 import {usePaneHost} from "../panes/pane-host-context";
 import {CompactActionRow} from "./compact-action-row";
-import {ContextBreakdownBody} from "./context-breakdown";
+import {CONTEXT_HEADLINE_BLOCK_CLASS, ContextBreakdownBody, ContextHeadline} from "./context-breakdown";
 import {useToast} from "../toast-context";
 import {Menu, MenuContent, MenuItem, MenuTrigger} from "../ui/menu";
 import {Skeleton} from "../ui/skeleton";
@@ -411,58 +411,84 @@ function contextCard(inputs: SessionRailInputs, connectors: readonly McpServerSu
 		100,
 		Math.max(0, usage.contextPercent ?? (usage.contextTokens / usage.contextWindowSize) * 100),
 	);
+	// Upstream's `ru` drops the percent when tokens overrun a window that is only an estimate.
+	if (usage.estimatedWindow === true && usage.contextTokens > usage.contextWindowSize)
+	{
+		const summary = formatTokenCount(usage.contextTokens);
+		return {
+			id: "context",
+			summary,
+			body: windowOnlyBody(
+				inputs,
+				<ContextHeadline pct={null} summary={summary} />,
+				<div
+					className="h-[4px] rounded-full overflow-hidden"
+					style={
+					{
+						backgroundColor: "var(--chart-reference-tint)",
+					}}
+					role="progressbar"
+					aria-label="Context window"
+					aria-valuetext={summary}
+					aria-valuemin={0}
+					aria-valuemax={100}
+				/>,
+			),
+		};
+	}
 	const rounded = Math.round(percent);
 	return {
 		id: "context",
 		rollupPct: rounded,
-		body: (
-			<div className="flex flex-col">
-				<div className="flex flex-col gap-1 px-2 pt-1 pb-1.5">
-					<div className="flex min-w-0 items-baseline justify-between gap-2 text-body">
-						<span className="shrink-0 text-primary tabular-nums">{rounded}% used</span>
-						<span
-							data-rail-context-summary=""
-							data-rail-context-pct={rounded}
-							className="min-w-0 truncate text-[12px]/[15px] text-ink-muted tabular-nums"
-						>
-							{formatContextSummary(usage)}
-						</span>
-					</div>
-					<div
-						className="h-[4px] rounded-full overflow-hidden"
-						style={
-						{
-							backgroundColor: "var(--chart-reference-tint)",
-						}}
-						role="progressbar"
-						aria-label="Context window"
-						aria-valuenow={rounded}
-						aria-valuemin={0}
-						aria-valuemax={100}
-					>
-						<div
-							// Upstream tones the rounded `ru` percent.
-							className={`h-full ${usageFillClass(rounded)} transition-[width]`}
-							style={
-							{
-								width: `${percent}%`,
-							}}
-						/>
-					</div>
-				</div>
-				{compactRow(inputs, null)}
-				{/* Upstream's window-only state: no Last updated footer, which needs a breakdown. */}
-				{!working && (
-					<div
-						data-rail-context-hint=""
-						className="mt-1 flex min-h-6 items-center px-2 pb-1 text-[12px]/[15px] text-secondary"
-					>
-						Send a message to see the breakdown.
-					</div>
-				)}
-			</div>
+		body: windowOnlyBody(
+			inputs,
+			<ContextHeadline pct={rounded} summary={formatContextSummary(usage)} />,
+			<div
+				className="h-[4px] rounded-full overflow-hidden"
+				style={
+				{
+					backgroundColor: "var(--chart-reference-tint)",
+				}}
+				role="progressbar"
+				aria-label="Context window"
+				aria-valuenow={rounded}
+				aria-valuemin={0}
+				aria-valuemax={100}
+			>
+				<div
+					// Upstream tones the rounded `ru` percent.
+					className={`h-full ${usageFillClass(rounded)} transition-[width]`}
+					style={
+					{
+						width: `${percent}%`,
+					}}
+				/>
+			</div>,
 		),
 	};
+}
+
+/** Upstream's window-only Context body: the headline over a 4px bar, the compact row, and the breakdown hint. */
+function windowOnlyBody(inputs: SessionRailInputs, headline: React.ReactNode, bar: React.ReactNode): React.ReactNode
+{
+	return (
+		<div className="flex flex-col">
+			<div className={CONTEXT_HEADLINE_BLOCK_CLASS}>
+				{headline}
+				{bar}
+			</div>
+			{compactRow(inputs, null)}
+			{/* Upstream's window-only state: no Last updated footer, which needs a breakdown. */}
+			{!inputs.working && (
+				<div
+					data-rail-context-hint=""
+					className="mt-1 flex min-h-6 items-center px-2 pb-1 text-[12px]/[15px] text-secondary"
+				>
+					Send a message to see the breakdown.
+				</div>
+			)}
+		</div>
+	);
 }
 
 /** Upstream's `sN`: three connectors before its Show more row. */

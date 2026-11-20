@@ -566,6 +566,39 @@ function keyed(rows: readonly ContextLegendRow[]):
 	});
 }
 
+/** Upstream's headline block (c2d611398 `X`): the headline over its meter. */
+export const CONTEXT_HEADLINE_BLOCK_CLASS = "flex flex-col gap-1 px-xs pt-1 pb-1.5";
+
+/**
+ * Upstream's Context headline `re` (c2d611398): "N% used" over the token summary, or the summary alone in
+ * `text-primary` when the percent is unknown (`contextPct === null`).
+ */
+export function ContextHeadline({pct, summary}: {pct: number | null; summary: string})
+{
+	if (pct === null)
+	{
+		return (
+			<span data-rail-context-summary="" className="min-w-0 truncate text-primary tabular-nums">
+				{summary}
+			</span>
+		);
+	}
+	return (
+		<div className="flex min-w-0 items-baseline justify-between gap-sm text-body">
+			<span data-rail-context-used="" className="shrink-0 text-primary tabular-nums">
+				{pct}% used
+			</span>
+			<span
+				data-rail-context-summary=""
+				data-rail-context-pct={pct}
+				className="min-w-0 truncate text-footnote text-muted-as-secondary tabular-nums"
+			>
+				{summary}
+			</span>
+		</div>
+	);
+}
+
 /** The rail Context card's breakdown body: headline and stacked meter, then legend, deferred rows and expanders. */
 export function ContextBreakdownBody({
 	breakdown,
@@ -614,17 +647,11 @@ export function ContextBreakdownBody({
 	return (
 		<StackedMeterGroup categories={meterCategories} size="sm" formatValue={formatTokenCount}>
 			<div className="flex flex-col">
-				<div className="flex flex-col gap-1 px-2 pt-1 pb-1.5">
-					<div className="flex min-w-0 items-baseline justify-between gap-2 text-body">
-						<span className="shrink-0 text-primary tabular-nums">{rounded}% used</span>
-						<span
-							data-rail-context-summary=""
-							data-rail-context-pct={rounded}
-							className="min-w-0 truncate text-[12px]/[15px] text-ink-muted tabular-nums"
-						>
-							{formatTokenCount(usedTokens)} / {formatTokenCount(breakdown.rawMaxTokens)}
-						</span>
-					</div>
+				<div className={CONTEXT_HEADLINE_BLOCK_CLASS}>
+					<ContextHeadline
+						pct={rounded}
+						summary={`${formatTokenCount(usedTokens)} / ${formatTokenCount(breakdown.rawMaxTokens)}`}
+					/>
 					<StackedMeter
 						className="shrink-0"
 						values={meterValues}

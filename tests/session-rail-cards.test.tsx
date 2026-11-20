@@ -42,6 +42,11 @@ import {installFrameQueue, stubReducedMotion} from "./helpers/frame-queue";
 import {longhandStyle} from "./helpers/longhand-style";
 
 const SESSION_ID = "8f0c2c7e-1111-4222-8333-944445555666";
+/** Upstream's Context headline `re` (c2d611398), ported with its comfortable token classes. */
+const HEADLINE_BLOCK_CLASS = "flex flex-col gap-1 px-xs pt-1 pb-1.5";
+const HEADLINE_CLASS = "flex min-w-0 items-baseline justify-between gap-sm text-body";
+const USED_CLASS = "shrink-0 text-primary tabular-nums";
+const SUMMARY_CLASS = "min-w-0 truncate text-footnote text-muted-as-secondary tabular-nums";
 
 type HerdrPane = HerdrPaneIndexData["panes"][number];
 
@@ -2585,6 +2590,11 @@ describe("Context card", () =>
 				text: body.textContent,
 				summary: summary?.textContent,
 				pct: summary?.getAttribute("data-rail-context-pct"),
+				used: body.querySelector("[data-rail-context-used]")?.textContent,
+				headline: summary?.parentElement?.className,
+				usedClass: body.querySelector("[data-rail-context-used]")?.className,
+				summaryClass: summary?.className,
+				block: summary?.parentElement?.parentElement?.className,
 				bar: bar.className,
 				track: bar.style.backgroundColor,
 				fill: bar.firstElementChild?.className,
@@ -2594,9 +2604,77 @@ describe("Context card", () =>
 				text: "18% used178.5k / 1MSend a message to see the breakdown.",
 				summary: "178.5k / 1M",
 				pct: "18",
+				used: "18% used",
+				headline: HEADLINE_CLASS,
+				usedClass: USED_CLASS,
+				summaryClass: SUMMARY_CLASS,
+				block: HEADLINE_BLOCK_CLASS,
 				bar: "h-[4px] rounded-full overflow-hidden",
 				track: "var(--chart-reference-tint)",
 				fill: "h-full bg-fill-accent transition-[width]",
+			},
+		);
+	});
+
+	it("headlines only the token count when the estimated window is overrun, like upstream's null-percent `re`", async () =>
+	{
+		await renderCards(
+			{
+				...BASE,
+				usage:
+				{
+					contextTokens: 250_000,
+					contextWindowSize: 200_000,
+					contextPercent: 125,
+					estimatedWindow: true,
+					fiveHour: null,
+					weekly: null,
+					updatedAt: null,
+				},
+			},
+		);
+
+		const body = contextBody();
+		const summary = body.querySelector("[data-rail-context-summary]");
+		const bar = within(body as HTMLElement).getByRole(
+			"progressbar",
+			{
+				name: "Context window",
+			},
+		);
+		const rollup = screen
+			.getByRole(
+				"button",
+				{
+					name: /^Context/,
+				},
+			)
+			.querySelector("[data-rail-summary]");
+		expect(
+			{
+				text: body.textContent,
+				summary: summary?.textContent,
+				summaryClass: summary?.className,
+				pct: summary?.hasAttribute("data-rail-context-pct"),
+				used: body.querySelector("[data-rail-context-used]"),
+				rollup: rollup?.textContent,
+				meter: rollup?.querySelector('[data-testid="rail-meter"]') ?? null,
+				valueNow: bar.getAttribute("aria-valuenow"),
+				valueText: bar.getAttribute("aria-valuetext"),
+				fill: bar.firstElementChild,
+			},
+		).toStrictEqual(
+			{
+				text: "250kSend a message to see the breakdown.",
+				summary: "250k",
+				summaryClass: "min-w-0 truncate text-primary tabular-nums",
+				pct: false,
+				used: null,
+				rollup: "250k",
+				meter: null,
+				valueNow: null,
+				valueText: "250k",
+				fill: null,
 			},
 		);
 	});
@@ -2834,6 +2912,11 @@ describe("Context card breakdown", () =>
 		expect(
 			{
 				headline: body().querySelector("[data-rail-context-summary]")?.parentElement?.textContent,
+				used: body().querySelector("[data-rail-context-used]")?.textContent,
+				headlineClass: body().querySelector("[data-rail-context-summary]")?.parentElement?.className,
+				usedClass: body().querySelector("[data-rail-context-used]")?.className,
+				summaryClass: body().querySelector("[data-rail-context-summary]")?.className,
+				block: body().querySelector("[data-rail-context-summary]")?.parentElement?.parentElement?.className,
 				label: meter.getAttribute("aria-label"),
 				tabIndex: meter.tabIndex,
 				className: meter.className,
@@ -2842,6 +2925,11 @@ describe("Context card breakdown", () =>
 		).toStrictEqual(
 			{
 				headline: "18% used180k / 1M",
+				used: "18% used",
+				headlineClass: HEADLINE_CLASS,
+				usedClass: USED_CLASS,
+				summaryClass: SUMMARY_CLASS,
+				block: HEADLINE_BLOCK_CLASS,
 				label: "Context window: Messages: 143.5k, 14%; System tools: 14.5k, 1.5%; Skills: 9.9k, 0.99%; Memory files: 6.3k, 0.63%; Other: 5.8k, 0.58%; Autocompact buffer: 33k, 3.3%",
 				tabIndex: 0,
 				className:

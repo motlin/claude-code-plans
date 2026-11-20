@@ -2228,6 +2228,9 @@ describe("session rail card summary", () =>
 
 	it("renders a rollup percentage with upstream's 24x10 mini meter, filled by severity", () =>
 	{
+		// Upstream's rail summary shell `Ne` (cdbb20c70), with the grip-hover fade.
+		const ROLLUP_SHELL_CLASS =
+			"ms-auto min-w-0 truncate ps-sm text-footnote font-normal text-muted-as-secondary group-hover/railtop:opacity-0 group-has-[[data-rail-grip]:focus-visible]/railtop:opacity-0 ";
 		render(
 			<SessionRail
 				sessionId="s1"
@@ -2259,6 +2262,8 @@ describe("session rail card summary", () =>
 			const fill = track?.firstElementChild as HTMLElement | null | undefined;
 			return {
 				text: summary?.textContent,
+				summaryClass: summary?.className,
+				testId: track?.getAttribute("data-testid"),
 				track: track?.className,
 				trackHidden: track?.getAttribute("aria-hidden"),
 				fill: fill?.className,
@@ -2276,6 +2281,8 @@ describe("session rail card summary", () =>
 				context:
 				{
 					text: "18%",
+					summaryClass: ROLLUP_SHELL_CLASS,
+					testId: "rail-meter",
 					track: "flex h-2.5 w-6 shrink-0 rounded-full bg-alpha-2 p-0.5",
 					trackHidden: "true",
 					fill: "h-full min-w-1.5 rounded-full bg-fill-accent",
@@ -2284,6 +2291,9 @@ describe("session rail card summary", () =>
 				environment:
 				{
 					text: "80%",
+					// Environment starts open, so its rollup hides under the open card.
+					summaryClass: `${ROLLUP_SHELL_CLASS}invisible`,
+					testId: "rail-meter",
 					track: "flex h-2.5 w-6 shrink-0 rounded-full bg-alpha-2 p-0.5",
 					trackHidden: "true",
 					fill: "h-full min-w-1.5 rounded-full bg-usage-warning",

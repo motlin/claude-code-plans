@@ -129,7 +129,11 @@ function RollupSummary({pct}: {pct: number})
 	return (
 		<span className="flex items-center justify-end gap-1.5">
 			<span className="tabular-nums">{clamped}%</span>
-			<span aria-hidden className="flex h-2.5 w-6 shrink-0 rounded-full bg-alpha-2 p-0.5">
+			<span
+				aria-hidden
+				data-testid="rail-meter"
+				className="flex h-2.5 w-6 shrink-0 rounded-full bg-alpha-2 p-0.5"
+			>
 				<span
 					className={`h-full min-w-1.5 rounded-full ${usageFillClass(clamped)}`}
 					style={
@@ -306,7 +310,7 @@ function RailSection({
 													"aria-hidden": true,
 												}
 											: {})}
-										className={`ms-auto min-w-0 truncate ps-1.5 text-[12px]/[15px] font-normal text-ink-muted group-hover/railtop:opacity-0 group-has-[[data-rail-grip]:focus-visible]/railtop:opacity-0 ${open ? "invisible" : ""}`}
+										className={`ms-auto min-w-0 truncate ps-sm text-footnote font-normal text-muted-as-secondary group-hover/railtop:opacity-0 group-has-[[data-rail-grip]:focus-visible]/railtop:opacity-0 ${open ? "invisible" : ""}`}
 									>
 										{card.rollupPct === undefined ? (
 											card.summary

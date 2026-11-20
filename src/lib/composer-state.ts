@@ -93,6 +93,8 @@ export interface ComposerUsage
 	contextTokens: number | null;
 	contextWindowSize: number | null;
 	contextPercent: number | null;
+	/** Set when `contextWindowSize` is the model-table guess (transcript fallback), not the statusline's own window. */
+	estimatedWindow?: true;
 	fiveHour: RateLimitWindow | null;
 	weekly: RateLimitWindow | null;
 	updatedAt: string | null;
@@ -189,6 +191,7 @@ function resolveTranscriptUsage(usage: TranscriptContextUsage, modelId: string):
 		contextTokens: usage.contextTokens,
 		contextWindowSize: size,
 		contextPercent: (usage.contextTokens / size) * 100,
+		estimatedWindow: true,
 		fiveHour: null,
 		weekly: null,
 		updatedAt: usage.timestamp,
@@ -442,6 +445,12 @@ function withAccountWindows(usage: ComposerUsage | null, summary: UsageSummary |
 		contextTokens: usage?.contextTokens ?? null,
 		contextWindowSize: usage?.contextWindowSize ?? null,
 		contextPercent: usage?.contextPercent ?? null,
+		...(usage?.estimatedWindow === true
+			?
+				{
+					estimatedWindow: true,
+				}
+			: {}),
 		fiveHour: toLimit(summary.fiveHour),
 		weekly: toLimit(summary.sevenDay),
 		updatedAt: usage?.updatedAt ?? summary.updatedAt,
