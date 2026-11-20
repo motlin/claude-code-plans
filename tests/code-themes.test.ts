@@ -12,6 +12,9 @@ import
 	loadCodeTheme,
 	type CodeThemeId,
 } from "../src/lib/code-themes";
+import type {ThemeRegistrationRaw} from "shiki";
+import {claudeDark} from "../src/lib/claude-dark-theme";
+import {claudeLight} from "../src/lib/claude-light-theme";
 import {codeThemeDarkLabels, codeThemeLightLabels} from "../src/lib/schema-choices";
 
 describe("code theme settings", () =>
@@ -209,6 +212,27 @@ describe("code theme settings", () =>
 					"entity.name.type": "#fbad60",
 					"variable.other.property": "#eaecf0",
 				},
+			},
+		);
+	});
+
+	it("keeps Claude Light's rule list in step with Claude Dark's, as upstream builds both with one N()", () =>
+	{
+		const shape = (theme: ThemeRegistrationRaw) =>
+			theme.settings.map((rule) => (
+			{
+				scope: [rule.scope].flat().join(","),
+				fontStyle: rule.settings.fontStyle,
+			}));
+		expect(
+			{
+				rules: claudeLight.settings.length,
+				shape: shape(claudeLight),
+			},
+		).toStrictEqual(
+			{
+				rules: 36,
+				shape: shape(claudeDark),
 			},
 		);
 	});
