@@ -734,6 +734,64 @@ describe("BranchStrip project menu", () =>
 		expect(await openProjectMenu()).toStrictEqual(["Open in Finder", "Copy path", "Copy branch name"]);
 	});
 
+	it("opens the project menu on right-click", async () =>
+	{
+		renderStrip();
+		const trigger = screen.getByRole(
+			"button",
+			{
+				name: "claude-code-plans",
+			},
+		);
+		const prevented = !fireEvent.contextMenu(trigger);
+		await flush();
+
+		expect(
+			{
+				prevented,
+				kind: screen.getByRole("menu").getAttribute("data-cds"),
+				items: screen.getAllByRole("menuitem").map((item) => item.textContent),
+			},
+		).toStrictEqual(
+			{
+				prevented: true,
+				kind: "Menu",
+				items: ["Open in Finder", "Copy path", "Copy branch name"],
+			},
+		);
+	});
+
+	it("opens the PR strip's repository menu on right-click", async () =>
+	{
+		const view = renderStrip(
+			{
+				...SESSION,
+				pr: EXAMPLE_PR,
+			},
+		);
+		const prevented = !fireEvent.contextMenu(
+			view.getByRole(
+				"button",
+				{
+					name: `Repository ${EXAMPLE_PR.repository}`,
+				},
+			),
+		);
+		await flush();
+
+		expect(
+			{
+				prevented,
+				items: screen.getAllByRole("menuitem").map((item) => item.textContent),
+			},
+		).toStrictEqual(
+			{
+				prevented: true,
+				items: ["Open in Finder", "Copy path", "Copy branch name", "Open repository on GitHub"],
+			},
+		);
+	});
+
 	it("drops the branch item when the session has no branch", async () =>
 	{
 		renderStrip(

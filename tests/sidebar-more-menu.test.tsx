@@ -334,6 +334,12 @@ describe("sidebar More menu", () =>
 					.getAllByRole("menuitem")
 					.map((item) => item.textContent),
 				separators: within(menu).getAllByRole("separator").length,
+				// Upstream's More navigation items popup does not opt in: a right-click inside keeps the browser menu.
+				browserMenuKept: [
+					menu,
+					within(menu).getAllByRole("menuitem")[0]!,
+					within(menu).getByRole("separator"),
+				].map((target) => fireEvent.contextMenu(target)),
 			},
 		).toStrictEqual(
 			{
@@ -350,6 +356,7 @@ describe("sidebar More menu", () =>
 					"Edit sidebar…",
 				],
 				separators: 1,
+				browserMenuKept: [true, true, true],
 			},
 		);
 	});

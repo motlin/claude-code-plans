@@ -3669,6 +3669,52 @@ describe("artifacts route", () =>
 		);
 	});
 
+	it("leaves a grid card's right-click to the browser's link menu, as upstream does, and keeps its More options menu", async () =>
+	{
+		storage.setItem(ARTIFACTS_LAYOUT_STORAGE_KEY, "grid");
+		await renderArtifactsPage("/artifacts", true);
+		const prevented = !fireEvent.contextMenu(
+			screen.getByRole(
+				"link",
+				{
+					name: "Quarterly plan",
+				},
+			),
+			{
+				clientX: 40,
+				clientY: 50,
+			},
+		);
+		await act(async () =>
+		{
+			await Promise.resolve();
+		});
+		const contextMenu = screen.queryByRole("menu");
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "More options for Quarterly plan",
+				},
+			),
+		);
+		const menu = (await screen.findAllByRole("menuitem")).map((item) => item.textContent);
+
+		expect(
+			{
+				prevented,
+				contextMenu,
+				menu,
+			},
+		).toStrictEqual(
+			{
+				prevented: false,
+				contextMenu: null,
+				menu: ["PinP", "Copy linkC"],
+			},
+		);
+	});
+
 	it("gives the card menu upstream's P / C keycaps, row hooks and 6px offset, and fires a row by its letter", async () =>
 	{
 		const writeText = vi.fn<(text: string) => Promise<void>>(async (_text: string) => {});

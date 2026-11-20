@@ -5,6 +5,7 @@ import {CLAUDE_TAB_ID, type ShellTab} from "../../lib/terminal-tabs";
 import {InlineRenameInput} from "../inline-rename-input";
 import {CDS_BUTTON_DISABLED, CDS_ICON_ONLY_DISABLED} from "../ui/cds-button-disabled";
 import {ContextMenu, ContextMenuTrigger, Menu, MenuContent, MenuItem, MenuTrigger} from "../ui/menu";
+import {SUPPRESS_NATIVE_MENU_POPUP_PROPS} from "../../lib/native-context-menu";
 
 const TAB_CLASS =
 	"flex h-6 shrink-0 cursor-pointer items-center rounded-r5 px-1.5 text-body whitespace-nowrap outline-none hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus aria-selected:bg-fill-control aria-selected:text-primary text-secondary hover:text-primary";
@@ -141,7 +142,9 @@ export function TerminalTabStrip({
 			onOpenChangeComplete={onMenuOpenChangeComplete}
 		>
 			<ContextMenuTrigger className="flex shrink-0 items-center">{trigger}</ContextMenuTrigger>
-			<MenuContent finalFocus={() => !keepFocus.current}>{items}</MenuContent>
+			<MenuContent finalFocus={() => !keepFocus.current} popupProps={SUPPRESS_NATIVE_MENU_POPUP_PROPS}>
+				{items}
+			</MenuContent>
 		</ContextMenu>
 	);
 
@@ -243,7 +246,7 @@ export function TerminalTabStrip({
 					<MenuTrigger aria-label="More terminals" title="More terminals" className={GHOST_ICON_BUTTON}>
 						<ChevronDown aria-hidden="true" className="size-4" />
 					</MenuTrigger>
-					<MenuContent>
+					<MenuContent popupProps={SUPPRESS_NATIVE_MENU_POPUP_PROPS}>
 						{showClaude && (
 							<MenuItem
 								onSelect={() =>

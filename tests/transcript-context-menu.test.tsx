@@ -279,6 +279,30 @@ describe("transcript context menus", () =>
 		);
 	});
 
+	it("keeps the browser menu out of its own open popup, as upstream's `qw`", () =>
+	{
+		const container = renderChat();
+		const menu = openMenuOn(find(container, "strong", "details"));
+		const item = screen.getAllByRole("menuitem")[0];
+		if (item === undefined) throw new Error("no menu item");
+		const event = createEvent.contextMenu(item);
+		fireEvent(item, event);
+
+		expect(
+			{
+				prevented: event.defaultPrevented,
+				sameMenu: screen.getAllByRole("menu").at(-1) === menu && menu.isConnected,
+				rows: menuRows(menu),
+			},
+		).toStrictEqual(
+			{
+				prevented: true,
+				sameMenu: true,
+				rows: ASSISTANT_ROWS,
+			},
+		);
+	});
+
 	it("adds Copy code on inline code and copies the code text", async () =>
 	{
 		const container = renderChat();

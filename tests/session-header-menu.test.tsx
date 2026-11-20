@@ -2,7 +2,7 @@
 
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {createMemoryHistory, createRootRoute, createRouter, RouterProvider} from "@tanstack/react-router";
-import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
+import {act, cleanup, fireEvent, render, screen, within} from "@testing-library/react";
 import {afterEach, beforeAll, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {ClaudeEventsProvider} from "../src/components/claude-events-provider";
@@ -631,7 +631,9 @@ describe("session header menu", () =>
 	it("opens the same menu at the pointer when the title is right-clicked", async () =>
 	{
 		await renderTitlebar(localActions());
-		const chevronShape = menuShape(await openHeaderMenu());
+		const chevronMenu = await openHeaderMenu();
+		const chevronShape = menuShape(chevronMenu);
+		const chevronPrevented = !fireEvent.contextMenu(within(chevronMenu).getAllByRole("menuitem")[0]!);
 		fireEvent.keyDown(
 			screen.getByRole("menu"),
 			{
@@ -659,11 +661,15 @@ describe("session header menu", () =>
 			{
 				kind: menu.getAttribute("data-cds"),
 				shape: menuShape(menu),
+				chevronPrevented,
+				contextPrevented: !fireEvent.contextMenu(within(menu).getAllByRole("menuitem")[0]!),
 			},
 		).toStrictEqual(
 			{
 				kind: "ContextMenu",
 				shape: chevronShape,
+				chevronPrevented: true,
+				contextPrevented: true,
 			},
 		);
 	});

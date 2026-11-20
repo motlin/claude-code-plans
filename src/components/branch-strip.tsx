@@ -25,8 +25,7 @@ import {AnimatedDiffStat} from "./diff-stat";
 import {isRecord} from "../lib/narrow";
 import {prGlyph} from "../lib/pr-status";
 import {useOptionalPaneHost} from "./panes/pane-host-context";
-import {ProjectMenuItems} from "./session-titlebar";
-import {Menu, MenuContent, MenuTrigger} from "./ui/menu";
+import {ProjectMenu} from "./session-titlebar";
 
 /** Upstream hides the strip in a tile this narrow or narrower. */
 const HIDDEN_AT_OR_BELOW_PX = 320;
@@ -211,22 +210,19 @@ function PullRequestStripContent({
 				{pr.repository !== undefined && repositoryName && (
 					<>
 						<span aria-hidden className="w-3 min-w-0 shrink" />
-						<Menu>
-							<MenuTrigger
-								aria-label={`Repository ${pr.repository}`}
-								title={pr.repository}
-								className={PR_REPOSITORY_BUTTON}
-								style={
-								{
-									color,
-								}}
-							>
-								<span className="truncate">{repositoryName}</span>
-							</MenuTrigger>
-							<MenuContent>
-								<ProjectMenuItems sessionId={sessionId} session={session} />
-							</MenuContent>
-						</Menu>
+						<ProjectMenu
+							sessionId={sessionId}
+							session={session}
+							aria-label={`Repository ${pr.repository}`}
+							title={pr.repository}
+							className={PR_REPOSITORY_BUTTON}
+							style={
+							{
+								color,
+							}}
+						>
+							<span className="truncate">{repositoryName}</span>
+						</ProjectMenu>
 					</>
 				)}
 			</div>
@@ -292,15 +288,15 @@ export function BranchStrip({
 				>
 					{pr === null ? (
 						<>
-							<Menu>
-								<MenuTrigger title={path ?? session.projectName} className={GHOST_BUTTON}>
-									<FolderGit2 aria-hidden className="size-3.5 shrink-0" />
-									<span className="truncate">{session.projectName}</span>
-								</MenuTrigger>
-								<MenuContent>
-									<ProjectMenuItems sessionId={sessionId} session={session} />
-								</MenuContent>
-							</Menu>
+							<ProjectMenu
+								sessionId={sessionId}
+								session={session}
+								title={path ?? session.projectName}
+								className={GHOST_BUTTON}
+							>
+								<FolderGit2 aria-hidden className="size-3.5 shrink-0" />
+								<span className="truncate">{session.projectName}</span>
+							</ProjectMenu>
 							{branch !== null && (
 								<span
 									data-branch-name=""

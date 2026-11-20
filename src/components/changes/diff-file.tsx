@@ -55,6 +55,7 @@ import
 } from "../../lib/diff-range-anchor";
 import {LINE_NUMBER_OPENS_FILE} from "../../lib/diff-line-number-open";
 import {useResolvedTheme} from "../theme-context";
+import {SUPPRESS_NATIVE_MENU_POPUP_PROPS} from "../../lib/native-context-menu";
 
 export type {DiffStyle};
 
@@ -284,7 +285,11 @@ export function DiffFileMenuHost({children}: {children: ReactNode})
 						setOpenTriggerId(open ? (details.trigger?.id ?? null) : null);
 					}}
 				>
-					{({payload}) => <MenuContent align="end">{isValidElement(payload) ? payload : null}</MenuContent>}
+					{({payload}) => (
+						<MenuContent align="end" popupProps={SUPPRESS_NATIVE_MENU_POPUP_PROPS}>
+							{isValidElement(payload) ? payload : null}
+						</MenuContent>
+					)}
 				</Menu>
 			)}
 		</MoreMenuHostContext>
@@ -585,7 +590,7 @@ function DiffFileHeaderRow({
 			>
 				{content}
 			</ContextMenuTrigger>
-			<MenuContent>{menu}</MenuContent>
+			<MenuContent popupProps={SUPPRESS_NATIVE_MENU_POPUP_PROPS}>{menu}</MenuContent>
 		</ContextMenu>
 	);
 }

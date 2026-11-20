@@ -1270,11 +1270,13 @@ describe("Shell tabs", () =>
 			{
 				shellMenu,
 				claudeMenu,
+				popupPrevented: !fireEvent.contextMenu(screen.getAllByRole("menuitem")[0]!),
 			},
 		).toStrictEqual(
 			{
 				shellMenu: ["Rename terminal", "Close terminal", "Close other terminals"],
 				claudeMenu: ["Close other terminals"],
+				popupPrevented: true,
 			},
 		);
 	});
@@ -1667,6 +1669,7 @@ describe("Shell tabs", () =>
 		await flush();
 		const menu = await waitFor(() => screen.getByRole("menu"));
 		const items = [...menu.querySelectorAll('[role="menuitem"]')].map((node) => node.textContent);
+		const popupPrevented = !fireEvent.contextMenu(menu.querySelector('[role="menuitem"]')!);
 		fireEvent.click(
 			[...menu.querySelectorAll<HTMLElement>('[role="menuitem"]')].find((node) => node.textContent === "Claude")!,
 		);
@@ -1675,11 +1678,13 @@ describe("Shell tabs", () =>
 		expect(
 			{
 				items,
+				popupPrevented,
 				tabs: tabs(),
 			},
 		).toStrictEqual(
 			{
 				items: ["Claude", "Shell", "Shell 2"],
+				popupPrevented: true,
 				tabs: [
 					{
 						name: "Claude",

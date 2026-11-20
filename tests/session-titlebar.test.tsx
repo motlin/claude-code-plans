@@ -1541,6 +1541,42 @@ describe("SessionTitlebar repository pill", () =>
 		);
 	});
 
+	it("opens its project menu on right-click, anchored to the pill, as upstream's origin chip `Nx`", async () =>
+	{
+		await renderTitlebar(
+			{
+				...baseDetail,
+				pr,
+			},
+		);
+		const trigger = screen.getByRole(
+			"button",
+			{
+				name: "Repository alice/example-repository",
+			},
+		);
+		const prevented = !fireEvent.contextMenu(trigger);
+		await flush();
+		const menu = screen.getByRole("menu");
+		expect(
+			{
+				prevented,
+				kind: menu.getAttribute("data-cds"),
+				expanded: trigger.getAttribute("aria-expanded"),
+				items: within(menu)
+					.getAllByRole("menuitem")
+					.map((item) => item.textContent),
+			},
+		).toStrictEqual(
+			{
+				prevented: true,
+				kind: "Menu",
+				expanded: "true",
+				items: ["Open in Finder", "Copy path", "Copy branch name", "Open repository on GitHub"],
+			},
+		);
+	});
+
 	it("preserves repository, branch, path and Finder actions from the existing project menu", async () =>
 	{
 		await renderTitlebar(

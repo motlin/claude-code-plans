@@ -8,7 +8,13 @@ import {CODEBLOCK_CLASS, CODEBLOCK_COPY_ATTR, CODEBLOCK_TEXT_ATTR} from "../lib/
 import {useSessionChapters} from "../lib/chapter-store";
 import {attachContext} from "../lib/context-attach";
 import {markdownToPlainText} from "../lib/markdown-plain-text";
-import {createPressRecorder, touchOnTextOrSelection, wantsNativeContextMenu} from "../lib/native-context-menu";
+import
+{
+	createPressRecorder,
+	SUPPRESS_NATIVE_MENU_POPUP_PROPS,
+	touchOnTextOrSelection,
+	wantsNativeContextMenu,
+} from "../lib/native-context-menu";
 import {useFileRefsCwd} from "./file-refs-context";
 import {FileActionsMenuItems} from "./files/file-actions-menu";
 import {ImageMenuItems} from "./image-context-menu";
@@ -402,6 +408,8 @@ export function TranscriptMessageMenu({
 				{children}
 			</ContextMenuTrigger>
 			<MenuContent
+				// Upstream `qw`: a right-click inside the open popup never shows the browser menu.
+				popupProps={SUPPRESS_NATIVE_MENU_POPUP_PROPS}
 				// A file menu keeps the default 128px minimum width, as upstream's `Un`.
 				{...(target.kind === "file"
 					? {}

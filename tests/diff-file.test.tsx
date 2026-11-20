@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import {act, cleanup, fireEvent, render, renderHook, screen, waitFor} from "@testing-library/react";
+import {act, cleanup, fireEvent, render, renderHook, screen, waitFor, within} from "@testing-library/react";
 import {afterEach, beforeAll, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {FileTypeIconSetContext} from "../src/components/file-type-icon-set-context";
 import {DiffFile, DiffFileHeader} from "../src/components/changes/diff-file";
@@ -1197,6 +1197,7 @@ describe("DiffFileHeader More actions (upstream c44d00c7f rc/ic/tc)", () =>
 				open: moreButton().getAttribute("aria-expanded"),
 				align: menu.getAttribute("data-align"),
 				rows: rows(menu),
+				popupPrevented: !fireEvent.contextMenu(within(menu).getAllByRole("menuitem")[0]!),
 			},
 		).toStrictEqual(
 			{
@@ -1208,6 +1209,7 @@ describe("DiffFileHeader More actions (upstream c44d00c7f rc/ic/tc)", () =>
 				open: "true",
 				align: "end",
 				rows: ["Copy", "─", "Show whole file"],
+				popupPrevented: true,
 			},
 		);
 	});
@@ -1238,15 +1240,19 @@ describe("DiffFileHeader More actions (upstream c44d00c7f rc/ic/tc)", () =>
 			},
 		);
 
+		const menu = await screen.findByRole("menu");
+
 		expect(
 			{
 				button,
-				rows: rows(await screen.findByRole("menu")),
+				rows: rows(menu),
+				popupPrevented: !fireEvent.contextMenu(within(menu).getAllByRole("menuitem")[0]!),
 			},
 		).toStrictEqual(
 			{
 				button: null,
 				rows: ["Copy", "─", "Show whole file"],
+				popupPrevented: true,
 			},
 		);
 	});

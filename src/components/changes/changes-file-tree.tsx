@@ -24,6 +24,7 @@ import
 	type ChangedFileTreeNode,
 	type ChangedFileTreeOptions,
 } from "./changed-file-tree";
+import {SUPPRESS_NATIVE_MENU_POPUP_PROPS} from "../../lib/native-context-menu";
 
 const INDENT_PX = 8;
 
@@ -73,7 +74,7 @@ function withRowMenu(
 	return (
 		<ContextMenu key={key}>
 			<ContextMenuTrigger render={row} />
-			<MenuContent>{rowMenu(path, isDirectory)}</MenuContent>
+			<MenuContent popupProps={SUPPRESS_NATIVE_MENU_POPUP_PROPS}>{rowMenu(path, isDirectory)}</MenuContent>
 		</ContextMenu>
 	);
 }

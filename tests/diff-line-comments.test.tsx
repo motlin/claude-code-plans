@@ -1338,6 +1338,7 @@ describe("Changes pane right-click menu", () =>
 		fireEvent.contextMenu(body);
 		const menu = await screen.findByRole("menu");
 		const rows = menuRows(menu);
+		const popupPrevented = !fireEvent.contextMenu(within(menu).getAllByRole("menuitem")[0]!);
 		const copyDisabled = within(menu)
 			.getByRole(
 				"menuitem",
@@ -1359,12 +1360,14 @@ describe("Changes pane right-click menu", () =>
 		expect(
 			{
 				rows,
+				popupPrevented,
 				copyDisabled,
 				chips: takeContextChips(SESSION).map(({id: _id, ...chip}) => chip),
 			},
 		).toStrictEqual(
 			{
 				rows: ["Attach as context", "─", "Copy"],
+				popupPrevented: true,
 				copyDisabled: "true",
 				chips: [
 					{

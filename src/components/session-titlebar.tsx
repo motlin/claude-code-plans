@@ -13,7 +13,7 @@ import
 	Tag,
 	Users,
 } from "lucide-react";
-import {lazy, type ReactElement, type ReactNode, Suspense, useCallback, useState} from "react";
+import {type ComponentProps, lazy, type ReactElement, type ReactNode, Suspense, useCallback, useState} from "react";
 
 import {useFizzyLake} from "../lib/fizzy-lake";
 import {foldBudget, PANE_SLOTS} from "../lib/titlebar-fold";
@@ -58,6 +58,8 @@ import
 	MenuTrigger,
 } from "./ui/menu";
 import {Tooltip} from "./ui/tooltip";
+import {useMenuOpensOnContextMenu} from "./ui/use-menu-opens-on-context-menu";
+import {SUPPRESS_NATIVE_MENU_POPUP_PROPS} from "../lib/native-context-menu";
 
 // The New output style dialog loads on its first open.
 const NewOutputStyleDialog = lazy(async () =>
@@ -217,7 +219,7 @@ export type ProjectMenuSession = Pick<SessionDetailData, "projectPath" | "cwd" |
  * The project menu's items: the composer branch strip's project button, and the header menu's
  * Project submenu, which keeps them reachable while the strip is hidden.
  */
-export function ProjectMenuItems({sessionId, session}: {sessionId: string; session: ProjectMenuSession})
+function ProjectMenuItems({sessionId, session}: {sessionId: string; session: ProjectMenuSession})
 {
 	const toast = useToast();
 	const path = session.projectPath ?? session.cwd;
@@ -255,6 +257,35 @@ export function ProjectMenuItems({sessionId, session}: {sessionId: string; sessi
 				</MenuItem>
 			)}
 		</>
+	);
+}
+
+/**
+ * A project menu button: the titlebar repository pill and the branch strip's project and repository buttons. Like
+ * upstream's origin chip repository menu (`c73f45bc3` `Nx`), a right-click opens the same dropdown, anchored to the
+ * trigger.
+ */
+export function ProjectMenu({
+	sessionId,
+	session,
+	children,
+	...triggerProps
+}: Omit<ComponentProps<typeof MenuTrigger>, "onContextMenu"> &
+{
+	sessionId: string;
+	session: ProjectMenuSession;
+})
+{
+	const {rootProps, onContextMenu} = useMenuOpensOnContextMenu();
+	return (
+		<Menu {...rootProps}>
+			<MenuTrigger {...triggerProps} onContextMenu={onContextMenu}>
+				{children}
+			</MenuTrigger>
+			<MenuContent>
+				<ProjectMenuItems sessionId={sessionId} session={session} />
+			</MenuContent>
+		</Menu>
 	);
 }
 
@@ -622,7 +653,10 @@ export function SessionTitlebar({
 											/>
 										</h2>
 									)}
-									<MenuContent finalFocus={contextRename.finalFocus}>
+									<MenuContent
+										finalFocus={contextRename.finalFocus}
+										popupProps={SUPPRESS_NATIVE_MENU_POPUP_PROPS}
+									>
 										<HeaderMenuBody
 											sessionId={sessionId}
 											data={data}
@@ -644,7 +678,11 @@ export function SessionTitlebar({
 											<ChevronDown aria-hidden className="size-4" />
 										</MenuTrigger>
 									</Tooltip>
-									<MenuContent finalFocus={menuRename.finalFocus} sideOffset={6}>
+									<MenuContent
+										finalFocus={menuRename.finalFocus}
+										sideOffset={6}
+										popupProps={SUPPRESS_NATIVE_MENU_POPUP_PROPS}
+									>
 										<HeaderMenuBody
 											sessionId={sessionId}
 											data={data}
@@ -665,19 +703,16 @@ export function SessionTitlebar({
 							className={`flex items-center gap-[3px] ${compact ? "shrink-0" : "min-w-0"}`}
 						>
 							{data.pr !== undefined && repositoryName && repositoryUrl(data.pr) !== null && (
-								<Menu>
-									<MenuTrigger
-										data-origin-pill="repository"
-										aria-label={`Repository ${data.pr.repository}`}
-										title={data.pr.repository}
-										className={`${PILL_CLASS} cursor-pointer hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus`}
-									>
-										<PillContent icon={FolderGit2} label={repositoryName} compact={compact} />
-									</MenuTrigger>
-									<MenuContent>
-										<ProjectMenuItems sessionId={sessionId} session={data} />
-									</MenuContent>
-								</Menu>
+								<ProjectMenu
+									sessionId={sessionId}
+									session={data}
+									data-origin-pill="repository"
+									aria-label={`Repository ${data.pr.repository}`}
+									title={data.pr.repository}
+									className={`${PILL_CLASS} cursor-pointer hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus`}
+								>
+									<PillContent icon={FolderGit2} label={repositoryName} compact={compact} />
+								</ProjectMenu>
 							)}
 							{modelLabel !== null && (
 								<OriginPill kind="model" icon={Cpu} label={modelLabel} compact={compact} />

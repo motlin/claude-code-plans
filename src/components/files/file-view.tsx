@@ -47,6 +47,7 @@ import {LazySourceEditor} from "./lazy-source-editor";
 import type {FindHighlight, SourceEditorHandle} from "./source-editor";
 import {useSourceFileSave} from "./use-source-file-save";
 import {cdsButtonClass} from "../ui/cds-button";
+import {SUPPRESS_NATIVE_MENU_POPUP_PROPS} from "../../lib/native-context-menu";
 
 /**
  * Sibling `.md` links render under this prefix; a click handler resolves them
@@ -909,7 +910,7 @@ export function FileView({
 					>
 						{body()}
 					</ContextMenuTrigger>
-					<MenuContent>
+					<MenuContent popupProps={SUPPRESS_NATIVE_MENU_POPUP_PROPS}>
 						<ViewerMenuItems
 							path={path}
 							cwd={cwd}

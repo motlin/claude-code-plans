@@ -874,11 +874,16 @@ describe("Composer home bar permissions menu", () =>
 				labelText: within(menu).queryByText("Permissions · this session")?.textContent ?? null,
 				accelerators: menu.querySelectorAll("[data-accelerator]").length,
 				rows: radioRows(menu),
+				// Upstream's Permissions popup does not opt in: a right-click inside keeps the browser menu.
+				browserMenuKept: [menu, within(menu).getAllByRole("menuitemradio")[0]!].map((target) =>
+					fireEvent.contextMenu(target),
+				),
 			},
 		).toStrictEqual(
 			{
 				labelText: "Permissions · this session",
 				accelerators: 0,
+				browserMenuKept: [true, true],
 				rows: [
 					{
 						label: "Auto",

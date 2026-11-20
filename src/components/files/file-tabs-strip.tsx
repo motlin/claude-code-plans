@@ -9,6 +9,7 @@ import {ContextMenu, ContextMenuTrigger, MenuContent} from "../ui/menu";
 import {Tooltip} from "../ui/tooltip";
 import {TabMenuItems} from "./file-context-menu";
 import {mentionPath} from "./mention-path";
+import {SUPPRESS_NATIVE_MENU_POPUP_PROPS} from "../../lib/native-context-menu";
 
 function baseName(path: string): string
 {
@@ -143,7 +144,7 @@ export function FileTabsStrip({state, dispatch, cwd, onAttachContext, onRevealIn
 								<X aria-hidden="true" className="size-3" />
 							</button>
 						</ContextMenuTrigger>
-						<MenuContent>
+						<MenuContent popupProps={SUPPRESS_NATIVE_MENU_POPUP_PROPS}>
 							<TabMenuItems
 								path={tab.path}
 								preview={tab.preview}

@@ -277,6 +277,12 @@ export function preventNativeContextMenu(event: {preventDefault: () => void}): v
 	event.preventDefault();
 }
 
+/** `MenuContent` popupProps for a menu that opts in to {@link preventNativeContextMenu}. */
+export const SUPPRESS_NATIVE_MENU_POPUP_PROPS =
+{
+	onContextMenu: preventNativeContextMenu,
+} as const;
+
 /** Upstream `Zd`: targets whose right-click keeps the browser menu. */
 export const NATIVE_MENU_TARGETS =
 	'input, textarea, select, [contenteditable]:not([contenteditable="false"]), a[href], img, video, audio, [role="menu"]';

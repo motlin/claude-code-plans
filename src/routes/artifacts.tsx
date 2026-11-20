@@ -1461,7 +1461,7 @@ function ArtifactRowActions({artifact, pinned}: {artifact: ArtifactSummary; pinn
 	);
 }
 
-/** Right-click on a row or card opens the same items as its ⋮ menu. */
+/** Right-click on a list row opens the same items as its ⋮ menu (grid cards keep the browser menu, as upstream). */
 function ArtifactContextMenu({
 	artifact,
 	pinned,
@@ -1660,86 +1660,74 @@ function ArtifactCard({
 	const {verb, ms} = cardMetaTime(artifact);
 	return (
 		<li className="h-full">
-			<ArtifactContextMenu artifact={artifact} pinned={pinned}>
+			{/* No custom context menu: upstream leaves a card's right-click to the browser's link menu. */}
+			<div
+				data-card-grows=""
+				className="group relative h-full transition-transform duration-200 ease-[cubic-bezier(0.165,0.84,0.44,1)] motion-safe:hover:scale-[1.03] motion-safe:has-[[aria-expanded=true]]:scale-[1.03]"
+			>
+				{/* Upstream's pressable: shrinks to 98% over duration-snap (120ms) while pressed. */}
 				<div
-					data-card-grows=""
-					className="group relative h-full transition-transform duration-200 ease-[cubic-bezier(0.165,0.84,0.44,1)] motion-safe:hover:scale-[1.03] motion-safe:has-[[aria-expanded=true]]:scale-[1.03]"
+					data-gallery-card=""
+					className="relative block w-full group/card transition-transform motion-reduce:transition-none duration-[120ms] active:scale-[0.98] rounded-2xl h-full"
 				>
-					{/* Upstream's pressable: shrinks to 98% over duration-snap (120ms) while pressed. */}
+					<PrimaryLink artifact={artifact} className="rounded-2xl" />
 					<div
-						data-gallery-card=""
-						className="relative block w-full group/card transition-transform motion-reduce:transition-none duration-[120ms] active:scale-[0.98] rounded-2xl h-full"
+						data-card-frame=""
+						className="pointer-events-none relative flex h-full flex-col overflow-hidden rounded-2xl bg-surface-2 after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] after:shadow-card-ring"
 					>
-						<PrimaryLink artifact={artifact} className="rounded-2xl" />
-						<div
-							data-card-frame=""
-							className="pointer-events-none relative flex h-full flex-col overflow-hidden rounded-2xl bg-surface-2 after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] after:shadow-card-ring"
-						>
-							<div
-								data-card-preview=""
-								className="relative h-[152px] shrink-0 select-none overflow-hidden"
-							>
-								<ArtifactCover artifact={artifact} priority={priorityThumb} />
+						<div data-card-preview="" className="relative h-[152px] shrink-0 select-none overflow-hidden">
+							<ArtifactCover artifact={artifact} priority={priorityThumb} />
+						</div>
+						<div data-card-body="" className="relative flex min-h-18 flex-1 items-center gap-3 p-4">
+							<div aria-hidden="true">
+								<GalleryMark artifact={artifact} size="card" />
 							</div>
-							<div data-card-body="" className="relative flex min-h-18 flex-1 items-center gap-3 p-4">
-								<div aria-hidden="true">
-									<GalleryMark artifact={artifact} size="card" />
-								</div>
-								<div data-artifact-mark-words="" className="flex min-w-0 flex-1 flex-col gap-0.5">
-									<div className="flex items-start gap-2">
-										<div
-											aria-hidden="true"
-											data-card-title=""
-											className="min-w-0 truncate text-start text-body font-control leading-5 text-primary"
-										>
-											{artifact.title}
-										</div>
-									</div>
+							<div data-artifact-mark-words="" className="flex min-w-0 flex-1 flex-col gap-0.5">
+								<div className="flex items-start gap-2">
 									<div
-										data-card-meta=""
-										className="mt-auto flex items-center gap-1 text-caption text-muted-as-secondary"
+										aria-hidden="true"
+										data-card-title=""
+										className="min-w-0 truncate text-start text-body font-control leading-5 text-primary"
 									>
-										<span
-											data-artifact-meta=""
-											className="pointer-events-auto min-w-0 overflow-x-clip text-ellipsis whitespace-nowrap"
-										>
-											{verb} <RelativeTime ms={ms} now={now} />
-										</span>
-										{artifact.audience === "owner" && <span className="sr-only">Private</span>}
+										{artifact.title}
 									</div>
+								</div>
+								<div
+									data-card-meta=""
+									className="mt-auto flex items-center gap-1 text-caption text-muted-as-secondary"
+								>
+									<span
+										data-artifact-meta=""
+										className="pointer-events-auto min-w-0 overflow-x-clip text-ellipsis whitespace-nowrap"
+									>
+										{verb} <RelativeTime ms={ms} now={now} />
+									</span>
+									{artifact.audience === "owner" && <span className="sr-only">Private</span>}
 								</div>
 							</div>
 						</div>
 					</div>
-					<div
-						data-card-actions=""
-						className="absolute end-4 top-4 z-10 flex items-center gap-1 transition-opacity has-[[data-popup-open]]:opacity-100"
-					>
-						<span data-card-more="" className={CARD_ACTION_SEAT_CLASS}>
-							<span
-								aria-hidden="true"
-								className="absolute inset-0 rounded-[inherit] bg-surface-1 opacity-75"
-							/>
-							<ArtifactMoreMenu
-								artifact={artifact}
-								pinned={pinned}
-								className={CARD_ACTION_BUTTON_CLASS}
-							/>
-						</span>
-						<span data-pin-at-rest={pinned ? "shown" : "hidden"} className={CARD_ACTION_SEAT_CLASS}>
-							<span
-								aria-hidden="true"
-								className="absolute inset-0 rounded-[inherit] bg-surface-1 opacity-75"
-							/>
-							<ArtifactPinButton
-								artifact={artifact}
-								pinned={pinned}
-								className={CARD_ACTION_BUTTON_CLASS}
-							/>
-						</span>
-					</div>
 				</div>
-			</ArtifactContextMenu>
+				<div
+					data-card-actions=""
+					className="absolute end-4 top-4 z-10 flex items-center gap-1 transition-opacity has-[[data-popup-open]]:opacity-100"
+				>
+					<span data-card-more="" className={CARD_ACTION_SEAT_CLASS}>
+						<span
+							aria-hidden="true"
+							className="absolute inset-0 rounded-[inherit] bg-surface-1 opacity-75"
+						/>
+						<ArtifactMoreMenu artifact={artifact} pinned={pinned} className={CARD_ACTION_BUTTON_CLASS} />
+					</span>
+					<span data-pin-at-rest={pinned ? "shown" : "hidden"} className={CARD_ACTION_SEAT_CLASS}>
+						<span
+							aria-hidden="true"
+							className="absolute inset-0 rounded-[inherit] bg-surface-1 opacity-75"
+						/>
+						<ArtifactPinButton artifact={artifact} pinned={pinned} className={CARD_ACTION_BUTTON_CLASS} />
+					</span>
+				</div>
+			</div>
 		</li>
 	);
 }

@@ -11,6 +11,7 @@ import {SELECTION_BAR_CLASS, SelectionBarButton} from "../transcript-selection-b
 import {findScrollContainer} from "../scroll-container";
 import {ContextMenu, ContextMenuTrigger, MenuContent, MenuItem, MenuSeparator} from "../ui/menu";
 import {useAnyMenuOpen} from "../ui/menu-open-count";
+import {SUPPRESS_NATIVE_MENU_POPUP_PROPS} from "../../lib/native-context-menu";
 
 /** The diff lines a right-click lands on: the selection inside the diff, or the clicked line. */
 interface DiffLineSelection
@@ -510,7 +511,7 @@ export function DiffContextMenu({
 					</div>
 				)}
 			</ContextMenuTrigger>
-			<MenuContent>
+			<MenuContent popupProps={SUPPRESS_NATIVE_MENU_POPUP_PROPS}>
 				<MenuItem
 					onSelect={() =>
 					{

@@ -1538,6 +1538,7 @@ index 3333333..0000000
 		});
 		renderChangesPane([GREET_FILE]);
 		const rows = await treeMenuRows("src/greet.ts");
+		const popupPrevented = !fireEvent.contextMenu(screen.getAllByRole("menuitem")[0]!);
 		const openFile = screen.getByRole(
 			"menuitem",
 			{
@@ -1551,6 +1552,7 @@ index 3333333..0000000
 		expect(
 			{
 				rows,
+				popupPrevented,
 				shortcut,
 				opened,
 			},
@@ -1566,6 +1568,7 @@ index 3333333..0000000
 					"Open in",
 					"Show in Finder",
 				],
+				popupPrevented: true,
 				shortcut: "Control+Enter",
 				opened: [
 					{

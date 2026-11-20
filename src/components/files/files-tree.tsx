@@ -38,6 +38,7 @@ import
 	ContentSearchResults,
 } from "./content-search-results";
 import {TreeRowMenuItems} from "./file-context-menu";
+import {SUPPRESS_NATIVE_MENU_POPUP_PROPS} from "../../lib/native-context-menu";
 
 /** Upstream's 24px row pitch; each row's hover box is 19px tall inside it. */
 const ROW_HEIGHT = 24;
@@ -621,7 +622,7 @@ export function FilesTree({
 												</Tooltip>
 											</ContextMenuTrigger>
 											{cwd !== undefined && (
-												<MenuContent>
+												<MenuContent popupProps={SUPPRESS_NATIVE_MENU_POPUP_PROPS}>
 													<TreeRowMenuItems
 														path={`${cwd.replace(/\/+$/, "")}/${entry.relPath}`}
 														cwd={cwd}

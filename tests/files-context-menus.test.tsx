@@ -193,6 +193,14 @@ function menuRows(): string[]
 	);
 }
 
+/** Right-clicks the open menu's first row; true when the popup kept the browser menu away (upstream `Td`/`Pi`). */
+function rightClickInsideMenu(): boolean
+{
+	const item = screen.getAllByRole("menu").at(-1)?.querySelector('[role="menuitem"]');
+	if (item === null || item === undefined) throw new Error("no menu item");
+	return !fireEvent.contextMenu(item);
+}
+
 function openSubmenu(label: string): string[]
 {
 	const trigger = screen.getAllByRole("menuitem").find((item) => item.firstElementChild?.textContent === label);
@@ -411,12 +419,14 @@ describe("tree row context menu", () =>
 				side: positioner.getAttribute("data-side"),
 				sideOffset: positioner.getAttribute("data-side-offset"),
 				alignOffset: positioner.getAttribute("data-align-offset"),
+				popupPrevented: rightClickInsideMenu(),
 			},
 		).toStrictEqual(
 			{
 				side: "bottom",
 				sideOffset: "2",
 				alignOffset: "2",
+				popupPrevented: true,
 			},
 		);
 	});
@@ -617,6 +627,7 @@ describe("tab context menu", () =>
 		await renderLoaded(onRevealInTree);
 
 		const loaded = await openTabMenu(/agent\.ts/);
+		const popupPrevented = rightClickInsideMenu();
 		const copyRows = openSubmenu("Copy");
 		clickItem("Filename");
 		const toast = await waitFor(() =>
@@ -631,6 +642,7 @@ describe("tab context menu", () =>
 		expect(
 			{
 				loaded,
+				popupPrevented,
 				copyRows,
 				unreadable,
 				copied: vi.mocked(writeClipboardText).mock.calls,
@@ -653,6 +665,7 @@ describe("tab context menu", () =>
 					"Keep open",
 					"Close file",
 				],
+				popupPrevented: true,
 				copyRows: ["Relative path", "Filename"],
 				unreadable: ["Attach as context", "Copy", "─", "Reveal in file tree", "─", "Close file"],
 				copied: [["agent.ts"]],
@@ -785,6 +798,7 @@ describe("viewer context menu", () =>
 			},
 		);
 		const rows = await waitFor(() => menuRows());
+		const popupPrevented = rightClickInsideMenu();
 		const openInRows = openSubmenu("Open in");
 		clickItem("VS Code");
 
@@ -820,6 +834,7 @@ describe("viewer context menu", () =>
 		expect(
 			{
 				rows,
+				popupPrevented,
 				openInRows,
 				opened: open.mock.calls,
 				revealBody: reveal?.init?.body,
@@ -839,6 +854,7 @@ describe("viewer context menu", () =>
 					"Open in",
 					"Show in Finder",
 				],
+				popupPrevented: true,
 				openInRows: ["VS Code"],
 				opened: [["vscode://file/home/alice/project/src/agent.ts:1", "_self"]],
 				revealBody: JSON.stringify(
