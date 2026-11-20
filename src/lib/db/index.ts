@@ -1,5 +1,4 @@
 import {openAppDb, type AppDb} from "./connection";
-import {isBusyError} from "./busy";
 import {fullScan, scanFileContentRoots} from "./indexer";
 import {hmrPersist, hmrTake} from "../hmr-persist";
 import {isRecord} from "../narrow";
@@ -73,37 +72,22 @@ export async function initDb(): Promise<AppDb>
 	return Promise.resolve(getDb());
 }
 
-// A restarted dev server can start its scan while the previous instance's
-// scan still holds the write lock, and the busy timeout can lose that race.
-// Both scans skip files already indexed at their current mtime, so running
-// one again resumes it rather than redoing it.
-const BUSY_RETRY_DELAYS_MS = [250, 500, 1000, 2000, 4000];
-
-async function runScanWithRetry(label: string, signal: AbortSignal, scan: () => Promise<void>): Promise<void>
+// Each scan step waits out another connection's write lock on its own
+// (retryWhileBusy), and shutdownDb() stops a restarting server's scan before
+// the next instance starts, so a failure that reaches here is final: log it
+// and let startup continue.
+async function runScan(label: string, signal: AbortSignal, scan: () => Promise<void>): Promise<void>
 {
-	for (let attempt = 0; ; attempt++)
+	if (signal.aborted) return;
+	try
 	{
+		await scan();
+	}
+	catch (err)
+	{
+		// oxlint-disable-next-line typescript/no-unnecessary-condition -- the signal can abort while scan() is awaited
 		if (signal.aborted) return;
-		try
-		{
-			await scan();
-			return;
-		}
-		catch (err)
-		{
-			// oxlint-disable-next-line typescript/no-unnecessary-condition -- the signal can abort while scan() is awaited
-			if (signal.aborted) return;
-			const delayMs = BUSY_RETRY_DELAYS_MS[attempt];
-			if (delayMs === undefined || !isBusyError(err))
-			{
-				console.error(`${label} failed:`, err);
-				return;
-			}
-			await new Promise((resolve) =>
-			{
-				setTimeout(resolve, delayMs);
-			});
-		}
+		console.error(`${label} failed:`, err);
 	}
 }
 
@@ -117,7 +101,7 @@ export function runInitialScan(
 	if (holder.promise === null)
 	{
 		const {signal} = holder.controller;
-		const indexPromise = runScanWithRetry("Initial database scan", signal, async () =>
+		const indexPromise = runScan("Initial database scan", signal, async () =>
 		{
 			const db = getDb();
 			await fullScan(db.index, db.summaries, PROJECTS_DIR, TASKS_DIR, PLANS_DIR, undefined, signal);
@@ -127,7 +111,7 @@ export function runInitialScan(
 		{
 			await indexPromise;
 			const db = getDb();
-			await runScanWithRetry("Initial file-content scan", signal, async () =>
+			await runScan("Initial file-content scan", signal, async () =>
 				scanFileContentRoots(db.index, fileContentRoots, ignoredDirNames, signal),
 			);
 			holder.fileContentScanDone = true;

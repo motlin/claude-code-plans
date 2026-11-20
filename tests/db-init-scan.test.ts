@@ -263,21 +263,20 @@ describe("db boot ordering", () =>
 		);
 	}
 
-	it("retries both initial scans when another connection holds the write lock", async () =>
+	it("logs a busy scan failure once without rerunning the scan, and still marks the file-content scan done", async () =>
 	{
-		const fullScan = vi.fn<FullScan>().mockRejectedValueOnce(busyError()).mockResolvedValue(undefined);
+		// Each scan step already waits out another connection's write lock
+		// (retryWhileBusy), so a busy error reaching runInitialScan is final.
+		const indexBusy = busyError();
+		const fullScan = vi.fn<FullScan>().mockRejectedValue(indexBusy);
 		// Drizzle wraps the SqliteError, so the busy code sits on the cause.
-		const scanFileContentRoots = vi
-			.fn<ScanFileContentRoots>()
-			.mockRejectedValueOnce(
-				new Error(
-					"Failed to run the query",
-					{
-						cause: busyError(),
-					},
-				),
-			)
-			.mockResolvedValue(undefined);
+		const fileContentBusy = new Error(
+			"Failed to run the query",
+			{
+				cause: busyError(),
+			},
+		);
+		const scanFileContentRoots = vi.fn<ScanFileContentRoots>().mockRejectedValue(fileContentBusy);
 		mockDbModule(
 			{
 				fullScan,
@@ -286,7 +285,7 @@ describe("db boot ordering", () =>
 		);
 		const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
 
-		const {runInitialScan} = await import("../src/lib/db");
+		const {runInitialScan, isFileContentScanDone} = await import("../src/lib/db");
 		await runInitialScan(["/root"], new Set());
 
 		expect(
@@ -294,18 +293,23 @@ describe("db boot ordering", () =>
 				fullScanCalls: fullScan.mock.calls.length,
 				fileContentCalls: scanFileContentRoots.mock.calls.length,
 				errors: consoleError.mock.calls,
+				fileContentScanDone: isFileContentScanDone(),
 			},
 		).toStrictEqual(
 			{
-				fullScanCalls: 2,
-				fileContentCalls: 2,
-				errors: [],
+				fullScanCalls: 1,
+				fileContentCalls: 1,
+				errors: [
+					["Initial database scan failed:", indexBusy],
+					["Initial file-content scan failed:", fileContentBusy],
+				],
+				fileContentScanDone: true,
 			},
 		);
 		consoleError.mockRestore();
 	});
 
-	it("does not retry a scan that failed for a reason other than a busy lock", async () =>
+	it("logs a scan that failed for a reason other than a busy lock and still marks the file-content scan done", async () =>
 	{
 		const failure = new Error("disk I/O error");
 		const fullScan = vi.fn<FullScan>().mockRejectedValue(failure);
@@ -316,18 +320,20 @@ describe("db boot ordering", () =>
 		);
 		const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
 
-		const {runInitialScan} = await import("../src/lib/db");
+		const {runInitialScan, isFileContentScanDone} = await import("../src/lib/db");
 		await runInitialScan();
 
 		expect(
 			{
 				fullScanCalls: fullScan.mock.calls.length,
 				errors: consoleError.mock.calls,
+				fileContentScanDone: isFileContentScanDone(),
 			},
 		).toStrictEqual(
 			{
 				fullScanCalls: 1,
 				errors: [["Initial database scan failed:", failure]],
+				fileContentScanDone: true,
 			},
 		);
 		consoleError.mockRestore();
