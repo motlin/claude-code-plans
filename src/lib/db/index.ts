@@ -1,6 +1,5 @@
 import {openAppDb, type AppDb} from "./connection";
 import {fullScan, scanFileContentRoots} from "./indexer";
-import {hmrPersist, hmrTake} from "../hmr-persist";
 import {isRecord} from "../narrow";
 import {homedir} from "node:os";
 import {join} from "node:path";
@@ -9,62 +8,72 @@ const PROJECTS_DIR = join(homedir(), ".claude", "projects");
 const TASKS_DIR = join(homedir(), ".claude", "tasks");
 const PLANS_DIR = join(homedir(), ".claude", "plans");
 
-// Holds the in-flight initial scan so concurrent callers await the same
-// fullScan instead of racing two scans on the same DB. Two concurrent scans
-// corrupt orphan-session inserts with SQLITE_CONSTRAINT_PRIMARYKEY because
-// indexJsonlFile's existingSession check straddles async file I/O.
-// `appDbScanPromise` (memoized via hmrPersist) is the single source of truth
-// for the in-flight scan promise; runInitialScan/awaitInitialScan are the
-// only entrypoints. The holder pattern lets awaitInitialScan() observe
-// whether a scan has been started without forcing one to start.
+// The connection and the in-flight initial scan live on globalThis rather
+// than in module state. The production build bundles the nitro WebSocket
+// routes apart from the SSR entry, so each evaluates its own copy of this
+// module; module state would give each copy its own connection to the same
+// files, contending for the write lock. openAppDb refuses that second
+// connection outright.
+//
+// Concurrent callers await the same fullScan instead of racing two scans on
+// the same DB. Two concurrent scans corrupt orphan-session inserts with
+// SQLITE_CONSTRAINT_PRIMARYKEY because indexJsonlFile's existingSession check
+// straddles async file I/O. runInitialScan/awaitInitialScan are the only
+// entrypoints, and awaitInitialScan() observes whether a scan has started
+// without forcing one to start.
 
-type ScanHolder =
+type DbState =
 {
-	promise: Promise<void> | null;
+	db: AppDb | null;
+	/** The whole initial scan, index and file content. */
+	scanPromise: Promise<void> | null;
 	/** Settles when the session/plan index scan ends, before the slower file-content scan. */
 	indexPromise: Promise<void> | null;
 	/** The file-content scan has ended, so content search covers every indexed root. */
 	fileContentScanDone: boolean;
 	controller: AbortController;
 };
-type DbHolder =
-{
-	db: AppDb | null;
-};
 
-// An instance that predates the abort controller left a holder without one in
-// the HMR state, and its scan cannot be aborted, so give the holder a fresh one.
-function getScanHolder(): ScanHolder
+const DB_STATE = Symbol.for("claude-code-browser.db-state");
+
+/** Only this module's copies write the slot, so an object there is their DbState. */
+function isDbState(value: unknown): value is DbState
 {
-	const holder = hmrPersist<Partial<ScanHolder>>("appDbScanPromise", () => ({}));
-	return Object.assign(
-		holder,
-		{
-			promise: holder.promise ?? null,
-			indexPromise: holder.indexPromise ?? null,
-			fileContentScanDone: holder.fileContentScanDone ?? false,
-			controller: holder.controller ?? new AbortController(),
-		},
-	);
+	return isRecord(value) && value["controller"] instanceof AbortController;
 }
 
-function isClosable(value: unknown): value is Pick<AppDb, "close">
+function getDbState(): DbState
 {
-	return isRecord(value) && typeof value["close"] === "function";
-}
-
-function getDbHolder(): DbHolder
-{
-	return hmrPersist<DbHolder>("appDbHolder", () => (
+	const existing: unknown = Reflect.get(globalThis, DB_STATE);
+	if (isDbState(existing)) return existing;
+	const created: DbState =
 	{
 		db: null,
-	}));
+		scanPromise: null,
+		indexPromise: null,
+		fileContentScanDone: false,
+		controller: new AbortController(),
+	};
+	Reflect.set(globalThis, DB_STATE, created);
+	return created;
 }
 
 export function getDb(): AppDb
 {
-	const holder = getDbHolder();
-	return (holder.db ??= openAppDb());
+	const state = getDbState();
+	return (state.db ??= openAppDb());
+}
+
+/**
+ * Makes `db` the connection getDb() returns, handing back the one it replaced
+ * without closing it. Tests point getDb() at a test database this way.
+ */
+export function replaceDb(db: AppDb | null): AppDb | null
+{
+	const state = getDbState();
+	const previous = state.db;
+	state.db = db;
+	return previous;
 }
 
 export async function initDb(): Promise<AppDb>
@@ -72,10 +81,9 @@ export async function initDb(): Promise<AppDb>
 	return Promise.resolve(getDb());
 }
 
-// Each scan step waits out another connection's write lock on its own
-// (retryWhileBusy), and shutdownDb() stops a restarting server's scan before
-// the next instance starts, so a failure that reaches here is final: log it
-// and let startup continue.
+// This process holds the only connection, and shutdownDb() stops a restarting
+// server's scan before the next instance opens the database, so a failure is
+// final: log it once and let startup continue.
 async function runScan(label: string, signal: AbortSignal, scan: () => Promise<void>): Promise<void>
 {
 	if (signal.aborted) return;
@@ -97,8 +105,8 @@ export function runInitialScan(
 	ignoredDirNames: ReadonlySet<string> = new Set(),
 ): Promise<void>
 {
-	const holder = getScanHolder();
-	if (holder.promise === null)
+	const holder = getDbState();
+	if (holder.scanPromise === null)
 	{
 		const {signal} = holder.controller;
 		const indexPromise = runScan("Initial database scan", signal, async () =>
@@ -107,7 +115,7 @@ export function runInitialScan(
 			await fullScan(db.index, db.summaries, PROJECTS_DIR, TASKS_DIR, PLANS_DIR, undefined, signal);
 		});
 		holder.indexPromise = indexPromise;
-		holder.promise = (async () =>
+		holder.scanPromise = (async () =>
 		{
 			await indexPromise;
 			const db = getDb();
@@ -117,12 +125,12 @@ export function runInitialScan(
 			holder.fileContentScanDone = true;
 		})();
 	}
-	return holder.promise;
+	return holder.scanPromise;
 }
 
 export async function awaitInitialScan(): Promise<void>
 {
-	return getScanHolder().promise ?? Promise.resolve();
+	return getDbState().scanPromise ?? Promise.resolve();
 }
 
 /**
@@ -132,20 +140,20 @@ export async function awaitInitialScan(): Promise<void>
  */
 export async function awaitInitialIndexScan(): Promise<void>
 {
-	const holder = getScanHolder();
-	return holder.indexPromise ?? holder.promise ?? Promise.resolve();
+	const holder = getDbState();
+	return holder.indexPromise ?? holder.scanPromise ?? Promise.resolve();
 }
 
 /** Whether the initial file-content scan has ended, so content search no longer misses unscanned files. */
 export function isFileContentScanDone(): boolean
 {
-	return getScanHolder().fileContentScanDone;
+	return getDbState().fileContentScanDone;
 }
 
 /** Aborts when shutdownDb() begins, so startup work can stop before the DB closes under it. */
 export function getShutdownSignal(): AbortSignal
 {
-	return getScanHolder().controller.signal;
+	return getDbState().controller.signal;
 }
 
 /**
@@ -154,14 +162,12 @@ export function getShutdownSignal(): AbortSignal
  */
 export async function shutdownDb(): Promise<void>
 {
-	const scanHolder = getScanHolder();
-	scanHolder.controller.abort();
-	await scanHolder.promise;
-	const dbHolder = getDbHolder();
-	const db = dbHolder.db;
-	dbHolder.db = null;
+	const state = getDbState();
+	state.controller.abort();
+	await state.scanPromise;
+	// A server instance started later in this thread opens its own connection and scan.
+	if (Reflect.get(globalThis, DB_STATE) === state) Reflect.deleteProperty(globalThis, DB_STATE);
+	const db = state.db;
+	state.db = null;
 	db?.close();
-	// Instances that predate the holder kept their connection under `appDb`.
-	const legacyDb = hmrTake("appDb");
-	if (isClosable(legacyDb)) legacyDb.close();
 }

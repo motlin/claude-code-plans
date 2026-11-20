@@ -33,7 +33,6 @@ import {bridgePushedTitle} from "../bridge-pushed-title-store";
 import {extractTitleFromContent} from "../markdown-utils.server";
 import {listTrackedFiles} from "../git-tracked";
 import {trackActivity} from "../perf/event-loop-stalls";
-import {retryWhileBusy} from "./busy";
 import * as schema from "./schema";
 import {ArtifactEventCollector, deleteArtifactEventsForSessions, replaceArtifactEvents} from "./artifact-index";
 import {SlowCommandCollector} from "../slow-commands";
@@ -475,7 +474,7 @@ export async function scanFileContentRoots(
 				continue;
 			}
 			await trackActivity(`file-content scan ${trackedPath}`, async () =>
-				retryWhileBusy(async () => indexFileContent(db, trackedPath, roots), signal),
+				indexFileContent(db, trackedPath, roots),
 			);
 		}
 	}
@@ -495,20 +494,17 @@ export async function scanFileContentRoots(
 	{
 		signal?.throwIfAborted();
 		const batch = stalePaths.slice(offset, offset + FILE_CONTENT_CLEANUP_BATCH_SIZE);
-		await retryWhileBusy(() =>
+		db.transaction((transaction) =>
 		{
-			db.transaction((transaction) =>
+			for (const stalePath of batch)
 			{
-				for (const stalePath of batch)
-				{
-					transaction.run(sql`DELETE FROM file_content WHERE path = ${stalePath}`);
-					transaction
-						.delete(schema.indexedFiles)
-						.where(eq(schema.indexedFiles.path, fileContentCachePath(stalePath)))
-						.run();
-				}
-			});
-		}, signal);
+				transaction.run(sql`DELETE FROM file_content WHERE path = ${stalePath}`);
+				transaction
+					.delete(schema.indexedFiles)
+					.where(eq(schema.indexedFiles.path, fileContentCachePath(stalePath)))
+					.run();
+			}
+		});
 		await new Promise<void>((resolveYield) =>
 		{
 			setImmediate(resolveYield);
@@ -2857,11 +2853,9 @@ export async function fullScan(
 	// Scan under the real path the watcher and hooks key transcripts by, so
 	// discovered paths match indexed_files and pruning compares like with like.
 	const projectsDir = canonicalPath(configuredProjectsDir);
-	// Each step is one unit of work that another connection's write lock can
-	// hold up. It retries after an asynchronous pause instead of sleeping the
-	// thread, and names itself for the dev event-loop stall monitor.
+	// Each step names itself for the dev event-loop stall monitor and runs once.
 	const step = async <T>(label: string, run: () => T | Promise<T>): Promise<T> =>
-		trackActivity(`scan ${label}`, async () => retryWhileBusy(run, signal));
+		trackActivity(`scan ${label}`, async () => run());
 
 	indexingInProgress = true;
 	initialBuildInProgress =

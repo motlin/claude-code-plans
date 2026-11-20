@@ -3,7 +3,6 @@ import {copyFileSync, mkdirSync, mkdtempSync, rmSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {fileURLToPath} from "node:url";
-import {sql} from "drizzle-orm";
 import {afterEach, describe, expect, it} from "vite-plus/test";
 import {openAppDb, type AppDb} from "../../src/lib/db/connection";
 import {fullScan} from "../../src/lib/db/indexer";
@@ -17,8 +16,9 @@ const REPO_ROOT = fileURLToPath(new URL("../..", import.meta.url));
 // may run longer than this.
 const SLICE_BUDGET_MS = 1000;
 
-// Another process (a restarted dev server's previous instance, or a second server on the same cache dir) holds the
-// write lock for longer than the budget. better-sqlite3 waits for a lock by sleeping the calling thread.
+// Another process (a second server on the same cache dir) holds the write lock for longer than the budget.
+// better-sqlite3 waits for a lock by sleeping the calling thread, so the connection's short busy timeout bounds the
+// sleep and the scan makes each write once.
 const HOLD_LOCK_MS = 2500;
 
 const HOLD_LOCK_SCRIPT = `
@@ -83,7 +83,6 @@ describe("fullScan and the event loop", () =>
 		db: AppDb;
 		dbPath: string;
 		projectsDir: string;
-		sessionIds: string[];
 	}>
 	{
 		const root = mkdtempSync(join(tmpdir(), "scan-event-loop-"));
@@ -98,7 +97,6 @@ describe("fullScan and the event loop", () =>
 			);
 		});
 		const projectsDir = join(root, "projects");
-		const sessionIds: string[] = [];
 		const fixtures = [
 			...[1, 2, 3, 4].map((seed) => (
 			{
@@ -122,7 +120,6 @@ describe("fullScan and the event loop", () =>
 			);
 			const sessionId = `${String(index).padStart(8, "0")}-0000-4000-8000-000000000000`;
 			copyFileSync(await generateTranscript(shape, seed), join(projectDir, `${sessionId}.jsonl`));
-			sessionIds.push(sessionId);
 		}
 		const cacheDir = join(root, "cache");
 		const db = openAppDb(
@@ -138,13 +135,12 @@ describe("fullScan and the event loop", () =>
 			db,
 			dbPath: join(cacheDir, "index.db"),
 			projectsDir,
-			sessionIds,
 		};
 	}
 
-	it("never blocks longer than the slice budget while another process holds the write lock", async () =>
+	it("fails with SQLITE_BUSY after one attempt, never blocking longer than the slice budget, while another process holds the write lock", async () =>
 	{
-		const {db, dbPath, projectsDir, sessionIds} = await setUp();
+		const {db, dbPath, projectsDir} = await setUp();
 		const stalls: EventLoopStall[] = [];
 		const stopMonitor = startStallMonitor(
 			{
@@ -155,7 +151,10 @@ describe("fullScan and the event loop", () =>
 		cleanups.push(stopMonitor);
 
 		const child = await holdWriteLock(dbPath, HOLD_LOCK_MS);
-		await fullScan(db.index, db.summaries, projectsDir);
+		const failure: unknown = await fullScan(db.index, db.summaries, projectsDir).then(
+			() => undefined,
+			(err: unknown) => err,
+		);
 		await exited(child);
 		// Let the monitor observe the last slice before stopping it.
 		await new Promise((resolve) =>
@@ -164,10 +163,6 @@ describe("fullScan and the event loop", () =>
 		});
 		stopMonitor();
 
-		const indexed = db.index.all<
-		{
-			id: string;
-		}>(sql`SELECT id FROM sessions ORDER BY id`);
 		expect(
 			{
 				stalls: stalls.map((stall) => (
@@ -175,12 +170,12 @@ describe("fullScan and the event loop", () =>
 					durationMs: Math.round(stall.durationMs),
 					activities: stall.activities,
 				})),
-				indexed: indexed.map((row) => row.id),
+				code: failure instanceof Error ? Reflect.get(failure, "code") : failure,
 			},
 		).toStrictEqual(
 			{
 				stalls: [],
-				indexed: sessionIds,
+				code: "SQLITE_BUSY",
 			},
 		);
 	}, 60_000);

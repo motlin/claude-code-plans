@@ -5,7 +5,6 @@ import {stat} from "node:fs/promises";
 import {basename, dirname, join, resolve} from "node:path";
 import type {BetterSQLite3Database} from "drizzle-orm/better-sqlite3";
 import {awaitInitialIndexScan, awaitInitialScan, getDb} from "./db";
-import {retryWhileBusy} from "./db/busy";
 import {trackActivity, trackActivitySync} from "./perf/event-loop-stalls";
 import {broadcastAppendedJsonl, readAppendedJsonlLines, sharedJsonlOffsets} from "./jsonl-append-reader";
 import
@@ -782,17 +781,15 @@ async function indexSilently(
 	{
 		const index = db ?? getDb().index;
 		const result = await trackActivity(`index ${path}`, async () =>
-			retryWhileBusy(async () =>
-				indexFile(
-					index,
-					path,
-					projectsDir,
-					plansDirectory || undefined,
-					{
-						jsonlCache: liveJsonlIndexCache,
-						subagentCache: liveSubagentIndexCache,
-					},
-				),
+			indexFile(
+				index,
+				path,
+				projectsDir,
+				plansDirectory || undefined,
+				{
+					jsonlCache: liveJsonlIndexCache,
+					subagentCache: liveSubagentIndexCache,
+				},
 			),
 		);
 		artifactsMaybePublished();
@@ -822,9 +819,7 @@ async function handleFileContentChange(db: IndexDb, path: string, roots: readonl
 {
 	await fileContentQueue(db).enqueue(path, async () =>
 	{
-		await trackActivity(`file-content index ${path}`, async () =>
-			retryWhileBusy(async () => indexFileContent(db, path, roots)),
-		);
+		await trackActivity(`file-content index ${path}`, async () => indexFileContent(db, path, roots));
 	});
 }
 

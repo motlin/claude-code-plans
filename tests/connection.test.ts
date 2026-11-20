@@ -43,6 +43,31 @@ describe("openAppDb", () =>
 		db.close();
 	});
 
+	it("refuses a second connection to a database file this process already has open, until the first closes", () =>
+	{
+		const cacheDir = mkdtempSync(join(tmpdir(), "open-app-db-test-"));
+		tempDirs.push(cacheDir);
+		const first = openAppDb(
+			{
+				cacheDir,
+			},
+		);
+		expect(() =>
+			openAppDb(
+				{
+					cacheDir,
+				},
+			),
+		).toThrow(`openAppDb: ${join(cacheDir, "index.db")} is already open in this process; share it through getDb()`);
+		first.close();
+		const reopened = openAppDb(
+			{
+				cacheDir,
+			},
+		);
+		reopened.close();
+	});
+
 	it("has a single squashed schema version", () =>
 	{
 		expect(schema.SCHEMA_VERSION).toBe("1");

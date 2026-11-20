@@ -4,7 +4,7 @@ import {join} from "node:path";
 import {sql} from "drizzle-orm";
 import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
 import {openAppDb, type AppDb} from "../../src/lib/db/connection";
-import {hmrPersist} from "../../src/lib/hmr-persist";
+import {replaceDb} from "../../src/lib/db";
 import {startStallMonitor} from "../../src/lib/perf/event-loop-stalls";
 import {__testing as watcherTesting} from "../../src/lib/watcher";
 import {runGit} from "../git-fixture";
@@ -33,13 +33,6 @@ describe("file content indexing and the event loop", () =>
 	let fixtureDirectory: string;
 	let repositoryDirectory: string;
 	let db: AppDb;
-	const dbHolder = hmrPersist<
-	{
-		db: AppDb | null;
-	}>("appDbHolder", () => (
-	{
-		db: null,
-	}));
 
 	beforeEach(() =>
 	{
@@ -52,14 +45,14 @@ describe("file content indexing and the event loop", () =>
 				cacheDir: join(fixtureDirectory, "cache"),
 			},
 		);
-		dbHolder.db = db;
+		replaceDb(db);
 		watcherTesting.setFileContentRoots([repositoryDirectory]);
 	});
 
 	afterEach(() =>
 	{
 		watcherTesting.setFileContentRoots([]);
-		dbHolder.db = null;
+		replaceDb(null);
 		db.close();
 		rmSync(
 			fixtureDirectory,

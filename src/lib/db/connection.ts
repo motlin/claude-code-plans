@@ -554,8 +554,10 @@ function initSummariesDb(sqlite: Database.Database): void
  * How long a connection blocks waiting for another connection's write lock
  * before failing with SQLITE_BUSY. better-sqlite3 waits by sleeping the
  * thread, so while it waits the server answers nothing: in dev, nitro's proxy
- * then fails every request with "connect ETIMEDOUT". Keep this short and
- * retry longer waits asynchronously with retryWhileBusy.
+ * then fails every request with "connect ETIMEDOUT". Keep this short. Each
+ * process holds one connection per database (see claimDatabaseFiles) and a
+ * restarting server releases its connection before the next instance opens
+ * one, so another writer is never expected.
  */
 const BUSY_TIMEOUT_MS = 250;
 
@@ -609,6 +611,42 @@ function isUserCacheDir(cacheDir: string): boolean
 	return candidate === resolve(getCacheDir()) || candidate === resolve(homedir(), ".cache", "claude-code-plans");
 }
 
+// Worker threads share no globals, so this guards one thread: the restart
+// takeover (takeOverServerShutdown) orders connections across threads.
+const OPEN_DATABASE_FILES = Symbol.for("claude-code-browser.open-database-files");
+
+/** Database files this thread holds a connection to, shared by every bundled copy of this module. */
+function openDatabaseFiles(): Set<string>
+{
+	const existing: unknown = Reflect.get(globalThis, OPEN_DATABASE_FILES);
+	// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- only this module writes the slot
+	if (existing instanceof Set) return existing as Set<string>;
+	const created = new Set<string>();
+	Reflect.set(globalThis, OPEN_DATABASE_FILES, created);
+	return created;
+}
+
+/**
+ * Records that this process now holds the only connection to each file, or
+ * throws if one is already open. Two connections in one process contend for
+ * the write lock, and better-sqlite3 waits for it by sleeping the thread.
+ * Returns a function that releases the claim.
+ */
+function claimDatabaseFiles(paths: readonly string[]): () => void
+{
+	const open = openDatabaseFiles();
+	const taken = paths.find((path) => open.has(path));
+	if (taken !== undefined)
+	{
+		throw new Error(`openAppDb: ${taken} is already open in this process; share it through getDb()`);
+	}
+	for (const path of paths) open.add(path);
+	return () =>
+	{
+		for (const path of paths) open.delete(path);
+	};
+}
+
 export function openAppDb(opts?: {cacheDir?: string | undefined}): AppDb
 {
 	// Under vitest, refuse to fall back to the production cache dir. Doing so
@@ -632,25 +670,37 @@ export function openAppDb(opts?: {cacheDir?: string | undefined}): AppDb
 		},
 	);
 
-	const indexSqlite = openSqlite(join(cacheDir, "index.db"));
-	initIndexDb(indexSqlite);
-	instrumentDatabase(indexSqlite);
-	const indexDb = openDrizzle(indexSqlite);
+	const indexPath = resolve(cacheDir, "index.db");
+	const summariesPath = resolve(cacheDir, "summaries.db");
+	const release = claimDatabaseFiles([indexPath, summariesPath]);
+	try
+	{
+		const indexSqlite = openSqlite(indexPath);
+		initIndexDb(indexSqlite);
+		instrumentDatabase(indexSqlite);
+		const indexDb = openDrizzle(indexSqlite);
 
-	const summariesSqlite = openSqlite(join(cacheDir, "summaries.db"));
-	initSummariesDb(summariesSqlite);
-	instrumentDatabase(summariesSqlite);
-	const summariesDb = openDrizzle(summariesSqlite);
+		const summariesSqlite = openSqlite(summariesPath);
+		initSummariesDb(summariesSqlite);
+		instrumentDatabase(summariesSqlite);
+		const summariesDb = openDrizzle(summariesSqlite);
 
-	return {
-		index: indexDb,
-		summaries: summariesDb,
-		close()
-		{
-			indexSqlite.close();
-			summariesSqlite.close();
-		},
-	};
+		return {
+			index: indexDb,
+			summaries: summariesDb,
+			close()
+			{
+				indexSqlite.close();
+				summariesSqlite.close();
+				release();
+			},
+		};
+	}
+	catch (err)
+	{
+		release();
+		throw err;
+	}
 }
 
 export function openTestDb(): AppDb

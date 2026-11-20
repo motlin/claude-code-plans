@@ -19,11 +19,9 @@ type ScanFileContentRoots = typeof scanFileContentRoots;
  * so events fired between `'ready'` and scan completion are serialized
  * behind the scan instead of racing it.
  *
- * Because `runInitialScan`'s in-flight promise is memoized via `hmrPersist`
- * (which falls back to a module-private cache when `import.meta.hot` is
- * undefined, e.g. in tests), every test calls `vi.resetModules()` and
- * re-imports a fresh copy of `src/lib/db/index.ts` so the holder starts
- * empty.
+ * Because `runInitialScan`'s in-flight promise is memoized on globalThis,
+ * every test clears that slot, calls `vi.resetModules()` and re-imports a
+ * fresh copy of `src/lib/db/index.ts` so the state starts empty.
  */
 describe("db boot ordering", () =>
 {
@@ -32,6 +30,7 @@ describe("db boot ordering", () =>
 	beforeEach(() =>
 	{
 		vi.resetModules();
+		Reflect.deleteProperty(globalThis, Symbol.for("claude-code-browser.db-state"));
 		vi.doUnmock("../src/lib/db/connection");
 		vi.doUnmock("../src/lib/db/indexer");
 		testDb = openTestDb();
@@ -265,8 +264,8 @@ describe("db boot ordering", () =>
 
 	it("logs a busy scan failure once without rerunning the scan, and still marks the file-content scan done", async () =>
 	{
-		// Each scan step already waits out another connection's write lock
-		// (retryWhileBusy), so a busy error reaching runInitialScan is final.
+		// The process holds the only connection and scan steps run once, so a
+		// busy error reaching runInitialScan is final.
 		const indexBusy = busyError();
 		const fullScan = vi.fn<FullScan>().mockRejectedValue(indexBusy);
 		// Drizzle wraps the SqliteError, so the busy code sits on the cause.
@@ -423,65 +422,42 @@ describe("db boot ordering", () =>
 		expect(close.mock.calls.length).toBe(1);
 	});
 
-	it("shutdownDb() tolerates a legacy scan holder without an abort controller", async () =>
+	it("separately bundled copies of the db module share one connection and one shutdown", async () =>
 	{
-		const order: string[] = [];
-		let finishLegacyScan: () => void = () =>
-		{
-		};
+		// The production build bundles the nitro WebSocket routes apart from the
+		// SSR entry, so each evaluates its own copy of src/lib/db/index.ts.
+		const openAppDb = vi.fn<typeof realOpenAppDb>(() => testDb);
 		mockDbModule({});
-		const close = vi.spyOn(testDb, "close").mockImplementation(() =>
+		vi.doMock("../src/lib/db/connection", async () =>
 		{
-			order.push("db:closed");
+			const actual = await vi.importActual<typeof import("../src/lib/db/connection")>("../src/lib/db/connection");
+			return {
+				...actual,
+				openAppDb,
+			};
 		});
+		const close = vi.spyOn(testDb, "close").mockImplementation(() => {});
 
-		const {hmrPersist} = await import("../src/lib/hmr-persist");
-		hmrPersist("appDbScanPromise", () => (
-		{
-			promise: new Promise<void>((resolve) =>
-			{
-				finishLegacyScan = () =>
-				{
-					order.push("legacy-scan:done");
-					resolve();
-				};
-			}),
-		}));
-		const {initDb, shutdownDb} = await import("../src/lib/db");
-		await initDb();
-		const shutdown = shutdownDb();
-		await new Promise((resolve) =>
-		{
-			setTimeout(resolve, 0);
-		});
-		finishLegacyScan();
-		await shutdown;
+		const ssrCopy = await import("../src/lib/db");
+		const ssrDb = ssrCopy.getDb();
+		vi.resetModules();
+		const routeCopy = await import("../src/lib/db");
+		const routeDb = routeCopy.getDb();
+		await ssrCopy.shutdownDb();
+		await routeCopy.shutdownDb();
 
 		expect(
 			{
-				order,
-				closeCalls: close.mock.calls.length,
+				sameConnection: routeDb === ssrDb,
+				opens: openAppDb.mock.calls.length,
+				closes: close.mock.calls.length,
 			},
 		).toStrictEqual(
 			{
-				order: ["legacy-scan:done", "db:closed"],
-				closeCalls: 1,
+				sameConnection: true,
+				opens: 1,
+				closes: 1,
 			},
 		);
-	});
-
-	it("shutdownDb() closes a legacy appDb global left by an older instance", async () =>
-	{
-		const legacyDb = openTestDb();
-		const legacyClose = vi.spyOn(legacyDb, "close");
-		mockDbModule({});
-
-		const {hmrPersist} = await import("../src/lib/hmr-persist");
-		hmrPersist("appDb", () => legacyDb);
-		const {shutdownDb} = await import("../src/lib/db");
-		await shutdownDb();
-		await shutdownDb();
-
-		expect(legacyClose.mock.calls.length).toBe(1);
 	});
 });

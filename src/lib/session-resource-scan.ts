@@ -5,7 +5,6 @@ import {open, stat} from "node:fs/promises";
 import {createSlicer, DEFAULT_SLICE_MS, runCooperatively, type Slicer} from "./cooperative";
 import {SessionResourcesResponse} from "./api/sessions";
 import {CooperativeQueue} from "./cooperative-queue";
-import {retryWhileBusy} from "./db/busy";
 import * as schema from "./db/schema";
 import {JsonlRecordSchema} from "./runtime-schemas";
 import {extractSessionFiles, type SessionFiles} from "./session-files";
@@ -235,9 +234,8 @@ function readStoredScan(
 }
 
 /**
- * Store the result without holding up the reply. The indexer can hold the
- * write lock for a while (a whole startup scan), so wait it out; failing only
- * costs the next restart a rescan.
+ * Store the result. Failing only costs the next restart a rescan, so an
+ * error is dropped rather than failing the reply.
  */
 function storeScan(
 	db: IndexDb,
@@ -256,9 +254,9 @@ function storeScan(
 		scanVersion: SCAN_VERSION,
 		resources: JSON.stringify(resources),
 	};
-	retryWhileBusy(() =>
-		db
-			.insert(schema.sessionResourceScans)
+	try
+	{
+		db.insert(schema.sessionResourceScans)
 			.values(
 				{
 					filePath,
@@ -271,8 +269,12 @@ function storeScan(
 					set: row,
 				},
 			)
-			.run(),
-	).catch(() => undefined);
+			.run();
+	}
+	catch
+	{
+		// the next restart rescans
+	}
 }
 
 /**

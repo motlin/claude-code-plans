@@ -51,6 +51,18 @@ async function holdWriteLock(dbPath: string, holdMs: number): Promise<ChildProce
 	});
 }
 
+/** The SQLite error codes along an error's cause chain; drizzle wraps the SqliteError as the cause. */
+function errorCodes(err: unknown): string[]
+{
+	const codes: string[] = [];
+	for (let current = err; current instanceof Error; current = current.cause)
+	{
+		const code: unknown = Reflect.get(current, "code");
+		if (typeof code === "string") codes.push(code);
+	}
+	return codes;
+}
+
 async function exited(child: ChildProcess): Promise<void>
 {
 	if (child.exitCode !== null) return Promise.resolve();
@@ -162,7 +174,7 @@ describe("index DB writes while another connection holds the write lock", () =>
 		expect(db.index.all(sql`SELECT path FROM file_content`)).toStrictEqual([]);
 	});
 
-	it("herdr pane sync retries its viewed-state writes past the busy timeout instead of throwing SQLITE_BUSY", async () =>
+	it("herdr pane sync makes each viewed-state write once, failing with SQLITE_BUSY when another process holds the lock past the busy timeout", async () =>
 	{
 		const {db, dbPath} = openTempDb();
 		db.index.run(
@@ -174,40 +186,53 @@ describe("index DB writes while another connection holds the write lock", () =>
 				() => false,
 			),
 		);
-		// Longer than the 250 ms busy timeout, so a single attempt fails.
+		// Longer than the 250 ms busy timeout, so the single attempt fails.
 		const child = await holdWriteLock(dbPath, 600);
 
-		await tracker.syncPanes([
-			{
-				host: "herdr",
-				paneId: "workspace-1:pane-1",
-				terminalId: "terminal-open",
-				workspaceId: "workspace-1",
-				tabId: "workspace-1:tab-1",
-				focused: false,
-				cwd: "/test/project",
-				foregroundCwd: "/test/project",
-				agentStatus: "working",
-				agent: "claude",
-				terminalTitle: "test terminal",
-				agentSessionId: "session-a",
-				revision: 1,
-				sessionId: "session-a",
-				via: "both",
-			},
-		]);
+		const failure: unknown = await tracker
+			.syncPanes([
+				{
+					host: "herdr",
+					paneId: "workspace-1:pane-1",
+					terminalId: "terminal-open",
+					workspaceId: "workspace-1",
+					tabId: "workspace-1:tab-1",
+					focused: false,
+					cwd: "/test/project",
+					foregroundCwd: "/test/project",
+					agentStatus: "working",
+					agent: "claude",
+					terminalTitle: "test terminal",
+					agentSessionId: "session-a",
+					revision: 1,
+					sessionId: "session-a",
+					via: "both",
+				},
+			])
+			.then(
+				() => undefined,
+				(err: unknown) => err,
+			);
 
 		await exited(child);
 		expect(
-			db.index.all(
-				sql`SELECT terminal_id, session_id, viewed FROM herdr_terminal_view_states ORDER BY terminal_id`,
-			),
-		).toStrictEqual([
 			{
-				terminal_id: "terminal-open",
-				session_id: "session-a",
-				viewed: 0,
+				codes: errorCodes(failure),
+				rows: db.index.all(
+					sql`SELECT terminal_id, session_id, viewed FROM herdr_terminal_view_states ORDER BY terminal_id`,
+				),
 			},
-		]);
+		).toStrictEqual(
+			{
+				codes: ["SQLITE_BUSY"],
+				rows: [
+					{
+						terminal_id: "terminal-closed",
+						session_id: "session-a",
+						viewed: 0,
+					},
+				],
+			},
+		);
 	});
 });

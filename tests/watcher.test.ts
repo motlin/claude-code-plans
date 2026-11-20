@@ -38,7 +38,7 @@ import
 import {openTestDb, type AppDb} from "../src/lib/db/connection";
 import {indexFile} from "../src/lib/db/indexer";
 import * as schema from "../src/lib/db/schema";
-import {hmrPersist} from "../src/lib/hmr-persist";
+import {replaceDb} from "../src/lib/db";
 import {DOMAIN_EVENTS} from "../src/lib/hook-events";
 import {eq, sql} from "drizzle-orm";
 import type {SessionEntry} from "../src/lib/sessions";
@@ -143,25 +143,17 @@ function createLinkedWorktree(
 }
 
 // Every getDb() caller in this file must see the in-memory test database, never the
-// real cache DB. Assign the holder instead of seeding it, because a handler that ran
-// before this hook would otherwise have created the holder with the real database.
+// real cache DB.
 const sharedDb: AppDb = openTestDb();
-const dbHolder = hmrPersist<
-{
-	db: AppDb | null;
-}>("appDbHolder", () => (
-{
-	db: null,
-}));
 
 beforeAll(() =>
 {
-	dbHolder.db = sharedDb;
+	replaceDb(sharedDb);
 });
 
 afterAll(() =>
 {
-	dbHolder.db = null;
+	replaceDb(null);
 	sharedDb.close();
 });
 

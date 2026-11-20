@@ -4,8 +4,7 @@ import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
 import {getCacheDir, openAppDb} from "../src/lib/db/connection";
-import {getDb} from "../src/lib/db/index";
-import {hmrPersist} from "../src/lib/hmr-persist";
+import {getDb, replaceDb} from "../src/lib/db/index";
 import type {AppDb} from "../src/lib/db/connection";
 import {isolateGitEnvironment, runGit, scrubGitEnvironment} from "./git-fixture";
 
@@ -170,21 +169,13 @@ describe("test suite git isolation", () =>
 
 describe("test suite database isolation", () =>
 {
-	const dbHolder = hmrPersist<
-	{
-		db: AppDb | null;
-	}>("appDbHolder", () => (
-	{
-		db: null,
-	}));
 	let savedDb: AppDb | null;
 	let savedCacheHome: string | undefined;
 	let cacheHome: string;
 
 	beforeEach(() =>
 	{
-		savedDb = dbHolder.db;
-		dbHolder.db = null;
+		savedDb = replaceDb(null);
 		savedCacheHome = process.env["XDG_CACHE_HOME"];
 		cacheHome = mkdtempSync(join(tmpdir(), "db-isolation-test-"));
 		process.env["XDG_CACHE_HOME"] = cacheHome;
@@ -192,7 +183,7 @@ describe("test suite database isolation", () =>
 
 	afterEach(() =>
 	{
-		dbHolder.db = savedDb;
+		replaceDb(savedDb);
 		if (savedCacheHome === undefined) delete process.env["XDG_CACHE_HOME"];
 		else process.env["XDG_CACHE_HOME"] = savedCacheHome;
 		rmSync(

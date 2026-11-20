@@ -5,7 +5,6 @@ import {HERDR_EVENTS} from "../hook-events";
 import {hmrDispose, hmrPersist} from "../hmr-persist";
 import {broadcastTyped} from "../sse-broadcast";
 import {getDb} from "../db";
-import {retryWhileBusy} from "../db/busy";
 import
 {
 	getCurrentSessionMessageIndex,
@@ -143,10 +142,7 @@ interface BridgeDependencies
 
 type IndexDb = ReturnType<typeof getDb>["index"];
 
-/**
- * Viewed-state writes for the herdr tracker. They run in the background while the indexer may hold the write lock,
- * so each waits out SQLITE_BUSY asynchronously instead of failing after the connection's short busy timeout.
- */
+/** Viewed-state writes for the herdr tracker, on the process's one index connection. */
 export function createHerdrViewedStateDbDependencies(
 	getIndex: () => IndexDb,
 	isVisible: (sessionId: string) => boolean,
@@ -154,32 +150,27 @@ export function createHerdrViewedStateDbDependencies(
 {
 	return {
 		isSessionVisible: isVisible,
-		linkTerminal: async (terminalId, sessionId) =>
-			retryWhileBusy(() =>
-			{
-				linkHerdrTerminalToSession(getIndex(), terminalId, sessionId);
-			}),
-		pruneTerminalLinks: async (sessionId, activeTerminalIds) =>
-			retryWhileBusy(() =>
-			{
-				pruneHerdrTerminalLinks(getIndex(), sessionId, activeTerminalIds);
-			}),
-		markSessionCompletionUnreviewed: async (sessionId) =>
-			retryWhileBusy(() =>
-			{
-				const index = getIndex();
-				markSessionCompletionUnreviewed(index, sessionId, getCurrentSessionMessageIndex(index, sessionId));
-			}),
-		markTerminalUnviewed: async (terminalId, sessionId) =>
-			retryWhileBusy(() =>
-			{
-				setHerdrTerminalViewed(getIndex(), terminalId, sessionId, false);
-			}),
-		markTerminalViewed: async (terminalId, sessionId) =>
-			retryWhileBusy(() =>
-			{
-				setHerdrTerminalViewed(getIndex(), terminalId, sessionId, true);
-			}),
+		linkTerminal: (terminalId, sessionId) =>
+		{
+			linkHerdrTerminalToSession(getIndex(), terminalId, sessionId);
+		},
+		pruneTerminalLinks: (sessionId, activeTerminalIds) =>
+		{
+			pruneHerdrTerminalLinks(getIndex(), sessionId, activeTerminalIds);
+		},
+		markSessionCompletionUnreviewed: (sessionId) =>
+		{
+			const index = getIndex();
+			markSessionCompletionUnreviewed(index, sessionId, getCurrentSessionMessageIndex(index, sessionId));
+		},
+		markTerminalUnviewed: (terminalId, sessionId) =>
+		{
+			setHerdrTerminalViewed(getIndex(), terminalId, sessionId, false);
+		},
+		markTerminalViewed: (terminalId, sessionId) =>
+		{
+			setHerdrTerminalViewed(getIndex(), terminalId, sessionId, true);
+		},
 	};
 }
 
