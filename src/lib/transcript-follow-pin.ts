@@ -23,6 +23,12 @@ export const FOLLOW_REPIN_DELAY_MS = 500;
 const FOLLOW_REPIN_INTERACTIVE_SELECTOR =
 	'a[href],button,summary,label,input,select,textarea,iframe,video,audio,[contenteditable]:not([contenteditable="false"]),[role="button"],[role="link"],[role="menuitem"],[role="tab"],[role="checkbox"],[role="switch"],[role="radio"],[data-cds-open-text],[data-transcript-click-acts]';
 
+/** Upstream `Kwe`: in a secondary transcript, a press on one of these acts, so it releases follow. */
+const SECONDARY_PRESS_INTERACTIVE_SELECTOR =
+	'a[href],button,summary,label,input,select,textarea,iframe,video,audio,[contenteditable]:not([contenteditable="false"]),[role="button"],[role="link"],[role="menuitem"],[role="tab"],[role="checkbox"],[role="switch"],[role="radio"],[data-cds-open-text],[data-unmodified-lines],[data-transcript-click-acts]';
+
+const CARD_PANEL_SELECTOR = "[data-card-panel]";
+
 function within(target: EventTarget | null, selector: string): boolean
 {
 	return target instanceof Element && target.closest(selector) !== null;
@@ -56,6 +62,27 @@ export function pressReleasesPin(
 {
 	if (feedKeeps(event.target)) return false;
 	return !(event.clientY !== undefined && event.clientY > overlayTop);
+}
+
+/**
+ * Upstream `jwe`: a secondary transcript (the subagent pane) keeps following on a press on plain text or a card panel,
+ * and releases only when the nearest acting element below the feed is an interactive control.
+ */
+export function secondaryPressKeepsFollow(event: {
+	target: EventTarget | null;
+	currentTarget: EventTarget | null;
+	composedPath(): EventTarget[];
+}): boolean
+{
+	if (keepsPin(event.target)) return true;
+	for (const node of event.composedPath())
+	{
+		if (node === event.currentTarget) break;
+		if (!(node instanceof Element)) continue;
+		if (node.matches(CARD_PANEL_SELECTOR)) return true;
+		if (node.matches(SECONDARY_PRESS_INTERACTIVE_SELECTOR)) return false;
+	}
+	return true;
 }
 
 /** The feed's keydown rule: only Enter/Space, never in an editable field or on a keep target. */

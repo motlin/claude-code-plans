@@ -81,6 +81,7 @@ function SubagentActivity({agent, hasPrompt}: {agent: Subagent; hasPrompt: boole
 			lines={lines}
 			toolResultMap={processed.toolResultMap}
 			shouldScrollToEnd={false}
+			followPress="secondary"
 		/>
 	);
 }

@@ -2,9 +2,13 @@ import {ArrowDown, ChevronDown} from "lucide-react";
 import {useCallback, useEffect, useRef, useState, type MouseEvent, type ReactNode, type RefObject} from "react";
 import {findScrollContainer} from "./scroll-container";
 import {SESSION_DOCK_COLUMN_CLASS} from "./dock-tokens";
-
-/** How far above the end the reader must be before the pill appears. */
-const AWAY_FROM_BOTTOM_PIXELS = 100;
+import
+{
+	JUMP_CONTROL_MARGIN_PX,
+	observeTranscriptEnd,
+	TRANSCRIPT_END_SELECTOR,
+	TRANSCRIPT_FOLLOWING_ATTR,
+} from "../lib/transcript-end-observer";
 
 function useScrollToBottom(anchorRef: RefObject<HTMLElement | null>)
 {
@@ -13,12 +17,63 @@ function useScrollToBottom(anchorRef: RefObject<HTMLElement | null>)
 
 	useEffect(() =>
 	{
-		const scroller = findScrollContainer(anchorRef.current);
+		const anchor = anchorRef.current;
+		const scroller = findScrollContainer(anchor);
 		scrollerRef.current = scroller;
+		// The sticky footer is upstream's bottom overlay: at the end, the transcript stops at its top.
+		const overlay = anchor?.closest("[data-session-footer]") ?? null;
+		const canObserve = typeof IntersectionObserver !== "undefined";
+		let sentinel: Element | null = null;
+		let detach = () =>
+		{
+		};
+		const followingHost = () => sentinel?.closest(`[${TRANSCRIPT_FOLLOWING_ATTR}]`) ?? null;
+		const isFollowing = () => followingHost()?.getAttribute(TRANSCRIPT_FOLLOWING_ATTR) === "true";
+		// The transcript can mount after the dock, so look for its end sentinel again on each scroll.
+		const attach = () =>
+		{
+			const next = scroller.querySelector(TRANSCRIPT_END_SELECTOR);
+			if (next === sentinel) return;
+			detach();
+			detach = () =>
+			{
+			};
+			sentinel = next;
+			if (next === null || !canObserve) return;
+			const end = observeTranscriptEnd(
+				{
+					scroller,
+					sentinel: next,
+					overlay,
+					isFollowing,
+					onChange: (state) =>
+					{
+						setAwayFromBottom(state.showJumpControl);
+					},
+				},
+			);
+			const followChanges = new MutationObserver(end.refresh);
+			const host = followingHost();
+			if (host !== null)
+				followChanges.observe(
+					host,
+					{
+						attributeFilter: [TRANSCRIPT_FOLLOWING_ATTR],
+					},
+				);
+			setAwayFromBottom(false);
+			detach = () =>
+			{
+				end.disconnect();
+				followChanges.disconnect();
+			};
+		};
 		function check()
 		{
+			attach();
+			if (sentinel !== null && canObserve) return;
 			const distance = scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight;
-			setAwayFromBottom(distance > AWAY_FROM_BOTTOM_PIXELS);
+			setAwayFromBottom(distance > JUMP_CONTROL_MARGIN_PX && !isFollowing());
 		}
 		check();
 		scroller.addEventListener(
@@ -37,6 +92,7 @@ function useScrollToBottom(anchorRef: RefObject<HTMLElement | null>)
 		);
 		return () =>
 		{
+			detach();
 			scroller.removeEventListener("scroll", check);
 			window.removeEventListener("resize", check);
 			scrollerRef.current = null;
@@ -97,8 +153,8 @@ const FADE = "transition-opacity duration-150";
  * column on the transcript's measure holding the scroll-to-bottom pill and the
  * composer. The circular 36px pill is upstream's translucent blurred button
  * (dark oklab(.243 0 0/.8), 0.5px white/10 border, 8px blur, a luminosity-
- * blended arrow) with no tooltip. It sits 20px above the dock, centered, and fades in once the reader is away from
- * the end of the transcript. While a question waits it is upstream's 24px
+ * blended arrow) with no tooltip. It sits 20px above the dock, centered, and fades in once the transcript's end is
+ * more than 200px below the dock and the transcript is not following the end. While a question waits it is upstream's 24px
  * "Needs your input" pill instead, which scrolls to the question's card.
  */
 export function SessionDock({

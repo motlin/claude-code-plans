@@ -3118,7 +3118,7 @@ describe("SessionChat Agent row opening the Subagent pane", () =>
 
 	function agentRow(container: HTMLElement): HTMLElement
 	{
-		const row = container.querySelector<HTMLElement>("[data-transcript-keeps-pin]");
+		const row = container.querySelector<HTMLElement>("[data-transcript-step-navigates]");
 		if (row === null) throw new Error("no pane-opening agent row");
 		return row;
 	}
@@ -3147,6 +3147,10 @@ describe("SessionChat Agent row opening the Subagent pane", () =>
 			{
 				opened,
 				role: row.getAttribute("role"),
+				marks: [
+					row.getAttribute("data-transcript-step-navigates"),
+					row.hasAttribute("data-transcript-keeps-pin"),
+				],
 				tabIndex: row.getAttribute("tabindex"),
 				ariaExpanded: row.getAttribute("aria-expanded"),
 				spans: [...row.children]
@@ -3159,6 +3163,7 @@ describe("SessionChat Agent row opening the Subagent pane", () =>
 			{
 				opened: ["agent-abc123", "agent-abc123", "agent-abc123"],
 				role: "button",
+				marks: ["", false],
 				tabIndex: "0",
 				ariaExpanded: null,
 				spans: [

@@ -157,6 +157,53 @@ describe("SessionDock scroll-to-bottom pill", () =>
 		);
 	});
 
+	it("waits until the end is 200px away and stays hidden while the transcript follows the end (upstream y0)", () =>
+	{
+		const view = render(<DockInScroller />);
+		const scroller = screen.getByTestId("scroller");
+		const pill = screen.getByLabelText(
+			"Scroll to bottom",
+			{
+				selector: "button",
+			},
+		);
+		const visibleAt = (distance: number) =>
+		{
+			setScrollMetrics(
+				scroller,
+				{
+					scrollTop: 4_000 - distance,
+					scrollHeight: 5_000,
+					clientHeight: 1_000,
+				},
+			);
+			act(() =>
+			{
+				fireEvent.scroll(scroller);
+			});
+			return pillState(pill).visible;
+		};
+		const notFollowing = [visibleAt(150), visibleAt(250)];
+		const transcript = document.createElement("div");
+		transcript.setAttribute("data-transcript-following", "true");
+		transcript.innerHTML = '<div data-transcript-end=""></div>';
+		scroller.prepend(transcript);
+		const following = visibleAt(250);
+		view.unmount();
+
+		expect(
+			{
+				notFollowing,
+				following,
+			},
+		).toStrictEqual(
+			{
+				notFollowing: [false, true],
+				following: false,
+			},
+		);
+	});
+
 	it("positions the pill with a 20px gap above the dock, centered within its column", () =>
 	{
 		render(<DockInScroller />);

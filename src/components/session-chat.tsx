@@ -205,7 +205,14 @@ import
 } from "../lib/transcript-measurements";
 import {ApiRequestDisclosure} from "./api-request-disclosure";
 import {registerScrollSetter} from "../lib/scroll-setter";
-import {armStillClickRepin, keyReleasesPin, pressReleasesPin} from "../lib/transcript-follow-pin";
+import
+{
+	armStillClickRepin,
+	keyReleasesPin,
+	pressReleasesPin,
+	secondaryPressKeepsFollow,
+} from "../lib/transcript-follow-pin";
+import {TRANSCRIPT_FOLLOWING_ATTR} from "../lib/transcript-end-observer";
 import
 {
 	jumpToMessage,
@@ -270,6 +277,11 @@ export interface SessionChatProps
 	/** Selected font and layout settings from the main session view. */
 	measurementLayout?: string;
 	shouldScrollToEnd?: boolean;
+	/**
+	 * How a press in the feed releases following the end: "main" releases on any press and re-pins after a still
+	 * click (upstream ske/k7); "secondary" (the subagent pane) releases only on an interactive control (upstream jwe).
+	 */
+	followPress?: "main" | "secondary";
 	/** The full scroll content, including asynchronously sized composer/footer siblings. */
 	scrollContentRef?: React.RefObject<HTMLElement | null>;
 	/** The AI summary, shown once as a muted subtitle before the first message. */
@@ -932,6 +944,7 @@ export const SessionChat = React.memo(function SessionChat({
 	measurementSource,
 	measurementLayout = "",
 	shouldScrollToEnd = true,
+	followPress = "main",
 	scrollContentRef,
 	summary = null,
 	slashCommands = EMPTY_SLASH_COMMANDS,
@@ -1046,10 +1059,20 @@ export const SessionChat = React.memo(function SessionChat({
 		const previousMetrics = scrollMetrics(scroller);
 		// A rerun (a new visit key on the mounted transcript) reattaches follow at the
 		// scrollport's current position without repeating the fresh-visit jump.
-		let followsEnd =
+		let followsEnd = false;
+		// The jump control outside the transcript reads this to stay hidden while the transcript follows the end.
+		const setFollowsEnd = (value: boolean) =>
+		{
+			followsEnd = value;
+			const state = String(value);
+			if (container.getAttribute(TRANSCRIPT_FOLLOWING_ATTR) !== state)
+				container.setAttribute(TRANSCRIPT_FOLLOWING_ATTR, state);
+		};
+		setFollowsEnd(
 			previousMetrics.clientHeight > 0 &&
-			previousMetrics.scrollHeight - previousMetrics.scrollTop - previousMetrics.clientHeight <=
-				END_FOLLOW_THRESHOLD_PIXELS;
+				previousMetrics.scrollHeight - previousMetrics.scrollTop - previousMetrics.clientHeight <=
+					END_FOLLOW_THRESHOLD_PIXELS,
+		);
 		// Element metrics are live getters; retain values, not the element itself.
 		let previousHeight = previousMetrics.scrollHeight;
 		let previousClientHeight = previousMetrics.clientHeight;
@@ -1095,16 +1118,17 @@ export const SessionChat = React.memo(function SessionChat({
 			const extentChanged = scrollHeight !== previousHeight || clientHeight !== previousClientHeight;
 			// A row shrink and footer growth can move the browser away from the new end
 			// without reader input. Retain follow through its subsequent measurement scrolls.
-			followsEnd =
+			setFollowsEnd(
 				scrollHeight - scrollTop - clientHeight <= END_FOLLOW_THRESHOLD_PIXELS ||
-				(followsEnd && (extentChanged || pendingLayoutFollow));
+					(followsEnd && (extentChanged || pendingLayoutFollow)),
+			);
 			previousHeight = scrollHeight;
 			previousClientHeight = clientHeight;
 			if (followsEnd && extentChanged) queueLayoutFollow();
 		};
 		const cancelLayoutFollow = () =>
 		{
-			followsEnd = false;
+			setFollowsEnd(false);
 			pendingLayoutFollow = false;
 			if (resizeFrame !== undefined) cancelAnimationFrame(resizeFrame);
 			resizeFrame = undefined;
@@ -1166,7 +1190,13 @@ export const SessionChat = React.memo(function SessionChat({
 			target instanceof Element && target.closest(TRANSCRIPT_FEED_SELECTOR) !== null;
 		const onFeedPointerDown = (event: Event) =>
 		{
-			if (!(event instanceof MouseEvent) || !feedTarget(event.target) || !pressReleasesPin(event)) return;
+			if (!(event instanceof MouseEvent) || !feedTarget(event.target)) return;
+			if (followPress === "secondary")
+			{
+				if (!secondaryPressKeepsFollow(event)) cancelLayoutFollow();
+				return;
+			}
+			if (!pressReleasesPin(event)) return;
 			abortRepin = armStillClickRepin(
 				event,
 				{
@@ -1175,7 +1205,7 @@ export const SessionChat = React.memo(function SessionChat({
 					scrollTop: () => scrollMetrics(scroller).scrollTop,
 					repin: () =>
 					{
-						followsEnd = true;
+						setFollowsEnd(true);
 						scrollToEnd();
 					},
 				},
@@ -1231,7 +1261,7 @@ export const SessionChat = React.memo(function SessionChat({
 				{
 					autoScrolledLocations.add(initialScrollKey);
 					scrollToEnd();
-					followsEnd = true;
+					setFollowsEnd(true);
 				});
 			});
 		}
@@ -1249,7 +1279,7 @@ export const SessionChat = React.memo(function SessionChat({
 			if (paintedFrame !== undefined) cancelAnimationFrame(paintedFrame);
 			if (resizeFrame !== undefined) cancelAnimationFrame(resizeFrame);
 		};
-	}, [initialScrollKey, shouldScrollToEnd, scrollContentRef]);
+	}, [initialScrollKey, shouldScrollToEnd, scrollContentRef, followPress]);
 
 	return (
 		<TranscriptModeContext.Provider value={transcriptMode}>
@@ -5078,7 +5108,7 @@ function VirtualizedSessionEntries({
 				aria-describedby={feedHintId}
 				data-testid="virtualized-transcript"
 				// Upstream's feedKeyboardNav scroll margins (on its scroller; the feed matches the same articles).
-				className="[&_[role=article]]:[scroll-margin-top:calc(max(var(--epitaxy-top-fade-height,0px),var(--fade-top,0px))+8px)] [&_[role=article]]:[scroll-margin-bottom:calc(max(var(--epitaxy-bottom-fade-height,0px)-var(--epitaxy-foot-reserve,0px),0px)+8px)]"
+				className="relative [&_[role=article]]:[scroll-margin-top:calc(max(var(--epitaxy-top-fade-height,0px),var(--fade-top,0px))+8px)] [&_[role=article]]:[scroll-margin-bottom:calc(max(var(--epitaxy-bottom-fade-height,0px)-var(--epitaxy-foot-reserve,0px),0px)+8px)]"
 				onClickCapture={(event) =>
 				{
 					if (event.target instanceof Element && event.target.closest("[aria-expanded],summary"))
@@ -5151,6 +5181,14 @@ function VirtualizedSessionEntries({
 					{
 						height: totalHeight - prefixHeightAt(prefixHeights, endIndex),
 					}}
+				/>
+				{/* Upstream XOe: the 1px mark at the bottom of the last row that the jump control measures. The
+				    composer dock is laid out below the feed, so no bottom offset is needed. */}
+				<div
+					aria-hidden="true"
+					data-testid="transcript-end-sentinel"
+					data-transcript-end=""
+					className="absolute bottom-0 start-0 h-px w-full pointer-events-none"
 				/>
 			</div>
 			{!tailInline && <TranscriptTail />}
@@ -8717,7 +8755,7 @@ function ToolCallRow({
 					aria-labelledby={labelledBy}
 					data-state={busyAgent ? "busy" : undefined}
 					data-cds-row=""
-					data-transcript-keeps-pin=""
+					data-transcript-step-navigates=""
 					onClick={open}
 					onKeyDown={(e) =>
 					{

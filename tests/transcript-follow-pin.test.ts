@@ -8,6 +8,7 @@ import
 	keyReleasesPin,
 	pressOrKeyReleasesPin,
 	pressReleasesPin,
+	secondaryPressKeepsFollow,
 } from "../src/lib/transcript-follow-pin";
 
 function element(html: string, selector: string): Element
@@ -181,6 +182,51 @@ describe("pressOrKeyReleasesPin (upstream _9)", () =>
 				enter: true,
 				letter: false,
 				enterInTextarea: false,
+			},
+		);
+	});
+});
+
+describe("secondaryPressKeepsFollow (upstream jwe)", () =>
+{
+	it("keeps following on plain text and card panels, releases on an interactive control", () =>
+	{
+		const host = document.createElement("div");
+		host.innerHTML =
+			'<div data-feed><p><b data-id="text">x</b></p><button><span data-id="button">x</span></button><div data-card-panel><button><span data-id="panel-button">x</span></button><span data-id="panel">x</span></div><div data-transcript-step-navigates><span data-id="navigates">x</span></div><span data-unmodified-lines><i data-id="unmodified">x</i></span></div>';
+		document.body.append(host);
+		const feed = host.querySelector("[data-feed]")!;
+		const keeps = (id: string) =>
+		{
+			const target = host.querySelector(`[data-id="${id}"]`)!;
+			const path: EventTarget[] = [];
+			for (let node: Element | null = target; node !== null; node = node.parentElement) path.push(node);
+			path.push(document, window);
+			return secondaryPressKeepsFollow(
+				{
+					target,
+					currentTarget: feed,
+					composedPath: () => path,
+				},
+			);
+		};
+		expect(
+			{
+				text: keeps("text"),
+				button: keeps("button"),
+				panel: keeps("panel"),
+				panelButton: keeps("panel-button"),
+				navigates: keeps("navigates"),
+				unmodified: keeps("unmodified"),
+			},
+		).toStrictEqual(
+			{
+				text: true,
+				button: false,
+				panel: true,
+				panelButton: false,
+				navigates: true,
+				unmodified: false,
 			},
 		);
 	});

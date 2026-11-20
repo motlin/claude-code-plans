@@ -218,6 +218,56 @@ describe("SessionChat column measure", () =>
 			"[&_[role=article]]:[scroll-margin-bottom:calc(max(var(--epitaxy-bottom-fade-height,0px)-var(--epitaxy-foot-reserve,0px),0px)+8px)]",
 		]);
 	});
+
+	it("ends the feed with upstream's XOe end sentinel and marks the follow state on the transcript", () =>
+	{
+		const view = render(
+			<SessionChat
+				sessionId="session-52"
+				initialScrollKey="history-entry-sentinel"
+				lines={messages(2)}
+				toolResultMap={new Map()}
+			/>,
+		);
+		const container = view.container.firstElementChild!;
+		const following = () => container.getAttribute("data-transcript-following");
+		act(flushAnimationFrames);
+		const afterFirstScroll = following();
+		act(() =>
+		{
+			releaseEndFollow(document.documentElement);
+		});
+		const feed = view.container.querySelector<HTMLElement>("[data-testid='virtualized-transcript']")!;
+		const sentinel = feed.lastElementChild!;
+
+		expect(
+			{
+				feedPositioned: feed.classList.contains("relative"),
+				sentinel:
+				{
+					testId: sentinel.getAttribute("data-testid"),
+					end: sentinel.getAttribute("data-transcript-end"),
+					ariaHidden: sentinel.getAttribute("aria-hidden"),
+					className: sentinel.getAttribute("class"),
+					style: sentinel.getAttribute("style"),
+				},
+				following: [afterFirstScroll, following()],
+			},
+		).toStrictEqual(
+			{
+				feedPositioned: true,
+				sentinel:
+				{
+					testId: "transcript-end-sentinel",
+					end: "",
+					ariaHidden: "true",
+					className: "absolute bottom-0 start-0 h-px w-full pointer-events-none",
+					style: null,
+				},
+				following: ["true", "false"],
+			},
+		);
+	});
 });
 
 describe("SessionChat initial scrolling", () =>
@@ -535,6 +585,54 @@ describe("SessionChat initial scrolling", () =>
 				enterOnToggle: 0,
 				letterOnToggle: 1,
 				pressedPaneRow: 1,
+			},
+		);
+	});
+
+	it("keeps a secondary transcript following on plain-text presses and releases on a control (upstream jwe)", () =>
+	{
+		const followsAfter = (key: string, html: string, selector: string) =>
+		{
+			const view = render(
+				<SessionChat
+					sessionId={`session-secondary-${key}`}
+					initialScrollKey={`history-entry-secondary-${key}`}
+					lines={messages(4)}
+					toolResultMap={new Map()}
+					followPress="secondary"
+				/>,
+			);
+			act(flushAnimationFrames);
+			const feed = view.container.querySelector<HTMLElement>("[data-testid='virtualized-transcript']")!;
+			const host = document.createElement("div");
+			host.innerHTML = html;
+			feed.querySelector("[role=article]")!.append(host);
+			const before = scrollTo.mock.calls.length;
+			act(() =>
+			{
+				fireEvent.pointerDown(host.querySelector(selector)!);
+			});
+			act(() =>
+			{
+				observerFor(view.container.firstElementChild!).resize();
+			});
+			act(flushAnimationFrames);
+			const followed = scrollTo.mock.calls.length - before;
+			view.unmount();
+			return followed;
+		};
+
+		expect(
+			{
+				pressedText: followsAfter("text", "<p><span>Plain</span></p>", "span"),
+				pressedCardPanel: followsAfter("panel", "<div data-card-panel><span>Card</span></div>", "span"),
+				pressedToggle: followsAfter("toggle", '<button aria-expanded="false">Run</button>', "button"),
+			},
+		).toStrictEqual(
+			{
+				pressedText: 1,
+				pressedCardPanel: 1,
+				pressedToggle: 0,
 			},
 		);
 	});
