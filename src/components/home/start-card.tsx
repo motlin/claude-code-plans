@@ -89,7 +89,11 @@ export function StartCard({projects, selected, onSelect, nextSteps}: StartCardPr
 
 	// Upstream's `q5`: Clawd peeks over the env card, or leads Next steps when there is none.
 	return (
-		<div data-start-card className="flex w-full min-w-0 flex-col items-center gap-3 p-px">
+		<div
+			data-start-card
+			data-testid="epitaxy-start-card"
+			className="flex w-full min-w-0 flex-col items-center gap-3 p-px"
+		>
 			<ClawdMascot />
 			{projects.length > 0 && (
 				<RecentEnvironments projects={projects} selected={selected} choose={choose} chooseRef={chooseRef} />

@@ -423,6 +423,7 @@ describe("StartCard", () =>
 		if (!mascot) throw new Error("Expected the Clawd mascot in the start card");
 		const before =
 		{
+			testid: card?.getAttribute("data-testid"),
 			children: [...(card?.children ?? [])].map((child) => child.getAttribute("data-testid") ?? child.tagName),
 			wrapper:
 			{
@@ -470,6 +471,7 @@ describe("StartCard", () =>
 			},
 		).toStrictEqual(
 			{
+				testid: "epitaxy-start-card",
 				children: ["start-card-clawd", "start-card-environments"],
 				wrapper:
 				{
