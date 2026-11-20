@@ -11,7 +11,16 @@ import
 import {useCallback, useEffect, useRef, useState} from "react";
 
 import {requestChangesScope} from "../lib/changes-scope-request";
-import {type BranchStripSession, type LineCounts, branchStripVisible, middleTruncate} from "./branch-strip-model";
+import
+{
+	type BranchStripSession,
+	type LineCounts,
+	type PullRequestSummary,
+	PR_STATE_LABELS,
+	branchStripVisible,
+	middleTruncate,
+	pullRequestSummary,
+} from "./branch-strip-model";
 import {AnimatedDiffStat} from "./diff-stat";
 import {isRecord} from "../lib/narrow";
 import {prGlyph} from "../lib/pr-status";
@@ -139,28 +148,6 @@ function DiffStatButton({sessionId, additions, deletions}: {sessionId: string; a
 	);
 }
 
-/** A linked PR owns its identity; only status with the same number and URL may decorate it. */
-function pullRequestSummary(session: BranchStripSession)
-{
-	if (session.pr !== undefined)
-	{
-		const status = session.prStatus;
-		return {
-			number: session.pr.number,
-			url: session.pr.url,
-			repository: session.pr.repository,
-			status: status?.number === session.pr.number && status.url === session.pr.url ? status : undefined,
-		};
-	}
-	if (session.prStatus === undefined) return null;
-	return {
-		number: session.prStatus.number,
-		url: session.prStatus.url,
-		repository: undefined,
-		status: session.prStatus,
-	};
-}
-
 const PR_REPOSITORY_BUTTON =
 	"inline-flex h-6 min-w-0 max-w-[160px] shrink cursor-pointer items-center rounded-r5 px-[5px] text-body opacity-60 transition-colors hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus data-[popup-open]:bg-fill-ghost-hover";
 
@@ -172,14 +159,6 @@ const PR_STATE_ICONS =
 	closed: GitPullRequestClosed,
 };
 
-const PR_STATE_LABELS =
-{
-	open: "Open",
-	draft: "Draft",
-	merged: "Merged",
-	closed: "Closed",
-} as const;
-
 function PullRequestStripContent({
 	sessionId,
 	session,
@@ -187,7 +166,7 @@ function PullRequestStripContent({
 }: {
 	sessionId: string;
 	session: BranchStripSession;
-	pr: NonNullable<ReturnType<typeof pullRequestSummary>>;
+	pr: PullRequestSummary;
 })
 {
 	const color = pr.status === undefined ? undefined : `var(--color-git-${prGlyph(pr.status).state})`;

@@ -28,3 +28,36 @@ export function branchStripVisible(session: BranchStripSession, counts: LineCoun
 	if (session.pr !== undefined || session.prStatus !== undefined) return true;
 	return session.gitBranch !== null || counts !== null;
 }
+
+/** A linked PR owns its identity; only status with the same number and URL may decorate it. */
+export function pullRequestSummary(session: BranchStripSession)
+{
+	if (session.pr !== undefined)
+	{
+		const status = session.prStatus;
+		return {
+			number: session.pr.number,
+			url: session.pr.url,
+			repository: session.pr.repository,
+			status: status?.number === session.pr.number && status.url === session.pr.url ? status : undefined,
+		};
+	}
+	if (session.prStatus === undefined) return null;
+	return {
+		number: session.prStatus.number,
+		url: session.prStatus.url,
+		repository: undefined,
+		status: session.prStatus,
+	};
+}
+
+/** A PR state's name, as upstream's `M1` labels it ("#56 · Draft"). */
+export const PR_STATE_LABELS =
+{
+	open: "Open",
+	draft: "Draft",
+	merged: "Merged",
+	closed: "Closed",
+} as const;
+
+export type PullRequestSummary = NonNullable<ReturnType<typeof pullRequestSummary>>;

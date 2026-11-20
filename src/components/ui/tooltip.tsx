@@ -120,6 +120,7 @@ export function Tooltip({
 	closeOnClick = true,
 	openOnClick = false,
 	forceOpen = false,
+	closed = false,
 	markOpen = false,
 	trackCursor,
 	suppressAfterPopup = false,
@@ -169,6 +170,8 @@ export function Tooltip({
 	openOnClick?: boolean;
 	/** Hold the tip open regardless of hover and focus, e.g. upstream's Move grip during a keyboard split preview. */
 	forceOpen?: boolean;
+	/** Hold the tip shut (upstream's `open: false`), e.g. while the anchored link's context menu is open. */
+	closed?: boolean;
 	/** Mark the anchored child `data-popup-open` while the tip is open, as Base UI's tooltip trigger does. */
 	markOpen?: boolean;
 	/**
@@ -304,6 +307,11 @@ export function Tooltip({
 		setTrackedTop(viewportTop - anchor.getBoundingClientRect().top);
 	}, [open, cursorY]);
 
+	useEffect(() =>
+	{
+		if (closed) hideRef.current();
+	}, [closed]);
+
 	// Upstream suppresses a trigger's tooltip while its popup is open, so it never draws beside the open menu.
 	useEffect(() =>
 	{
@@ -339,7 +347,7 @@ export function Tooltip({
 		// Usually loaded at idle already; otherwise the hover delay covers the download before the tip fits.
 		loadShrinkwrapEngine().catch(() => {});
 		const anchor = anchorRef.current;
-		if (suppressed.current) return;
+		if (suppressed.current || closed) return;
 		if (anchor !== null && popupOpen(anchor)) return;
 		if (openWhen !== undefined && (anchor === null || !openWhen(anchor))) return;
 		const reveal = () =>

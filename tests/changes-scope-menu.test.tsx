@@ -255,6 +255,29 @@ describe("Changes scope menu", () =>
 		]);
 	});
 
+	// Upstream `YC`: the trigger is the `data-diff-scope-label` element the PR chip's fit hook measures.
+	it("marks the trigger as the diff scope label", () =>
+	{
+		renderView(scopesOf());
+		const trigger = screen.getByRole(
+			"button",
+			{
+				name: /^Diff scope:/,
+			},
+		);
+		expect(
+			{
+				attribute: trigger.getAttribute("data-diff-scope-label"),
+				shrinks: trigger.classList.contains("min-w-0"),
+			},
+		).toEqual(
+			{
+				attribute: "",
+				shrinks: true,
+			},
+		);
+	});
+
 	it("reports each scope choice", async () =>
 	{
 		const onSelectScope = vi.fn<(scope: string) => void>();
@@ -421,6 +444,8 @@ describe("ChangesPane scope", () =>
 			{
 				const url = new URL(input, "http://localhost");
 				if (url.pathname.endsWith("/diff/scopes")) return Promise.resolve(Response.json(scopesResponse));
+				// The pane reads the session detail for its PR chip; this session has none.
+				if (!url.pathname.includes("/diff")) return Promise.resolve(Response.json(null));
 				const scope = url.searchParams.get("scope") ?? "";
 				fetchedScopes.push(scope);
 				return Promise.resolve(Response.json(emptyDiff(scope)));
@@ -466,7 +491,7 @@ describe("ChangesPane scope", () =>
 			.getQueryCache()
 			.getAll()
 			.map((query) => query.queryKey)
-			.filter((key) => key[3] !== "scopes");
+			.filter((key) => key[2] === "diff" && key[3] !== "scopes");
 	}
 
 	it("refetches with each scope's query key and persists the choice per session", async () =>

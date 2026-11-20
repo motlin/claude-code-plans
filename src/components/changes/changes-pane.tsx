@@ -135,6 +135,10 @@ import {DiffMarksContext, type DiffMarksContextValue, useDiffFileMark} from "./d
 import {GoToFile} from "./go-to-file";
 import {commentAnnotations, diffLineRanges, diffSideSnippet, findingAnnotations} from "./diff-annotations";
 import {isLargeDiff} from "./large-diff";
+import {ChangesHeaderPrChip} from "./changes-header-pr-chip";
+import {type PullRequestSummary, pullRequestSummary} from "../branch-strip-model";
+import {sessionDetailQueryOptions} from "../../lib/api/sessions";
+import {isTextCut} from "../../lib/text-cut";
 
 /** Upstream offers "Side by side" only when the pane is at least this wide. */
 const SIDE_BY_SIDE_MIN_WIDTH = 560;
@@ -313,40 +317,61 @@ function CommitsSubmenu({
 	);
 }
 
+/** Upstream `XC`: some truncate span of the scope label is cut, so its tooltip may show the full label. */
+function scopeLabelCut(anchor: HTMLElement): boolean
+{
+	return [...anchor.querySelectorAll<HTMLElement>("[data-scope-label-part]")].some(isTextCut);
+}
+
 function ScopeButton({
 	label,
 	scope,
 	scopes,
 	onSelectScope,
+	afterBadge = false,
 }: {
 	label: ScopeLabel;
 	scope: string;
 	scopes: SessionDiffScopesResponse | undefined;
 	onSelectScope: (scope: string) => void;
+	/** A list note badge follows: the label gives way first, down to min(8rem, 40%) (upstream `YC`). */
+	afterBadge?: boolean;
 })
 {
+	const fit = afterBadge ? "shrink-[99999] min-w-[min(8rem,40%)]" : "shrink min-w-0";
+	const [menuOpen, setMenuOpen] = useState(false);
 	const git = scopes?.kind === "git" ? scopes : null;
 	const commitSha = commitShaOf(scope);
 	const radioValue = commitSha === null ? scope : "commit";
 	return (
-		<Menu>
+		<Menu open={menuOpen} onOpenChange={setMenuOpen}>
 			<MenuTrigger
 				aria-label={`Diff scope: ${scopeLabelText(label)}`}
 				data-cds-ghost=""
-				className="flex h-6 min-w-0 shrink cursor-pointer items-center rounded-r5 px-2 text-body text-secondary transition-colors hover:bg-fill-ghost-hover hover:text-primary"
+				data-diff-scope-label=""
+				className={`flex h-6 ${fit} cursor-pointer items-center rounded-r5 px-2 text-body text-secondary transition-colors hover:bg-fill-ghost-hover hover:text-primary`}
 			>
-				<span className="inline-flex min-w-0 items-center gap-1">
-					{label.kind === "range" ? (
-						<span className="grid min-w-0 grid-cols-[minmax(0,max-content)_auto_minmax(0,max-content)] items-center gap-1">
-							<span className="min-w-0 truncate">{label.base}</span>
-							<ArrowRight role="img" aria-label="to" className="size-3 text-ink-muted" />
-							<span className="min-w-0 truncate">{label.head}</span>
-						</span>
-					) : (
-						<span className="min-w-0 truncate">{label.text}</span>
-					)}
-					<ChevronDown aria-hidden="true" className="size-3 shrink-0 opacity-60" />
-				</span>
+				{/* Upstream `$C`: the full label, only while truncated, and never over the open menu. */}
+				<Tooltip content={scopeLabelText(label)} openWhen={scopeLabelCut} closed={menuOpen} className="min-w-0">
+					<span className="inline-flex min-w-0 items-center gap-1">
+						{label.kind === "range" ? (
+							<span className="grid min-w-0 grid-cols-[minmax(0,max-content)_auto_minmax(0,max-content)] items-center gap-1">
+								<span data-scope-label-part="" className="min-w-0 truncate">
+									{label.base}
+								</span>
+								<ArrowRight role="img" aria-label="to" className="size-3 text-ink-muted" />
+								<span data-scope-label-part="" className="min-w-0 truncate">
+									{label.head}
+								</span>
+							</span>
+						) : (
+							<span data-scope-label-part="" className="min-w-0 truncate">
+								{label.text}
+							</span>
+						)}
+						<ChevronDown aria-hidden="true" className="size-3 shrink-0 opacity-60" />
+					</span>
+				</Tooltip>
 			</MenuTrigger>
 			<MenuContent>
 				<MenuRadioGroup
@@ -1234,6 +1259,8 @@ export interface ChangesPaneViewProps
 	 * the hunk separators expandable and enables Show whole file; session edits never get it.
 	 */
 	loadFileSides?: (file: SessionDiffFile, patch: string, fresh: boolean) => Promise<FileSides>;
+	/** The session's PR, for the header chip after the scope label. */
+	pullRequest?: PullRequestSummary | null;
 }
 
 /**
@@ -1262,6 +1289,7 @@ export function ChangesPaneView({
 	sessionId,
 	cwd,
 	loadFileSides,
+	pullRequest = null,
 }: ChangesPaneViewProps)
 {
 	const comments = useDiffComments(sessionId);
@@ -2078,6 +2106,7 @@ export function ChangesPaneView({
 								onSelectScope={onSelectScope}
 							/>
 						)}
+						{sessionId !== undefined && <ChangesHeaderPrChip sessionId={sessionId} pr={pullRequest} />}
 					</div>
 				}
 				actions={
@@ -2351,6 +2380,7 @@ export function ChangesPane({
 		),
 	);
 	const scopesQuery = useQuery(sessionDiffScopesQueryOptions(sessionId));
+	const detail = useQuery(sessionDetailQueryOptions(sessionId)).data;
 	const toast = useToast();
 	const queryClient = useQueryClient();
 	const review = useReviewFindings(sessionId, scope, diffQuery.data);
@@ -2442,6 +2472,7 @@ export function ChangesPane({
 			onCloseFindings={review.close}
 			sessionId={sessionId}
 			cwd={cwd}
+			pullRequest={detail == null ? null : pullRequestSummary(detail)}
 			onOpenFile={(path, line) =>
 			{
 				const root = diffQuery.data?.root;

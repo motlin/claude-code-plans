@@ -327,6 +327,9 @@ const SIDE_COLLISION_AVOIDANCE =
 {
 	fallbackAxisSide: "end",
 } as const satisfies CollisionAvoidance;
+/** How far right of and below the pointer a context menu opens. */
+const CONTEXT_MENU_POINTER_OFFSET = 2;
+
 type MenuSide = NonNullable<ComponentProps<typeof BaseMenu.Positioner>["side"]>;
 const INLINE_SIDES: ReadonlySet<MenuSide> = new Set(["left", "right", "inline-start", "inline-end"]);
 
@@ -378,8 +381,8 @@ export function MenuContent({
 	density,
 	side = "bottom",
 	align = "start",
-	sideOffset = 4,
-	alignOffset = 0,
+	sideOffset: sideOffsetProp,
+	alignOffset: alignOffsetProp,
 	collisionAvoidance,
 	className,
 	finalFocus,
@@ -399,6 +402,10 @@ export function MenuContent({
 			? resolvedCollisionAvoidance.fallbackAxisSide
 			: undefined;
 	const kind = useContext(MenuKindContext);
+	/* Upstream's cds ContextMenu anchors a zero-size rect at the pointer +2px; Base UI's anchor is the pointer itself. */
+	const atPointer = kind === "ContextMenu" && !nested;
+	const sideOffset = sideOffsetProp ?? (atPointer ? CONTEXT_MENU_POINTER_OFFSET : 4);
+	const alignOffset = alignOffsetProp ?? (atPointer ? CONTEXT_MENU_POINTER_OFFSET : 0);
 	const sheet = useContext(MenuSheetContext) && !structurallyAnchored;
 	const parentLevel = useContext(SheetLevelContext);
 	/* Upstream's si order: an override, then comfortable on (pointer: coarse), then the prop or opener's density. */

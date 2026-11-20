@@ -24,6 +24,8 @@ import type {FileRef} from "../src/lib/file-refs";
 import {onFileOpenRequest} from "../src/lib/file-open-requests";
 import {registerComposer, takeContextChips} from "../src/lib/context-attach";
 import {installLocalStorage} from "./fake-storage";
+import {sessionDetailQueryOptions, type SessionDetailData} from "../src/lib/api/sessions";
+import type {PrStatus} from "../src/lib/pr-status";
 import {type DiffMarkScope, fileMarkStatus, setFileMarked} from "../src/lib/diff-file-marks";
 import {clearDiffComments, openDiffCommentDraft, saveDiffComment} from "../src/lib/diff-comments";
 import {clearDiffScrollTarget, diffScrollTarget, scrollToDiffLine} from "../src/lib/diff-scroll-target";
@@ -51,6 +53,21 @@ vi.mock("../src/lib/api/reviews", async (importOriginal) => (
 	...(await importOriginal<typeof import("../src/lib/api/reviews")>()),
 	replaceReviewFindings: reviewApi.replace,
 }));
+
+const clipboard = vi.hoisted(() => (
+{
+	write: vi.fn<(text: string) => Promise<boolean>>(),
+}));
+
+vi.mock("../src/lib/clipboard", async (importOriginal) =>
+{
+	const actual = await importOriginal<typeof import("../src/lib/clipboard")>();
+	clipboard.write.mockImplementation(async (text) => actual.writeClipboardText(text));
+	return {
+		...actual,
+		writeClipboardText: clipboard.write,
+	};
+});
 
 const GREET_PATCH = `diff --git a/src/greet.ts b/src/greet.ts
 index 1111111..2222222 100644
@@ -3476,5 +3493,349 @@ describe("ChangesPane transcript review findings (upstream cc8941b7b setReviewFi
 		openReviewInChanges(SESSION, "review-x");
 
 		expect(reviewFindingsSnapshot().findingsBySession[SESSION]).toBe(undefined);
+	});
+});
+
+// Upstream `jC` → `FC` → `IC`: the Changes header's PR chip after the scope label, sized by `PC`.
+describe("ChangesPane PR chip", () =>
+{
+	const SESSION = "session-pr-chip";
+
+	afterEach(() =>
+	{
+		vi.restoreAllMocks();
+	});
+
+	const URL_56 = "https://github.com/o/r/pull/56";
+
+	function detailWith(prStatus: PrStatus | undefined): SessionDetailData
+	{
+		return {
+			title: "PR chip",
+			projectName: "repo",
+			projectId: "repo",
+			homeRoot: "/users/dev",
+			imageRoots: [],
+			archived: false,
+			summary: null,
+			projectPath: "/repo",
+			gitBranch: "feature",
+			cwd: "/repo",
+			gitSha: null,
+			gitClean: null,
+			messageCount: 1,
+			pendingTaskCount: 0,
+			viewedState:
+			{
+				currentMessageIndex: 0,
+				lastViewedMessageIndex: 0,
+				reviewTargetMessageIndex: 0,
+				newMessageCount: 0,
+				viewedInCcp: true,
+				viewedInHerdr: false,
+				viewedAnywhere: true,
+			},
+			...(prStatus === undefined
+				? {}
+				:
+					{
+						prStatus,
+					}),
+		};
+	}
+
+	function renderWithPr(prStatus: PrStatus | undefined)
+	{
+		const queryClient = new QueryClient(
+			{
+				defaultOptions:
+				{
+					queries:
+					{
+						retry: false,
+					},
+				},
+			},
+		);
+		queryClient.setQueryData(
+			sessionDiffQueryOptions(
+				SESSION,
+				"branch",
+				{
+					hideWhitespace: DEFAULTS.diffHideWhitespace,
+				},
+			).queryKey,
+			diffOf([GREET_FILE]),
+		);
+		queryClient.setQueryData(sessionDiffScopesQueryOptions(SESSION).queryKey, SCOPES);
+		queryClient.setQueryData(sessionDetailQueryOptions(SESSION).queryKey, detailWith(prStatus));
+		return render(
+			<QueryClientProvider client={queryClient}>
+				<SettingsProvider>
+					<ToastProvider>
+						<ChangesPane
+							sessionId={SESSION}
+							cwd="/repo"
+							chrome={
+							{
+								moveHandle: null,
+								controls: null,
+							}}
+						/>
+					</ToastProvider>
+				</SettingsProvider>
+			</QueryClientProvider>,
+		);
+	}
+
+	const DRAFT_56: PrStatus =
+	{
+		number: 56,
+		state: "draft",
+		url: URL_56,
+		checks:
+		{
+			passed: 3,
+			failed: 0,
+			pending: 0,
+		},
+	};
+
+	function chipLink(): HTMLElement
+	{
+		return screen.getByRole(
+			"link",
+			{
+				name: "#56 · Draft",
+			},
+		);
+	}
+
+	function openChipMenu(link: HTMLElement): string[]
+	{
+		fireEvent.contextMenu(
+			link,
+			{
+				clientX: 10,
+				clientY: 10,
+			},
+		);
+		const menu = screen.getByRole("menu");
+		return [...menu.querySelectorAll('[role="menuitem"], [role="separator"]')].map((row) =>
+			row.getAttribute("role") === "separator" ? "─" : (row.firstElementChild?.textContent ?? row.textContent),
+		);
+	}
+
+	it("links the PR with its number and CI glyph in the number state", () =>
+	{
+		const view = renderWithPr(DRAFT_56);
+		const link = chipLink();
+		const room = view.container.querySelector("[data-chip-room]");
+
+		expect(
+			{
+				href: link.getAttribute("href"),
+				target: link.getAttribute("target"),
+				rel: link.getAttribute("rel"),
+				tabIndex: link.getAttribute("tabindex"),
+				number: link.querySelector("bdi")?.textContent,
+				room: room?.getAttribute("data-chip-room"),
+				roomAfterScope: room?.previousElementSibling?.hasAttribute("data-diff-scope-label"),
+				ci: screen.getByRole(
+					"img",
+					{
+						name: "CI: all checks passed",
+					},
+				).className,
+			},
+		).toStrictEqual(
+			{
+				href: URL_56,
+				target: "_blank",
+				rel: "noopener",
+				tabIndex: "-1",
+				number: "#56",
+				room: "number",
+				roomAfterScope: true,
+				ci: "inline-flex size-5 shrink-0 items-center justify-center",
+			},
+		);
+	});
+
+	it("labels failing and in-progress checks, and hides CI on a merged PR", () =>
+	{
+		const labels = [
+			{
+				...DRAFT_56,
+				checks:
+				{
+					passed: 1,
+					failed: 1,
+					pending: 1,
+				},
+			},
+			{
+				...DRAFT_56,
+				checks:
+				{
+					passed: 1,
+					failed: 0,
+					pending: 1,
+				},
+			},
+			{
+				...DRAFT_56,
+				state: "merged" as const,
+			},
+		].map((pr) =>
+		{
+			const view = renderWithPr(pr);
+			const found = screen
+				.queryAllByRole("img")
+				.map((img) => img.getAttribute("aria-label"))
+				.filter((label) => label?.startsWith("CI:"));
+			view.unmount();
+			return found;
+		});
+
+		expect(labels).toStrictEqual([["CI: checks failing"], ["CI: checks in progress"], []]);
+	});
+
+	it("renders no chip without an http(s) PR url", () =>
+	{
+		const {url: _url, ...urlless} = DRAFT_56;
+		const views = [
+			urlless,
+			{
+				...DRAFT_56,
+				url: "ftp://example.com/56",
+			},
+			undefined,
+		].map((pr) =>
+		{
+			const view = renderWithPr(pr);
+			const room = view.container.querySelector("[data-chip-room]");
+			view.unmount();
+			return room;
+		});
+
+		expect(views).toStrictEqual([null, null, null]);
+	});
+
+	// Upstream `vr`/`Og`: Open on GitHub │ Copy link at the pointer; the trigger is marked while the menu is open.
+	it("opens Open on GitHub and Copy link from a right-click on the link only", async () =>
+	{
+		const open = vi.fn<typeof window.open>(() => null);
+		vi.stubGlobal("open", open);
+		renderWithPr(DRAFT_56);
+		const link = chipLink();
+		const ciPrevented = !fireEvent.contextMenu(
+			screen.getByRole(
+				"img",
+				{
+					name: "CI: all checks passed",
+				},
+			),
+		);
+		const menuFromCi = screen.queryByRole("menu");
+		const rows = openChipMenu(link);
+		const marked = link.closest("[data-popup-open]") !== null;
+		fireEvent.click(
+			screen.getByRole(
+				"menuitem",
+				{
+					name: "Open on GitHub",
+				},
+			),
+		);
+		const opened = open.mock.calls;
+
+		clipboard.write.mockResolvedValueOnce(true);
+		openChipMenu(link);
+		fireEvent.click(
+			screen.getByRole(
+				"menuitem",
+				{
+					name: "Copy link",
+				},
+			),
+		);
+		const toast = await screen.findByText("Link copied to clipboard.");
+
+		expect(
+			{
+				ciPrevented,
+				menuFromCi,
+				rows,
+				marked,
+				opened,
+				copied: clipboard.write.mock.calls.at(-1),
+				toast: toast.textContent,
+			},
+		).toStrictEqual(
+			{
+				ciPrevented: false,
+				menuFromCi: null,
+				rows: ["Open on GitHub", "─", "Copy link"],
+				marked: true,
+				opened: [[URL_56, "_blank", "noopener,noreferrer"]],
+				copied: [URL_56],
+				toast: "Link copied to clipboard.",
+			},
+		);
+	});
+
+	it("stays silent when copying the link fails", async () =>
+	{
+		renderWithPr(DRAFT_56);
+		clipboard.write.mockResolvedValueOnce(false);
+		openChipMenu(chipLink());
+		fireEvent.click(
+			screen.getByRole(
+				"menuitem",
+				{
+					name: "Copy link",
+				},
+			),
+		);
+		await act(async () =>
+		{
+			await Promise.resolve();
+		});
+
+		expect(screen.queryByText("Link copied to clipboard.")).toBe(null);
+	});
+
+	// The gap-y-12 / flex-wrap / overflow-y-clip trick: `none` collapses the room, focus or a popup reopens it.
+	it("collapses the room to w-0 in the none state, reopened by focus-visible or an open popup", async () =>
+	{
+		// No free room in the row and the scope label below its 8rem floor: the fit lands on none.
+		vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockImplementation(function (this: HTMLElement)
+		{
+			return this.querySelector(":scope > * > [data-chip-room]") === null ? 0 : 200;
+		});
+		vi.spyOn(HTMLElement.prototype, "offsetWidth", "get").mockImplementation(function (this: HTMLElement)
+		{
+			if (this.querySelector(":scope > [data-chip-room]") !== null) return 200;
+			return this.hasAttribute("data-diff-scope-label") ? 100 : 0;
+		});
+		const view = renderWithPr(DRAFT_56);
+		const room = () => view.container.querySelector("[data-chip-room]");
+		await waitFor(() =>
+		{
+			expect(room()?.getAttribute("data-chip-room")).toBe("none");
+		});
+
+		expect(room()?.className.split(" ")).toEqual(
+			expect.arrayContaining([
+				"w-0",
+				"flex-wrap",
+				"gap-y-12",
+				"overflow-y-clip",
+				"has-[:focus-visible]:w-auto",
+				"has-[:focus-visible]:overflow-y-visible",
+				"has-[[data-popup-open]]:w-auto",
+			]),
+		);
 	});
 });

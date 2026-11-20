@@ -382,6 +382,45 @@ describe("appendAttachment", () =>
 
 describe("tree row context menu", () =>
 {
+	// Upstream's cds ContextMenu (`L` in c9a0cb909) anchors at the pointer +2px, side bottom, align start.
+	it("opens a context menu 2px right of and below the pointer", async () =>
+	{
+		render(
+			wrap(
+				<FilesTreeColumn>
+					<FilesTree sessionId="alice" cwd={CWD} onAttachContext={vi.fn<AttachContextHandler>()} />
+				</FilesTreeColumn>,
+			),
+		);
+		fireEvent.contextMenu(
+			await screen.findByText("README.md"),
+			{
+				clientX: 10,
+				clientY: 10,
+			},
+		);
+		const positioner = await waitFor(() =>
+		{
+			const found = screen.getByRole("menu").closest("[data-side-offset]");
+			if (found === null) throw new Error("no positioner");
+			return found;
+		});
+
+		expect(
+			{
+				side: positioner.getAttribute("data-side"),
+				sideOffset: positioner.getAttribute("data-side-offset"),
+				alignOffset: positioner.getAttribute("data-align-offset"),
+			},
+		).toStrictEqual(
+			{
+				side: "bottom",
+				sideOffset: "2",
+				alignOffset: "2",
+			},
+		);
+	});
+
 	it("opens Copy ▸ like upstream's Xu: inline-end with sideOffset -4 from the parent popup", async () =>
 	{
 		render(
