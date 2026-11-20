@@ -399,6 +399,7 @@ describe("file content search API", () =>
 				{
 					resolveScope,
 					search,
+					scanDone: () => true,
 				},
 			),
 			handleFileSearchRequest(
@@ -411,6 +412,7 @@ describe("file content search API", () =>
 				{
 					resolveScope,
 					search,
+					scanDone: () => true,
 				},
 			),
 			handleFileSearchRequest(
@@ -423,6 +425,7 @@ describe("file content search API", () =>
 				{
 					resolveScope,
 					search,
+					scanDone: () => true,
 				},
 			),
 		]);
@@ -455,65 +458,78 @@ describe("file content search API", () =>
 		);
 	});
 
-	it("returns the validated route contract with private no-cache metadata", async () =>
+	it("returns the validated route contract with private no-cache metadata, unfinished until the file-content scan ends", async () =>
 	{
 		const filePath = await seedFile("alice.txt", "needle\n");
-		const response = await handleFileSearchRequest(
-			request(
-				{
-					query: " needle ",
-					scopeRoot: allowedRoot,
-				},
-			),
-			{
-				resolveScope: async (scopeRoot) => resolveFileSearchScope(scopeRoot, configPath),
-				search: (query, scopeRoot) => searchFileContentDb(db.index, query, scopeRoot),
-			},
-		);
-		const described = await describeResponse(response);
-		const body = described.body as
+		async function respond(scanDone: boolean)
 		{
-			files: Array<
+			const described = await describeResponse(
+				await handleFileSearchRequest(
+					request(
+						{
+							query: " needle ",
+							scopeRoot: allowedRoot,
+						},
+					),
+					{
+						resolveScope: async (scopeRoot) => resolveFileSearchScope(scopeRoot, configPath),
+						search: (query, scopeRoot) => searchFileContentDb(db.index, query, scopeRoot),
+						scanDone: () => scanDone,
+					},
+				),
+			);
+			const body = described.body as
 			{
-				rank: number;
-			}>;
-		};
-		const resultFile = body.files[0];
-		if (!resultFile) throw new Error("Expected a fabricated route result");
-		const {rank: _rank, ...file} = resultFile;
-
-		expect(
-			{
+				files: Array<
+				{
+					rank: number;
+				}>;
+			};
+			return {
 				...described,
 				body:
 				{
 					...(described.body as object),
-					files: [file],
+					files: body.files.map(({rank: _rank, ...file}) => file),
 				},
+			};
+		}
+
+		const expected = (unfinished: boolean) => (
+		{
+			body:
+			{
+				files: [
+					{
+						path: filePath,
+						matchCount: 1,
+						matches: [
+							{
+								lineNumber: 1,
+								snippet: "<mark>needle</mark>",
+							},
+						],
+						mtime: FIRST_TEST_TIME.toISOString(),
+					},
+				],
+				totalResults: 1,
+				totalFiles: 1,
+				isTruncated: false,
+				unfinished,
+			},
+			cacheControl: "private, max-age=0, must-revalidate",
+			status: 200,
+		});
+
+		expect(
+			{
+				scanning: await respond(false),
+				scanned: await respond(true),
 			},
 		).toStrictEqual(
 			{
-				body:
-				{
-					files: [
-						{
-							path: filePath,
-							matchCount: 1,
-							matches: [
-								{
-									lineNumber: 1,
-									snippet: "<mark>needle</mark>",
-								},
-							],
-							mtime: FIRST_TEST_TIME.toISOString(),
-						},
-					],
-					totalResults: 1,
-					totalFiles: 1,
-					isTruncated: false,
-				},
-				cacheControl: "private, max-age=0, must-revalidate",
-				status: 200,
+				scanning: expected(true),
+				scanned: expected(false),
 			},
 		);
 	});
@@ -547,6 +563,7 @@ describe("file content search API", () =>
 			{
 				resolveScope: async (scopeRoot) => resolveFileSearchScope(scopeRoot, configPath, roots),
 				search: (query, scopeRoot) => searchFileContentDb(db.index, query, scopeRoot),
+				scanDone: () => true,
 			},
 		);
 		const body = (await response.json()) as
@@ -585,6 +602,7 @@ describe("file content search API", () =>
 			{
 				resolveScope: async (scopeRoot) => resolveFileSearchScope(scopeRoot, configPath),
 				search,
+				scanDone: () => true,
 			},
 		);
 
@@ -636,6 +654,7 @@ describe("file content search API", () =>
 					resolveScope: async () => Promise.resolve(allowedRoot),
 					// @ts-expect-error Deliberately malformed to verify the runtime contract.
 					search: malformedSearch,
+					scanDone: () => true,
 				},
 			),
 		).rejects.toThrow("Invalid input: expected number, received undefined");

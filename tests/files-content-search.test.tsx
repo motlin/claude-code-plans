@@ -12,7 +12,12 @@ import type {FileSearchResult} from "../src/lib/api/search";
 import
 {
 	askAboutPrompt,
+	CONTENT_SEARCH_MESSAGES,
+	contentSearchCapNote,
+	contentSearchOutcome,
+	type ContentSearchResults,
 	groupContentSearchResults,
+	keepResultsOnFailedRefetch,
 	matchesSmartCase,
 	parseContentSearchQuery,
 	parseMarkedSnippet,
@@ -281,6 +286,7 @@ const RESULT: FileSearchResult =
 	totalResults: 9,
 	totalFiles: 3,
 	isTruncated: false,
+	unfinished: false,
 };
 
 describe("groupContentSearchResults", () =>
@@ -294,6 +300,7 @@ describe("groupContentSearchResults", () =>
 						path: "/repo/src/a.ts",
 						relPath: "src/a.ts",
 						more: false,
+						maxLine: 9,
 						matches: [
 							{
 								line: 3,
@@ -327,6 +334,7 @@ describe("groupContentSearchResults", () =>
 						path: "/repo/big.txt",
 						relPath: "big.txt",
 						more: true,
+						maxLine: 5,
 						matches: [1, 2, 3, 4, 5].map((line) => (
 						{
 							line,
@@ -343,8 +351,10 @@ describe("groupContentSearchResults", () =>
 						})),
 					},
 				],
-				shownCount: 7,
-				capped: false,
+				shown: 7,
+				truncated: false,
+				unfinished: false,
+				failed: false,
 			},
 		);
 	});
@@ -368,34 +378,313 @@ describe("groupContentSearchResults", () =>
 		]);
 	});
 
-	it("reports a capped result only when the server left files out", () =>
+	it("lists at most 200 matches in all, marking the file cut at the cap as having more", () =>
 	{
+		const files = Array.from(
+			{
+				length: 67,
+			},
+			(_, fileIndex) =>
+				searchFile(
+					`/repo/f${fileIndex}.ts`,
+					3,
+					[1, 2, 3].map((lineNumber) => (
+					{
+						lineNumber,
+						snippet: `<mark>needle</mark> ${lineNumber}`,
+					})),
+				),
+		);
+		const grouped = groupContentSearchResults(
+			{
+				files,
+				totalResults: 201,
+				totalFiles: 67,
+				isTruncated: false,
+				unfinished: false,
+			},
+			"/repo",
+			"needle",
+		);
 		expect(
 			{
-				filesLeftOut: groupContentSearchResults(
+				shown: grouped.shown,
+				truncated: grouped.truncated,
+				groupCount: grouped.groups.length,
+				last: grouped.groups
+					.map((group) => (
 					{
-						...RESULT,
-						isTruncated: true,
-						totalFiles: 150,
-					},
-					"/repo",
-					"needle",
-				).capped,
-				matchesLeftOut: groupContentSearchResults(
-					{
-						...RESULT,
-						isTruncated: true,
-					},
-					"/repo",
-					"needle",
-				).capped,
+						relPath: group.relPath,
+						lines: group.matches.map((match) => match.line),
+						more: group.more,
+						maxLine: group.maxLine,
+					}))
+					.at(-1),
 			},
 		).toStrictEqual(
 			{
-				filesLeftOut: true,
-				matchesLeftOut: false,
+				shown: 200,
+				truncated: true,
+				groupCount: 67,
+				last:
+				{
+					relPath: "f66.ts",
+					lines: [1, 2],
+					more: true,
+					maxLine: 2,
+				},
 			},
 		);
+	});
+
+	it("drops files past the 200 cap and truncates on 241 raw matches or files the server left out", () =>
+	{
+		const fiveEach = (count: number) =>
+			Array.from(
+				{
+					length: count,
+				},
+				(_, fileIndex) =>
+					searchFile(
+						`/repo/f${fileIndex}.ts`,
+						5,
+						[1, 2, 3, 4, 5].map((lineNumber) => (
+						{
+							lineNumber,
+							snippet: `<mark>needle</mark> ${lineNumber}`,
+						})),
+					),
+			);
+		const summarize = (result: ContentSearchResults) => (
+		{
+			groups: result.groups.length,
+			shown: result.shown,
+			truncated: result.truncated,
+		});
+		expect(
+			{
+				pastCap: summarize(
+					groupContentSearchResults(
+						{
+							files: fiveEach(41),
+							totalResults: 205,
+							totalFiles: 41,
+							isTruncated: false,
+							unfinished: false,
+						},
+						"/repo",
+						"needle",
+					),
+				),
+				exactlyAtCap: summarize(
+					groupContentSearchResults(
+						{
+							files: fiveEach(40),
+							totalResults: 200,
+							totalFiles: 40,
+							isTruncated: false,
+							unfinished: false,
+						},
+						"/repo",
+						"needle",
+					),
+				),
+				rawOverLimit: summarize(
+					groupContentSearchResults(
+						{
+							files: [
+								searchFile(
+									"/repo/big.txt",
+									300,
+									[1, 2, 3, 4, 5, 6].map((lineNumber) => (
+									{
+										lineNumber,
+										snippet: `<mark>needle</mark> ${lineNumber}`,
+									})),
+								),
+							],
+							totalResults: 300,
+							totalFiles: 1,
+							isTruncated: true,
+							unfinished: false,
+						},
+						"/repo",
+						"needle",
+					),
+				),
+				filesLeftOut: summarize(
+					groupContentSearchResults(
+						{
+							...RESULT,
+							isTruncated: true,
+							totalFiles: 150,
+						},
+						"/repo",
+						"needle",
+					),
+				),
+			},
+		).toStrictEqual(
+			{
+				pastCap:
+				{
+					groups: 40,
+					shown: 200,
+					truncated: true,
+				},
+				exactlyAtCap:
+				{
+					groups: 40,
+					shown: 200,
+					truncated: false,
+				},
+				rawOverLimit:
+				{
+					groups: 1,
+					shown: 5,
+					truncated: true,
+				},
+				filesLeftOut:
+				{
+					groups: 2,
+					shown: 7,
+					truncated: true,
+				},
+			},
+		);
+	});
+
+	it("carries the server's unfinished flag", () =>
+	{
+		expect(
+			groupContentSearchResults(
+				{
+					...RESULT,
+					unfinished: true,
+				},
+				"/repo",
+				"needle",
+			).unfinished,
+		).toBe(true);
+	});
+});
+
+describe("contentSearchOutcome", () =>
+{
+	it.each([
+		[0, true, true, "failed"],
+		[2, true, false, "failed"],
+		[2, false, true, "someMissing"],
+		[2, false, false, undefined],
+		[0, false, true, "unfinished"],
+		[0, false, false, "none"],
+	] as const)("%i groups, failed %s, unfinished %s → %s", (groupCount, failed, unfinished, expected) =>
+	{
+		expect(
+			contentSearchOutcome(
+				{
+					groupCount,
+					failed,
+					unfinished,
+				},
+			),
+		).toBe(expected);
+	});
+
+	it("uses upstream's messages", () =>
+	{
+		expect(CONTENT_SEARCH_MESSAGES).toStrictEqual(
+			{
+				none: "No matches in file contents",
+				failed: "Couldn’t search in files.",
+				unfinished: "The search didn’t finish. No matches so far.",
+				someMissing: "The search didn’t finish, so some matches may be missing.",
+			},
+		);
+	});
+});
+
+describe("contentSearchCapNote", () =>
+{
+	it.each([
+		[1, true, false, "Only 1 match is shown. Keep typing to narrow."],
+		[200, true, false, "Only 200 matches are shown. Keep typing to narrow."],
+		[
+			200,
+			true,
+			true,
+			"Only 200 matches are shown. Keep typing to narrow. The search didn’t finish, so some matches may be missing.",
+		],
+		[3, false, true, "The search didn’t finish, so some matches may be missing."],
+		[3, false, false, null],
+	] as const)("%i shown, truncated %s, unfinished %s → %j", (shown, truncated, unfinished, expected) =>
+	{
+		expect(
+			contentSearchCapNote(
+				{
+					shown,
+					truncated,
+					unfinished,
+				},
+			),
+		).toBe(expected);
+	});
+});
+
+describe("keepResultsOnFailedRefetch", () =>
+{
+	const empty: ContentSearchResults =
+	{
+		groups: [],
+		shown: 0,
+		truncated: false,
+		unfinished: false,
+		failed: false,
+	};
+	const previous = groupContentSearchResults(RESULT, "/repo", "needle");
+
+	it.each([
+		[
+			"an empty unfinished refetch keeps the old groups, flagged unfinished",
+			previous,
+			{
+				...empty,
+				unfinished: true,
+			},
+			{
+				...previous,
+				unfinished: true,
+			},
+		],
+		[
+			"a failed refetch keeps the old groups, flagged unfinished",
+			previous,
+			{
+				...empty,
+				failed: true,
+			},
+			{
+				...previous,
+				unfinished: true,
+			},
+		],
+		["an empty finished refetch replaces them", previous, empty, empty],
+		[
+			"nothing to keep without old groups",
+			empty,
+			{
+				...empty,
+				failed: true,
+			},
+			{
+				...empty,
+				failed: true,
+			},
+		],
+		["no old data", undefined, empty, empty],
+	] as const)("%s", (_name, before, next, expected) =>
+	{
+		expect(keepResultsOnFailedRefetch(before, next)).toStrictEqual(expected);
 	});
 });
 
@@ -418,9 +707,12 @@ const SEARCH_RESPONSE: FileSearchResult =
 	totalResults: 10,
 	totalFiles: 2,
 	isTruncated: false,
+	unfinished: false,
 };
 
 let requests: string[];
+/** Answers a content search; returns undefined for the default responses. */
+let searchResponder: ((query: string | null) => Promise<Response> | undefined) | undefined;
 
 function stubFetch(): void
 {
@@ -432,6 +724,8 @@ function stubFetch(): void
 			requests.push(`${url.pathname}?${url.searchParams.toString()}`);
 			if (url.pathname === "/api/search/files")
 			{
+				const custom = searchResponder?.(url.searchParams.get("query"));
+				if (custom !== undefined) return custom;
 				return Promise.resolve(
 					Response.json(
 						url.searchParams.get("query") === "needle"
@@ -442,6 +736,7 @@ function stubFetch(): void
 									totalResults: 0,
 									totalFiles: 0,
 									isTruncated: false,
+									unfinished: false,
 								},
 					),
 				);
@@ -506,6 +801,7 @@ beforeEach(() =>
 {
 	installLocalStorage();
 	requests = [];
+	searchResponder = undefined;
 	stubFetch();
 	vi.stubGlobal("ResizeObserver", FakeObserver);
 });
@@ -606,7 +902,7 @@ describe("FilesTree content search", () =>
 				},
 			},
 		);
-		expect(await screen.findByText("Type after ? to search file contents")).toBeTruthy();
+		expect(await screen.findByText("Type after ? to search in files")).toBeTruthy();
 	});
 
 	it("routes a ? query to the file content search scoped to the working directory", async () =>
@@ -705,5 +1001,282 @@ describe("FilesTree content search", () =>
 			},
 		);
 		expect(await screen.findByText("No matches in file contents")).toBeTruthy();
+	});
+
+	function typeFilter(value: string): void
+	{
+		fireEvent.change(
+			filterInput(),
+			{
+				target:
+				{
+					value,
+				},
+			},
+		);
+	}
+
+	function searchResult(
+		files: FileSearchResult["files"],
+		overrides: Partial<FileSearchResult> = {},
+	): FileSearchResult
+	{
+		return {
+			files,
+			totalResults: files.reduce((total, file) => total + file.matchCount, 0),
+			totalFiles: files.length,
+			isTruncated: false,
+			unfinished: false,
+			...overrides,
+		};
+	}
+
+	function retryButton(): HTMLElement | null
+	{
+		return screen.queryByRole(
+			"button",
+			{
+				name: /Try again|Searching files/,
+			},
+		);
+	}
+
+	it("offers Try again after a failed search, busy while it reruns, and re-announces a repeat failure", async () =>
+	{
+		let release: (() => void) | undefined;
+		let calls = 0;
+		searchResponder = async () =>
+		{
+			calls += 1;
+			if (calls === 1)
+				return Response.json(
+					{},
+					{
+						status: 500,
+					},
+				);
+			await new Promise<void>((resolve) =>
+			{
+				release = resolve;
+			});
+			return Response.json(
+				{},
+				{
+					status: 500,
+				},
+			);
+		};
+		renderTree();
+		typeFilter("?needle");
+		const message = await screen.findByText("Couldn’t search in files.");
+		const before =
+		{
+			messageClass: message.className,
+			stackClass: message.parentElement?.className,
+			retry: retryButton()?.textContent,
+			status: document.querySelector("[data-retry-status]")?.textContent,
+		};
+
+		fireEvent.click(retryButton()!);
+		await vi.waitFor(() =>
+		{
+			expect(release).toBeDefined();
+		});
+		const busy =
+		{
+			ariaBusy: retryButton()?.getAttribute("aria-busy"),
+			label: retryButton()?.getAttribute("aria-label"),
+		};
+		release!();
+		await vi.waitFor(() =>
+		{
+			expect(document.querySelector("[data-retry-status]")?.textContent).toBe("Couldn’t search in files.");
+		});
+
+		expect(
+			{
+				before,
+				busy,
+				calls,
+				afterBusy: retryButton()?.getAttribute("aria-busy") ?? null,
+			},
+		).toStrictEqual(
+			{
+				before:
+				{
+					messageClass: "flex items-center justify-center px-lg py-1 text-body text-muted-as-secondary",
+					stackClass: "flex flex-col items-center gap-sm",
+					retry: "Try again",
+					status: "",
+				},
+				busy:
+				{
+					ariaBusy: "true",
+					label: "Searching files",
+				},
+				calls: 2,
+				afterBusy: null,
+			},
+		);
+	});
+
+	it("says an unfinished search found nothing so far and offers Try again; no matches has no retry", async () =>
+	{
+		searchResponder = (query): Promise<Response> | undefined =>
+			query === "pending"
+				? Promise.resolve(
+						Response.json(
+							searchResult(
+								[],
+								{
+									unfinished: true,
+								},
+							),
+						),
+					)
+				: undefined;
+		renderTree();
+		typeFilter("?pending");
+		await screen.findByText("The search didn’t finish. No matches so far.");
+		const unfinishedRetry = retryButton()?.textContent;
+		typeFilter("?nothing");
+		await screen.findByText("No matches in file contents");
+
+		expect(
+			{
+				unfinishedRetry,
+				noneRetry: retryButton(),
+			},
+		).toStrictEqual(
+			{
+				unfinishedRetry: "Try again",
+				noneRetry: null,
+			},
+		);
+	});
+
+	it("notes possibly missing matches under an unfinished result, keeping them when the retry finds nothing", async () =>
+	{
+		let calls = 0;
+		searchResponder = async () =>
+		{
+			calls += 1;
+			return Promise.resolve(
+				Response.json(
+					calls === 1
+						? searchResult(
+								[
+									searchFile("/repo/src/a.ts", 1, [
+										{
+											lineNumber: 3,
+											snippet: "const <mark>needle</mark> = 1;",
+										},
+									]),
+								],
+								{
+									unfinished: true,
+								},
+							)
+						: searchResult(
+								[],
+								{
+									unfinished: true,
+								},
+							),
+				),
+			);
+		};
+		renderTree();
+		typeFilter("?needle");
+		const someMissing =
+		{
+			selector: "div",
+		};
+		const note = await screen.findByText("The search didn’t finish, so some matches may be missing.", someMissing);
+		const first =
+		{
+			noteClass: note.className,
+			noteStyle: note.getAttribute("style"),
+			retryWrapClass: retryButton()?.closest(".pb-1\\.5")?.getAttribute("style"),
+			describedBy: filterInput().getAttribute("aria-describedby")?.split(" ").includes(note.id),
+		};
+		fireEvent.click(retryButton()!);
+		await vi.waitFor(() =>
+		{
+			expect(calls).toBe(2);
+		});
+		await vi.waitFor(() =>
+		{
+			expect(retryButton()?.getAttribute("aria-busy") ?? null).toBe(null);
+		});
+
+		expect(
+			{
+				first,
+				rowsAfterRetry: [...document.querySelectorAll("[data-content-match]")].map((row) => row.textContent),
+				noteAfterRetry:
+					screen.queryByText("The search didn’t finish, so some matches may be missing.", someMissing) !==
+					null,
+				announced: document.querySelector("[data-retry-status]")?.textContent,
+			},
+		).toStrictEqual(
+			{
+				first:
+				{
+					noteClass: "py-1.5 text-footnote text-muted-as-secondary select-none",
+					noteStyle: "padding-inline: 8px;",
+					retryWrapClass: "padding-inline: 8px;",
+					describedBy: true,
+				},
+				rowsAfterRetry: ["3const needle = 1;"],
+				noteAfterRetry: true,
+				announced: "The search didn’t finish, so some matches may be missing.",
+			},
+		);
+	});
+
+	it("caps the list at 200 matches with a note the filter describes", async () =>
+	{
+		searchResponder = async () =>
+			Promise.resolve(
+				Response.json(
+					searchResult(
+						Array.from(
+							{
+								length: 41,
+							},
+							(_, fileIndex) =>
+								searchFile(
+									`/repo/f${fileIndex}.ts`,
+									5,
+									[1, 2, 3, 4, 5].map((lineNumber) => (
+									{
+										lineNumber,
+										snippet: `<mark>needle</mark> ${lineNumber}`,
+									})),
+								),
+						),
+					),
+				),
+			);
+		renderTree();
+		typeFilter("?needle");
+		const note = await screen.findByText("Only 200 matches are shown. Keep typing to narrow.");
+
+		expect(
+			{
+				rows: document.querySelectorAll("[data-content-match]").length,
+				describedBy: filterInput().getAttribute("aria-describedby")?.split(" ").length,
+				describesNote: filterInput().getAttribute("aria-describedby")?.split(" ").includes(note.id),
+				retry: retryButton(),
+			},
+		).toStrictEqual(
+			{
+				rows: 200,
+				describedBy: 2,
+				describesNote: true,
+				retry: null,
+			},
+		);
 	});
 });

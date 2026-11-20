@@ -24,6 +24,8 @@ type ScanHolder =
 	promise: Promise<void> | null;
 	/** Settles when the session/plan index scan ends, before the slower file-content scan. */
 	indexPromise: Promise<void> | null;
+	/** The file-content scan has ended, so content search covers every indexed root. */
+	fileContentScanDone: boolean;
 	controller: AbortController;
 };
 type DbHolder =
@@ -41,6 +43,7 @@ function getScanHolder(): ScanHolder
 		{
 			promise: holder.promise ?? null,
 			indexPromise: holder.indexPromise ?? null,
+			fileContentScanDone: holder.fileContentScanDone ?? false,
 			controller: holder.controller ?? new AbortController(),
 		},
 	);
@@ -127,6 +130,7 @@ export function runInitialScan(
 			await runScanWithRetry("Initial file-content scan", signal, async () =>
 				scanFileContentRoots(db.index, fileContentRoots, ignoredDirNames, signal),
 			);
+			holder.fileContentScanDone = true;
 		})();
 	}
 	return holder.promise;
@@ -146,6 +150,12 @@ export async function awaitInitialIndexScan(): Promise<void>
 {
 	const holder = getScanHolder();
 	return holder.indexPromise ?? holder.promise ?? Promise.resolve();
+}
+
+/** Whether the initial file-content scan has ended, so content search no longer misses unscanned files. */
+export function isFileContentScanDone(): boolean
+{
+	return getScanHolder().fileContentScanDone;
 }
 
 /** Aborts when shutdownDb() begins, so startup work can stop before the DB closes under it. */

@@ -31,6 +31,8 @@ export const FileSearchResponse = z
 			totalResults: z.number().int().nonnegative(),
 			totalFiles: z.number().int().nonnegative(),
 			isTruncated: z.boolean(),
+			/** The initial file-content scan hasn't ended, so matches may be missing. */
+			unfinished: z.boolean(),
 		},
 	)
 	.strict();
@@ -44,26 +46,29 @@ export const FileSearchRootsResponse = z
 	)
 	.strict();
 
+/** Searches the indexed file contents under `scopeRoot`. */
+export async function fetchFileSearch(query: string, scopeRoot: string, signal: AbortSignal): Promise<FileSearchResult>
+{
+	const parameters = new URLSearchParams(
+		{
+			query,
+			scopeRoot,
+		},
+	);
+	return apiFetch(
+		`/api/search/files?${parameters.toString()}`,
+		FileSearchResponse,
+		{
+			signal,
+		},
+	);
+}
+
 export const fileSearchQueryOptions = (query: string, scopeRoot: string) =>
 	queryOptions(
 		{
 			queryKey: ["search", "files", query, scopeRoot] as const,
-			queryFn: async ({signal}) =>
-			{
-				const parameters = new URLSearchParams(
-					{
-						query,
-						scopeRoot,
-					},
-				);
-				return apiFetch(
-					`/api/search/files?${parameters.toString()}`,
-					FileSearchResponse,
-					{
-						signal,
-					},
-				);
-			},
+			queryFn: async ({signal}) => fetchFileSearch(query, scopeRoot, signal),
 			staleTime: 30_000,
 			gcTime: 5 * 60_000,
 		},

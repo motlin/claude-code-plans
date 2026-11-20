@@ -197,6 +197,8 @@ export function FilesTree({
 	const treeRef = useRef<HTMLDivElement>(null);
 	const treeId = useId();
 	const hintId = useId();
+	const capNoteId = useId();
+	const [capNoteShown, setCapNoteShown] = useState(false);
 	const [activeIndex, setActiveIndex] = useState(-1);
 	const [focusRequest, setFocusRequest] = useState(0);
 	const [scrollTop, setScrollTop] = useState(0);
@@ -393,7 +395,7 @@ export function FilesTree({
 						ref={inputRef}
 						aria-label="Filter files"
 						aria-controls={treeId}
-						aria-describedby={hintId}
+						aria-describedby={capNoteShown && contentQuery !== null ? `${hintId} ${capNoteId}` : hintId}
 						spellCheck={false}
 						autoComplete="off"
 						value={query}
@@ -433,6 +435,8 @@ export function FilesTree({
 					focusFirstRef={focusFirstMatchRef}
 					onOpenFile={onOpenFile}
 					onAsk={onAsk}
+					capNoteId={capNoteId}
+					onCapNoteShownChange={setCapNoteShown}
 				/>
 			) : (
 				<>

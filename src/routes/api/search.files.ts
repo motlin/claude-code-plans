@@ -7,7 +7,9 @@ const PRIVATE_NO_CACHE = "private, max-age=0, must-revalidate";
 interface FileSearchDependencies
 {
 	resolveScope(scopeRoot: string): Promise<string | null>;
-	search(query: string, scopeRoot: string): FileSearchResult;
+	search(query: string, scopeRoot: string): Omit<FileSearchResult, "unfinished">;
+	/** Whether the initial file-content scan has ended; until then a search can miss files. */
+	scanDone(): boolean;
 }
 
 function jsonResponse(body: unknown, status = 200): Response
@@ -53,7 +55,14 @@ export async function handleFileSearchRequest(
 		);
 	}
 
-	return jsonResponse(FileSearchResponse.parse(dependencies.search(query, resolvedScope)));
+	return jsonResponse(
+		FileSearchResponse.parse(
+			{
+				...dependencies.search(query, resolvedScope),
+				unfinished: !dependencies.scanDone(),
+			},
+		),
+	);
 }
 
 export const Route = createFileRoute("/api/search/files")(
@@ -64,7 +73,7 @@ export const Route = createFileRoute("/api/search/files")(
 				{
 					GET: async ({request}: {request: Request}) =>
 					{
-						const {getDb} = await import("../../lib/db");
+						const {getDb, isFileContentScanDone} = await import("../../lib/db");
 						const {searchFileContentDb} = await import("../../lib/db/queries");
 						const {resolveFileSearchRoots, resolveFileSearchScope} = await import("../../lib/config");
 						const {index} = getDb();
@@ -75,6 +84,7 @@ export const Route = createFileRoute("/api/search/files")(
 							{
 								resolveScope: async (scopeRoot) => resolveFileSearchScope(scopeRoot, undefined, roots),
 								search: (query, scopeRoot) => searchFileContentDb(index, query, scopeRoot),
+								scanDone: isFileContentScanDone,
 							},
 						);
 					},

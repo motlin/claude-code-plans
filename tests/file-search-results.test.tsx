@@ -41,6 +41,7 @@ function searchResult(paths: string[] = [FIRST_PATH, SECOND_PATH])
 		totalResults: paths.length === 0 ? 0 : 61,
 		totalFiles: paths.length,
 		isTruncated: paths.length > 0,
+		unfinished: false,
 	};
 }
 
