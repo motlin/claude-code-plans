@@ -14,7 +14,7 @@ import
 import {planHeadingMeta, planText} from "./exit-plan-mode";
 import type {PatchHunk} from "./diff-utils";
 import {isRecord} from "./narrow";
-import {infinitive, pastTense, startsWithKnownVerb} from "./past-tense";
+import {describeVerbForms, infinitive, pastTense} from "./past-tense";
 import type {ReadFileLines} from "./tool-runs";
 import {AskUserQuestionResultSchema, ExitWorktreeActionSchema, RemoteTriggerActionSchema} from "./tool-input-schemas";
 import {workflowCallName} from "./workflow-name";
@@ -79,8 +79,11 @@ export interface ToolLabelCall
 	invalidInput?: true | undefined;
 	/** A SendMessage recipient's subagent description, when this session launched it. */
 	recipientDescription?: string | null | undefined;
-	/** The call is the one the session's tool permission prompt waits on. */
-	awaitingPermission?: true | undefined;
+	/**
+	 * The call is a request queued behind the head approval (upstream status
+	 * `awaiting_approval`), so its running label is the description as written.
+	 */
+	awaitingApproval?: true | undefined;
 	/** The call's result text, once it has one. */
 	result?: string | undefined;
 	isError?: boolean | undefined;
@@ -905,26 +908,6 @@ const IRREGULAR_PAST_PROGRESSIVE: Record<string, string> =
 	wrote: "writing",
 };
 
-/** Base verbs whose progressive form doubles a final consonant the syllable rule misses. */
-const DOUBLED_PROGRESSIVE = new Set([
-	"admit",
-	"begin",
-	"commit",
-	"emit",
-	"forget",
-	"omit",
-	"permit",
-	"rerun",
-	"submit",
-]);
-
-/** Base verbs with a progressive form no suffix rule produces. */
-const IRREGULAR_BASE_PROGRESSIVE: Record<string, string> =
-{
-	be: "being",
-	see: "seeing",
-};
-
 function replaceLeadingWord(text: string, transform: (lower: string) => string | null): string
 {
 	const [, word, rest] = /^([A-Za-z]+)([\s\S]*)$/.exec(text) ?? [];
@@ -943,28 +926,6 @@ function progressiveOfPast(verb: string): string
 		if (word.endsWith("ied")) return `${word.slice(0, -3)}ying`;
 		if (word.endsWith("ed")) return `${word.slice(0, -2)}ing`;
 		return null;
-	});
-}
-
-/**
- * Progressive form of a description's leading verb, the way upstream labels an
- * in-flight Bash row: "Poll PR #1" -> "Polling PR #1", "Run tests" -> "Running
- * tests", "Write config" -> "Writing config". A description already in -ing or
- * past tense is left verbatim.
- */
-function progressive(description: string): string
-{
-	return replaceLeadingWord(description, (word) =>
-	{
-		if (word.endsWith("ing") || (word.endsWith("ed") && !word.endsWith("eed"))) return null;
-		const irregular = IRREGULAR_BASE_PROGRESSIVE[word];
-		if (irregular) return irregular;
-		if (DOUBLED_PROGRESSIVE.has(word)) return `${word}${word.at(-1)}ing`;
-		if (word.endsWith("ie")) return `${word.slice(0, -2)}ying`;
-		if (/[^aeiouy]e$/.test(word)) return `${word.slice(0, -1)}ing`;
-		// A one-syllable consonant-vowel-consonant verb doubles its final consonant.
-		if (/^[^aeiou]*[aeiou][^aeiouwxy]$/.test(word)) return `${word}${word.at(-1)}ing`;
-		return `${word}ing`;
 	});
 }
 
@@ -993,12 +954,11 @@ export function runningToolLabel(call: ToolLabelCall): RunningToolLabel
 	if (done.doneLabel !== undefined)
 	{
 		const description = stringInput(call.input, "description");
-		// A call held at its permission prompt shows the description as written, and so
-		// does a running subagent whose description opens with no verb to inflect
-		// ("Mobile audit: session page"); upstream reads "Do task" as "Doing task".
-		const isAgent = call.name === "Agent" || call.name === "Task";
-		const verbatim = call.awaitingPermission === true || (isAgent && !startsWithKnownVerb(description ?? ""));
-		running.label = description === null ? done.doneLabel : verbatim ? description : progressive(description);
+		// Upstream labels a running call `ro(description).running ?? description`; a queued
+		// request (status awaiting_approval) reads its description as written.
+		const verbForms =
+			call.awaitingApproval === true || description === null ? undefined : describeVerbForms(description);
+		running.label = description === null ? done.doneLabel : (verbForms?.running ?? description);
 		return running;
 	}
 	if (done.meta !== undefined) running.meta = done.meta;

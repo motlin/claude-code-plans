@@ -87,24 +87,36 @@ const IRREGULAR_PAST: Record<string, string> =
 	write: "wrote",
 };
 
-/** Multi-syllable verbs that double their final consonant: "commit" -> "committed". */
-const DOUBLING_VERBS = new Set([
-	"commit",
-	"control",
-	"emit",
-	"equip",
-	"format",
-	"occur",
-	"omit",
-	"output",
-	"permit",
-	"prefer",
-	"refer",
-	"screenshot",
-	"snapshot",
-	"submit",
-	"transfer",
-]);
+/** Upstream `Ha`: verbs whose progressive form no suffix rule produces ("screenshot" -> "screenshotting"). */
+const IRREGULAR_PROGRESSIVE: Record<string, string> =
+{
+	begin: "beginning",
+	commit: "committing",
+	control: "controlling",
+	debug: "debugging",
+	emit: "emitting",
+	equip: "equipping",
+	forget: "forgetting",
+	format: "formatting",
+	input: "inputting",
+	occur: "occurring",
+	omit: "omitting",
+	output: "outputting",
+	permit: "permitting",
+	prefer: "preferring",
+	quit: "quitting",
+	refer: "referring",
+	rerun: "rerunning",
+	reset: "resetting",
+	screenshot: "screenshotting",
+	snapshot: "snapshotting",
+	submit: "submitting",
+	sync: "syncing",
+	transfer: "transferring",
+	unset: "unsetting",
+	unwrap: "unwrapping",
+	unzip: "unzipping",
+};
 
 /** Regular verbs upstream recognizes at the start of a description. */
 const REGULAR_VERBS = [
@@ -147,6 +159,7 @@ const REGULAR_VERBS = [
 	"download",
 	"dump",
 	"edit",
+	"emit",
 	"enable",
 	"encode",
 	"ensure",
@@ -232,6 +245,7 @@ const REGULAR_VERBS = [
 	"revert",
 	"save",
 	"scan",
+	"screenshot",
 	"scroll",
 	"search",
 	"select",
@@ -239,6 +253,7 @@ const REGULAR_VERBS = [
 	"serve",
 	"settle",
 	"skip",
+	"snapshot",
 	"sort",
 	"spawn",
 	"squash",
@@ -249,6 +264,7 @@ const REGULAR_VERBS = [
 	"strip",
 	"summarize",
 	"switch",
+	"sync",
 	"tail",
 	"tally",
 	"test",
@@ -278,7 +294,7 @@ const REGULAR_VERBS = [
 	"wipe",
 ];
 
-const KNOWN_VERBS = new Set([...Object.keys(IRREGULAR_PAST), ...DOUBLING_VERBS, ...REGULAR_VERBS]);
+const KNOWN_VERBS = new Set([...Object.keys(IRREGULAR_PAST), ...Object.keys(IRREGULAR_PROGRESSIVE), ...REGULAR_VERBS]);
 
 /**
  * Known verbs left alone after "and"/"then": ones that are also nouns or
@@ -375,7 +391,27 @@ function vowelCount(word: string): number
 	return (word.match(/[aeiou]/gi) ?? []).length;
 }
 
-/** The past tense of a known verb, keeping the word's own letter case. */
+const SINGLE_SYLLABLE_CVC_RE = /[^aeiou][aeiou][bcdfghjklmnpqrstvz]$/i;
+
+/** A one-syllable consonant-vowel-consonant verb doubles its final consonant: "grep" -> "grepped". */
+function isSingleSyllableCvc(word: string): boolean
+{
+	return SINGLE_SYLLABLE_CVC_RE.test(word) && vowelCount(word) === 1;
+}
+
+/** Upstream `Ga`: the progressive form of a known verb, keeping the word's own letter case. */
+function progressiveOf(word: string): string
+{
+	const irregular = IRREGULAR_PROGRESSIVE[word.toLowerCase()];
+	if (irregular !== undefined) return irregular;
+	if (/ie$/i.test(word)) return `${word.slice(0, -2)}ying`;
+	if (/[^eoy]e$/i.test(word)) return `${word.slice(0, -1)}ing`;
+	if (isSingleSyllableCvc(word)) return `${word}${word.slice(-1)}ing`;
+	if (/c$/i.test(word)) return `${word}king`;
+	return `${word}ing`;
+}
+
+/** Upstream `Ka`: the past tense of a known verb, keeping the word's own letter case. */
 function pastOf(word: string): string
 {
 	const lower = word.toLowerCase();
@@ -383,10 +419,10 @@ function pastOf(word: string): string
 	if (irregular !== undefined) return irregular;
 	if (/e$/i.test(word)) return `${word}d`;
 	if (/[^aeiou]y$/i.test(word)) return `${word.slice(0, -1)}ied`;
-	// A one-syllable consonant-vowel-consonant verb doubles its final consonant: "grep" -> "grepped".
-	const singleSyllableCvc = /[^aeiou][aeiou][bcdfghjklmnpqrstvz]$/i.test(word) && vowelCount(word) === 1;
-	if (singleSyllableCvc || DOUBLING_VERBS.has(lower)) return `${word}${word.slice(-1)}ed`;
+	if (isSingleSyllableCvc(word)) return `${word}${word.slice(-1)}ed`;
 	if (/c$/i.test(word)) return `${word}ked`;
+	const doubled = IRREGULAR_PROGRESSIVE[lower];
+	if (doubled !== undefined) return `${doubled.slice(0, -3)}ed`;
 	return `${word}ed`;
 }
 
@@ -395,70 +431,96 @@ function matchCapital(original: string, replacement: string): string
 	return /^[A-Z]/.test(original) ? replacement.charAt(0).toUpperCase() + replacement.slice(1) : replacement;
 }
 
-/** Past-tense each known verb joined on by "and"/"then"; comma-separated verbs stay as written. */
-function pastTenseFollowingVerbs(text: string): string
+/** Inflect each known verb joined on by "and"/"then"; comma-separated verbs stay as written. */
+function inflectFollowingVerbs(text: string, inflect: (verb: string) => string): string
 {
 	return text.replace(FOLLOWING_VERB_RE, (whole: string, joiners: string, verb: string, offset: number) =>
 	{
 		if (!KNOWN_VERBS.has(verb) || UNCHANGED_FOLLOWERS.has(verb)) return whole;
 		if (NOUN_CONTEXT_RE.test(text.slice(offset + whole.length))) return whole;
-		return joiners + pastOf(verb);
+		return joiners + inflect(verb);
 	});
 }
 
-/** A hyphen-prefixed verb ("Re-run") in past tense ("Re-ran"), or null when it is not a known verb. */
-function pastOfPrefixed(word: string): string | null
+/** A description's running, done and infinitive forms ("Re-running", "Re-ran", "re-run the tests"). */
+export interface VerbForms
 {
-	const [, prefix, base] = VERB_PREFIX_RE.exec(word) ?? [];
-	if (prefix === undefined || base === undefined || !isBareWord(base)) return null;
-	const joined = (prefix + base).toLowerCase();
-	const lowerBase = base.toLowerCase();
-	if (PAST_FORMS.has(joined) || PAST_FORMS.has(lowerBase)) return null;
-	if (!KNOWN_VERBS.has(joined) && !KNOWN_VERBS.has(lowerBase)) return null;
-	const joinedIrregular = IRREGULAR_PAST[joined];
-	const pastBase = joinedIrregular === undefined ? pastOf(base) : joinedIrregular.slice(prefix.length);
-	return `${prefix}-${matchCapital(base, pastBase)}`;
+	running: string;
+	done: string;
+	infinitive: string;
 }
 
-/** Whether a description opens with a base-form verb ("Do task" yes, "Mobile audit" no). */
-export function startsWithKnownVerb(description: string): boolean
+interface Inflection
 {
-	const [, word] = /^\s*([A-Za-z]+)(?![-\w])/.exec(description) ?? [];
-	return word !== undefined && KNOWN_VERBS.has(word.toLowerCase());
+	/** The table whose entry for a whole prefixed verb ("rerun") wins over inflecting its base. */
+	irregular: Record<string, string>;
+	inflect: (word: string) => string;
 }
 
-export function pastTense(description: string): string
+const RUNNING: Inflection =
+{
+	irregular: IRREGULAR_PROGRESSIVE,
+	inflect: progressiveOf,
+};
+const DONE: Inflection =
+{
+	irregular: IRREGULAR_PAST,
+	inflect: pastOf,
+};
+
+/**
+ * Upstream `ro`: inflect a Bash or subagent description whose leading word is a
+ * known bare verb, optionally hyphen-prefixed ("Re-run"), along with each known
+ * verb joined on by "and"/"then". Undefined when the description opens with no
+ * verb upstream knows ("Open draft PR", "Cherry-pick fold", "Polling the API").
+ */
+export function describeVerbForms(description: string): VerbForms | undefined
 {
 	const trimmed = description.trimStart();
 	const indent = description.slice(0, description.length - trimmed.length);
 	const [, word, rest] = /^(\S+)([\s\S]*)$/.exec(trimmed) ?? [];
-	if (word === undefined || rest === undefined) return description;
-	const prefixed = pastOfPrefixed(word);
-	if (prefixed !== null) return indent + prefixed + pastTenseFollowingVerbs(rest);
-	if (!isBareWord(word) || !KNOWN_VERBS.has(word.toLowerCase())) return description;
-	return indent + matchCapital(word, pastOf(word)) + pastTenseFollowingVerbs(rest);
+	if (word === undefined || rest === undefined) return undefined;
+	const infinitive = indent + word.charAt(0).toLowerCase() + word.slice(1) + rest;
+	const [, prefix, base] = VERB_PREFIX_RE.exec(word) ?? [];
+	if (prefix !== undefined && base !== undefined && isBareWord(base))
+	{
+		const joined = (prefix + base).toLowerCase();
+		const lowerBase = base.toLowerCase();
+		if (PAST_FORMS.has(joined) || PAST_FORMS.has(lowerBase)) return undefined;
+		if (!KNOWN_VERBS.has(joined) && !KNOWN_VERBS.has(lowerBase)) return undefined;
+		const form = ({irregular, inflect}: Inflection) =>
+		{
+			const whole = irregular[joined];
+			const head = matchCapital(base, whole === undefined ? inflect(base) : whole.slice(prefix.length));
+			return `${indent}${prefix}-${head}${inflectFollowingVerbs(rest, inflect)}`;
+		};
+		return {
+			running: form(RUNNING),
+			done: form(DONE),
+			infinitive,
+		};
+	}
+	if (!isBareWord(word) || !KNOWN_VERBS.has(word.toLowerCase())) return undefined;
+	const form = ({inflect}: Inflection) =>
+		indent + matchCapital(word, inflect(word)) + inflectFollowingVerbs(rest, inflect);
+	return {
+		running: form(RUNNING),
+		done: form(DONE),
+		infinitive,
+	};
 }
 
-/** The known base verb a progressive word ("running", "writing", "polling") inflects, if any. */
-function baseOfProgressive(word: string): string | undefined
+export function pastTense(description: string): string
 {
-	if (word.length <= 4 || !word.endsWith("ing")) return undefined;
-	const stem = word.slice(0, -3);
-	const candidates = [stem, `${stem}e`, stem.slice(0, -1), stem.endsWith("y") ? `${stem.slice(0, -1)}ie` : ""];
-	return candidates.find((candidate) => (candidate.length > 1 ? KNOWN_VERBS.has(candidate) : false));
+	return describeVerbForms(description)?.done ?? description;
 }
 
 /**
  * Upstream's infinitive of a Bash or subagent description, for its failed label
- * ("Failed to run the tests"): the leading known verb lowercased, or the base of a
- * leading progressive verb ("Running tests" -> "run tests"). Undefined when the
- * description opens with no verb upstream knows.
+ * ("Failed to run the tests"). Undefined when the description opens with no verb
+ * upstream knows.
  */
 export function infinitive(description: string): string | undefined
 {
-	const [, word, rest] = /^\s*([A-Za-z]+)((?![-\w])[\s\S]*)$/.exec(description) ?? [];
-	if (word === undefined || rest === undefined) return undefined;
-	const lower = word.toLowerCase();
-	const base = KNOWN_VERBS.has(lower) ? lower : baseOfProgressive(lower);
-	return base === undefined ? undefined : base + rest;
+	return describeVerbForms(description)?.infinitive;
 }

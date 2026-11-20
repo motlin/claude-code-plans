@@ -2087,29 +2087,6 @@ const QueuedCallIdsContext = createContext<ReadonlySet<string>>(EMPTY_QUEUED_IDS
  */
 const HeldImagesCallContext = createContext<string | null>(null);
 
-/** The call as its running label reads it: flagged when the permission prompt holds it. */
-function withPermissionWait<
-	Call extends
-	{
-		id: string;
-	},
->(
-	call: Call,
-	waitingId: string | null,
-): Call &
-{
-	awaitingPermission?: true;
-}
-{
-	return call.id === waitingId
-		?
-			{
-				...call,
-				awaitingPermission: true,
-			}
-		: call;
-}
-
 const BACKGROUND_LAUNCH_ID = /running in background with ID: (\S+?)\.?(?:\s|$)/;
 /** A Workflow launch result names its task: `Workflow launched in background. Task ID: w1x6xh5i3`. */
 const WORKFLOW_LAUNCH_ID = /^Workflow launched in background\. Task ID: (\S+)/;
@@ -8183,7 +8160,7 @@ function ToolCallRow({
 	// busy, in the present tense, until the task's completion notification lands.
 	const busyAgent = isAgent && (pending || backgroundTasks?.running.has(call.id) === true);
 	const busy = pending || busyAgent;
-	const running = busy ? runningToolLabel(withPermissionWait(heldLive ?? labelCall, permissionWaitId)) : null;
+	const running = busy ? runningToolLabel(heldLive ?? labelCall) : null;
 	const isFileParam = FILE_PARAM_TOOLS.has(call.name);
 	const diffStats = useEditDiffStats(members);
 	const isCardStyle = CARD_STYLE_TOOLS.has(call.name) && !nested;
@@ -9061,13 +9038,8 @@ function ToolCallSummary({
 	// progressive label instead of the tally.
 	// oxlint-disable-next-line unicorn/prefer-array-find -- findLast is not in the ES2022 lib
 	const pendingCall = calls.findLast(isPendingToolCall);
-	const permissionWaitId = useContext(PermissionWaitContext);
 	const runningText =
-		pendingCall === undefined
-			? null
-			: stripControlsAndMask(
-					runningToolLabelText(runningToolLabel(withPermissionWait(pendingCall, permissionWaitId))),
-				);
+		pendingCall === undefined ? null : stripControlsAndMask(runningToolLabelText(runningToolLabel(pendingCall)));
 	// A failed completion leads only when its launch is outside the group; a
 	// launch inside it takes the failure, so its notice trails like any other.
 	const leadsLabel = (notice: BackgroundNotice) =>

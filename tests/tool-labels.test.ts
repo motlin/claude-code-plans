@@ -1,4 +1,4 @@
-import {infinitive} from "../src/lib/past-tense";
+import {describeVerbForms, infinitive, pastTense} from "../src/lib/past-tense";
 import {groupWordCase, groupWords, runningToolLabel, toolLabel, toolResultMetaFrom} from "../src/lib/tool-labels";
 import {AskUserQuestionResultSchema} from "../src/lib/tool-input-schemas";
 import type {ToolLabelCall} from "../src/lib/tool-labels";
@@ -1223,35 +1223,84 @@ describe("toolResultMetaFrom agent results", () =>
 
 describe("runningToolLabel", () =>
 {
-	it("keeps a Bash description as written while the call waits on its permission prompt, as upstream does", () =>
+	it("inflects a running description as upstream ro does, keeping a queued request's description as written", () =>
 	{
 		const input =
 		{
-			command: "gh pr create --draft",
-			description: "Open draft PR for the AssertJ branch",
+			command: "git push",
+			description: "Push branches and open PRs",
 		};
 		expect(
 			{
-				awaiting: runningToolLabel(
+				queued: runningToolLabel(
 					{
 						...call("Bash", input),
-						awaitingPermission: true,
+						awaitingApproval: true,
 					},
 				),
 				running: runningToolLabel(call("Bash", input)),
 			},
 		).toStrictEqual(
 			{
-				awaiting:
+				queued:
 				{
 					verb: "Running",
-					label: "Open draft PR for the AssertJ branch",
+					label: "Push branches and open PRs",
 				},
 				running:
 				{
 					verb: "Running",
-					label: "Opening draft PR for the AssertJ branch",
+					label: "Pushing branches and open PRs",
 				},
+			},
+		);
+	});
+
+	it("labels running Bash and Agent descriptions with upstream ro's running form", () =>
+	{
+		const bash = (description: string) =>
+			runningToolLabel(
+				call(
+					"Bash",
+					{
+						command: "x",
+						description,
+					},
+				),
+			).label;
+		const agent = (description: string) =>
+			runningToolLabel(
+				call(
+					"Agent",
+					{
+						description,
+						prompt: "p",
+					},
+				),
+			).label;
+		expect(
+			{
+				bashUnknown: bash("Open draft PR for the AssertJ branch"),
+				bashFollower: bash("Wait and recheck DNS"),
+				bashPrefix: bash("Re-run the tests"),
+				bashHyphen: bash("Cherry-pick fold"),
+				bashSpelling: bash("Screenshot the page"),
+				bashPlural: bash("Tests pass"),
+				bashIndent: bash("  Run indented"),
+				agentFollower: agent("Build and test"),
+				agentPrefix: agent("Re-sync the fork"),
+			},
+		).toStrictEqual(
+			{
+				bashUnknown: "Open draft PR for the AssertJ branch",
+				bashFollower: "Waiting and rechecking DNS",
+				bashPrefix: "Re-running the tests",
+				bashHyphen: "Cherry-pick fold",
+				bashSpelling: "Screenshotting the page",
+				bashPlural: "Tests pass",
+				bashIndent: "  Running indented",
+				agentFollower: "Building and testing",
+				agentPrefix: "Re-syncing the fork",
 			},
 		);
 	});
@@ -2511,13 +2560,13 @@ describe("failed verbs", () =>
 					failedVerb: "Failed to run",
 					failedLabel: "Failed to run the tests",
 				},
+				// Upstream ro reads no verb from a leading -ing word, so no failedLabel.
 				bashRunning:
 				{
 					verb: "Ran",
 					meta: "Running tests",
 					doneLabel: "Running tests",
 					failedVerb: "Failed to run",
-					failedLabel: "Failed to run tests",
 				},
 				bashNoVerb:
 				{
@@ -2896,33 +2945,93 @@ describe("failed verbs", () =>
 	});
 });
 
-describe("infinitive", () =>
+describe("describeVerbForms", () =>
 {
-	it("reads a description's leading verb as an infinitive", () =>
+	// Every row of dumps/running-step-label-gerund-upstream-ro-outputs.jsonl: [description, running, done, infinitive].
+	const UPSTREAM_RO: readonly (readonly [string, string, string, string | undefined])[] = [
+		[
+			"Push branches and open PRs",
+			"Pushing branches and open PRs",
+			"Pushed branches and open PRs",
+			"push branches and open PRs",
+		],
+		[
+			"Probe iMCP and Gmail IMAP",
+			"Probing iMCP and Gmail IMAP",
+			"Probed iMCP and Gmail IMAP",
+			"probe iMCP and Gmail IMAP",
+		],
+		[
+			"Open draft PR for the AssertJ branch",
+			"Open draft PR for the AssertJ branch",
+			"Open draft PR for the AssertJ branch",
+			undefined,
+		],
+		["Cherry-pick fold", "Cherry-pick fold", "Cherry-pick fold", undefined],
+		["Wait and recheck DNS", "Waiting and rechecking DNS", "Waited and rechecked DNS", "wait and recheck DNS"],
+		["Sync the repo", "Syncing the repo", "Synced the repo", "sync the repo"],
+		["Re-run the tests", "Re-running the tests", "Re-ran the tests", "re-run the tests"],
+		[
+			"Check status then push",
+			"Checking status then pushing",
+			"Checked status then pushed",
+			"check status then push",
+		],
+		["Fix lint", "Fixing lint", "Fixed lint", "fix lint"],
+		["Visit the page", "Visiting the page", "Visited the page", "visit the page"],
+		["Mobile audit: session page", "Mobile audit: session page", "Mobile audit: session page", undefined],
+		["Tests pass", "Tests pass", "Tests pass", undefined],
+		["Build and test", "Building and testing", "Built and tested", "build and test"],
+		["Screenshot the page", "Screenshotting the page", "Screenshotted the page", "screenshot the page"],
+		[
+			"Run tests and output results",
+			"Running tests and output results",
+			"Ran tests and output results",
+			"run tests and output results",
+		],
+		["Unzip the archive", "Unzipping the archive", "Unzipped the archive", "unzip the archive"],
+		["Panic", "Panic", "Panic", undefined],
+		["Do task", "Doing task", "Did task", "do task"],
+		["Commit the fix", "Committing the fix", "Committed the fix", "commit the fix"],
+		["Write the config", "Writing the config", "Wrote the config", "write the config"],
+		[
+			"Poll PR #1954 for new activity",
+			"Polling PR #1954 for new activity",
+			"Polled PR #1954 for new activity",
+			"poll PR #1954 for new activity",
+		],
+		["Polling the API", "Polling the API", "Polling the API", undefined],
+		["Explore the codebase", "Explore the codebase", "Explore the codebase", undefined],
+		[
+			"Kill and restart server",
+			"Killing and restarting server",
+			"Killed and restarted server",
+			"kill and restart server",
+		],
+		["Test and run is green", "Testing and run is green", "Tested and run is green", "test and run is green"],
+		["  Run indented", "  Running indented", "  Ran indented", "  run indented"],
+		["Rerun the suite", "Rerunning the suite", "Reran the suite", "rerun the suite"],
+		["Re-sync the fork", "Re-syncing the fork", "Re-synced the fork", "re-sync the fork"],
+		["Tie the knot", "Tie the knot", "Tie the knot", undefined],
+		["See logs", "Seeing logs", "Saw logs", "see logs"],
+		["Free memory", "Free memory", "Free memory", undefined],
+	];
+
+	it("inflects a description exactly as upstream ro does", () =>
 	{
 		expect(
-			{
-				base: infinitive("Run the tests"),
-				running: infinitive("Running tests"),
-				writing: infinitive("Writing config"),
-				polling: infinitive("Polling PR #1"),
-				checking: infinitive("Checking status"),
-				lower: infinitive("check status"),
-				noVerb: infinitive("foo bar"),
-				empty: infinitive(""),
-			},
-		).toStrictEqual(
-			{
-				base: "run the tests",
-				running: "run tests",
-				writing: "write config",
-				polling: "poll PR #1",
-				checking: "check status",
-				lower: "check status",
-				noVerb: undefined,
-				empty: undefined,
-			},
-		);
+			UPSTREAM_RO.map(([description]) => [
+				description,
+				describeVerbForms(description)?.running ?? description,
+				pastTense(description),
+				infinitive(description),
+			]),
+		).toStrictEqual(UPSTREAM_RO);
+	});
+
+	it("reads no verb forms from an empty description", () =>
+	{
+		expect(describeVerbForms("")).toBeUndefined();
 	});
 });
 

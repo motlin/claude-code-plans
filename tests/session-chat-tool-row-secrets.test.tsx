@@ -197,12 +197,12 @@ describe("tool row labels mask secrets (upstream Iv)", () =>
 				input:
 				{
 					command: "true",
-					description: `Use ${FAKE_GH}${CONTROLS}`,
+					description: `Check ${FAKE_GH}${CONTROLS}`,
 				},
 				pending: true,
 			},
 		]);
-		expect(headers(container)).toStrictEqual(["Using ghp_AAAA••••••••••••••••••••••••••••••••running"]);
+		expect(headers(container)).toStrictEqual(["Checking ghp_AAAA••••••••••••••••••••••••••••••••running"]);
 	});
 
 	it("masks the group header's running label", () =>
@@ -223,13 +223,13 @@ describe("tool row labels mask secrets (upstream Iv)", () =>
 				input:
 				{
 					command: "true",
-					description: `Use ${FAKE_GH}${CONTROLS}`,
+					description: `Check ${FAKE_GH}${CONTROLS}`,
 				},
 				pending: true,
 			},
 		]);
 		const summary = container.querySelector("[data-cds-row-toggle]")?.textContent ?? null;
-		expect(summary).toBe("Using ghp_AAAA••••••••••••••••••••••••••••••••running");
+		expect(summary).toBe("Checking ghp_AAAA••••••••••••••••••••••••••••••••running");
 	});
 });
 

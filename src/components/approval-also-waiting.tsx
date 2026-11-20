@@ -2,7 +2,7 @@ import type {ApprovalPresentation} from "../lib/approval-presentation";
 import type {QueuedApproval} from "../lib/approval-queue";
 import {runningToolLabel, runningToolLabelText} from "../lib/tool-labels";
 
-/** A queued request's row label: a tool's running label as its permission wait words it, else its name. */
+/** A queued request's row label: a tool's running label as its approval wait words it, else its name. */
 function rowLabel(item: QueuedApproval): string
 {
 	if (item.kind !== "tool") return item.name;
@@ -11,7 +11,7 @@ function rowLabel(item: QueuedApproval): string
 			{
 				name: item.name,
 				input: item.input ?? {},
-				awaitingPermission: true,
+				awaitingApproval: true,
 			},
 		),
 	);

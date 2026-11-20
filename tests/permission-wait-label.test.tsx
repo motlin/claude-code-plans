@@ -92,55 +92,69 @@ function renderRecords(records: unknown[], permissionWaitToolUseId?: string): HT
 	).container;
 }
 
-const RECORDS = [
-	{
-		type: "user",
-		uuid: "user-1",
-		message:
+function bashRecords(description: string)
+{
+	return [
 		{
-			role: "user",
-			content: "Open the PR",
+			type: "user",
+			uuid: "user-1",
+			message:
+			{
+				role: "user",
+				content: "Open the PR",
+			},
 		},
-	},
-	{
-		type: "assistant",
-		uuid: "assistant-1",
-		message:
 		{
-			role: "assistant",
-			content: [
-				{
-					type: "tool_use",
-					id: "toolu_waiting",
-					name: "Bash",
-					input:
+			type: "assistant",
+			uuid: "assistant-1",
+			message:
+			{
+				role: "assistant",
+				content: [
 					{
-						command: "gh pr create --draft",
-						description: "Open draft PR for the AssertJ branch",
+						type: "tool_use",
+						id: "toolu_waiting",
+						name: "Bash",
+						input:
+						{
+							command: "git push",
+							description,
+						},
 					},
-				},
-			],
+				],
+			},
 		},
-	},
-];
+	];
+}
+
+const RECORDS = bashRecords("Push branches and open PRs");
 
 describe("a call held at its permission prompt", () =>
 {
-	it("labels its row with the description as written, while a merely running call reads progressive", () =>
+	it("labels its row with the running label like any running call (upstream dockedWait is status running)", () =>
 	{
 		const waiting = renderRecords(RECORDS, "toolu_waiting").textContent;
 		cleanup();
 		const running = renderRecords(RECORDS).textContent;
+		cleanup();
+		const unknownWaiting = renderRecords(
+			bashRecords("Open draft PR for the AssertJ branch"),
+			"toolu_waiting",
+		).textContent;
 
 		expect(
 			{
-				waiting: waiting.includes("Open draft PR for the AssertJ branch") && !waiting.includes("Opening"),
-				running: running.includes("Opening draft PR for the AssertJ branch"),
+				waiting: waiting.includes("Pushing branches and open PRs"),
+				running: running.includes("Pushing branches and open PRs"),
+				unknownWaiting:
+					unknownWaiting.includes("Open draft PR for the AssertJ branch") &&
+					!unknownWaiting.includes("Opening"),
 			},
 		).toStrictEqual(
 			{
 				waiting: true,
 				running: true,
+				unknownWaiting: true,
 			},
 		);
 	});
