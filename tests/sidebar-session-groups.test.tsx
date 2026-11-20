@@ -3422,6 +3422,10 @@ describe("sidebar SessionGroups", () =>
 					.includes("group-data-[menu-open=true]/session-row:opacity-0"),
 				decorationHiddenByAnyPopup: decoration?.className.includes("data-popup-open") ?? false,
 				linkHasBackground: link.className.split(" ").some((name) => name.includes("bg-[var(--sb-hover)]")),
+				// Each menu mounts its Base UI root on first open: the kebab then carries Base UI's trigger id,
+				// and the right-click menu its hidden trigger.
+				kebabRoot: wrapper.querySelector("[data-row-action]")?.id.startsWith("base-ui-") ?? false,
+				contextRoot: wrapper.querySelector("[data-row-context-trigger]") !== null,
 			};
 		};
 		const {wrapper} = wrapperOf("Completed newest");
@@ -3479,6 +3483,8 @@ describe("sidebar SessionGroups", () =>
 			decorationHidden: true,
 			decorationHiddenByAnyPopup: false,
 			linkHasBackground: false,
+			kebabRoot: false,
+			contextRoot: false,
 		};
 		expect(
 			{
@@ -3498,11 +3504,14 @@ describe("sidebar SessionGroups", () =>
 				{
 					...closed,
 					contextMenuOpen: "true",
+					contextRoot: true,
 				},
 				kebabOpen:
 				{
 					...closed,
 					menuOpen: "true",
+					kebabRoot: true,
+					contextRoot: true,
 				},
 			},
 		);

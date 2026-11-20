@@ -762,10 +762,18 @@ describe("sidebar session families", () =>
 				titles: ["Child one", "Grandchild one"],
 			},
 		);
-		// The head row stays put, so focus returns to the kebab rather than moving to the first child.
+		// The head row stays put, so focus returns to the kebab rather than moving to the first child. The kebab
+		// is re-queried: its first open swaps the placeholder for the menu's real trigger.
 		await waitFor(() =>
 		{
-			expect(document.activeElement).toBe(kebab);
+			expect(document.activeElement).toBe(
+				screen.getByRole(
+					"button",
+					{
+						name: "More options for Head one",
+					},
+				),
+			);
 		});
 	});
 

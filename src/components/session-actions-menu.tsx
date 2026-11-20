@@ -65,6 +65,8 @@ import
 	MenuSubTrigger,
 	MenuTrigger,
 } from "./ui/menu";
+import {ContextMenuArea} from "./context-menu-area";
+import {useLazyMenuTrigger} from "./use-lazy-menu-trigger";
 import {useSessionMenuRunner} from "./use-session-menu-runner";
 import {useRenameAfterMenuClose} from "./use-rename-after-menu-close";
 import type {SessionMenuRun} from "./use-session-menu-runner";
@@ -682,21 +684,40 @@ export function SessionActionsMenu({
 			requestBulkNewGroup={requestBulkNewGroup}
 		/>
 	);
-	const kebab = (
-		<MenuTrigger
-			aria-label={`More options for ${rename.title}`}
-			data-row-action=""
-			{...(kebabTabIndex === undefined
-				? {}
-				:
-					{
-						tabIndex: kebabTabIndex,
-					})}
-			className={KEBAB_CLASS}
-		>
-			<Ellipsis aria-hidden="true" className="size-4" />
+	// Each menu mounts its root on first use; a closed row carries neither.
+	const lazyKebab = useLazyMenuTrigger<HTMLButtonElement>();
+	const [contextMenuMounted, setContextMenuMounted] = useState(false);
+	const contextTriggerRef = useRef<HTMLDivElement>(null);
+	const kebabProps =
+	{
+		"aria-label": `More options for ${rename.title}`,
+		"data-row-action": "",
+		...(kebabTabIndex === undefined
+			? {}
+			:
+				{
+					tabIndex: kebabTabIndex,
+				}),
+		className: KEBAB_CLASS,
+	};
+	const kebabIcon = <Ellipsis aria-hidden="true" className="size-4" />;
+	const kebab = lazyKebab.mounted ? (
+		<MenuTrigger ref={lazyKebab.triggerRef} {...kebabProps}>
+			{kebabIcon}
 		</MenuTrigger>
+	) : (
+		// Base UI's closed trigger markup, less its generated id.
+		<button
+			type="button"
+			aria-haspopup="menu"
+			aria-expanded="false"
+			{...kebabProps}
+			{...lazyKebab.placeholderProps}
+		>
+			{kebabIcon}
+		</button>
 	);
+	const wrappedKebab = wrapKebab === undefined ? kebab : wrapKebab(kebab);
 	return (
 		<RowRenameContext.Provider value={rowRename}>
 			<div
@@ -709,18 +730,34 @@ export function SessionActionsMenu({
 				data-context-menu-open={contextMenuOpen ? "true" : undefined}
 				className={`group/session-row relative ${className ?? ""}`}
 			>
-				<ContextMenu onOpenChange={setContextMenuOpen} onOpenChangeComplete={onOpenChangeComplete}>
-					<ContextMenuTrigger>{children}</ContextMenuTrigger>
-					<MenuContent density="comfortable" finalFocus={finalFocus}>
-						{menuBody}
-					</MenuContent>
-				</ContextMenu>
-				<Menu onOpenChange={setMenuOpen} onOpenChangeComplete={onOpenChangeComplete}>
-					{wrapKebab === undefined ? kebab : wrapKebab(kebab)}
-					<MenuContent density="comfortable" align="end" finalFocus={finalFocus}>
-						{menuBody}
-					</MenuContent>
-				</Menu>
+				<ContextMenuArea
+					mounted={contextMenuMounted}
+					onFirstUse={() =>
+					{
+						setContextMenuMounted(true);
+					}}
+					triggerRef={contextTriggerRef}
+				>
+					{children}
+				</ContextMenuArea>
+				{contextMenuMounted && (
+					<ContextMenu onOpenChange={setContextMenuOpen} onOpenChangeComplete={onOpenChangeComplete}>
+						<ContextMenuTrigger ref={contextTriggerRef} hidden data-row-context-trigger="" />
+						<MenuContent density="comfortable" finalFocus={finalFocus}>
+							{menuBody}
+						</MenuContent>
+					</ContextMenu>
+				)}
+				{lazyKebab.mounted ? (
+					<Menu onOpenChange={setMenuOpen} onOpenChangeComplete={onOpenChangeComplete}>
+						{wrappedKebab}
+						<MenuContent density="comfortable" align="end" finalFocus={finalFocus}>
+							{menuBody}
+						</MenuContent>
+					</Menu>
+				) : (
+					wrappedKebab
+				)}
 			</div>
 			{newGroupMounted && (
 				<NewGroupDialog open={newGroupOpen} onOpenChange={setNewGroupOpen} onCreate={createGroupWithRow} />
