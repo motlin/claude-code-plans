@@ -7,6 +7,7 @@ import
 	attachReply,
 	composePrompt,
 	formatReply,
+	isQuoteRowChip,
 	isReplyChip,
 	MAX_STAGED_REPLIES,
 	REPLY_CAP_MESSAGE,
@@ -1669,6 +1670,34 @@ describe("attachReply (upstream attachReply + the 99-reply cap)", () =>
 				toasts: [],
 			},
 		);
+	});
+
+	it("rows a reply or a non-blank excerpt (upstream zn with quotesAsRows), never a blank excerpt or another kind", () =>
+	{
+		const chips: ContextAttachment[] = [
+			{
+				kind: "excerpt",
+				text: "q",
+				comment: "fix",
+			},
+			{
+				kind: "excerpt",
+				text: "q",
+			},
+			{
+				kind: "excerpt",
+				text: "  ",
+			},
+			{
+				kind: "file",
+				path: "a.ts",
+			},
+			{
+				kind: "message",
+				text: "hi",
+			},
+		];
+		expect(chips.map(isQuoteRowChip)).toStrictEqual([true, true, false, false, false]);
 	});
 
 	it("refuses the 100th reply with upstream's 8 s cap toast, yet still takes a blank-comment Excerpt", () =>

@@ -28,3 +28,9 @@ export function replyPreviewText(quote: string, comment: string): string
 		.map((line) => `> ${line}`)
 		.join("\n")}\n\n${comment}`;
 }
+
+/** Upstream `$a` as a row: `formatList(["Excerpt", Fr(text)], {type: "unit"})`, a plain excerpt row's name. */
+export function excerptRowName(text: string): string
+{
+	return `Excerpt, ${clipFirstLine(text)}`;
+}

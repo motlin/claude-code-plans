@@ -63,27 +63,59 @@ export function ExcerptQuote({
 const HINT_BADGE_CLASS =
 	"pointer-events-auto outline-none focus-visible:shadow-focus pointer-coarse:pointer-events-none";
 
+/** Upstream's xs Badge in a composer Quote row: the nested control height, chip corner and neutral fill. */
+const ROW_BADGE_CLASS =
+	"inline-flex items-center gap-1 align-middle h-control-nested whitespace-nowrap rounded-chip px-sm font-sans text-caption font-medium leading-[round(1.25em,1px)] min-w-0 max-w-full bg-neutral text-secondary";
+
 /**
  * Upstream `Ig`: a badge whose hint shows in a top tooltip on hover or keyboard focus, and describes it.
- * `id` and `hintId` let a tile's CardLink point at the badge and its hint too.
+ * `id` and `hintId` let a tile's CardLink point at the badge and its hint too. `row` draws a Quote row's xs
+ * Badge, capped at 40% of the row, with the hint wrapped to break inside the tooltip.
  */
-export function HintBadge({badge, hint, id, hintId}: {badge: string; hint: string; id?: string; hintId?: string})
+export function HintBadge({
+	badge,
+	hint,
+	id,
+	hintId,
+	row = false,
+}: {
+	badge: string;
+	hint: string;
+	id?: string;
+	hintId?: string;
+	row?: boolean;
+})
 {
 	const ownHintId = useId();
 	const describedBy = hintId ?? ownHintId;
-	const content = useMemo(() => <bdi>{hint}</bdi>, [hint]);
+	const content = useMemo(
+		() =>
+			row ? (
+				<span className="min-w-0 break-words">
+					<bdi>{hint}</bdi>
+				</span>
+			) : (
+				<bdi>{hint}</bdi>
+			),
+		[hint, row],
+	);
 	return (
 		<>
-			<Tooltip content={content} side="top" className="min-w-0 max-w-full self-start">
+			<Tooltip
+				content={content}
+				side="top"
+				className={row ? "min-w-0 max-w-[40%] shrink-0" : "min-w-0 max-w-full self-start"}
+			>
 				<span
 					id={id}
 					data-cds="Badge"
+					data-size={row ? "xs" : undefined}
 					role="img"
 					aria-label={badge}
 					// oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- upstream's hinted badge is a Tab stop so the keyboard can open its tooltip
 					tabIndex={0}
 					aria-describedby={describedBy}
-					className={`${BADGE_CLASS} ${HINT_BADGE_CLASS}`}
+					className={`${row ? ROW_BADGE_CLASS : BADGE_CLASS} ${HINT_BADGE_CLASS}`}
 				>
 					<span className="pb-[0.05em] min-w-0 overflow-x-clip text-ellipsis whitespace-nowrap">
 						<bdi>{badge}</bdi>

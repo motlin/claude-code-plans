@@ -201,6 +201,15 @@ export function isReplyChip(chip: ContextAttachment): boolean
 	);
 }
 
+/**
+ * Upstream `zn` with `quotesAsRows` on, as in every code-view session: a reply, or an unlabeled excerpt with
+ * text (local excerpts never carry a label), stages as a full-width Quote row above the tiles.
+ */
+export function isQuoteRowChip(chip: ContextAttachment): boolean
+{
+	return chip.kind === "excerpt" && (isReplyChip(chip) || (chip.text ?? "").trim() !== "");
+}
+
 /** Upstream's reply cap: one prompt carries at most 99 reply blocks. */
 export const MAX_STAGED_REPLIES = 99;
 

@@ -330,10 +330,12 @@ describe("upstream cds TextInput tokens", () =>
 			},
 		).toStrictEqual(
 			{
-				// :root is a comfortable context (like --cds-h-control), then [data-density=comfortable] and compact.
+				// :root is a comfortable context (like --cds-h-control), then [data-density=comfortable] and compact,
+				// then a composer Quote row's xs Badge (measured 18px at comfortable).
 				nested: [
 					"calc(1.375rem * var(--cds-rem-scale, 1))",
 					"calc(1.375rem * var(--cds-rem-scale, 1))",
+					"calc(1.125rem * var(--cds-rem-scale, 1))",
 					"calc(1.125rem * var(--cds-rem-scale, 1))",
 				],
 				invalid: ["inset 0 0 0 1px #dc3c3d", "inset 0 0 0 1px #dc3c3d"],

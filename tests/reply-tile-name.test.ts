@@ -1,5 +1,5 @@
 import {describe, expect, it} from "vite-plus/test";
-import {clipFirstLine, replyPreviewText, replyTileName} from "../src/lib/reply-tile-name";
+import {clipFirstLine, excerptRowName, replyPreviewText, replyTileName} from "../src/lib/reply-tile-name";
 
 describe("reply tile name (upstream za/wr)", () =>
 {
@@ -38,5 +38,20 @@ describe("reply tile name (upstream za/wr)", () =>
 	it("previews every quote line with > , a blank line, then the comment", () =>
 	{
 		expect(replyPreviewText("one\r\ntwo", "fix")).toBe("> one\n> two\n\nfix");
+	});
+
+	it("names a plain Excerpt row after upstream's unit list of the badge and the clipped first line", () =>
+	{
+		expect(
+			{
+				short: excerptRowName("Plain excerpt without a comment"),
+				long: excerptRowName(`\n  ${"x".repeat(60)}\nsecond`),
+			},
+		).toStrictEqual(
+			{
+				short: "Excerpt, Plain excerpt without a comment",
+				long: `Excerpt, ${"x".repeat(39)}…`,
+			},
+		);
 	});
 });

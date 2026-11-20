@@ -31,6 +31,7 @@ import
 	contextChipLabel,
 	focusComposer,
 	formatContextAttachment,
+	isQuoteRowChip,
 	isReplyChip,
 	removeContextChip,
 } from "../lib/context-attach";
@@ -50,7 +51,8 @@ import {FileActionsMenuItems} from "./files/file-actions-menu";
 import {absoluteMentionPath} from "./files/mention-path";
 import {ContextMenu, ContextMenuTrigger, MenuContent} from "./ui/menu";
 import {Skeleton} from "./ui/skeleton";
-import {replyPreviewText, replyTileName} from "../lib/reply-tile-name";
+import {clipFirstLine, excerptRowName, replyPreviewText, replyTileName} from "../lib/reply-tile-name";
+import {QuoteRow} from "./composer-quote-row";
 import {ExcerptQuote, HintBadge} from "./excerpt-quote";
 import {isMotionReduced} from "../lib/reduced-motion";
 import
@@ -135,8 +137,8 @@ function scrollTileIntoRow(row: HTMLElement, tile: Element): void
 		);
 }
 
-/** Upstream's `A0`: once the removed tile leaves the row, scrolls the tile that took focus into view. */
-function scrollIntoRowAfterRemoval(row: HTMLElement, tile: Element, removed: Element): void
+/** Upstream's `A0`: once the removed item leaves its parent, scrolls the tile that took focus into the row's view. */
+function scrollIntoRowAfterRemoval(parent: Element, row: HTMLElement, tile: Element, removed: Element): void
 {
 	let done = false;
 	const observer =
@@ -148,7 +150,7 @@ function scrollIntoRowAfterRemoval(row: HTMLElement, tile: Element, removed: Ele
 			: null;
 	const timer = setTimeout(finish, 300);
 	observer?.observe(
-		row,
+		parent,
 		{
 			childList: true,
 		},
@@ -223,22 +225,33 @@ function handOffFocus(item: Element | null, sessionId: string, key: string | nul
 			preventScroll: true,
 		},
 	);
-	const row = item.parentElement;
 	const tile = target.closest("li");
-	if (row !== null && tile !== null) scrollIntoRowAfterRemoval(row, tile, item);
+	const row = tile?.parentElement;
+	const removedFrom = item.parentElement;
+	if (tile && row && removedFrom) scrollIntoRowAfterRemoval(removedFrom, row, tile, item);
 }
 
-/** Upstream's `sk`: the next item's focus target, else the previous one's. */
+/** The tray's items, Quote rows and then tiles and pills: what a removal's focus hand-off walks. */
+const ATTACHMENT_ITEM = "[data-cds-attachment], [data-cds-composer-attachments-row] > li";
+
+/** The tray item an element sits in: a Quote row, a tile or a pill. */
+function attachmentItemOf(element: Element): Element | null
+{
+	return element.closest(ATTACHMENT_ITEM);
+}
+
+/**
+ * Upstream's `sk` over `pr(fr(e))`: the next item's focus target, else the previous one's, with the Quote rows
+ * and the tile row walked as one ring.
+ */
 function siblingFocusTarget(item: Element): HTMLElement | null
 {
-	for (let next = item.nextElementSibling; next !== null; next = next.nextElementSibling)
+	const tray = item.closest("[data-cds-composer-attachments]");
+	const items = tray === null ? [item] : Array.from(tray.querySelectorAll(ATTACHMENT_ITEM));
+	const index = items.indexOf(item);
+	for (const other of [...items.slice(index + 1), ...items.slice(0, Math.max(index, 0)).toReversed()])
 	{
-		const target = focusTarget(next);
-		if (target !== null) return target;
-	}
-	for (let previous = item.previousElementSibling; previous !== null; previous = previous.previousElementSibling)
-	{
-		const target = focusTarget(previous);
+		const target = focusTarget(other);
 		if (target !== null) return target;
 	}
 	return null;
@@ -261,14 +274,14 @@ function removeButtonProps(sessionId: string, remove: () => void)
 		onMouseDown: keepFocusOnPointerRemove,
 		onClick: (event: MouseEvent<HTMLButtonElement>) =>
 		{
-			handOffFocus(event.currentTarget.closest("li"), sessionId, null);
+			handOffFocus(attachmentItemOf(event.currentTarget), sessionId, null);
 			remove();
 		},
 		onKeyDown: (event: KeyboardEvent<HTMLButtonElement>) =>
 		{
 			if (event.key !== "Enter" || event.repeat || event.nativeEvent.isComposing) return;
 			event.preventDefault();
-			handOffFocus(event.currentTarget.closest("li"), sessionId, event.key);
+			handOffFocus(attachmentItemOf(event.currentTarget), sessionId, event.key);
 			remove();
 		},
 	};
@@ -284,7 +297,7 @@ function removeOnDeleteKey(event: KeyboardEvent<HTMLElement>, sessionId: string,
 	if (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return;
 	if (event.repeat || event.nativeEvent.isComposing) return;
 	event.preventDefault();
-	handOffFocus(event.currentTarget.closest("li"), sessionId, event.key);
+	handOffFocus(attachmentItemOf(event.currentTarget), sessionId, event.key);
 	remove();
 }
 
@@ -834,10 +847,10 @@ function ExcerptChip({
 }
 
 /**
- * A staged reply as upstream's tray Reply tile (`Ba`): its comment over a "Reply" badge hinted with the
- * "Your reply to …" name, and a CardLink that opens the read-only quote-and-comment preview.
+ * A staged reply or plain excerpt as upstream's code-view Quote row (`ro`/`$a` with `asRow`): a reply shows its
+ * quote with a "With reply" badge hinted with the comment's clipped first line; an excerpt has no badge.
  */
-function ReplyChip({
+function QuoteChipRow({
 	sessionId,
 	chip,
 	restored,
@@ -849,54 +862,31 @@ function ReplyChip({
 	onOpen: (chip: ContextChip, link: HTMLElement) => void;
 })
 {
+	const text = chip.text ?? "";
+	const reply = isReplyChip(chip);
 	const comment = chip.comment ?? "";
-	const name = replyTileName(chip.text ?? "", comment);
-	const quoteId = useId();
-	const badgeId = useId();
-	const hintId = useId();
+	const remove = () =>
+	{
+		removeChip(sessionId, chip);
+	};
 	return (
-		<Tile
-			sessionId={sessionId}
-			chip={chip}
+		<QuoteRow
+			name={reply ? replyTileName(text, comment) : excerptRowName(text)}
+			text={text}
+			badge={reply ? "With reply" : undefined}
+			hint={reply ? clipFirstLine(comment) : undefined}
 			restored={restored}
-			kind="MessageAttachmentsQuote"
-			status=""
-			name={name}
-		>
-			<span
-				data-cds="CardLink"
-				role="button"
-				tabIndex={0}
-				aria-describedby={`${quoteId} ${badgeId} ${hintId}`}
-				onClick={(event) =>
-				{
-					event.preventDefault();
-					onOpen(chip, event.currentTarget);
-				}}
-				onKeyDown={(event) =>
-				{
-					if (event.key === "Enter" || event.key === " ")
-					{
-						event.preventDefault();
-						onOpen(chip, event.currentTarget);
-					}
-
-					removeOnDeleteKey(event, sessionId, () =>
-					{
-						removeChip(sessionId, chip);
-					});
-				}}
-				className="outline-none after:absolute after:inset-0 after:rounded-card-xs after:content-[''] cursor-pointer"
-			>
-				<span className="sr-only">{name}</span>
-			</span>
-			<ExcerptQuote
-				text={comment}
-				label="Reply"
-				quoteId={quoteId}
-				badge={<HintBadge badge="Reply" hint={name} id={badgeId} hintId={hintId} />}
-			/>
-		</Tile>
+			style={viewTransitionStyle(chip.id)}
+			onOpen={(link) =>
+			{
+				onOpen(chip, link);
+			}}
+			onLinkKeyDown={(event) =>
+			{
+				removeOnDeleteKey(event, sessionId, remove);
+			}}
+			removeProps={removeButtonProps(sessionId, remove)}
+		/>
 	);
 }
 
@@ -1014,6 +1004,11 @@ export function AttachedContextChips({
 	const restored = restoredIds ?? mountedIds;
 	// Upstream's `isUploading`: a saved draft is view-only while any upload is in flight.
 	const uploading = context.some((chip) => chip.status === "pending");
+	// Upstream's `Bn`: replies and plain excerpts are Quote rows above the tile row, in staging order.
+	const quoteRows = context.filter(isQuoteRowChip);
+	const tileChips = context.filter((chip) => !isQuoteRowChip(chip));
+	const hasTiles = agent !== undefined || tileChips.length > 0 || comments.length > 0;
+	const showTiles = hasTiles || quoteRows.length === 0;
 	const rowRef = useRef<HTMLUListElement>(null);
 	useEffect(() =>
 	{
@@ -1028,7 +1023,7 @@ export function AttachedContextChips({
 		{
 			row.removeEventListener("focusin", onFocusIn);
 		};
-	}, []);
+	}, [showTiles]);
 	const [preview, setPreview] = useState<
 	{
 		chipId: string;
@@ -1109,169 +1104,178 @@ export function AttachedContextChips({
 			data-cds-composer-attachments-clip=""
 			className="-mx-2 grid grid-rows-[1fr] overflow-hidden px-2 -mt-2 pt-2"
 		>
-			<div data-cds-composer-attachments="" className="min-h-0 min-w-0 px-1 pt-1 pb-2.5">
-				<ul
-					aria-label="Attached context"
-					data-cds="MessageAttachments"
-					data-cds-composer-attachments-row=""
-					ref={rowRef}
-					className="flex items-end gap-[6px] *:shrink-0 overflow-x-auto overscroll-x-contain scroll-fade-x p-2 pt-2.5 pe-2.5 -m-2 -mt-2.5 -me-2.5"
-				>
-					{agent !== undefined && <AgentTile {...agent} />}
-					{context.map((chip) =>
-					{
-						if (chip.kind === "image" && chip.previewUrl !== undefined)
+			<div
+				data-cds-composer-attachments=""
+				className={`min-h-0 min-w-0 px-1 pt-1 ${showTiles ? "pb-2.5" : "pb-0.5"}`}
+			>
+				{quoteRows.length > 0 ? (
+					<div
+						data-cds="ChatComposerQuotes"
+						className={`flex min-w-0 flex-col gap-xs -mx-1 -mt-1${hasTiles ? " mb-2" : ""}`}
+					>
+						{quoteRows.map((chip) => (
+							<QuoteChipRow
+								key={chip.id}
+								sessionId={sessionId}
+								chip={chip}
+								restored={restored.has(chip.id)}
+								onOpen={openTextPreview}
+							/>
+						))}
+					</div>
+				) : null}
+				{showTiles ? (
+					<ul
+						aria-label="Attached context"
+						data-cds="MessageAttachments"
+						data-cds-composer-attachments-row=""
+						ref={rowRef}
+						className="flex items-end gap-[6px] *:shrink-0 overflow-x-auto overscroll-x-contain scroll-fade-x p-2 pt-2.5 pe-2.5 -m-2 -mt-2.5 -me-2.5"
+					>
+						{agent !== undefined && <AgentTile {...agent} />}
+						{tileChips.map((chip) =>
 						{
-							return (
-								<ImageChip
-									key={chip.id}
-									sessionId={sessionId}
-									chip={chip}
-									restored={restored.has(chip.id)}
-									onOpen={openPreview}
-								/>
-							);
-						}
-						if (chip.kind === "file" && chip.name !== undefined)
-						{
-							return (
-								<FileChip
-									key={chip.id}
-									sessionId={sessionId}
-									chip={chip}
-									restored={restored.has(chip.id)}
-									onOpen={openFilePreview}
-								/>
-							);
-						}
-						if (isReplyChip(chip))
-						{
-							return (
-								<ReplyChip
-									key={chip.id}
-									sessionId={sessionId}
-									chip={chip}
-									restored={restored.has(chip.id)}
-									onOpen={openTextPreview}
-								/>
-							);
-						}
-						if (chip.kind === "saved-draft")
-						{
-							return (
-								<SavedDraftPill
-									key={chip.id}
-									sessionId={sessionId}
-									chip={chip}
-									restored={restored.has(chip.id)}
-									readOnly={uploading}
-									onRemove={(item) =>
-									{
-										const target = item === null ? null : siblingFocusTarget(item);
-										removeChip(sessionId, chip);
-										if (target === null) focusComposer(sessionId);
-										else
-											target.focus(
-												{
-													preventScroll: true,
-												},
-											);
-									}}
-								/>
-							);
-						}
-						if (chip.kind === "excerpt")
-						{
-							return (
-								<ExcerptChip
-									key={chip.id}
-									sessionId={sessionId}
-									chip={chip}
-									restored={restored.has(chip.id)}
-									onOpen={openTextPreview}
-								/>
-							);
-						}
-						const label = contextChipLabel(chip);
-						const Icon = CONTEXT_CHIP_ICON[chip.kind];
-						const content = (
-							<>
-								<Icon aria-hidden="true" className="size-3 shrink-0" />
-								<span className="min-w-0 truncate text-primary">{label}</span>
-							</>
-						);
-						const body = (
-							<>
-								{textPreviewOf(chip) === null ? (
-									content
-								) : (
-									<PillLink
+							if (chip.kind === "image" && chip.previewUrl !== undefined)
+							{
+								return (
+									<ImageChip
+										key={chip.id}
 										sessionId={sessionId}
-										onOpen={(opener) =>
+										chip={chip}
+										restored={restored.has(chip.id)}
+										onOpen={openPreview}
+									/>
+								);
+							}
+							if (chip.kind === "file" && chip.name !== undefined)
+							{
+								return (
+									<FileChip
+										key={chip.id}
+										sessionId={sessionId}
+										chip={chip}
+										restored={restored.has(chip.id)}
+										onOpen={openFilePreview}
+									/>
+								);
+							}
+							if (chip.kind === "saved-draft")
+							{
+								return (
+									<SavedDraftPill
+										key={chip.id}
+										sessionId={sessionId}
+										chip={chip}
+										restored={restored.has(chip.id)}
+										readOnly={uploading}
+										onRemove={(item) =>
 										{
-											openTextPreview(chip, opener);
+											const target = item === null ? null : siblingFocusTarget(item);
+											removeChip(sessionId, chip);
+											if (target === null) focusComposer(sessionId);
+											else
+												target.focus(
+													{
+														preventScroll: true,
+													},
+												);
 										}}
-										onRemove={() =>
+									/>
+								);
+							}
+							if (chip.kind === "excerpt")
+							{
+								return (
+									<ExcerptChip
+										key={chip.id}
+										sessionId={sessionId}
+										chip={chip}
+										restored={restored.has(chip.id)}
+										onOpen={openTextPreview}
+									/>
+								);
+							}
+							const label = contextChipLabel(chip);
+							const Icon = CONTEXT_CHIP_ICON[chip.kind];
+							const content = (
+								<>
+									<Icon aria-hidden="true" className="size-3 shrink-0" />
+									<span className="min-w-0 truncate text-primary">{label}</span>
+								</>
+							);
+							const body = (
+								<>
+									{textPreviewOf(chip) === null ? (
+										content
+									) : (
+										<PillLink
+											sessionId={sessionId}
+											onOpen={(opener) =>
+											{
+												openTextPreview(chip, opener);
+											}}
+											onRemove={() =>
+											{
+												removeChip(sessionId, chip);
+											}}
+										>
+											{content}
+										</PillLink>
+									)}
+									<button
+										type="button"
+										aria-label={`Remove ${label}`}
+										{...removeButtonProps(sessionId, () =>
 										{
 											removeChip(sessionId, chip);
-										}}
+										})}
+										className={CHIP_REMOVE_CLASS}
 									>
-										{content}
-									</PillLink>
-								)}
-								<button
-									type="button"
-									aria-label={`Remove ${label}`}
-									{...removeButtonProps(sessionId, () =>
-									{
-										removeChip(sessionId, chip);
-									})}
-									className={CHIP_REMOVE_CLASS}
-								>
-									<X aria-hidden="true" className="size-3" />
-								</button>
-							</>
-						);
-						const chipProps =
-						{
-							"data-chip-label": label,
-							title: formatContextAttachment(chip),
-							className: `self-end ${CHIP_CLASS}`,
-						};
-						// Upstream `Kt surface="composer"` with attach off: only a path chip has a file to act on.
-						const filePath =
-							chip.kind === "file" && chip.path !== undefined
-								? absoluteMentionPath(chip.path, cwd)
-								: null;
-						if (cwd === undefined || filePath === null)
-						{
-							return (
-								<li key={chip.id} {...chipProps}>
-									{body}
-								</li>
+										<X aria-hidden="true" className="size-3" />
+									</button>
+								</>
 							);
-						}
-						return (
-							<ContextMenu key={chip.id}>
-								<ContextMenuTrigger render={<li />} {...chipProps}>
-									{body}
-								</ContextMenuTrigger>
-								<MenuContent>
-									<FileActionsMenuItems
-										path={filePath}
-										cwd={cwd}
-										isDirectory={chip.path?.endsWith("/") === true}
-										surface="composer"
-										attach={false}
-									/>
-								</MenuContent>
-							</ContextMenu>
-						);
-					})}
-					{comments.map((comment) => (
-						<CommentChip key={comment.id} sessionId={sessionId} comment={comment} />
-					))}
-				</ul>
+							const chipProps =
+							{
+								"data-chip-label": label,
+								title: formatContextAttachment(chip),
+								className: `self-end ${CHIP_CLASS}`,
+							};
+							// Upstream `Kt surface="composer"` with attach off: only a path chip has a file to act on.
+							const filePath =
+								chip.kind === "file" && chip.path !== undefined
+									? absoluteMentionPath(chip.path, cwd)
+									: null;
+							if (cwd === undefined || filePath === null)
+							{
+								return (
+									<li key={chip.id} {...chipProps}>
+										{body}
+									</li>
+								);
+							}
+							return (
+								<ContextMenu key={chip.id}>
+									<ContextMenuTrigger render={<li />} {...chipProps}>
+										{body}
+									</ContextMenuTrigger>
+									<MenuContent>
+										<FileActionsMenuItems
+											path={filePath}
+											cwd={cwd}
+											isDirectory={chip.path?.endsWith("/") === true}
+											surface="composer"
+											attach={false}
+										/>
+									</MenuContent>
+								</ContextMenu>
+							);
+						})}
+						{comments.map((comment) => (
+							<CommentChip key={comment.id} sessionId={sessionId} comment={comment} />
+						))}
+					</ul>
+				) : null}
 			</div>
 			{preview !== null && previewChip?.previewUrl !== undefined ? (
 				<Suspense fallback={null}>

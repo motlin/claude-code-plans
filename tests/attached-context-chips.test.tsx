@@ -341,13 +341,13 @@ describe("AttachedContextChips cds tiles", () =>
 		);
 	});
 
-	it("renders an excerpt chip as upstream's 120px quote tile with a rail, the clamped text and an Excerpt badge", () =>
+	it("keeps a blank excerpt on upstream's 120px quote tile with a rail, the clamped text and an Excerpt badge", () =>
 	{
 		const {container} = renderChips([
 			{
 				id: "chip-e",
 				kind: "excerpt",
-				text: "Even so, they’re ful",
+				text: " \n ",
 			},
 		]);
 		const tile = container.querySelector("li[data-cds=MessageAttachmentsQuote]");
@@ -410,7 +410,7 @@ describe("AttachedContextChips cds tiles", () =>
 						"outline-none",
 					],
 				},
-				srName: "Even so, they’re ful",
+				srName: " \n ",
 				row: ["flex", "gap-xs", "min-h-0", "min-w-0"],
 				rail: ["bg-border", "rounded-full", "self-stretch", "shrink-0", "w-[3px]"],
 				quote:
@@ -427,7 +427,7 @@ describe("AttachedContextChips cds tiles", () =>
 						"text-caption",
 						"text-secondary",
 					],
-					text: "Even so, they’re ful",
+					text: "",
 				},
 				badge:
 				{
@@ -454,7 +454,7 @@ describe("AttachedContextChips cds tiles", () =>
 				},
 				remove:
 				{
-					label: "Remove Even so, they’re ful",
+					label: "Remove  \n ",
 					classes: [
 						"-end-2",
 						"-top-2",
@@ -486,7 +486,7 @@ describe("AttachedContextChips cds tiles", () =>
 		);
 	});
 
-	it("removes an excerpt tile from its corner button", () =>
+	it("removes an excerpt row from its remove button", () =>
 	{
 		const stop = registerComposer(
 			SESSION,
@@ -515,11 +515,11 @@ describe("AttachedContextChips cds tiles", () =>
 			screen.getByRole(
 				"button",
 				{
-					name: "Remove Hermit crabs",
+					name: "Remove Excerpt, Hermit crabs",
 				},
 			),
 		);
-		const left = container.querySelector("li[data-cds=MessageAttachmentsQuote]");
+		const left = container.querySelector("[data-cds=MessageAttachmentsQuote]");
 		cleanup();
 		takeContextChips(SESSION);
 		stop();
@@ -1058,7 +1058,7 @@ describe("AttachedContextChips text preview", () =>
 		);
 	});
 
-	it("opens an excerpt tile as an Excerpt", async () =>
+	it("opens an excerpt row as an Excerpt", async () =>
 	{
 		const {container} = renderChips([
 			{
@@ -1067,7 +1067,7 @@ describe("AttachedContextChips text preview", () =>
 				text: "Hermit crabs",
 			},
 		]);
-		const link = container.querySelector<HTMLElement>("li[data-cds=MessageAttachmentsQuote] [data-cds=CardLink]");
+		const link = container.querySelector<HTMLElement>("[data-cds=MessageAttachmentsQuote] [data-cds=CardLink]");
 		if (link === null) throw new Error("no excerpt CardLink");
 		fireEvent.click(link);
 		expect(await openedPreview()).toStrictEqual(
@@ -2219,92 +2219,243 @@ describe("AttachedContextChips queued comment tiles", () =>
 	});
 });
 
-describe("AttachedContextChips staged reply tiles", () =>
+describe("AttachedContextChips quote rows", () =>
 {
 	const REPLY: ContextChip =
 	{
-		id: "chip-r",
+		id: "r1",
 		kind: "excerpt",
-		text: "q1",
-		comment: "c1",
+		text: "The build step runs vitest first and then the typecheck.",
+		comment: "Swap these so the typecheck fails fast",
 	};
 	const PLAIN: ContextChip =
 	{
-		id: "chip-p",
+		id: "e1",
 		kind: "excerpt",
-		text: "plain",
+		text: "Plain excerpt without a comment",
 	};
+	const REPLY_NAME =
+		"Your reply to “The build step runs vitest first and th…”: Swap these so the typecheck fails fast";
 
-	function texts(container: HTMLElement, selector: string): (string | null)[]
+	function rows(container: HTMLElement): HTMLElement[]
 	{
-		return Array.from(container.querySelectorAll(selector), (element) => element.textContent);
+		return Array.from(
+			container.querySelectorAll<HTMLElement>("[data-cds=ChatComposerQuotes] > [data-variant=row]"),
+		);
 	}
 
-	it("renders a reply chip as upstream's Reply Quote tile beside a plain Excerpt, in staging order", () =>
+	function describedBy(element: Element | null | undefined): (string | null)[]
 	{
-		const {container} = renderChips([REPLY, PLAIN]);
-		const tiles = Array.from(container.querySelectorAll("[data-cds=MessageAttachmentsQuote]"));
+		return (element?.getAttribute("aria-describedby") ?? "")
+			.split(" ")
+			.filter(Boolean)
+			.map((id) => document.getElementById(id)?.tagName ?? null);
+	}
+
+	function rowShape(row: HTMLElement)
+	{
+		const link = row.querySelector("[data-cds=CardLink]");
+		const badge = row.querySelector("[data-cds=Badge]");
+		return {
+			name: link?.querySelector(".sr-only")?.textContent,
+			quote: row.querySelector("blockquote span[dir=auto]")?.textContent,
+			badge: badge?.getAttribute("aria-label") ?? null,
+			hint: document.getElementById(badge?.getAttribute("aria-describedby") ?? "")?.textContent ?? null,
+			describedBy: describedBy(link),
+			remove: row.querySelector("button[data-cds-attachment-remove]")?.getAttribute("aria-label"),
+		};
+	}
+
+	it("stages replies and plain excerpts as upstream's ChatComposerQuotes rows above the tile row, in staging order", () =>
+	{
+		const {container} = render(
+			<AttachedContextChips
+				sessionId={SESSION}
+				context={[REPLY, IMAGE, PLAIN]}
+				comments={[]}
+				restoredIds={new Set(["r1"])}
+			/>,
+		);
+		const column = container.querySelector("[data-cds=ChatComposerQuotes]");
+		const [reply, plain] = rows(container);
+		if (reply === undefined || plain === undefined) throw new Error("no quote rows");
+		const card = reply.querySelector("[data-cds=Card]");
+		const media = reply.querySelector("[data-cds=CardMedia]");
+		const quote = reply.querySelector("blockquote");
 		expect(
 			{
-				names: texts(container, "[data-cds=CardLink] > .sr-only"),
-				quotes: texts(container, "blockquote"),
-				badges: tiles.map((tile) =>
+				column: classes(column),
+				nextIsTiles: column?.nextElementSibling?.matches("ul[data-cds-composer-attachments-row]"),
+				tiles: Array.from(container.querySelectorAll("ul[data-cds-composer-attachments-row] > li"), (tile) =>
+					tile.getAttribute("data-chip-label"),
+				),
+				rows: [reply, plain].map(rowShape),
+				root:
 				{
-					const badge = tile.querySelector("[data-cds=Badge]");
-					const hint = document.getElementById(badge?.getAttribute("aria-describedby") ?? "");
-					return {
-						role: badge?.getAttribute("role") ?? null,
-						label: badge?.getAttribute("aria-label") ?? null,
-						text: badge?.textContent,
-						hint: hint?.textContent ?? null,
-						hidden: hint?.hidden ?? null,
-					};
-				}),
-				describedBy: tiles.map((tile) =>
-					(tile.querySelector("[data-cds=CardLink]")?.getAttribute("aria-describedby") ?? "")
-						.split(" ")
-						.filter(Boolean)
-						.map((id) => document.getElementById(id)?.tagName ?? null),
-				),
-				removes: tiles.map((tile) =>
-					tile.querySelector("button[data-cds-attachment-remove]")?.getAttribute("aria-label"),
-				),
+					tabIndex: reply.getAttribute("tabindex"),
+					kind: reply.getAttribute("data-cds"),
+					attachment: reply.getAttribute("data-cds-attachment"),
+					restored: [reply, plain].map((row) => row.getAttribute("data-cds-attachment-restored")),
+					classes: classes(reply),
+				},
+				card: classes(card),
+				fill: classes(card?.querySelector(".cds-card-fill") ?? null),
+				media: classes(media),
+				slot:
+				{
+					size: media?.firstElementChild?.getAttribute("data-size"),
+					classes: classes(media?.firstElementChild ?? null),
+				},
+				link: classes(reply.querySelector("[data-cds=CardLink]")),
+				quote:
+				{
+					classes: classes(quote),
+					parts: Array.from(quote?.children ?? [], (part) => classes(part)),
+				},
+				remove: classes(reply.querySelector("button[data-cds-attachment-remove]")),
 			},
 		).toStrictEqual(
 			{
-				names: ["Your reply to “q1”: c1", "plain"],
-				quotes: ["c1", "plain"],
-				badges: [
+				column: ["-mt-1", "-mx-1", "flex", "flex-col", "gap-xs", "mb-2", "min-w-0"],
+				nextIsTiles: true,
+				tiles: ["shot.png"],
+				rows: [
 					{
-						role: "img",
-						label: "Reply",
-						text: "Reply",
-						hint: "Your reply to “q1”: c1",
-						hidden: true,
+						name: REPLY_NAME,
+						quote: "The build step runs vitest first and then the typecheck.",
+						badge: "With reply",
+						hint: "Swap these so the typecheck fails fast",
+						describedBy: ["BLOCKQUOTE", "SPAN", "SPAN"],
+						remove: `Remove ${REPLY_NAME}`,
 					},
 					{
-						role: null,
-						label: null,
-						text: "Excerpt",
+						name: "Excerpt, Plain excerpt without a comment",
+						quote: "Plain excerpt without a comment",
+						badge: null,
 						hint: null,
-						hidden: null,
+						describedBy: ["BLOCKQUOTE"],
+						remove: "Remove Excerpt, Plain excerpt without a comment",
 					},
 				],
-				describedBy: [["BLOCKQUOTE", "SPAN", "SPAN"], []],
-				removes: ["Remove Your reply to “q1”: c1", "Remove plain"],
+				root:
+				{
+					tabIndex: "-1",
+					kind: "MessageAttachmentsQuote",
+					attachment: "",
+					restored: ["", null],
+					classes: ["flex", "group/tile", "min-w-0", "outline-none", "w-full"],
+				},
+				card: [
+					"after:absolute",
+					"after:content-['']",
+					"after:inset-0",
+					"after:pointer-events-none",
+					"after:rounded-[inherit]",
+					"after:shadow-none",
+					"flex",
+					"flex-1",
+					"flex-col",
+					"group-focus-visible/tile:after:outline-hidden",
+					"group-focus-visible/tile:after:shadow-focus",
+					"group/card",
+					"has-[[data-cds=CardLink]:focus-visible]:after:shadow-focus",
+					"isolate",
+					"min-w-0",
+					"relative",
+					"rounded-[calc(var(--radius-composer)-4px)]",
+				],
+				fill: [
+					"-z-[1]",
+					"absolute",
+					"bg-fill-ghost-hover",
+					"cds-card-fill",
+					"group-hover/card:bg-neutral-hover",
+					"inset-0",
+					"m-0",
+					"pointer-events-none",
+					"rounded-[inherit]",
+				],
+				media: ["flex", "gap-xs", "items-center", "p-xs", "ps-sm"],
+				slot:
+				{
+					size: "xs",
+					classes: ["flex", "h-control", "items-center", "shrink-0", "text-ink-muted"],
+				},
+				link: [
+					"after:absolute",
+					"after:content-['']",
+					"after:inset-0",
+					"after:rounded-[calc(var(--radius-composer)-4px)]",
+					"cursor-pointer",
+					"outline-none",
+				],
+				quote:
+				{
+					classes: ["flex", "flex-1", "font-normal", "min-w-0", "text-body", "text-secondary"],
+					parts: [
+						["[quotes:auto]", "before:content-[open-quote]", "shrink-0"],
+						["min-w-0", "truncate"],
+						["[quotes:auto]", "before:content-[close-quote]", "shrink-0"],
+					],
+				},
+				remove: [
+					"aspect-square",
+					"cursor-pointer",
+					"focus-visible:shadow-focus",
+					"focus-visible:text-primary",
+					"h-control",
+					"hover:bg-fill-ghost-hover",
+					"hover:text-primary",
+					"inline-flex",
+					"items-center",
+					"justify-center",
+					"outline-none",
+					"px-0",
+					"rounded-[var(--cds-radius--xs)]",
+					"shrink-0",
+					"text-ink-muted",
+					"w-control",
+				],
 			},
 		);
 	});
 
-	it("caps a long comment's quote at 240 graphemes", () =>
+	it("renders a reply with a blank comment as a plain Excerpt row", () =>
 	{
 		const {container} = renderChips([
 			{
 				...REPLY,
-				comment: "x".repeat(330),
+				comment: "   ",
 			},
 		]);
-		expect(Array.from(container.querySelector("blockquote")?.textContent ?? "").length).toBe(240);
+		expect(rows(container).map(rowShape)).toStrictEqual([
+			{
+				name: "Excerpt, The build step runs vitest first and th…",
+				quote: "The build step runs vitest first and then the typecheck.",
+				badge: null,
+				hint: null,
+				describedBy: ["BLOCKQUOTE"],
+				remove: "Remove Excerpt, The build step runs vitest first and th…",
+			},
+		]);
+	});
+
+	it("leaves out the tile row, and the column's bottom margin, when only rows are staged", () =>
+	{
+		const {container} = renderChips([REPLY, PLAIN]);
+		expect(
+			{
+				tiles: container.querySelector("ul[data-cds-composer-attachments-row]"),
+				column: classes(container.querySelector("[data-cds=ChatComposerQuotes]")),
+				tray: classes(container.querySelector("[data-cds-composer-attachments]")),
+			},
+		).toStrictEqual(
+			{
+				tiles: null,
+				column: ["-mt-1", "-mx-1", "flex", "flex-col", "gap-xs", "min-w-0"],
+				tray: ["min-h-0", "min-w-0", "pb-0.5", "pt-1", "px-1"],
+			},
+		);
 	});
 
 	it("opens a read-only Reply preview of the quoted lines and the comment", async () =>
@@ -2323,19 +2474,70 @@ describe("AttachedContextChips staged reply tiles", () =>
 		).toStrictEqual(
 			{
 				title: "Reply",
-				text: "> q1\n\nc1",
+				text: "> The build step runs vitest first and then the typecheck.\n\nSwap these so the typecheck fails fast",
 				textboxes: 0,
 			},
 		);
 	});
 
-	it("shows the name in the Reply badge's tooltip on keyboard focus", () =>
+	it("gives the With reply badge upstream's hinted row badge, its hint the comment's clipped first line", () =>
 	{
-		const {container} = renderChips([REPLY]);
-		const badge = container.querySelector<HTMLElement>("[data-cds=Badge][role=img]");
-		if (badge === null) throw new Error("no Reply badge");
+		const {container} = renderChips([
+			{
+				...REPLY,
+				comment: "First line of a long comment that also runs past forty characters easily\nand a second line",
+			},
+		]);
+		const badge = container.querySelector<HTMLElement>("[data-cds=Badge]");
+		if (badge === null) throw new Error("no With reply badge");
+		const hint = document.getElementById(badge.getAttribute("aria-describedby") ?? "");
 		fireEvent.focus(badge);
-		expect(screen.getByRole("tooltip").textContent).toBe("Your reply to “q1”: c1");
+		expect(
+			{
+				role: badge.getAttribute("role"),
+				size: badge.getAttribute("data-size"),
+				tabIndex: badge.getAttribute("tabindex"),
+				classes: classes(badge),
+				anchor: classes(badge.parentElement),
+				label: classes(badge.firstElementChild),
+				hint: hint?.textContent,
+				hidden: hint?.hidden,
+				tooltip: screen.getByRole("tooltip").querySelector("span.min-w-0.break-words > bdi")?.textContent,
+			},
+		).toStrictEqual(
+			{
+				role: "img",
+				size: "xs",
+				tabIndex: "0",
+				classes: [
+					"align-middle",
+					"bg-neutral",
+					"focus-visible:shadow-focus",
+					"font-medium",
+					"font-sans",
+					"gap-1",
+					"h-control-nested",
+					"inline-flex",
+					"items-center",
+					"leading-[round(1.25em,1px)]",
+					"max-w-full",
+					"min-w-0",
+					"outline-none",
+					"pointer-coarse:pointer-events-none",
+					"pointer-events-auto",
+					"px-sm",
+					"rounded-chip",
+					"text-caption",
+					"text-secondary",
+					"whitespace-nowrap",
+				],
+				anchor: ["inline-flex", "max-w-[40%]", "min-w-0", "relative", "shrink-0"],
+				label: ["min-w-0", "overflow-x-clip", "pb-[0.05em]", "text-ellipsis", "whitespace-nowrap"],
+				hint: "First line of a long comment that also …",
+				hidden: true,
+				tooltip: "First line of a long comment that also …",
+			},
+		);
 	});
 
 	describe("with a live strip", () =>
@@ -2343,6 +2545,7 @@ describe("AttachedContextChips staged reply tiles", () =>
 		let stop: () => void = () =>
 		{
 		};
+		const focusComposer = vi.fn<() => void>();
 
 		function LiveChips()
 		{
@@ -2357,26 +2560,25 @@ describe("AttachedContextChips staged reply tiles", () =>
 					insertText: () =>
 					{
 					},
-					focus: () =>
-					{
-					},
+					focus: focusComposer,
 				},
 			);
 			attachContext(
 				SESSION,
 				{
 					kind: "excerpt",
-					text: "q1",
-					comment: "c1",
+					text: REPLY.text,
+					comment: REPLY.comment,
 				},
 			);
 			attachContext(
 				SESSION,
 				{
 					kind: "excerpt",
-					text: "plain",
+					text: PLAIN.text,
 				},
 			);
+			focusComposer.mockClear();
 		});
 
 		afterEach(() =>
@@ -2386,31 +2588,57 @@ describe("AttachedContextChips staged reply tiles", () =>
 			stop();
 		});
 
-		it("removes a focused reply tile on Delete and focuses the next tile's CardLink", () =>
+		function pressDelete(link: HTMLElement | undefined, key = "Backspace"): void
+		{
+			act(() =>
+			{
+				fireEvent.keyDown(
+					link ?? document.body,
+					{
+						key,
+					},
+				);
+				fireEvent.keyUp(
+					window,
+					{
+						key,
+					},
+				);
+			});
+		}
+
+		it("removes a focused row on Backspace, focusing the next row's CardLink, then the composer after the last", () =>
 		{
 			const {container} = render(<LiveChips />);
 			const links = () => Array.from(container.querySelectorAll<HTMLElement>("[data-cds=CardLink]"));
 			links()[0]?.focus();
-			act(() =>
+			pressDelete(links()[0]);
+			const afterFirst =
 			{
-				fireEvent.keyDown(
-					links()[0] ?? document.body,
-					{
-						key: "Delete",
-					},
-				);
-			});
+				chips: getContextChips(SESSION).map(({text}) => text),
+				focused: document.activeElement === links()[0],
+				names: Array.from(
+					container.querySelectorAll("[data-cds=CardLink] > .sr-only"),
+					(name) => name.textContent,
+				),
+			};
+			pressDelete(links()[0]);
 			expect(
 				{
-					chips: getContextChips(SESSION).map(({text}) => text),
-					focused: document.activeElement === links()[0],
-					names: texts(container, "[data-cds=CardLink] > .sr-only"),
+					afterFirst,
+					chips: getContextChips(SESSION).length,
+					composerFocused: focusComposer.mock.calls.length,
 				},
 			).toStrictEqual(
 				{
-					chips: ["plain"],
-					focused: true,
-					names: ["plain"],
+					afterFirst:
+					{
+						chips: [PLAIN.text],
+						focused: true,
+						names: ["Excerpt, Plain excerpt without a comment"],
+					},
+					chips: 0,
+					composerFocused: 1,
 				},
 			);
 		});

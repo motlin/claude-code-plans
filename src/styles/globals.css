@@ -282,6 +282,8 @@ html[data-interface-font="dyslexic"]
 	--color-backdrop: var(--upstream-backdrop);
 	--color-fill-control: var(--upstream-fill-control);
 	--color-fill-ghost-hover: var(--upstream-fill-ghost-hover);
+	--color-neutral: var(--upstream-bg-neutral);
+	--color-neutral-hover: var(--upstream-bg-neutral-hover);
 	/* Upstream --cds-fill-card: the Background tasks pane's row pieces. */
 	--color-fill-card: var(--upstream-fill-card);
 	/* Upstream --cds-fill-button-ghost-hover: a cds ghost Button's hover paint (the `stacks:` variant). */
@@ -614,6 +616,9 @@ html[data-interface-font="dyslexic"]
 		0 0 0 1px rgb(11 11 11 / 0.1), 0 4px 8px 0 rgb(11 11 11 / 0.08), 0 12px 28px -2px rgb(11 11 11 / 0.08);
 	--upstream-fill-control: hsl(0 0% 4% / 0.1);
 	--upstream-fill-ghost-hover: hsl(0 0% 4% / 0.05);
+	/* Upstream .cds-root --cds-bg-neutral / --cds-bg-neutral-hover: alpha-1 / alpha-2 (a row Badge, a row Card's hover). */
+	--upstream-bg-neutral: var(--upstream-alpha-1);
+	--upstream-bg-neutral-hover: var(--upstream-alpha-2);
 	/* Pre-rollout a cds ghost Button hovers like every other ghost. */
 	--upstream-fill-button-ghost-hover: var(--upstream-fill-ghost-hover);
 	/* Upstream leaves --cds-fill-button-layer unset before the fizzy colour rollout. */
@@ -1223,6 +1228,7 @@ html[data-interface-font="dyslexic"]
 	--upstream-accent-layer: #257de00f;
 	/* Upstream `--cds-fill-ghost-hover`: every ghost hover (pre-rollout 4% ink). */
 	--upstream-fill-ghost-hover: #0000000d;
+	--upstream-bg-neutral-hover: #00000013;
 	/* Upstream `--cds-fill-button-ghost-hover`: the cds ghost Button's `stacks:` hover paint. */
 	--upstream-fill-button-ghost-hover: #0000001a;
 	/* Upstream `--cds-fill-button-layer`: the `layers-*-fill-button-layer` gradient over a button paint. */
@@ -1384,6 +1390,7 @@ html[data-interface-font="dyslexic"]
 	--upstream-bg-tint-green: #10a1221f;
 	--upstream-text-tint-green: #53c556;
 	--upstream-fill-ghost-hover: #ffffff13;
+	--upstream-bg-neutral-hover: #ffffff13;
 	--upstream-fill-button-ghost-hover: #ffffff13;
 	--upstream-fill-button-layer: #ffffff13;
 	--upstream-plain-secondary: #ffffff91;
@@ -3313,6 +3320,12 @@ main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-reg
 	height: var(--cds-h-control);
 }
 
+/* Upstream's h-control-nested: a control nested in another (a row's xs Badge). */
+@utility h-control-nested
+{
+	height: var(--cds-h-control-nested);
+}
+
 /* Upstream's w-control: a square control's width, the density control height. */
 @utility w-control
 {
@@ -4820,6 +4833,14 @@ html[data-reduce-motion="true"] [data-cds="ShimmerText"][data-shimmer-mode="fall
 [data-view-tab-bar] [data-size="xs"]
 {
 	--cds-h-control: var(--cds-h-control--xs);
+}
+
+/* The composer Quote row's xs icon slot and remove button (24px comfortable), and its xs Badge's nested
+   height, measured 18px at comfortable density (dumps/composer-comment-pill-with-reply-badge-live-dom.txt). */
+[data-cds="MessageAttachmentsQuote"][data-variant="row"] [data-size="xs"]
+{
+	--cds-h-control: var(--cds-h-control--xs);
+	--cds-h-control-nested: calc(1.125rem * var(--cds-rem-scale, 1));
 }
 
 [data-size="sm"]
