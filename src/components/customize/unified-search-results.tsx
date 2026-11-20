@@ -1,5 +1,6 @@
-import {ChevronDown, ChevronUp, Plug, Puzzle, Scroll, SquareSlash, TriangleAlert, type LucideIcon} from "lucide-react";
+import {ChevronDown, ChevronUp, Plug, Puzzle, Scroll, SquareSlash, type LucideIcon} from "lucide-react";
 import {useRef, useState} from "react";
+import {CUSTOMIZE_SECONDARY_BUTTON_CLASS, CustomizeWarningNotice} from "./customize-empty";
 import {CustomizeListRowsSkeleton} from "./customize-panel-skeleton";
 import {ListRow} from "./list-row";
 import {PluginRowActions} from "./plugin-row-actions";
@@ -51,10 +52,6 @@ const GHOST_SM_CLASS =
 const GHOST_RETRY_CLASS =
 	"inline-flex h-8 shrink-0 items-center rounded-r6 px-3 text-body font-medium transition-colors hover:bg-fill-ghost-hover disabled:opacity-50 hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
 
-/** Upstream cds secondary Button, size base. */
-const SECONDARY_CLASS =
-	"inline-flex h-8 shrink-0 items-center px-3 rounded-r6 bg-fill-secondary shadow-field-drop text-body font-medium text-primary transition-colors hover:bg-fill-secondary-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
-
 /** Upstream's addable row trailer: "Add" (locally it copies the install command), then a kebab-sized spacer. */
 function AddAction({pluginId, name}: {pluginId: string; name: string})
 {
@@ -67,7 +64,7 @@ function AddAction({pluginId, name}: {pluginId: string; name: string})
 						type="button"
 						aria-label={`Add ${name}`}
 						onClick={() => void copyInstall(pluginId)}
-						className={SECONDARY_CLASS}
+						className={CUSTOMIZE_SECONDARY_BUTTON_CLASS}
 					>
 						Add
 					</button>
@@ -293,13 +290,9 @@ export function UnifiedSearchResults({
 			>
 				{catalogError && (
 					<div className={`pb-2 ${REVEAL}`}>
-						<div
-							role="alert"
-							className="flex items-start gap-2 rounded-card bg-[var(--upstream-bg-warning)] px-3 py-3 text-body text-upstream-warning shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--upstream-warning)_30%,transparent)]"
-						>
-							<TriangleAlert aria-hidden="true" className="size-5 shrink-0" />
-							<div className="flex min-w-0 flex-1 flex-wrap items-start gap-x-3 gap-y-2">
-								<div className="max-w-full min-w-0 flex-auto">Couldn{"’"}t finish searching.</div>
+						<CustomizeWarningNotice
+							message={<>Couldn{"’"}t finish searching.</>}
+							action={
 								<button
 									type="button"
 									aria-busy={retrying || undefined}
@@ -309,8 +302,8 @@ export function UnifiedSearchResults({
 								>
 									Retry
 								</button>
-							</div>
-						</div>
+							}
+						/>
 					</div>
 				)}
 				{search.yours.length > 0 && (

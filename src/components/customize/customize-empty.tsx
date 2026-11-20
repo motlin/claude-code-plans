@@ -1,3 +1,27 @@
+import type {ReactNode} from "react";
+import {Icon} from "../ui/icon";
+
+/** Upstream cds secondary Button, size base. */
+export const CUSTOMIZE_SECONDARY_BUTTON_CLASS =
+	"inline-flex h-8 shrink-0 items-center px-3 rounded-r6 bg-fill-secondary shadow-field-drop text-body font-medium text-primary transition-colors hover:bg-fill-secondary-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
+
+/** Upstream cds Notice `variant:"warning"`: glyph, message, then its action button. */
+export function CustomizeWarningNotice({message, action}: {message: ReactNode; action: ReactNode})
+{
+	return (
+		<div
+			role="alert"
+			className="flex items-start gap-2 rounded-card bg-[var(--upstream-bg-warning)] px-3 py-3 text-body text-upstream-warning shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--upstream-warning)_30%,transparent)]"
+		>
+			<Icon name="Warning" customSize={20} />
+			<div className="flex min-w-0 flex-1 flex-wrap items-start gap-x-3 gap-y-2">
+				<div className="max-w-full min-w-0 flex-auto">{message}</div>
+				{action}
+			</div>
+		</div>
+	);
+}
+
 /** Neutral card for a list with nothing in it yet, or a view that is not built yet. */
 export function CustomizeNotice({title, body}: {title: string; body: string})
 {

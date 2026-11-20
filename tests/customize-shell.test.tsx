@@ -3998,9 +3998,69 @@ describe("customize first-run card in the dialog", () =>
 		expect(hashes).toStrictEqual(["customize/skills/yours", "customize/skills"]);
 	});
 
-	it("shows the plugins first-run card when there are no plugins", async () =>
+	it("shows a Try again notice when the plugins read fails, then the first-run card once a retry finds no plugins", async () =>
 	{
-		const hashes = await renderDialogPanel("customize/plugins/yours");
+		const fetchPlugins = vi.fn<typeof fetch>(async () => Promise.resolve(Response.json([])));
+		fetchPlugins.mockResolvedValueOnce(
+			Response.json(
+				{
+					error: "boom",
+				},
+				{
+					status: 500,
+				},
+			),
+		);
+		vi.stubGlobal("fetch", fetchPlugins);
+		const hashes = await renderDialogPanel(
+			"customize/plugins/yours",
+			{
+				seed: (queryClient) =>
+				{
+					queryClient.removeQueries(
+						{
+							queryKey: pluginsQueryOptions.queryKey,
+						},
+					);
+				},
+			},
+		);
+		await flush();
+		const notice = screen.getByRole("alert");
+		const failed =
+		{
+			text: notice.textContent,
+			button: within(notice).getByRole("button").textContent,
+			skeleton: screen.queryByTestId("customize-section-skeleton"),
+		};
+		fireEvent.click(
+			within(notice).getByRole(
+				"button",
+				{
+					name: "Try again",
+				},
+			),
+		);
+		await flush();
+		expect(
+			{
+				failed,
+				pluginReads: fetchPlugins.mock.calls.map(([url]) => String(url)).filter((url) => url === "/api/plugins")
+					.length,
+				alert: screen.queryByRole("alert"),
+			},
+		).toStrictEqual(
+			{
+				failed:
+				{
+					text: "Couldn\u2019t load your plugins.Try again",
+					button: "Try again",
+					skeleton: null,
+				},
+				pluginReads: 2,
+				alert: null,
+			},
+		);
 		const card = screen.getByTestId("tabbed-list-first-run");
 
 		expect(

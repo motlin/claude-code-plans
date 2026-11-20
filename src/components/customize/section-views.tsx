@@ -13,7 +13,13 @@ import {toConnectorSlug} from "../../lib/customize/mcp-tool-permissions";
 import {PluginVersion} from "../plugin-version";
 import {ConnectorsTable, ScopeBadge} from "./connectors-table";
 import {CustomizeDiscover} from "./customize-discover";
-import {CustomizeFirstRunCard, CustomizeNotice} from "./customize-empty";
+import
+{
+	CUSTOMIZE_SECONDARY_BUTTON_CLASS,
+	CustomizeFirstRunCard,
+	CustomizeNotice,
+	CustomizeWarningNotice,
+} from "./customize-empty";
 import {CustomizeList, ShortDate} from "./customize-list";
 import {CustomizeSectionSkeleton} from "./customize-panel-skeleton";
 import {useCustomizeGo} from "./customize-navigation";
@@ -189,16 +195,34 @@ const PLUGINS_SECTION = CUSTOMIZE_SECTIONS[2];
 export function PluginsSection({search}: SectionProps)
 {
 	const go = useCustomizeGo();
-	const {data: plugins, isPending} = useQuery(pluginsQueryOptions);
+	const {data: plugins, isError, isFetching, refetch} = useQuery(pluginsQueryOptions);
 	const {data: toggles} = useQuery(customizeSettingsTogglesQueryOptions);
 
 	if (search.view === "discover")
 	{
 		return <CustomizeDiscover section="plugins" category={search.category} order={search.order} />;
 	}
-	if (isPending || plugins === undefined)
+	if (plugins === undefined)
 	{
-		return <CustomizeSectionSkeleton />;
+		// Upstream's directory notice for a failed added-plugins read (`missing:"added_plugins"`).
+		return isError ? (
+			<CustomizeWarningNotice
+				message={<>Couldn{"’"}t load your plugins.</>}
+				action={
+					<button
+						type="button"
+						aria-busy={isFetching || undefined}
+						disabled={isFetching}
+						onClick={() => void refetch()}
+						className={CUSTOMIZE_SECONDARY_BUTTON_CLASS}
+					>
+						Try again
+					</button>
+				}
+			/>
+		) : (
+			<CustomizeSectionSkeleton />
+		);
 	}
 
 	const show = resolveOption(PLUGINS_SECTION.filter.options, search.filter).value;
