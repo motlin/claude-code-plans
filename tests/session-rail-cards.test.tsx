@@ -440,6 +440,18 @@ function rows(section: string): Array<[string, string | null]>
 	});
 }
 
+/** Each `data-rail-glyph` in a card, in DOM order: upstream's glyph name per row. */
+function glyphs(section: string): Array<string | null>
+{
+	const card = screen.getByRole(
+		"region",
+		{
+			name: new RegExp(`^${section}`),
+		},
+	);
+	return [...card.querySelectorAll("[data-rail-glyph]")].map((glyph) => glyph.getAttribute("data-rail-glyph"));
+}
+
 /** A hint's visible text: a diff stat's aria-hidden digits, else the hint itself. */
 function hintText(hint: Element | null): string | null
 {
@@ -547,6 +559,7 @@ describe("Environment card", () =>
 		expect(
 			{
 				rows: rows("Environment"),
+				glyphs: glyphs("Environment"),
 				remoteControl: remoteControl(),
 			},
 		).toStrictEqual(
@@ -557,6 +570,7 @@ describe("Environment card", () =>
 					["Opus 4.7", null],
 					["herdr", "No pane"],
 				],
+				glyphs: ["Folder", "GitBranch", "Cpu", "CommandLine"],
 				remoteControl: null,
 			},
 		);
@@ -711,12 +725,22 @@ describe("Environment card", () =>
 			bridge,
 		);
 
-		expect(rows("Environment")).toStrictEqual([
-			["~/projects/avalonlogs", "Local"],
-			["alice/sync-upstream", null],
-			["Remote Control", null],
-			["herdr", "No pane"],
-		]);
+		expect(
+			{
+				rows: rows("Environment"),
+				glyphs: glyphs("Environment"),
+			},
+		).toStrictEqual(
+			{
+				rows: [
+					["~/projects/avalonlogs", "Local"],
+					["alice/sync-upstream", null],
+					["Remote Control", null],
+					["herdr", "No pane"],
+				],
+				glyphs: ["Folder", "GitBranch", "Cursor", "CommandLine"],
+			},
+		);
 	});
 
 	it("opens the Remote Control options menu at the trigger on right-click", async () =>
@@ -952,6 +976,7 @@ describe("Environment card", () =>
 			seen[name] =
 			{
 				rows: rows("Environment"),
+				glyphs: glyphs("Environment"),
 				status: [...card.querySelectorAll("[data-stream-status]")].map((el) => [
 					el.textContent,
 					el.getAttribute("data-stream-status"),
@@ -975,12 +1000,14 @@ describe("Environment card", () =>
 						["herdr", "Reconnecting"],
 						["herdr", "working"],
 					],
+					glyphs: ["Computer", "CommandLine"],
 					status: [["Reconnecting", "reconnecting", true]],
 					menuButtons: 0,
 				},
 				connected:
 				{
 					rows: [["herdr", "working"]],
+					glyphs: ["CommandLine"],
 					status: [],
 					menuButtons: 0,
 				},
@@ -1943,6 +1970,14 @@ describe("cards from local data", () =>
 				changes: rows("Changes"),
 				servers: rows("Servers"),
 				backgroundTasks: rows("Background tasks"),
+				glyphs:
+				{
+					connectors: glyphs("Connectors"),
+					outputs: glyphs("Outputs"),
+					changes: glyphs("Changes"),
+					servers: glyphs("Servers"),
+					backgroundTasks: glyphs("Background tasks"),
+				},
 				context: screen
 					.getByRole(
 						"progressbar",
@@ -1972,6 +2007,14 @@ describe("cards from local data", () =>
 					["Run the dev server", null],
 					["1 finished", null],
 				],
+				glyphs:
+				{
+					connectors: ["logo", "logo"],
+					outputs: ["File"],
+					changes: ["pull-request-open"],
+					servers: ["Server"],
+					backgroundTasks: ["CommandLine", "AgentsSimple"],
+				},
 				context: "19",
 				usage: null,
 			},
@@ -2185,6 +2228,7 @@ describe("cards from local data", () =>
 					],
 					row: [row.tagName, row.getAttribute("role"), row.className, row.getAttribute("title")],
 					slots: [...row.children].map((child) => [child.tagName, child.className]),
+					glyph: row.firstElementChild?.getAttribute("data-rail-glyph"),
 					uncommitted: screen.queryByText("Uncommitted changes"),
 					keyShortcuts: button.getAttribute("aria-keyshortcuts"),
 					buttonClass: button.className,
@@ -2200,6 +2244,7 @@ describe("cards from local data", () =>
 						["SPAN", "flex-1"],
 						["SPAN", "sr-only flex shrink-0 focus-within:not-sr-only has-[[data-popup-open]]:not-sr-only"],
 					],
+					glyph: "ChangesPlusMinus",
 					uncommitted: null,
 					keyShortcuts: result.current.ariaKeyShortcuts,
 					buttonClass: `${cdsButtonClass("ghost", "sm")} -mx-1.5 [--upstream-radius:var(--radius-r4)]`,
@@ -2369,7 +2414,10 @@ describe("cards from local data", () =>
 				{
 					rowCount: within(row.parentElement ?? row).queryAllByRole("link").length,
 					row: [row.tagName, row.getAttribute("role"), row.getAttribute("aria-labelledby"), row.className],
-					glyphSlot: row.firstElementChild?.className,
+					glyphSlot: [
+						row.firstElementChild?.className,
+						row.firstElementChild?.getAttribute("data-rail-glyph"),
+					],
 					glyph: [
 						row.firstElementChild?.firstElementChild?.getAttribute("role"),
 						row.firstElementChild?.firstElementChild?.getAttribute("aria-label"),
@@ -2404,7 +2452,7 @@ describe("cards from local data", () =>
 				{
 					rowCount: 1,
 					row: ["DIV", null, null, "flex min-w-0 gap-sm px-xs py-1"],
-					glyphSlot: "flex size-5 shrink-0 items-center justify-center",
+					glyphSlot: ["flex size-5 shrink-0 items-center justify-center", "pull-request-open"],
 					glyph: ["img", "Open", "inline-flex shrink-0 text-git-opened"],
 					column: "flex min-w-0 flex-1 flex-col gap-sm",
 					titleBlock: "flex min-w-0 flex-col gap-0.5",
@@ -2427,6 +2475,25 @@ describe("cards from local data", () =>
 					uncommitted: null,
 				},
 			);
+		});
+
+		it("names the stacked row's glyph by the raw PR state, merged as pull-request-merged", async () =>
+		{
+			stubReducedMotion(true);
+			const prStatus = FULL.prStatus;
+			if (prStatus === null) throw new Error("FULL has no PR status");
+			await renderChanges(
+				{
+					...FULL,
+					prStatus:
+					{
+						...prStatus,
+						state: "merged",
+					},
+				},
+			);
+
+			expect(glyphs("Changes")).toStrictEqual(["pull-request-merged"]);
 		});
 
 		it("opens the stacked row's PR menu from its trigger and from a right-click", async () =>

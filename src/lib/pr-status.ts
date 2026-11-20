@@ -273,6 +273,12 @@ const GIT_PR_STATES =
 	closed: "closed",
 } as const satisfies Record<PullRequestState, GitPrState>;
 
+/** A raw PR state's upstream git colour state. */
+export function gitPrState(state: PullRequestState): GitPrState
+{
+	return GIT_PR_STATES[state];
+}
+
 /** A PR status's number and upstream git colour state, for `PrTailGlyph`. */
 export function prGlyph(pr: PrStatus):
 {
@@ -282,6 +288,6 @@ export function prGlyph(pr: PrStatus):
 {
 	return {
 		number: pr.number,
-		state: GIT_PR_STATES[pr.state],
+		state: gitPrState(pr.state),
 	};
 }

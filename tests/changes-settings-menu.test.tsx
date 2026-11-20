@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
+import {act, cleanup, fireEvent, render, screen, waitFor} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {ChangesPaneView} from "../src/components/changes/changes-pane";
@@ -62,10 +62,14 @@ function diffOf(files: SessionDiffFile[]): SessionDiffResponse
 }
 
 let paneWidth = 800;
+let bodyWidth = 800;
+/** The diff column's observer callbacks, so a test can report a later width. */
+let bodyCallbacks: Array<() => void> = [];
 
 /**
- * Reports `paneWidth` as the pane header's content width as soon as it is
- * observed. The diff library's own observers get nothing, as with FakeObserver.
+ * Reports `paneWidth` as the pane header's content width and `bodyWidth` as the
+ * diff column's border box as soon as each is observed. The diff library's own
+ * observers get nothing, as with FakeObserver.
  */
 class WidthObserver
 {
@@ -74,6 +78,33 @@ class WidthObserver
 	}
 	observe(target: Element)
 	{
+		if (target.matches("[data-diff-pane-body]"))
+		{
+			const report = () =>
+			{
+				this.callback(
+					[
+						{
+							target,
+							contentRect:
+							{
+								width: bodyWidth,
+							},
+							borderBoxSize: [
+								{
+									inlineSize: bodyWidth,
+									blockSize: 600,
+								},
+							],
+						} as unknown as ResizeObserverEntry,
+					],
+					this,
+				);
+			};
+			bodyCallbacks.push(report);
+			report();
+			return;
+		}
 		if (target.querySelector('[aria-label="Changes settings"]') === null) return;
 		this.callback(
 			[
@@ -120,6 +151,8 @@ class FakeObserver
 beforeEach(() =>
 {
 	paneWidth = 800;
+	bodyWidth = 800;
+	bodyCallbacks = [];
 	installLocalStorage();
 	vi.stubGlobal("ResizeObserver", WidthObserver);
 	vi.stubGlobal("IntersectionObserver", FakeObserver);
@@ -176,6 +209,45 @@ function menuRows(): Array<[string | null, string, string | null]>
 	]);
 }
 
+async function settle()
+{
+	await act(async () =>
+	{
+		await new Promise((resolve) =>
+		{
+			setTimeout(resolve, 0);
+		});
+	});
+}
+
+function sideBySide(): HTMLElement
+{
+	return screen.getByRole(
+		"menuitemcheckbox",
+		{
+			name: /^Side by side/,
+		},
+	);
+}
+
+/** The row's "Needs a wider pane" hint text and class, or null when it has none. */
+function hintOf(row: HTMLElement): [string | null, string] | null
+{
+	const hint = row.querySelector("[data-menu-hint]");
+	return hint === null ? null : [hint.textContent, hint.className];
+}
+
+/** The diff library's rendered layout: "split" side by side, "single" unified. */
+async function renderedDiffType(container: HTMLElement): Promise<string | null>
+{
+	return waitFor(() =>
+	{
+		const pre = container.querySelector("diffs-container")?.shadowRoot?.querySelector("pre[data-diff]");
+		if (!pre) throw new Error("diff not rendered yet");
+		return pre.getAttribute("data-diff-type");
+	});
+}
+
 describe("Changes settings menu", () =>
 {
 	it("lists upstream's items in order with their default checked state", async () =>
@@ -198,24 +270,109 @@ describe("Changes settings menu", () =>
 		]);
 	});
 
-	it("hides Side by side when the pane is narrower than 560px", async () =>
+	it("keeps Side by side below 560px and explains why when it is on", async () =>
 	{
 		paneWidth = 559;
-		renderPane();
+		bodyWidth = 559;
+		const {container} = renderPane();
+		await openSettings();
+		const before = menuRows();
+		const hintBefore = sideBySide().querySelector("[data-menu-hint]");
+		fireEvent.click(sideBySide());
+		await settle();
+
+		expect(
+			{
+				before,
+				hintBefore,
+				stored: localStorage.getItem("ccp-diff-style"),
+				checked: sideBySide().getAttribute("aria-checked"),
+				hint: hintOf(sideBySide()),
+				diffType: await renderedDiffType(container),
+			},
+		).toStrictEqual(
+			{
+				before: [
+					["menuitemcheckbox", "Show filesCtrl+Shift+Y", "false"],
+					["menuitem", "File list positionAutomatic", null],
+					["menuitemcheckbox", "Group files by folder", "true"],
+					["menuitemcheckbox", "Separate test, build, and generated files", "false"],
+					["menuitem", "Collapse all files", null],
+					["menuitem", "Expand all files", null],
+					["menuitemcheckbox", "Side by side", "false"],
+					["menuitemcheckbox", "Word wrap", "true"],
+					["menuitemcheckbox", "Highlight changed words", "true"],
+					["menuitemcheckbox", "Hide whitespace changes", "false"],
+					["menuitem", "Refresh", null],
+				],
+				hintBefore: null,
+				stored: "split",
+				checked: "true",
+				hint: [
+					"Needs a wider pane",
+					"max-w-[160px] shrink-0 truncate py-[0.125em] -my-[0.125em] text-footnote text-ink-muted",
+				],
+				diffType: "single",
+			},
+		);
+	});
+
+	it("renders split with no hint when the diff column is at least 560px", async () =>
+	{
+		localStorage.setItem("ccp-diff-style", "split");
+		const {container} = renderPane();
+		await settle();
 		await openSettings();
 
-		expect(menuRows().map(([, label]) => label)).toStrictEqual([
-			"Show filesCtrl+Shift+Y",
-			"File list positionAutomatic",
-			"Group files by folder",
-			"Separate test, build, and generated files",
-			"Collapse all files",
-			"Expand all files",
-			"Word wrap",
-			"Highlight changed words",
-			"Hide whitespace changes",
-			"Refresh",
-		]);
+		expect(
+			{
+				hint: hintOf(sideBySide()),
+				diffType: await renderedDiffType(container),
+			},
+		).toStrictEqual(
+			{
+				hint: null,
+				diffType: "split",
+			},
+		);
+	});
+
+	it("falls back to unified when the file list leaves the diff column under 560px", async () =>
+	{
+		localStorage.setItem("ccp-diff-style", "split");
+		paneWidth = 800;
+		bodyWidth = 459;
+		const {container} = renderPane();
+		await settle();
+		await openSettings();
+
+		expect(
+			{
+				hint: hintOf(sideBySide())?.[0] ?? null,
+				diffType: await renderedDiffType(container),
+			},
+		).toStrictEqual(
+			{
+				hint: "Needs a wider pane",
+				diffType: "single",
+			},
+		);
+	});
+
+	it("holds the last split fit while the diff column measures 0px wide", async () =>
+	{
+		localStorage.setItem("ccp-diff-style", "split");
+		bodyWidth = 600;
+		renderPane();
+		await settle();
+		bodyWidth = 0;
+		act(() =>
+		{
+			for (const report of bodyCallbacks) report();
+		});
+		await openSettings();
+
+		expect(hintOf(sideBySide())).toBeNull();
 	});
 
 	it("persists every toggle across remounts", async () =>

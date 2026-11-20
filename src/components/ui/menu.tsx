@@ -503,6 +503,22 @@ export function MenuContent({
 	);
 }
 
+/** Upstream cds `Menu.Item`'s `hint` slot: a muted footnote in the trailing group, before any shortcut. */
+function ItemHint({hint}: {hint: ReactNode})
+{
+	const sizing = useMenuSizing();
+	return (
+		<span className={sizing.trailingGroup}>
+			<span
+				data-menu-hint=""
+				className="max-w-[160px] shrink-0 truncate py-[0.125em] -my-[0.125em] text-footnote text-ink-muted"
+			>
+				{hint}
+			</span>
+		</span>
+	);
+}
+
 function ItemTrailing({
 	accelerator,
 	shortcut,
@@ -786,6 +802,7 @@ export function MenuCheckboxItem({
 				</span>
 			)}
 			<span className={LABEL_CLASS}>{children}</span>
+			{hint !== undefined && <ItemHint hint={hint} />}
 			{shortcut !== undefined && <ItemTrailing shortcut={shortcut} />}
 			{showCount ? (
 				<span className="ms-3 flex shrink-0 items-center gap-1.5">

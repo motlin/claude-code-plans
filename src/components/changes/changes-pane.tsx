@@ -140,7 +140,7 @@ import {type PullRequestSummary, pullRequestSummary} from "../branch-strip-model
 import {sessionDetailQueryOptions} from "../../lib/api/sessions";
 import {isTextCut} from "../../lib/text-cut";
 
-/** Upstream offers "Side by side" only when the pane is at least this wide. */
+/** Upstream's `splitMinWidth`: the diff column renders side by side only when at least this wide. */
 const SIDE_BY_SIDE_MIN_WIDTH = 560;
 /** The file list's 160px minimum beside a 160px minimum diff body. */
 const FILE_LIST_FIT_MIN_WIDTH = 320;
@@ -461,14 +461,15 @@ function PrefCheckboxItem({
 function SettingsMenu({
 	hasFiles,
 	large,
-	sideBySideAvailable,
+	canFitSplit,
 	onCollapseAll,
 	onExpandAll,
 	onRefresh,
 }: {
 	hasFiles: boolean;
 	large: boolean;
-	sideBySideAvailable: boolean;
+	/** Whether the diff column fits a split diff; upstream hints the checked row when it doesn't. */
+	canFitSplit: boolean;
 	onCollapseAll: () => void;
 	onExpandAll: () => void;
 	onRefresh: () => void;
@@ -502,17 +503,17 @@ function SettingsMenu({
 							<MenuItem onSelect={onExpandAll}>Expand all files</MenuItem>
 						)}
 						<MenuSeparator />
-						{sideBySideAvailable && (
-							<MenuCheckboxItem
-								checked={settings.diffStyle === "split"}
-								onCheckedChange={(checked) =>
-								{
-									setSetting("diffStyle", checked ? "split" : "unified");
-								}}
-							>
-								Side by side
-							</MenuCheckboxItem>
-						)}
+						{/* Upstream `M`: offered at every width; checked but too narrow, it says why the diff stays unified. */}
+						<MenuCheckboxItem
+							checked={settings.diffStyle === "split"}
+							onCheckedChange={(checked) =>
+							{
+								setSetting("diffStyle", checked ? "split" : "unified");
+							}}
+							hint={settings.diffStyle === "split" && !canFitSplit ? "Needs a wider pane" : undefined}
+						>
+							Side by side
+						</MenuCheckboxItem>
 						<PrefCheckboxItem prefKey="diffWordWrap">Word wrap</PrefCheckboxItem>
 						<PrefCheckboxItem prefKey="diffWordDiff">Highlight changed words</PrefCheckboxItem>
 						<PrefCheckboxItem prefKey="diffHideWhitespace">Hide whitespace changes</PrefCheckboxItem>
@@ -545,6 +546,38 @@ function useElementWidth(ref: RefObject<HTMLElement | null>): number
 		};
 	}, [ref]);
 	return width;
+}
+
+/**
+ * Upstream c44d00c7f's split fit: whether the element's border box is at least `SIDE_BY_SIDE_MIN_WIDTH` wide,
+ * measured only while `enabled`. It starts true and holds its last answer while the element measures 0 wide.
+ */
+function useSplitFit(ref: RefObject<HTMLElement | null>, enabled: boolean): boolean
+{
+	const [fits, setFits] = useState(true);
+	useEffect(() =>
+	{
+		const element = ref.current;
+		if (!enabled || element === null || typeof ResizeObserver === "undefined") return undefined;
+		const observer = new ResizeObserver((entries) =>
+		{
+			const entry = entries[entries.length - 1];
+			if (!entry) return;
+			const width = entry.borderBoxSize[0]?.inlineSize ?? entry.contentRect.width;
+			if (width > 0) setFits(width >= SIDE_BY_SIDE_MIN_WIDTH);
+		});
+		observer.observe(
+			element,
+			{
+				box: "border-box",
+			},
+		);
+		return () =>
+		{
+			observer.disconnect();
+		};
+	}, [ref, enabled]);
+	return fits;
 }
 
 /** How each file of the diff renders, from the Changes settings menu. */
@@ -1309,7 +1342,6 @@ export function ChangesPaneView({
 	});
 	const headerRef = useRef<HTMLDivElement>(null);
 	const paneWidth = useElementWidth(headerRef);
-	const sideBySideAvailable = paneWidth >= SIDE_BY_SIDE_MIN_WIDTH;
 	const [showFilesButton, setShowFilesButton] = useState<HTMLButtonElement | null>(null);
 	const fileListTip = useCoachMarkSeen(DIFF_FILE_LIST_COACH_MARK_KEY);
 	const fileListTipOpen =
@@ -1319,14 +1351,15 @@ export function ChangesPaneView({
 		files.length >= 2 &&
 		!fileListTip.hidden &&
 		showFilesButton !== null;
+	const bodyRef = useRef<HTMLDivElement>(null);
+	const canFitSplit = useSplitFit(bodyRef, hasFiles && settings.diffStyle === "split");
 	const view: DiffViewOptions =
 	{
-		diffStyle: sideBySideAvailable ? settings.diffStyle : "unified",
+		diffStyle: settings.diffStyle === "split" && canFitSplit ? "split" : "unified",
 		wordWrap: settings.diffWordWrap,
 		wordDiff: settings.diffWordDiff,
 	};
 	const [activePath, setActivePath] = useState<string | null>(null);
-	const bodyRef = useRef<HTMLDivElement>(null);
 	// Upstream `um`'s `jl(Ut, dn)`: `dn` re-arms the occurrence highlight when the session or diff scope changes.
 	useDiffOccurrenceHighlight(bodyRef, JSON.stringify([sessionId ?? null, scope]));
 	const selectionMatch = useCodeThemeSelectionMatch();
@@ -2115,7 +2148,7 @@ export function ChangesPaneView({
 						<SettingsMenu
 							hasFiles={hasFiles}
 							large={large}
-							sideBySideAvailable={sideBySideAvailable}
+							canFitSplit={canFitSplit}
 							onCollapseAll={() =>
 							{
 								setAllCollapsed(true);

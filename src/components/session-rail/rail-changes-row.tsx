@@ -3,7 +3,8 @@ import {type KeyboardEvent, type ReactNode, useId} from "react";
 
 import {useShortcutKeys} from "../../hooks/use-shortcut";
 import {writeClipboardText} from "../../lib/clipboard";
-import type {GitPrState} from "../../lib/pr-status";
+import {gitPrState, type GitPrState} from "../../lib/pr-status";
+import type {PullRequestState} from "../../lib/session-state";
 import {AnimatedDiffStat} from "../diff-stat";
 import {GIT_PR_STATE_LABELS} from "../git-pr-state-labels";
 import {useToast} from "../toast-context";
@@ -11,6 +12,7 @@ import {cdsButtonClass} from "../ui/cds-button";
 import {Icon, type IconName} from "../ui/icon";
 import {ContextMenu, ContextMenuTrigger, Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger} from "../ui/menu";
 import {Tooltip} from "../ui/tooltip";
+import {RailGlyph} from "./rail-row";
 
 /*
  * Upstream's flat-rail Changes row (`gr` row form, `div[data-rail-changes-row]`): the plus-minus glyph, an
@@ -22,8 +24,6 @@ import {Tooltip} from "../ui/tooltip";
 
 /** Upstream `k`. */
 const ROW_CLASS = "flex min-h-6.5 w-full min-w-0 items-center gap-sm px-xs text-body";
-/** Upstream `W`: the 20px glyph slot at the rail icon size. */
-const GLYPH_CLASS = "flex size-5 shrink-0 items-center justify-center text-secondary [&_svg]:size-4";
 /** Upstream's ghost xxs flush-both stat button; `-mx-1.5` is `mx-outset` at the 6px xxs pad. */
 const STAT_BUTTON_CLASS = `${cdsButtonClass("ghost", "sm")} -mx-1.5 [--upstream-radius:var(--radius-r4)]`;
 /** Upstream: hidden until something inside has focus or its popup is open; never on hover. */
@@ -128,9 +128,9 @@ export function RailChangesRow({
 						"aria-labelledby": repoLabelId,
 					})}
 				>
-					<span className={GLYPH_CLASS}>
+					<RailGlyph glyph="ChangesPlusMinus">
 						<Diff aria-hidden />
-					</span>
+					</RailGlyph>
 					{repoName !== undefined && (
 						<span className="min-w-0 text-muted-as-secondary">
 							<span
@@ -268,7 +268,7 @@ export function RailChangesPrRow({
 	url,
 	number,
 	title,
-	state,
+	prState,
 	diff,
 	repoName,
 	onOpen,
@@ -277,7 +277,7 @@ export function RailChangesPrRow({
 	number: number;
 	/** The PR title, else the branch (upstream `prTitle ?? branchTitle`). */
 	title: string;
-	state: GitPrState;
+	prState: PullRequestState;
 	diff:
 	{
 		added: number;
@@ -290,6 +290,7 @@ export function RailChangesPrRow({
 	const titleId = useId();
 	const repoId = useId();
 	const grouped = repoName !== undefined;
+	const state = gitPrState(prState);
 	const glyph = PR_GLYPHS[state];
 	const menuLabel = `More options for ${title}`;
 	const items = <PrMenuItems url={url} onOpenChanges={diff === null ? undefined : onOpen} />;
@@ -304,7 +305,11 @@ export function RailChangesPrRow({
 					"aria-labelledby": `${titleId} ${repoId}`,
 				})}
 			>
-				<span className="flex size-5 shrink-0 items-center justify-center">
+				{/* Upstream: the raw PR state names the glyph; the slot has no text-secondary, the inner glyph tints itself. */}
+				<span
+					className="flex size-5 shrink-0 items-center justify-center"
+					data-rail-glyph={`pull-request-${prState}`}
+				>
 					<span
 						role="img"
 						aria-label={GIT_PR_STATE_LABELS[state]}

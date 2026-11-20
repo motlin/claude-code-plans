@@ -81,7 +81,7 @@ function ProjectRows({group, now}: {group: ProjectGroup; now: number})
 				title={group.label}
 				className={`${RAIL_ROW_ACTION_CLASS} no-underline`}
 			>
-				<RailRowContent icon={<Folder aria-hidden />} label={group.label} />
+				<RailRowContent glyph="Folder" icon={<Folder aria-hidden />} label={group.label} />
 			</Link>
 			{folded && (
 				<button
@@ -94,6 +94,7 @@ function ProjectRows({group, now}: {group: ProjectGroup; now: number})
 					className={RAIL_ROW_ACTION_CLASS}
 				>
 					<RailRowContent
+						glyph="ChevronRight"
 						icon={
 							<ChevronRight
 								aria-hidden
@@ -116,6 +117,7 @@ function ProjectRows({group, now}: {group: ProjectGroup; now: number})
 						className={`${RAIL_ROW_ACTION_CLASS} no-underline`}
 					>
 						<RailRowContent
+							glyph="MessageSquare"
 							icon={<MessageSquare aria-hidden />}
 							label={nonEmpty(link.sessionTitle) ?? "Untitled session"}
 							{...(link.sessionModified === null

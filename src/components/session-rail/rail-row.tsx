@@ -21,14 +21,30 @@ const HINT_TONE_CLASS =
 	warning: "shrink-0 text-footnote text-warning",
 } as const;
 
+/** Upstream `K`: the rail row's 20px glyph slot in text-secondary, at the rail's 16px icon size. */
+const RAIL_GLYPH_SLOT_CLASS = "flex size-5 shrink-0 items-center justify-center text-secondary [&_svg]:size-4";
+
+/** Upstream `q`: the glyph slot, marked `data-rail-glyph` with the upstream glyph name (a pure marker with no style). */
+export function RailGlyph({glyph, children}: {glyph: string; children: ReactNode})
+{
+	return (
+		<span className={RAIL_GLYPH_SLOT_CLASS} data-rail-glyph={glyph}>
+			{children}
+		</span>
+	);
+}
+
 /** A row's slots: a 20px icon in text-secondary, the label, and a muted 12px trailing hint. */
 export function RailRowContent({
+	glyph,
 	icon,
 	label,
 	hint,
 	hintStatus,
 	hintTone,
 }: {
+	/** Upstream's anthropicon name for the icon, or the nearest equivalent of the local lucide icon. */
+	glyph: string;
 	icon: ReactNode;
 	label: ReactNode;
 	hint?: ReactNode;
@@ -40,9 +56,7 @@ export function RailRowContent({
 {
 	return (
 		<>
-			<span className="flex size-5 shrink-0 items-center justify-center text-secondary [&_svg]:size-4">
-				{icon}
-			</span>
+			<RailGlyph glyph={glyph}>{icon}</RailGlyph>
 			<span data-rail-row-label="" className="min-w-0 flex-1 truncate text-primary">
 				{label}
 			</span>
@@ -65,6 +79,7 @@ export function RailRowContent({
 
 /** A row with nothing to do. */
 export function RailRow(props: {
+	glyph: string;
 	icon: ReactNode;
 	label: ReactNode;
 	hint?: ReactNode;

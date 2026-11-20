@@ -12,6 +12,7 @@ import {Skeleton} from "../ui/skeleton";
 import {Spinner} from "../ui/spinner";
 import {Switch} from "../ui/switch";
 import {Tooltip} from "../ui/tooltip";
+import {RailGlyph} from "./rail-row";
 
 /*
  * Upstream's desktop Remote Control setting row (`RA` in the flat-rail Environment card): the Cursor icon, a
@@ -20,7 +21,6 @@ import {Tooltip} from "../ui/tooltip";
  */
 
 const ROW_CLASS = "group/setting flex min-h-8 w-full min-w-0 items-center gap-2.5 px-2 text-body";
-const ICON_SLOT_CLASS = "flex size-5 shrink-0 items-center justify-center text-secondary [&_svg]:size-4";
 const LABEL_CLASS = "min-w-0 flex-1 cursor-pointer truncate text-primary";
 /* Upstream `Ae`: hidden until the row is hovered or focused, its menu is open, or on touch. */
 const OPTIONS_WRAPPER_CLASS =
@@ -53,9 +53,9 @@ export interface RemoteControlRowProps
 function RemoteControlIcon()
 {
 	return (
-		<span className={ICON_SLOT_CLASS}>
+		<RailGlyph glyph="Cursor">
 			<MousePointer2 aria-hidden />
-		</span>
+		</RailGlyph>
 	);
 }
 

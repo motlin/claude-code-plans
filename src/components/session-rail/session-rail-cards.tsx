@@ -35,7 +35,7 @@ import {toConnectorSlug} from "../../lib/customize/mcp-tool-permissions";
 import {autoCompactHint, type CompactActionState} from "../../lib/compact-action";
 import {buildContextLegend, contextRefreshHint, type ContextBreakdown} from "../../lib/context-breakdown";
 import {formatContextSummary, formatTokenCount, formatUpdatedAgo, type ComposerUsage} from "../../lib/composer-state";
-import {prGlyph, type PrStatus} from "../../lib/pr-status";
+import type {PrStatus} from "../../lib/pr-status";
 import {resolveStaleEngine} from "../../lib/stale-engine";
 import {requestFileOpen} from "../../lib/file-open-requests";
 import {formatCount} from "../../lib/pluralize";
@@ -79,6 +79,7 @@ import
 {
 	ENVIRONMENT_MENU_BUTTON_CLASS,
 	RAIL_ROW_ACTION_CLASS,
+	RailGlyph,
 	RailRow,
 	RailRowContent,
 	ShowMoreButton,
@@ -162,6 +163,7 @@ function gitHubBranchUrl(repoUrl: string, branch: string): string
 
 /** Upstream's folder and branch rows: a ghost menu button padded past the icon, which overlays it without taking clicks. */
 function EnvironmentMenuRow({
+	glyph,
 	icon,
 	label,
 	hint,
@@ -169,6 +171,7 @@ function EnvironmentMenuRow({
 	title,
 	children,
 }: {
+	glyph: string;
 	icon: LucideIcon;
 	label: string;
 	hint?: string;
@@ -200,9 +203,9 @@ function EnvironmentMenuRow({
 				<MenuContent>{children}</MenuContent>
 			</Menu>
 			<span className="pointer-events-none absolute inset-y-0 start-0 flex items-center ps-2">
-				<span className="flex size-5 shrink-0 items-center justify-center text-secondary [&_svg]:size-4">
+				<RailGlyph glyph={glyph}>
 					<Icon icon={icon} />
-				</span>
+				</RailGlyph>
 			</span>
 		</div>
 	);
@@ -235,6 +238,8 @@ function EnvironmentBody({inputs}: {inputs: SessionRailInputs})
 		<Rows>
 			{cwd !== null && (
 				<EnvironmentMenuRow
+					// Upstream's folder picker reads "BookClosed" only for a cloud repository; a local folder is "Folder".
+					glyph="Folder"
 					icon={Laptop}
 					label={homeRelative(cwd, inputs.homeRoot)}
 					{...(streamDrop === null
@@ -280,6 +285,7 @@ function EnvironmentBody({inputs}: {inputs: SessionRailInputs})
 			{cwd === null && streamDrop !== null && (
 				// Upstream's Environment row always exists; without a folder the stream's state rides a plain row.
 				<RailRow
+					glyph="Computer"
 					icon={<Icon icon={Laptop} />}
 					label={environment.label}
 					hint={streamDropHint(streamDrop)}
@@ -287,7 +293,7 @@ function EnvironmentBody({inputs}: {inputs: SessionRailInputs})
 				/>
 			)}
 			{gitBranch !== null && (
-				<EnvironmentMenuRow icon={GitBranch} label={gitBranch} title={gitBranch}>
+				<EnvironmentMenuRow glyph="GitBranch" icon={GitBranch} label={gitBranch} title={gitBranch}>
 					<MenuItem
 						onSelect={() =>
 						{
@@ -344,13 +350,23 @@ function EnvironmentBody({inputs}: {inputs: SessionRailInputs})
 						/>
 					))
 				))}
-			{model !== null && <RailRow icon={<Icon icon={Cpu} />} label={model} />}
+			{model !== null && <RailRow glyph="Cpu" icon={<Icon icon={Cpu} />} label={model} />}
 			{herdrPane === null ? (
-				<RailRow icon={<Icon icon={SquareTerminal} />} label="herdr" hint="No pane" />
+				<RailRow glyph="CommandLine" icon={<Icon icon={SquareTerminal} />} label="herdr" hint="No pane" />
 			) : herdrPane.host === "tmux" ? (
-				<RailRow icon={<Icon icon={SquareTerminal} />} label="tmux" hint={herdrPane.paneId} />
+				<RailRow
+					glyph="CommandLine"
+					icon={<Icon icon={SquareTerminal} />}
+					label="tmux"
+					hint={herdrPane.paneId}
+				/>
 			) : herdrPane.host === "headless" ? (
-				<RailRow icon={<Icon icon={SquareTerminal} />} label="Headless" hint={herdrPane.agentStatus} />
+				<RailRow
+					glyph="CommandLine"
+					icon={<Icon icon={SquareTerminal} />}
+					label="Headless"
+					hint={herdrPane.agentStatus}
+				/>
 			) : (
 				<Link
 					to="/terminals/$sessionId"
@@ -360,7 +376,12 @@ function EnvironmentBody({inputs}: {inputs: SessionRailInputs})
 					}}
 					className={RAIL_ROW_ACTION_CLASS}
 				>
-					<RailRowContent icon={<Icon icon={SquareTerminal} />} label="herdr" hint={herdrPane.agentStatus} />
+					<RailRowContent
+						glyph="CommandLine"
+						icon={<Icon icon={SquareTerminal} />}
+						label="herdr"
+						hint={herdrPane.agentStatus}
+					/>
 				</Link>
 			)}
 		</Rows>
@@ -581,6 +602,8 @@ function ConnectorsBody({rows}: {rows: readonly ConnectorRow[]})
 					className={RAIL_ROW_ACTION_CLASS}
 				>
 					<RailRowContent
+						// Upstream `EI`: a connector's favicon or letter tile is a "logo".
+						glyph="logo"
 						icon={<ConnectorLetterTile name={row.name} />}
 						label={row.label}
 						{...(row.state === undefined ? {} : CONNECTOR_STATE_HINT[row.state])}
@@ -607,9 +630,9 @@ function connectorsCard(rows: readonly ConnectorRow[] | null, rememberedNone: bo
 			body: (
 				<div data-testid="rail-rows" tabIndex={-1} className="flex flex-col outline-none">
 					<Link to="/customize/connectors" aria-label="Manage connectors" className={RAIL_ROW_ACTION_CLASS}>
-						<span className="flex size-5 shrink-0 items-center justify-center text-secondary [&_svg]:size-4">
+						<RailGlyph glyph="Connectors">
 							<Icon icon={Plug} />
-						</span>
+						</RailGlyph>
 						<span className="min-w-0 flex-1 truncate text-start text-primary">
 							{/* Upstream `ON`: a decorative Text span around a standalone 84×12 Skeleton. */}
 							<span className="flex min-w-0 items-center">
@@ -675,7 +698,11 @@ function OutputsBody({outputs, sessionId}: {outputs: readonly Output[]; sessionI
 							}}
 							className={RAIL_ROW_ACTION_CLASS}
 						>
-							<RailRowContent icon={<Icon icon={AppWindow} />} label={output.artifact.title} />
+							<RailRowContent
+								glyph="File"
+								icon={<Icon icon={AppWindow} />}
+								label={output.artifact.title}
+							/>
 						</Link>
 					);
 				}
@@ -699,7 +726,7 @@ function OutputsBody({outputs, sessionId}: {outputs: readonly Output[]; sessionI
 							host.openPane("files");
 						}}
 					>
-						<RailRowContent icon={<FileTypeIcon fileName={name} size="sm" />} label={name} />
+						<RailRowContent glyph="File" icon={<FileTypeIcon fileName={name} size="sm" />} label={name} />
 					</button>
 				);
 			})}
@@ -767,7 +794,7 @@ function ChangesBody({
 					url={prUrl}
 					number={prNumber}
 					title={prStatus?.title ?? branch ?? `#${prNumber}`}
-					state={prStatus === null ? "opened" : prGlyph(prStatus).state}
+					prState={prStatus?.state ?? "open"}
 					diff={
 						diff === null
 							? null
@@ -834,7 +861,8 @@ function ServersBody({servers}: {servers: readonly DevServer[]})
 				const label = server.name ?? hostLabel;
 				const icon = <Icon icon={Server} />;
 				// Local adaptation: upstream drops stopped servers; a probe that fails here leaves a row with nothing to open.
-				if (!server.live) return <RailRow key={server.url} icon={icon} label={label} hint="Not responding" />;
+				if (!server.live)
+					return <RailRow key={server.url} glyph="Server" icon={icon} label={label} hint="Not responding" />;
 				return (
 					<a
 						key={server.url}
@@ -848,6 +876,7 @@ function ServersBody({servers}: {servers: readonly DevServer[]})
 					>
 						{/* Upstream trails `localhost:<port>` only when the label is something else. */}
 						<RailRowContent
+							glyph="Server"
 							icon={icon}
 							label={label}
 							{...(label === hostLabel
@@ -1024,6 +1053,7 @@ function BackgroundTasksBody({
 								}}
 							>
 								<RailRowContent
+									glyph={task.kind === "bash" ? "CommandLine" : "AgentsSimple"}
 									icon={<Icon icon={TASK_ICONS[task.kind]} />}
 									label={task.description}
 									{...(hint === undefined
@@ -1062,7 +1092,11 @@ function BackgroundTasksBody({
 							);
 						}}
 					>
-						<RailRowContent icon={<Icon icon={Bot} />} label={`${tasks.finished.length} finished`} />
+						<RailRowContent
+							glyph="AgentsSimple"
+							icon={<Icon icon={Bot} />}
+							label={`${tasks.finished.length} finished`}
+						/>
 					</button>
 				)}
 			</div>
