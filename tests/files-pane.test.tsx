@@ -396,14 +396,33 @@ describe("Files pane header", () =>
 		);
 	});
 
-	it("sets the pane title in the 13px pane type", () =>
+	it("sets the pane title as upstream's name-step toolbar title (Hn titleTakesNameStep, file)", () =>
 	{
 		registerFilesPane();
 		renderSession();
 		press(CMD_SHIFT_F);
 
 		const title = filesPane().querySelector("[data-files-header] [data-pane-title]");
-		expect(title?.className.split(" ").includes("text-pane")).toBe(true);
+		expect(
+			{
+				wrapper: title?.parentElement?.className.split(" "),
+				title: title?.className.split(" "),
+			},
+		).toStrictEqual(
+			{
+				wrapper: ["min-w-0", "ms-pad-sm"],
+				title: [
+					"block",
+					"min-w-0",
+					"truncate",
+					"px-1",
+					"text-body",
+					"font-control",
+					"text-primary",
+					"select-none",
+				],
+			},
+		);
 	});
 
 	it("paints the pressed tree toggle with accent ink on a transparent background", () =>

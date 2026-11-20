@@ -11,7 +11,7 @@ import {processTranscript} from "../../lib/transcript";
 import {SessionChat} from "../session-chat";
 import {Tooltip} from "../ui/tooltip";
 import type {PaneChrome} from "./pane-registry";
-import {PaneHeaderRow} from "./pane-header-row";
+import {PANE_PLAIN_TITLE_CLASS, PaneHeaderRow} from "./pane-header-row";
 
 const GHOST_ICON_BUTTON =
 	"flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-r5 text-secondary transition-colors hover:bg-fill-ghost-hover hover:text-primary";
@@ -137,7 +137,7 @@ export function SubagentPane({sessionId, subagents, prompts, chrome}: SubagentPa
 								</button>
 							</Tooltip>
 						)}
-						<h2 data-pane-title className="truncate pl-1 text-body font-normal text-secondary select-none">
+						<h2 data-pane-title className={PANE_PLAIN_TITLE_CLASS}>
 							{agent === undefined ? "Subagents" : (agent.description ?? agent.id)}
 						</h2>
 					</div>

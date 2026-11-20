@@ -1,5 +1,5 @@
 import type {ReactNode} from "react";
-import {PaneHeaderRow} from "./pane-header-row";
+import {PANE_PLAIN_TITLE_CLASS, PaneHeaderRow} from "./pane-header-row";
 import type {PaneChrome} from "./pane-registry";
 
 /** The host's default header row, drawn for a custom-header pane while its own renderer is unavailable. */
@@ -9,7 +9,7 @@ export function PaneChromeHeader({title, chrome}: {title: string; chrome: PaneCh
 		<PaneHeaderRow
 			label={title}
 			title={
-				<span data-pane-title className="truncate pl-1 text-pane text-secondary select-none">
+				<span data-pane-title className={PANE_PLAIN_TITLE_CLASS}>
 					{title}
 				</span>
 			}

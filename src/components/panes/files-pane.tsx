@@ -46,7 +46,7 @@ import
 import {Icon} from "../ui/icon";
 import {Tooltip} from "../ui/tooltip";
 import {PANE_HEADER_ICON_BUTTON_CLASS} from "./pane-classes";
-import {PaneHeaderRow} from "./pane-header-row";
+import {PaneHeaderRow, PaneNameTitle} from "./pane-header-row";
 import {consumePendingFilterFocus} from "./files-filter-focus";
 import {usePaneHost} from "./pane-host-context";
 import type {PaneChrome} from "./pane-registry";
@@ -866,9 +866,7 @@ export function FilesPaneView({chrome, sessionId, cwd, sessionFiles, unscannedRe
 				title={
 					<div className="relative flex min-w-0 flex-1 items-center gap-1">
 						{fileTabs.tabs.length === 0 ? (
-							<span data-pane-title className="truncate text-pane text-secondary select-none">
-								Files
-							</span>
+							<PaneNameTitle>Files</PaneNameTitle>
 						) : (
 							<FileTabsStrip
 								state={fileTabs}

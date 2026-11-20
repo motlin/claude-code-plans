@@ -21,7 +21,8 @@ import {useShortcut, useShortcutKeys} from "../../hooks/use-shortcut";
 import {FIZZY_LAKE_PANELS} from "../../lib/fizzy-lake";
 import {codeSurfaceStyle} from "./code-surface";
 import {PaneChromeHeader} from "./deferred-pane-status";
-import {PANE_CLOSE_CONTROL_CLASS, PaneHeaderRow} from "./pane-header-row";
+import {PaneCornersContext} from "./pane-corners-context";
+import {PANE_CLOSE_CONTROL_CLASS, PANE_PLAIN_TITLE_CLASS, PaneHeaderRow} from "./pane-header-row";
 import {PaneCrashBoundary} from "./pane-crash-boundary";
 import
 {
@@ -58,6 +59,7 @@ import
 	rowEndOnlyTileIds,
 	tileShellEdges,
 	togglePane,
+	topCornerTile,
 	topEdgeTiles,
 	updatePhoneView,
 	wideRowTopPadding,
@@ -1023,6 +1025,16 @@ function PaneSurface({kind, definition, host}: {kind: PaneKind; definition: Pane
 	const closeKeys = useShortcutKeys("close_pane");
 	const isExpanded = host.expanded === kind;
 	const toggleRef = useRef<HTMLButtonElement>(null);
+	const topLeft = topCornerTile(host.layout.root, "start") === kind;
+	const topRight = topCornerTile(host.layout.root, "end") === kind;
+	const corners = useMemo(
+		() => (
+		{
+			topLeft,
+			topRight,
+		}),
+		[topLeft, topRight],
+	);
 
 	useEffect(() =>
 	{
@@ -1092,58 +1104,63 @@ function PaneSurface({kind, definition, host}: {kind: PaneKind; definition: Pane
 			}`}
 			style={codeSurfaceStyle(kind)}
 		>
-			{definition.header === "custom" ? (
-				<PaneCrashBoundary
-					resetKey={crashResetKey}
-					header={
-						<PaneChromeHeader
-							title={definition.title}
-							chrome={
+			<PaneCornersContext value={corners}>
+				{definition.header === "custom" ? (
+					<PaneCrashBoundary
+						resetKey={crashResetKey}
+						header={
+							<PaneChromeHeader
+								title={definition.title}
+								chrome={
+								{
+									moveHandle,
+									controls,
+								}}
+							/>
+						}
+					>
+						{definition.render(
 							{
 								moveHandle,
 								controls,
-							}}
+							},
+						)}
+					</PaneCrashBoundary>
+				) : (
+					<>
+						<PaneHeaderRow
+							label={definition.title}
+							title={
+								<span data-pane-title className={PANE_PLAIN_TITLE_CLASS}>
+									{definition.title}
+								</span>
+							}
+							actions={
+								<>
+									{definition.headerActions}
+									{controls}
+								</>
+							}
+							moveHandle={moveHandle}
 						/>
-					}
-				>
-					{definition.render(
-						{
-							moveHandle,
-							controls,
-						},
-					)}
-				</PaneCrashBoundary>
-			) : (
-				<>
-					<PaneHeaderRow
-						label={definition.title}
-						title={
-							<span data-pane-title className="truncate pl-1 text-pane text-secondary select-none">
-								{definition.title}
-							</span>
-						}
-						actions={
-							<>
-								{definition.headerActions}
-								{controls}
-							</>
-						}
-						moveHandle={moveHandle}
-					/>
-					<div data-pane-body className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-b-[inherit]">
-						<div className="h-full scroll-py-2.5 overflow-y-auto [scrollbar-gutter:stable_both-edges]">
-							<PaneCrashBoundary resetKey={crashResetKey}>
-								{definition.render(
-									{
-										moveHandle,
-										controls,
-									},
-								)}
-							</PaneCrashBoundary>
+						<div
+							data-pane-body
+							className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-b-[inherit]"
+						>
+							<div className="h-full scroll-py-2.5 overflow-y-auto [scrollbar-gutter:stable_both-edges]">
+								<PaneCrashBoundary resetKey={crashResetKey}>
+									{definition.render(
+										{
+											moveHandle,
+											controls,
+										},
+									)}
+								</PaneCrashBoundary>
+							</div>
 						</div>
-					</div>
-				</>
-			)}
+					</>
+				)}
+			</PaneCornersContext>
 		</section>
 	);
 }

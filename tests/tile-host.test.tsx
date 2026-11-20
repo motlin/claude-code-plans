@@ -475,6 +475,7 @@ describe("TileHost", () =>
 		expect(
 			{
 				title: root?.querySelector("[data-pane-title]")?.textContent,
+				titleClasses: root?.querySelector("[data-pane-title]")?.className.split(" "),
 				buttons: screen.getAllByRole("button").map((button) => (
 				{
 					name: button.getAttribute("aria-label") ?? button.textContent,
@@ -485,6 +486,15 @@ describe("TileHost", () =>
 		).toStrictEqual(
 			{
 				title: "Test pane",
+				// Upstream `LV`, a plain string title (plan, tasks, subagent and the rest).
+				titleClasses: [
+					"truncate",
+					"ps-[4px]",
+					"text-body",
+					"font-control-regular",
+					"text-secondary",
+					"select-none",
+				],
 				buttons: [
 					{
 						name: "Move",
@@ -1413,6 +1423,307 @@ describe("TileHost", () =>
 					expanded: false,
 					dialog: null,
 				},
+			},
+		);
+	});
+
+	it("opens the layout popover after a 500 ms touch long-press on Expand, unless the finger strays over 10 px (c4db265df Ot/K)", () =>
+	{
+		vi.useFakeTimers();
+		try
+		{
+			renderHost("session-a");
+			openTestPane();
+			const expand = expandButton();
+			const touch = (type: "pointerDown" | "pointerMove" | "pointerUp", x: number, y: number) =>
+			{
+				fireEvent[type](
+					expand,
+					{
+						pointerId: 1,
+						pointerType: "touch",
+						clientX: x,
+						clientY: y,
+					},
+				);
+			};
+			const advance = (ms: number) =>
+			{
+				act(() =>
+				{
+					vi.advanceTimersByTime(ms);
+				});
+			};
+			const dialogOpen = () => screen.queryByRole("dialog") !== null;
+
+			touch("pointerDown", 10, 10);
+			touch("pointerMove", 20, 20);
+			advance(499);
+			const held499 = dialogOpen();
+			advance(1);
+			const held500 = dialogOpen();
+			const clickAfterRelease = (() =>
+			{
+				touch("pointerUp", 20, 20);
+				fireEvent.click(
+					expand,
+					{
+						detail: 1,
+					},
+				);
+				return {
+					dialog: dialogOpen(),
+					expanded: document.querySelector("[data-pane-expanded]") !== null,
+				};
+			})();
+			fireEvent.keyDown(
+				screen.getByRole("dialog"),
+				{
+					key: "Escape",
+				},
+			);
+			advance(0);
+
+			touch("pointerDown", 10, 10);
+			touch("pointerMove", 21, 10);
+			advance(500);
+			const strayed = dialogOpen();
+			touch("pointerUp", 21, 10);
+
+			expect(
+				{
+					held499,
+					held500,
+					clickAfterRelease,
+					strayed,
+				},
+			).toStrictEqual(
+				{
+					held499: false,
+					held500: true,
+					clickAfterRelease:
+					{
+						dialog: true,
+						expanded: false,
+					},
+					strayed: false,
+				},
+			);
+		}
+		finally
+		{
+			vi.useRealTimers();
+		}
+	});
+
+	it("opens the layout popover on hover and keeps the Expand tooltip away while it is open (c4db265df q)", () =>
+	{
+		vi.useFakeTimers();
+		try
+		{
+			renderHost("session-a");
+			openTestPane();
+			const expand = expandButton();
+			fireEvent.pointerEnter(
+				expand,
+				{
+					pointerType: "mouse",
+				},
+			);
+			fireEvent.mouseEnter(expand);
+			fireEvent.mouseMove(expand);
+			act(() =>
+			{
+				vi.advanceTimersByTime(1000);
+			});
+
+			expect(
+				{
+					dialog: screen.queryByRole("dialog") !== null,
+					tooltip: screen.queryByRole("tooltip"),
+				},
+			).toStrictEqual(
+				{
+					dialog: true,
+					tooltip: null,
+				},
+			);
+		}
+		finally
+		{
+			vi.useRealTimers();
+		}
+	});
+
+	it("flags the pane's corner row data-top-left / data-top-right where its tile meets the tiles' top corner (upstream Hn Zn)", () =>
+	{
+		renderHost("session-a");
+		openTestPane();
+		const corners = () =>
+		{
+			const row = document.querySelector("[data-pane-root] > [data-pane-corner-row]");
+			return {
+				topLeft: row?.getAttribute("data-top-left"),
+				topRight: row?.getAttribute("data-top-right"),
+			};
+		};
+		const atEnd = corners();
+		fireEvent.contextMenu(expandButton());
+		fireEvent.click(
+			within(screen.getByRole("dialog")).getByRole(
+				"button",
+				{
+					name: "Move to left",
+				},
+			),
+		);
+		const atStart = corners();
+		fireEvent.contextMenu(expandButton());
+		fireEvent.click(
+			within(screen.getByRole("dialog")).getByRole(
+				"button",
+				{
+					name: "Move to bottom",
+				},
+			),
+		);
+
+		expect(
+			{
+				atEnd,
+				atStart,
+				atBottom: corners(),
+			},
+		).toStrictEqual(
+			{
+				atEnd:
+				{
+					topLeft: null,
+					topRight: "true",
+				},
+				atStart:
+				{
+					topLeft: "true",
+					topRight: null,
+				},
+				atBottom:
+				{
+					topLeft: null,
+					topRight: null,
+				},
+			},
+		);
+	});
+
+	function focusedName(): string | undefined
+	{
+		const active = document.activeElement;
+		if (active?.hasAttribute("data-pane-body") === true) return "pane body";
+		return active?.getAttribute("aria-label") ?? active?.tagName;
+	}
+
+	/** Right-clicks the layout trigger, moves focus into the popup as a pointer open leaves it, and picks `name`. */
+	async function pickFromLayoutPopover(name: string)
+	{
+		const trigger = screen.getByRole(
+			"button",
+			{
+				name: /^(Expand|Collapse)$/,
+			},
+		);
+		fireEvent.pointerDown(
+			trigger,
+			{
+				pointerType: "mouse",
+				button: 2,
+			},
+		);
+		fireEvent.contextMenu(trigger);
+		const dialog = screen.getByRole("dialog");
+		act(() =>
+		{
+			within(dialog).getAllByRole("button")[0]?.focus();
+		});
+		const inPopup = focusedName();
+		fireEvent.click(
+			within(dialog).getByRole(
+				"button",
+				{
+					name,
+				},
+			),
+		);
+		// Base UI hands focus back in a microtask after the popup closes.
+		await act(async () =>
+		{
+			await Promise.resolve();
+		});
+		return {
+			inPopup,
+			after: focusedName(),
+			dialog: screen.queryByRole("dialog"),
+		};
+	}
+
+	it("returns focus into the pane body after a popover pick, to what held it before the open (c4db265df pressFocus body)", async () =>
+	{
+		unregister();
+		unregister = registerPane(
+			"plan",
+			{
+				title: "Test pane",
+				render: () => <input aria-label="Pane field" />,
+			},
+		);
+		renderHost("session-a");
+		openTestPane();
+		act(() =>
+		{
+			screen
+				.getByRole(
+					"textbox",
+					{
+						name: "Pane field",
+					},
+				)
+				.focus();
+		});
+		const move = await pickFromLayoutPopover("Move to left");
+		const fill = await pickFromLayoutPopover("Fill");
+
+		expect(
+			{
+				move,
+				fill,
+			},
+		).toStrictEqual(
+			{
+				move:
+				{
+					inPopup: "Move to left",
+					after: "Pane field",
+					dialog: null,
+				},
+				fill:
+				{
+					inPopup: "Move to left",
+					after: "Pane field",
+					dialog: null,
+				},
+			},
+		);
+	});
+
+	it("focuses the pane body itself after a popover pick when nothing in it held focus (c4db265df dt)", async () =>
+	{
+		renderHost("session-a");
+		openTestPane();
+
+		expect(await pickFromLayoutPopover("Move to left")).toStrictEqual(
+			{
+				inPopup: "Move to left",
+				after: "pane body",
+				dialog: null,
 			},
 		);
 	});

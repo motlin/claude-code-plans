@@ -45,6 +45,7 @@ import
 	savePaneLayout,
 	saveSubagentPaneAgent,
 	togglePane,
+	topCornerTile,
 	topEdgeTiles,
 	updatePhoneView,
 	wideRowTopPadding,
@@ -2102,6 +2103,31 @@ describe("topEdgeTiles and wideRowTopPadding (upstream cf53e1812 ae, shared-20 i
 	{
 		expect(topEdgeTiles(root)).toStrictEqual(new Set(expected));
 	});
+
+	it.each([
+		["the lone chat in both corners", stack("row", 1, [tile("chat", 1)]), ["chat", "chat"]],
+		["a row's first and last tiles", stack("row", 1, [tile("chat", 1), tile("files", 1)]), ["chat", "files"]],
+		["a column's first child in both", stack("column", 1, [tile("files", 1), tile("chat", 1)]), ["files", "files"]],
+		[
+			"the top of a column at the row's end",
+			stack("row", 1, [tile("files", 1), stack("column", 1, [tile("chat", 1), tile("changes", 1)])]),
+			["files", "chat"],
+		],
+		[
+			"a row nested at a column's top",
+			stack("row", 1, [
+				stack("column", 1, [stack("row", 1, [tile("chat", 1), tile("plan", 1)]), tile("terminal", 1)]),
+				tile("files", 1),
+			]),
+			["chat", "files"],
+		],
+	] satisfies Array<[string, StackNode, [TileId, TileId]]>)(
+		"puts %s (upstream Hn data-top-left / data-top-right)",
+		(_name, root, expected) =>
+		{
+			expect([topCornerTile(root, "start"), topCornerTile(root, "end")]).toStrictEqual(expected);
+		},
+	);
 
 	const chatAndFiles = stack("row", 1, [tile("chat", 1), tile("files", 1)]);
 	const filesOverChanges = stack("row", 1, [

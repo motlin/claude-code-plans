@@ -328,6 +328,23 @@ describe("ChangesPaneView", () =>
 						name: "Diff scope: main → working tree",
 					},
 				).textContent,
+				scopeGhost: screen
+					.getByRole(
+						"button",
+						{
+							name: "Diff scope: main → working tree",
+						},
+					)
+					.hasAttribute("data-cds-ghost"),
+				// Upstream `sP`: the button-led title row, which drops its 4px step when a ghost button leads it.
+				titleRow: screen
+					.getByRole(
+						"button",
+						{
+							name: "Diff scope: main → working tree",
+						},
+					)
+					.parentElement?.className.split(" "),
 				showFiles: screen.queryByRole(
 					"button",
 					{
@@ -357,6 +374,17 @@ describe("ChangesPaneView", () =>
 			{
 				empty: "P",
 				scope: "mainworking tree",
+				scopeGhost: true,
+				titleRow: [
+					"relative",
+					"z-[1]",
+					"flex",
+					"min-w-0",
+					"items-center",
+					"gap-1",
+					"ps-[4px]",
+					"has-[>[data-cds-ghost]:nth-child(1_of_:not([data-base-ui-focus-guard]))]:ps-0",
+				],
 				showFiles: null,
 				goToFile: null,
 				settings: "BUTTON",

@@ -4,7 +4,7 @@ import
 	type MouseEvent as ReactMouseEvent,
 	type PointerEvent as ReactPointerEvent,
 	type ReactNode,
-	type Ref,
+	type RefObject,
 	useEffect,
 	useRef,
 	useState,
@@ -115,6 +115,34 @@ function roveButtons(event: ReactKeyboardEvent<HTMLElement>, rtl: boolean): void
 	next.focus();
 }
 
+/** The pane's body: upstream's `contentRef`, the `[data-pane-body]` beside the trigger's header. */
+function paneBody(trigger: HTMLElement | null): HTMLElement | null
+{
+	const root = trigger?.closest<HTMLElement>("[data-pane-root]") ?? null;
+	return root?.querySelector<HTMLElement>("[data-pane-body]") ?? root;
+}
+
+/** Upstream `ut`: the element holding focus inside the pane body, if any. */
+function focusedInBody(trigger: HTMLElement | null): HTMLElement | null
+{
+	const body = paneBody(trigger);
+	const active = document.activeElement;
+	return body !== null && active instanceof HTMLElement && body.contains(active) ? active : null;
+}
+
+/**
+ * Upstream `dt` for `pressFocus:"body"`: after a pick, focus goes back to what held it in the pane body before
+ * the open, or else to the body itself, made focusable for the purpose.
+ */
+function bodyFocusTarget(trigger: HTMLElement | null, focused: HTMLElement | null): HTMLElement | true
+{
+	if (focused?.isConnected === true) return focused;
+	const body = paneBody(trigger);
+	if (body === null) return true;
+	if (!body.hasAttribute("tabindex")) body.tabIndex = -1;
+	return body;
+}
+
 function swapLeftRight(edge: PaneEdge): PaneEdge
 {
 	if (edge === "left") return "right";
@@ -197,7 +225,7 @@ export interface PaneLayoutPopoverProps
 	/** The ⇧⌘\\ chord in tooltip form and in `aria-keyshortcuts` form. */
 	shortcut: string;
 	ariaKeyShortcuts: string;
-	triggerRef: Ref<HTMLButtonElement>;
+	triggerRef: RefObject<HTMLButtonElement | null>;
 	onToggleExpand: () => void;
 	atEdge: (edge: PaneEdge) => boolean;
 	onMove: (edge: PaneEdge) => void;
@@ -226,6 +254,10 @@ export function PaneLayoutPopover({
 	const sticky = useRef(false);
 	/** `P`: the open came from the keyboard, so the popup itself takes focus. */
 	const keyboardOpen = useRef(false);
+	/** `bodyFocusRef`: what held focus in the pane body when the trigger was pressed or the popup opened. */
+	const bodyFocus = useRef<HTMLElement | null>(null);
+	/** Set by a pick: where focus lands once the popup closes, instead of the trigger. */
+	const pickedFocus = useRef<HTMLElement | true | null>(null);
 	/** `le`: a long-press opened it, so the click after the release is swallowed. */
 	const longPressOpened = useRef(false);
 	const longPress = useRef<
@@ -245,8 +277,15 @@ export function PaneLayoutPopover({
 
 	useEffect(() => cancelLongPress, []);
 
+	/** Upstream `onBeforeOpen` / `onTriggerPointerDown`: keep the last element focused in the pane body. */
+	function recordBodyFocus()
+	{
+		bodyFocus.current = focusedInBody(triggerRef.current) ?? bodyFocus.current;
+	}
+
 	function openFrom(reason: OpenReason)
 	{
+		recordBodyFocus();
 		keyboardOpen.current = reason === "keyboard";
 		sticky.current = true;
 		setOpen(true);
@@ -260,6 +299,8 @@ export function PaneLayoutPopover({
 
 	function pick(action: () => void)
 	{
+		pickedFocus.current = bodyFocusTarget(triggerRef.current, bodyFocus.current);
+		bodyFocus.current = null;
 		action();
 		close();
 	}
@@ -267,6 +308,7 @@ export function PaneLayoutPopover({
 	function onPointerDown(event: ReactPointerEvent<HTMLButtonElement>)
 	{
 		if (event.pointerType === "mouse" && event.button === 0) pressBlocksHover.current = true;
+		recordBodyFocus();
 		cancelLongPress();
 		longPressOpened.current = false;
 		if (event.pointerType === "mouse") return;
@@ -306,6 +348,7 @@ export function PaneLayoutPopover({
 				const hover = details.reason === "trigger-hover";
 				if (hover && (nextOpen ? pressBlocksHover.current : sticky.current)) return;
 				if (nextOpen && hover) keyboardOpen.current = false;
+				if (nextOpen) recordBodyFocus();
 				if (!nextOpen) sticky.current = false;
 				setOpen(nextOpen);
 			}}
@@ -372,6 +415,12 @@ export function PaneLayoutPopover({
 				sideOffset={6}
 				popupRef={popupRef}
 				initialFocus={() => (keyboardOpen.current ? popupRef.current : true)}
+				finalFocus={() =>
+				{
+					const target = pickedFocus.current ?? true;
+					pickedFocus.current = null;
+					return target;
+				}}
 				onKeyDown={(event) =>
 				{
 					roveButtons(event, rtl);

@@ -89,7 +89,7 @@ import {useFileColumnOnRight} from "../files/file-column-side";
 import {mentionPath} from "../files/mention-path";
 import {FileTypeIconSetContext, useActiveFileTypeIconSet} from "../file-type-icon-set-context";
 import {PANE_HEADER_ICON_BUTTON_CLASS} from "../panes/pane-classes";
-import {PaneHeaderRow} from "../panes/pane-header-row";
+import {PANE_BUTTON_TITLE_ROW_CLASS, PaneHeaderRow} from "../panes/pane-header-row";
 import type {PaneChrome} from "../panes/pane-registry";
 import {type Settings, useSettings} from "../settings-context";
 import
@@ -332,6 +332,7 @@ function ScopeButton({
 		<Menu>
 			<MenuTrigger
 				aria-label={`Diff scope: ${scopeLabelText(label)}`}
+				data-cds-ghost=""
 				className="flex h-6 min-w-0 shrink cursor-pointer items-center rounded-r5 px-2 text-body text-secondary transition-colors hover:bg-fill-ghost-hover hover:text-primary"
 			>
 				<span className="inline-flex min-w-0 items-center gap-1">
@@ -549,6 +550,7 @@ function ShowFilesToggle({
 				aria-pressed={pressed}
 				aria-label={label}
 				aria-keyshortcuts={keys.ariaKeyShortcuts}
+				data-cds-ghost=""
 				onClick={onToggle}
 				className={PANE_HEADER_ICON_BUTTON_CLASS}
 			>
@@ -2039,7 +2041,7 @@ export function ChangesPaneView({
 				label="Changes"
 				rowRef={headerRef}
 				title={
-					<div className="relative z-[1] flex min-w-0 items-center gap-1 pl-1">
+					<div className={PANE_BUTTON_TITLE_ROW_CLASS}>
 						{hasFiles && (
 							<ShowFilesToggle
 								ref={setShowFilesButton}

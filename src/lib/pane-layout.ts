@@ -284,6 +284,18 @@ export function topEdgeTiles(root: StackNode): Set<TileId>
 }
 
 /**
+ * The tile in the tiles' top-start or top-end corner, which upstream's pane frame flags on its corner row
+ * (`Hn`'s `data-top-left` / `data-top-right`): a row's first or last child, a column's first, down to a tile.
+ */
+export function topCornerTile(root: StackNode, corner: "start" | "end"): TileId | undefined
+{
+	let node: LayoutNode | undefined = root;
+	while (node?.kind === "stack")
+		node = node.direction === "row" && corner === "end" ? node.children.at(-1) : node.children[0];
+	return node?.tileId;
+}
+
+/**
  * Upstream shared-20 `it`'s `top`: while the header is lifted into the wide title row, every pane on the top edge is
  * padded down by the row's height; the chat keeps its own spacer instead.
  */

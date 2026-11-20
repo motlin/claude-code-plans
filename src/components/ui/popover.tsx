@@ -127,6 +127,8 @@ export interface PopoverContentProps
 	onPointerEnter?: () => void;
 	/** The anchored Popup's initial focus (Base UI `initialFocus`). */
 	initialFocus?: ComponentProps<typeof BasePopover.Popup>["initialFocus"];
+	/** The anchored Popup's focus target on close (Base UI `finalFocus`). */
+	finalFocus?: ComponentProps<typeof BasePopover.Popup>["finalFocus"];
 	/** Lands on the anchored Popup, e.g. arrow-key roving over its buttons. */
 	onKeyDown?: ComponentProps<typeof BasePopover.Popup>["onKeyDown"];
 	/** Receives the anchored Popup element. */
@@ -162,6 +164,7 @@ export function PopoverContent({
 	closeLabel = "Close",
 	onPointerEnter,
 	initialFocus,
+	finalFocus,
 	onKeyDown,
 	popupRef,
 }: PopoverContentProps)
@@ -195,6 +198,12 @@ export function PopoverContent({
 						:
 							{
 								initialFocus,
+							})}
+					{...(finalFocus === undefined
+						? {}
+						:
+							{
+								finalFocus,
 							})}
 					{...(onKeyDown === undefined
 						? {}

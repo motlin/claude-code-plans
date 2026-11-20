@@ -250,6 +250,7 @@ describe("Subagent pane", () =>
 			{
 				controls: headerRow.getAllByRole("button").map((button) => button.getAttribute("aria-label")),
 				title: headerRow.getByRole("heading").textContent,
+				titleClasses: headerRow.getByRole("heading").className.split(" "),
 				footnote: region.getByText(/^Model /).textContent,
 				prompt: region.getByText(PROMPT).closest("[data-subagent-prompt]")?.getAttribute("data-clamped"),
 				showMore: region
@@ -266,6 +267,14 @@ describe("Subagent pane", () =>
 			{
 				controls: ["Back", "Expand", "Close", "Move"],
 				title: "Audit pane registrations",
+				titleClasses: [
+					"truncate",
+					"ps-[4px]",
+					"text-body",
+					"font-control-regular",
+					"text-secondary",
+					"select-none",
+				],
 				footnote: "Model Fable 5.1",
 				prompt: "true",
 				showMore: "false",

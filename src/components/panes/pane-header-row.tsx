@@ -1,4 +1,6 @@
-import type {ReactNode, Ref} from "react";
+import {type ReactNode, type Ref, useContext} from "react";
+
+import {PaneCornersContext} from "./pane-corners-context";
 import {TOOLBAR_ROVING_OPTIONS, useRovingToolbar} from "../../lib/use-roving-toolbar";
 
 /**
@@ -10,6 +12,33 @@ const PANE_HEADER_TOOLBAR_CLASS =
 
 /** Upstream's pane Close control hook class (`epitaxy-pane-close-control`), which other upstream rules key off. */
 export const PANE_CLOSE_CONTROL_CLASS = "epitaxy-pane-close-control";
+
+/** Upstream `LV`: a plain string title (`plan`, `tasks`, `subagent` and the other kinds that take no name step). */
+export const PANE_PLAIN_TITLE_CLASS = "truncate ps-[4px] text-body font-control-regular text-secondary select-none";
+
+/**
+ * Upstream `sP`: the title row of a button-led pane (`diff`, `artifact`), stepped in 4px unless a ghost button leads it.
+ */
+export const PANE_BUTTON_TITLE_ROW_CLASS =
+	"relative z-[1] flex min-w-0 items-center gap-1 ps-[4px] has-[>[data-cds-ghost]:nth-child(1_of_:not([data-base-ui-focus-guard]))]:ps-0";
+
+/**
+ * Upstream's name step (`titleTakesNameStep`: `file`, `terminal`, `session`): the cds Toolbar.Title in primary ink,
+ * inset by `ms-pad-sm`.
+ */
+export function PaneNameTitle({children}: {children: ReactNode})
+{
+	return (
+		<div className="min-w-0 ms-pad-sm">
+			<span
+				data-pane-title
+				className="block min-w-0 truncate px-1 text-body font-control text-primary select-none"
+			>
+				{children}
+			</span>
+		</div>
+	);
+}
 
 /** One pane frame toolbar: a lead (the title, or row 2's lead) and the `data-pane-actions` cluster. */
 function PaneToolbar({label, lead, actions}: {label: string; lead: ReactNode; actions: ReactNode})
@@ -72,9 +101,27 @@ export function PaneHeaderRow({
 })
 {
 	const twoRows = secondRowLead !== undefined;
+	const {topLeft, topRight} = useContext(PaneCornersContext);
 	return (
 		<>
-			<div ref={rowRef} data-pane-corner-row="" {...rowAttributes} className="relative shrink-0">
+			<div
+				ref={rowRef}
+				data-pane-corner-row=""
+				{...(topLeft
+					?
+						{
+							"data-top-left": "true",
+						}
+					: {})}
+				{...(topRight
+					?
+						{
+							"data-top-right": "true",
+						}
+					: {})}
+				{...rowAttributes}
+				className="relative shrink-0"
+			>
 				<PaneToolbar
 					label={label}
 					lead={<div className="z-[1] flex min-w-0 flex-1 items-center draggable-none">{title}</div>}
