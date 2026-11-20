@@ -150,7 +150,7 @@ export function RewindPicker({open, turns, onClose, onSelect}: RewindPickerProps
 										role="option"
 										aria-selected={index === current}
 										ref={reveal && index === current ? scrollSelectedIntoView : undefined}
-										className={`${optionClass(pad.scrollMb)} ${index === current ? "bg-fill-ghost-hover text-primary" : "text-secondary"}`}
+										className={`${optionClass(pad.scrollMb)} ${index === current ? "bg-fill-ghost-selected text-primary" : "text-secondary"}`}
 										onMouseMove={(event) =>
 										{
 											pointer.hoverSelect(index, event);

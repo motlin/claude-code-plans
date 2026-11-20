@@ -526,7 +526,7 @@ describe("RewindPicker", () =>
 					{
 						id: "rewind-opt-2",
 						selected: "true",
-						className: "rounded-r4 px-[6px] py-[5px] last:scroll-mb-4 bg-fill-ghost-hover text-primary",
+						className: "rounded-r4 px-[6px] py-[5px] last:scroll-mb-4 bg-fill-ghost-selected text-primary",
 						label: "Fix the lint",
 					},
 				],
