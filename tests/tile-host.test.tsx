@@ -1282,6 +1282,141 @@ describe("TileHost", () =>
 		);
 	});
 
+	function expandButton(): HTMLElement
+	{
+		return screen.getByRole(
+			"button",
+			{
+				name: "Expand",
+			},
+		);
+	}
+
+	function tileOrder(): (string | null)[]
+	{
+		return [...document.querySelectorAll("[data-tile-slot]")].map((slot) => slot.getAttribute("data-tile-slot"));
+	}
+
+	it("opens upstream's Move / Fill and arrange popover from the Expand button on right-click (c4db265df q/zt)", () =>
+	{
+		renderHost("session-a");
+		openTestPane();
+		const expand = expandButton();
+		const prevented = !fireEvent.contextMenu(expand);
+		const dialog = screen.getByRole("dialog");
+
+		expect(
+			{
+				prevented,
+				popupOpenAttr: expand.hasAttribute("data-pane-layout-popup-open"),
+				groups: within(dialog)
+					.getAllByRole("group")
+					.map((group) => group.getAttribute("aria-label")),
+				pressed: within(dialog)
+					.getAllByRole("button")
+					.filter((button) => button.getAttribute("aria-pressed") === "true")
+					.map((button) => button.getAttribute("aria-label")),
+				labels: within(dialog)
+					.getAllByRole("button")
+					.map((button) => button.getAttribute("aria-label")),
+			},
+		).toStrictEqual(
+			{
+				prevented: true,
+				popupOpenAttr: true,
+				groups: ["Move", "Fill and arrange"],
+				pressed: ["Move to right", "Tile"],
+				labels: ["Move to left", "Move to right", "Move to top", "Move to bottom", "Fill", "Tile"],
+			},
+		);
+	});
+
+	it("moves the pane to the left edge from the popover and closes it", () =>
+	{
+		renderHost("session-a");
+		openTestPane();
+		fireEvent.contextMenu(expandButton());
+		fireEvent.click(
+			within(screen.getByRole("dialog")).getByRole(
+				"button",
+				{
+					name: "Move to left",
+				},
+			),
+		);
+
+		expect(
+			{
+				order: tileOrder(),
+				dialog: screen.queryByRole("dialog"),
+			},
+		).toStrictEqual(
+			{
+				order: ["plan", "chat"],
+				dialog: null,
+			},
+		);
+	});
+
+	it("keeps a left click on Expand as the expand toggle, and Fill / Tile toggle it from the popover", () =>
+	{
+		renderHost("session-a");
+		openTestPane();
+		fireEvent.click(expandButton());
+		const clicked =
+		{
+			expanded: document.querySelector("[data-pane-expanded]") !== null,
+			dialog: screen.queryByRole("dialog"),
+		};
+		fireEvent.contextMenu(
+			screen.getByRole(
+				"button",
+				{
+					name: "Collapse",
+				},
+			),
+		);
+		const dialog = screen.getByRole("dialog");
+		const expandedPressed = within(dialog)
+			.getAllByRole("button")
+			.filter((button) => button.getAttribute("aria-pressed") === "true")
+			.map((button) => button.getAttribute("aria-label"));
+		fireEvent.click(
+			within(dialog).getByRole(
+				"button",
+				{
+					name: "Tile",
+				},
+			),
+		);
+
+		expect(
+			{
+				clicked,
+				expandedPressed,
+				tiled:
+				{
+					expanded: document.querySelector("[data-pane-expanded]") !== null,
+					dialog: screen.queryByRole("dialog"),
+				},
+			},
+		).toStrictEqual(
+			{
+				clicked:
+				{
+					expanded: true,
+					dialog: null,
+				},
+				expandedPressed: ["Fill"],
+				tiled:
+				{
+					expanded: false,
+					dialog: null,
+				},
+			},
+		);
+	});
+
 	function paneMoveButton(): HTMLElement
 	{
 		const pane = screen.getByText("Test pane body").closest<HTMLElement>("[data-pane-root]");

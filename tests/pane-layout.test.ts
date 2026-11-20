@@ -24,6 +24,8 @@ import
 	loadPaneLayout,
 	loadSubagentPaneAgent,
 	minTileSize,
+	movePaneToEdge,
+	paneAtEdge,
 	leftEdgeTiles,
 	rowEndOnlyTileIds,
 	resolveFlexes,
@@ -2120,4 +2122,128 @@ describe("topEdgeTiles and wideRowTopPadding (upstream cf53e1812 ae, shared-20 i
 			expect(wideRowTopPadding(tileId, root, under)).toBe(expected);
 		},
 	);
+});
+
+describe("movePaneToEdge", () =>
+{
+	it.each<[string, PaneLayoutState, TileId, "left" | "right" | "top" | "bottom", PaneLayoutState]>([
+		[
+			"splits a nested tile onto the end of the same-axis root",
+			TWO_PANES,
+			"changes",
+			"right",
+			layout([tile("chat", 2), tile("background-tasks", 1), tile("changes", 1)], "changes"),
+		],
+		[
+			"inserts a root child at the start, keeping its flex",
+			ONE_PANE,
+			"background-tasks",
+			"left",
+			layout([tile("background-tasks", 1), tile("chat", 2)], "background-tasks"),
+		],
+		[
+			"wraps the root in a perpendicular stack",
+			ONE_PANE,
+			"background-tasks",
+			"top",
+			{
+				root: stack("column", 1, [tile("background-tasks", 1), tile("chat", 1)]),
+				expanded: null,
+				focused: "background-tasks",
+			},
+		],
+		[
+			"wraps the root after the tile for a trailing perpendicular edge",
+			layout([tile("chat", 2), tile("background-tasks", 1)], "chat"),
+			"background-tasks",
+			"bottom",
+			{
+				root: stack("column", 1, [tile("chat", 1), tile("background-tasks", 1)]),
+				expanded: null,
+				focused: "background-tasks",
+			},
+		],
+		[
+			"collapses an expanded pane it moves",
+			layout([tile("chat", 2), tile("background-tasks", 1)], "background-tasks", "background-tasks"),
+			"background-tasks",
+			"left",
+			layout([tile("background-tasks", 1), tile("chat", 2)], "background-tasks"),
+		],
+		[
+			"descends through single-child stacks to the first real split",
+			{
+				root: stack("row", 1, [stack("column", 1, [tile("chat", 1), tile("files", 1)])]),
+				expanded: null,
+				focused: "chat",
+			},
+			"chat",
+			"bottom",
+			{
+				root: stack("row", 1, [stack("column", 1, [tile("files", 1), tile("chat", 1)])]),
+				expanded: null,
+				focused: "chat",
+			},
+		],
+	])("%s", (_name, state, tileId, edge, expected) =>
+	{
+		expect(movePaneToEdge(state, tileId, edge)).toStrictEqual(expected);
+	});
+
+	it("returns the same state when the pane already holds that edge", () =>
+	{
+		expect(movePaneToEdge(ONE_PANE, "background-tasks", "right")).toBe(ONE_PANE);
+	});
+});
+
+describe("paneAtEdge", () =>
+{
+	it.each<[PaneLayoutState, TileId, Record<string, boolean>]>([
+		[
+			ONE_PANE,
+			"background-tasks",
+			{
+				left: false,
+				right: true,
+				top: false,
+				bottom: false,
+			},
+		],
+		[
+			ONE_PANE,
+			"chat",
+			{
+				left: true,
+				right: false,
+				top: false,
+				bottom: false,
+			},
+		],
+		[
+			TWO_PANES,
+			"changes",
+			{
+				left: false,
+				right: false,
+				top: false,
+				bottom: false,
+			},
+		],
+		[
+			layout([tile("chat", 1)], "chat"),
+			"chat",
+			{
+				left: true,
+				right: true,
+				top: true,
+				bottom: true,
+			},
+		],
+	])("%#", (state, tileId, expected) =>
+	{
+		const edges = ["left", "right", "top", "bottom"] as const;
+		expect(Object.fromEntries(edges.map((edge) => [edge, paneAtEdge(state, tileId, edge)]))).toStrictEqual(
+			expected,
+		);
+	});
 });

@@ -15,7 +15,7 @@ import
 	type RefObject,
 } from "react";
 import {createPortal} from "react-dom";
-import {Maximize2, Minimize2, X} from "lucide-react";
+import {X} from "lucide-react";
 
 import {useShortcut, useShortcutKeys} from "../../hooks/use-shortcut";
 import {FIZZY_LAKE_PANELS} from "../../lib/fizzy-lake";
@@ -32,6 +32,8 @@ import
 	collapsePane,
 	defaultPaneLayout,
 	expandPane,
+	movePaneToEdge,
+	paneAtEdge,
 	fitPhoneLayout,
 	focusNeighbour,
 	focusPane,
@@ -88,6 +90,7 @@ import {usePhoneSheet} from "../../lib/use-phone-sheet";
 import {WIDE_TITLE_ROW, type WideTitleRowVariant} from "../../lib/wide-title-row";
 import {Tooltip} from "../ui/tooltip";
 import {PANE_HEADER_ICON_BUTTON_CLASS} from "./pane-classes";
+import {PaneLayoutPopover} from "./pane-layout-popover";
 import
 {
 	ChatGutterContext,
@@ -1037,28 +1040,22 @@ function PaneSurface({kind, definition, host}: {kind: PaneKind; definition: Pane
 
 	const controls = (
 		<>
-			<Tooltip content={isExpanded ? "Collapse" : "Expand"} shortcut={expandKeys.keys}>
-				<button
-					ref={toggleRef}
-					type="button"
-					aria-label={isExpanded ? "Collapse" : "Expand"}
-					aria-keyshortcuts={expandKeys.ariaKeyShortcuts}
-					{...(isExpanded
-						? {}
-						:
-							{
-								"aria-haspopup": "dialog" as const,
-							})}
-					onClick={() =>
-					{
-						if (isExpanded) host.collapse();
-						else host.update((state) => expandPane(state, kind));
-					}}
-					className={PANE_HEADER_ICON_BUTTON_CLASS}
-				>
-					{isExpanded ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-				</button>
-			</Tooltip>
+			<PaneLayoutPopover
+				isExpanded={isExpanded}
+				shortcut={expandKeys.keys}
+				ariaKeyShortcuts={expandKeys.ariaKeyShortcuts}
+				triggerRef={toggleRef}
+				onToggleExpand={() =>
+				{
+					if (isExpanded) host.collapse();
+					else host.update((state) => expandPane(state, kind));
+				}}
+				atEdge={(edge) => paneAtEdge(host.layout, kind, edge)}
+				onMove={(edge) =>
+				{
+					host.update((state) => movePaneToEdge(state, kind, edge));
+				}}
+			/>
 			<Tooltip content="Close" shortcut={closeKeys.keys}>
 				<button
 					type="button"

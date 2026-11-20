@@ -1042,6 +1042,136 @@ export function focusPane(state: PaneLayoutState, tileId: TileId): PaneLayoutSta
 	};
 }
 
+export type PaneEdge = "left" | "right" | "top" | "bottom";
+
+type EdgeMove =
+	|
+	  {
+			kind: "at-edge";
+	  }
+	|
+	  {
+			kind: "split";
+			index: number;
+	  }
+	|
+	  {
+			kind: "insert";
+			index: number;
+	  };
+
+/** Upstream c03935b01 `di`: the stack under the root's single-child chain, and its path from the root. */
+function edgeStack(root: StackNode):
+{
+	stack: StackNode;
+	path: number[];
+}
+{
+	let stack = root;
+	const path: number[] = [];
+	let only = stack.children.length === 1 ? stack.children[0] : undefined;
+	while (only?.kind === "stack")
+	{
+		stack = only;
+		path.push(0);
+		only = stack.children.length === 1 ? stack.children[0] : undefined;
+	}
+	return {
+		stack,
+		path,
+	};
+}
+
+/** Upstream `fi`: whether the tile already holds `edge`, else where moving it there splits or inserts. */
+function edgeMove(stack: StackNode, tilePath: readonly number[], edge: PaneEdge): EdgeMove
+{
+	const leading = edge === "left" || edge === "top";
+	const axis: Direction = edge === "left" || edge === "right" ? "row" : "column";
+	const lastIndex = stack.children.length - 1;
+	if (tilePath.length !== 1 || stack.direction !== axis)
+	{
+		if (tilePath.length === 1 && stack.children.length === 1)
+			return {
+				kind: "at-edge",
+			};
+		return {
+			kind: "split",
+			index: leading ? 0 : stack.direction === axis ? lastIndex + 1 : 1,
+		};
+	}
+	const index = leading ? 0 : lastIndex;
+	return tilePath[0] === index
+		?
+			{
+				kind: "at-edge",
+			}
+		:
+			{
+				kind: "insert",
+				index,
+			};
+}
+
+/** Upstream `pi`: whether `tileId` sits flush against `edge` of the layout. A pane that is not open never does. */
+export function paneAtEdge(state: PaneLayoutState, tileId: TileId, edge: PaneEdge): boolean
+{
+	const {stack} = edgeStack(state.root);
+	const tilePath = pathTo(stack, tileId);
+	return tilePath !== undefined && edgeMove(stack, tilePath, edge).kind === "at-edge";
+}
+
+/**
+ * Upstream `moveTileToEdge` (c03935b01 + tree op cf53e1812 `j`): moves the tile flush against `edge`. Along the
+ * stack's own axis a direct child swaps to the end keeping its flex; otherwise the tile splits in at flex 1, wrapping
+ * the stack in a perpendicular one when the axes differ. Like upstream, the move collapses an expansion and clears a
+ * drawn overlay; a tile already at the edge leaves the state untouched.
+ */
+export function movePaneToEdge(state: PaneLayoutState, tileId: TileId, edge: PaneEdge): PaneLayoutState
+{
+	const {stack, path} = edgeStack(state.root);
+	const tilePath = pathTo(stack, tileId);
+	if (tilePath === undefined) return state;
+	const move = edgeMove(stack, tilePath, edge);
+	if (move.kind === "at-edge") return state;
+	const moving = nodeAt(stack, tilePath);
+	if (moving?.kind !== "tile") return state;
+	const rest = withoutTile(stack, tileId);
+	const axis: Direction = edge === "left" || edge === "right" ? "row" : "column";
+	let moved: StackNode;
+	if (move.kind === "split" && rest.direction !== axis)
+	{
+		const kept =
+		{
+			...rest,
+			flex: 1,
+		};
+		const added = tile(tileId, 1);
+		moved =
+		{
+			kind: "stack",
+			direction: axis,
+			flex: rest.flex,
+			children: edge === "left" || edge === "top" ? [added, kept] : [kept, added],
+		};
+	}
+	else
+	{
+		const children = [...rest.children];
+		children.splice(move.index, 0, move.kind === "split" ? tile(tileId, 1) : moving);
+		moved =
+		{
+			...rest,
+			children,
+		};
+	}
+	return {
+		...withoutOverlay(state),
+		root: normalizeRoot(replaceAt(state.root, path, moved)),
+		expanded: null,
+		focused: tileId,
+	};
+}
+
 export function expandPane(state: PaneLayoutState, kind: PaneKind): PaneLayoutState
 {
 	if (!isOpen(state, kind)) return state;

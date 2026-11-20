@@ -650,7 +650,13 @@ describe("folder section header menu", () =>
 		);
 		await flush();
 
-		const dialog = await waitFor(() => screen.getByRole("alertdialog"));
+		// Base UI moves initial focus a frame after the dialog mounts.
+		const dialog = await waitFor(() =>
+		{
+			const found = screen.getByRole("alertdialog");
+			if (!found.contains(document.activeElement)) throw new Error("the dialog has not taken focus yet");
+			return found;
+		});
 		const describedBy = dialog.getAttribute("aria-describedby");
 
 		expect(

@@ -125,6 +125,12 @@ export interface PopoverContentProps
 	closeLabel?: string;
 	/** Lands on the anchored Popup; a sheet has no pointer to track. */
 	onPointerEnter?: () => void;
+	/** The anchored Popup's initial focus (Base UI `initialFocus`). */
+	initialFocus?: ComponentProps<typeof BasePopover.Popup>["initialFocus"];
+	/** Lands on the anchored Popup, e.g. arrow-key roving over its buttons. */
+	onKeyDown?: ComponentProps<typeof BasePopover.Popup>["onKeyDown"];
+	/** Receives the anchored Popup element. */
+	popupRef?: RefObject<HTMLDivElement | null>;
 }
 
 const LazyPopoverSheetContent = lazy(async () =>
@@ -155,9 +161,20 @@ export function PopoverContent({
 	structurallyAnchored = false,
 	closeLabel = "Close",
 	onPointerEnter,
+	initialFocus,
+	onKeyDown,
+	popupRef,
 }: PopoverContentProps)
 {
 	const {sheet, treeId, dismiss} = useContext(PopoverSheetContext);
+	const popupRefCallback = useCallback(
+		(popup: HTMLDivElement | null) =>
+		{
+			if (popupRef !== undefined) popupRef.current = popup;
+			registerPopupOpener(popup);
+		},
+		[popupRef],
+	);
 	if (sheet && !structurallyAnchored)
 	{
 		return (
@@ -172,7 +189,19 @@ export function PopoverContent({
 				<BasePopover.Popup
 					data-cds="Popover"
 					{...overlayAttrs}
-					ref={registerPopupOpener}
+					ref={popupRefCallback}
+					{...(initialFocus === undefined
+						? {}
+						:
+							{
+								initialFocus,
+							})}
+					{...(onKeyDown === undefined
+						? {}
+						:
+							{
+								onKeyDown,
+							})}
 					{...(className === undefined
 						? {}
 						:

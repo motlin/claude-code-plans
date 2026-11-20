@@ -802,8 +802,13 @@ describe("Archive all", () =>
 		);
 		await renderGroup("cg-gtd", [toGroupRow(listItem("s1")), toGroupRow(listItem("s2"))]);
 		await choose("GTD", "Archive all (2)");
-		const dialog = await waitFor(() => screen.getByRole("alertdialog"));
-
+		// Base UI moves initial focus a frame after the dialog mounts.
+		const dialog = await waitFor(() =>
+		{
+			const found = screen.getByRole("alertdialog");
+			if (!found.contains(document.activeElement)) throw new Error("the dialog has not taken focus yet");
+			return found;
+		});
 		const describedBy = dialog.getAttribute("aria-describedby");
 
 		expect(
