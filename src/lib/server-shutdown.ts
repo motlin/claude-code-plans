@@ -244,3 +244,24 @@ export async function takeOverServerShutdown(hook: ShutdownHook): Promise<AbortS
 	if (!stopping.signal.aborted) onServerShutdown(listenForTakeover(runServerShutdownHooks));
 	return stopping.signal;
 }
+
+/**
+ * Hold each request until `ready` settles: a request served during the
+ * takeover would open the databases while the previous instance may still
+ * hold them. A failed startup lets requests through, to fail on their own.
+ */
+export function holdRequestsUntil<R>(
+	ready: Promise<unknown>,
+	fetch: (request: Request) => R | Promise<R>,
+): (request: Request) => Promise<R>
+{
+	const settled = ready.then(
+		() => {},
+		() => {},
+	);
+	return async (request) =>
+	{
+		await settled;
+		return fetch(request);
+	};
+}

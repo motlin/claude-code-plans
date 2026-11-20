@@ -422,6 +422,104 @@ describe("db boot ordering", () =>
 		expect(close.mock.calls.length).toBe(1);
 	});
 
+	it("getDb() after shutdownDb() throws instead of reopening the database, until initDb() opens it again", async () =>
+	{
+		const openAppDb = vi.fn<typeof realOpenAppDb>(() => testDb);
+		mockDbModule({});
+		vi.doMock("../src/lib/db/connection", async () =>
+		{
+			const actual = await vi.importActual<typeof import("../src/lib/db/connection")>("../src/lib/db/connection");
+			return {
+				...actual,
+				openAppDb,
+			};
+		});
+		vi.spyOn(testDb, "close").mockImplementation(() => {});
+
+		const {getDb, initDb, shutdownDb} = await import("../src/lib/db");
+		getDb();
+		await shutdownDb();
+		const afterShutdown = (() =>
+		{
+			try
+			{
+				getDb();
+				return "reopened";
+			}
+			catch (err)
+			{
+				return (err as Error).message;
+			}
+		})();
+		const opensAfterShutdown = openAppDb.mock.calls.length;
+		const reopened = await initDb();
+
+		expect(
+			{
+				afterShutdown,
+				opensAfterShutdown,
+				reopened: reopened === testDb,
+				opens: openAppDb.mock.calls.length,
+			},
+		).toStrictEqual(
+			{
+				afterShutdown:
+					"The databases are closed: this server instance shut down or has not finished taking over from the previous one",
+				opensAfterShutdown: 1,
+				reopened: true,
+				opens: 2,
+			},
+		);
+	});
+
+	it("holdDbUntilInit() keeps getDb() from opening the database until initDb() runs after the takeover", async () =>
+	{
+		const openAppDb = vi.fn<typeof realOpenAppDb>(() => testDb);
+		mockDbModule({});
+		vi.doMock("../src/lib/db/connection", async () =>
+		{
+			const actual = await vi.importActual<typeof import("../src/lib/db/connection")>("../src/lib/db/connection");
+			return {
+				...actual,
+				openAppDb,
+			};
+		});
+
+		const {getDb, holdDbUntilInit, initDb} = await import("../src/lib/db");
+		holdDbUntilInit();
+		const whileHeld = (() =>
+		{
+			try
+			{
+				getDb();
+				return "opened";
+			}
+			catch (err)
+			{
+				return (err as Error).message;
+			}
+		})();
+		const opensWhileHeld = openAppDb.mock.calls.length;
+		await initDb();
+
+		expect(
+			{
+				whileHeld,
+				opensWhileHeld,
+				afterInit: getDb() === testDb,
+				opens: openAppDb.mock.calls.length,
+			},
+		).toStrictEqual(
+			{
+				whileHeld:
+					"The databases are closed: this server instance shut down or has not finished taking over from the previous one",
+				opensWhileHeld: 0,
+				afterInit: true,
+				opens: 1,
+			},
+		);
+	});
+
 	it("separately bundled copies of the db module share one connection and one shutdown", async () =>
 	{
 		// The production build bundles the nitro WebSocket routes apart from the

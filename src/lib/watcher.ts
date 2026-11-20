@@ -131,7 +131,8 @@ export function expediteSessionJsonlRead(sessionId: string): void
 		if (state.timer === undefined || basename(path, ".jsonl") !== sessionId) continue;
 		clearTimeout(state.timer);
 		delete state.timer;
-		void fireJsonlAppend(path, state);
+		const stopped = closing.signal;
+		detach(async () => fireJsonlAppend(path, state, stopped));
 		return;
 	}
 	jsonlExpediteUntilBySession.set(sessionId, Date.now() + JSONL_EXPEDITE_WINDOW_MS);
@@ -147,10 +148,11 @@ function takeJsonlExpedite(path: string): boolean
 	return Date.now() <= until;
 }
 
-async function fireJsonlAppend(path: string, state: JsonlThrottleState): Promise<void>
+async function fireJsonlAppend(path: string, state: JsonlThrottleState, stopped: AbortSignal): Promise<void>
 {
 	state.lastFired = Date.now();
 	delete state.timer;
+	if (stopped.aborted) return;
 	await trackActivity(`jsonl append ${path}`, async () =>
 		processJsonlAppend(getDb().index, path, sharedJsonlOffsets, broadcastTyped),
 	);
@@ -205,11 +207,23 @@ function resetWorkflowThrottle(): void
 
 hmrDispose(closeWatcher);
 
-/** Stop watching and drop pending throttled JSONL updates. */
+/**
+ * Aborts when closeWatcher() runs. Each event handler captures the controller
+ * current when it starts, so an event still awaiting the initial scan stops
+ * instead of indexing into databases that shutdownDb() is about to close.
+ */
+let closing = new AbortController();
+
+/**
+ * Stop watching, drop pending throttled JSONL updates, stop events still in
+ * flight, and wait for indexing they already started.
+ */
 export async function closeWatcher(): Promise<void>
 {
 	const current = watcher;
 	watcher = null;
+	closing.abort();
+	closing = new AbortController();
 	for (const state of jsonlThrottleByPath.values())
 	{
 		if (state.timer !== undefined) clearTimeout(state.timer);
@@ -218,20 +232,33 @@ export async function closeWatcher(): Promise<void>
 	jsonlExpediteUntilBySession.clear();
 	resetWorkflowThrottle();
 	if (current) await current.close();
+	await settleDetachedWork();
 }
 
 const WATCHED_EXTENSIONS = new Set([".md", ".jsonl", ".json"]);
 
-/** Indexing that handleFileChange detaches from its caller, kept so tests can wait for it to finish. */
-const detachedWork = new Set<Promise<void>>();
+/** Indexing that watcher events started, kept so closeWatcher() and tests can wait for it to finish. */
+const detachedWork = new Set<Promise<unknown>>();
 
-function detach(work: () => Promise<void>): void
+/** Resolve once every detached job, including ones started meanwhile, has finished. */
+async function settleDetachedWork(): Promise<void>
+{
+	while (detachedWork.size > 0) await Promise.allSettled(detachedWork);
+}
+
+async function tracked<T>(work: () => Promise<T>): Promise<T>
 {
 	const promise = work().finally(() =>
 	{
 		detachedWork.delete(promise);
 	});
 	detachedWork.add(promise);
+	return promise;
+}
+
+function detach(work: () => Promise<void>): void
+{
+	void tracked(work);
 }
 const JSONL_THROTTLE_MS = 2000;
 
@@ -985,21 +1012,28 @@ function isTranscriptPath(path: string): boolean
 
 async function handleFileChange(path: string): Promise<void>
 {
+	// A call rather than a property read: the signal aborts during the awaits between checks.
+	const {signal} = closing;
+	const stopped = (): boolean => signal.aborted;
 	if (handleSessionRegistryEvent(path)) return;
 	if (handleJobFileEvent(path, jobsDir, broadcastTyped)) return;
 	if (handleContextMirrorEvent(path, contextMirrorDir, broadcastTyped)) return;
 	// Transcripts wait only for the index scan: the file-content scan after it can take minutes.
 	await awaitInitialIndexScan();
+	if (stopped()) return;
 	handleWorkflowFileEvent(path, projectsDir, broadcastTyped);
 	const normalizedPath = resolve(path);
 	const gitIndexRoot = fileContentRootByGitIndexPath.get(normalizedPath);
 	if (gitIndexRoot)
 	{
 		await awaitInitialScan();
+		if (stopped()) return;
 		try
 		{
-			await trackActivity(`git index refresh ${gitIndexRoot}`, async () =>
-				refreshTrackedFileRoot(getDb().index, gitIndexRoot),
+			await tracked(async () =>
+				trackActivity(`git index refresh ${gitIndexRoot}`, async () =>
+					refreshTrackedFileRoot(getDb().index, gitIndexRoot),
+				),
 			);
 		}
 		catch
@@ -1012,14 +1046,16 @@ async function handleFileChange(path: string): Promise<void>
 	if (fileContentRoot && trackedFileIndex.has(fileContentRoot, path))
 	{
 		await awaitInitialScan();
+		if (stopped()) return;
 		try
 		{
-			await handleFileContentChange(getDb().index, path, fileContentRoots);
+			await tracked(async () => handleFileContentChange(getDb().index, path, fileContentRoots));
 		}
 		catch
 		{
 			// A later watcher event or startup scan retries transient indexing failures.
 		}
+		if (stopped()) return;
 	}
 	const ext = path.slice(path.lastIndexOf("."));
 	if (!WATCHED_EXTENSIONS.has(ext)) return;
@@ -1038,19 +1074,22 @@ async function handleFileChange(path: string): Promise<void>
 		jsonlThrottleByPath.set(path, throttleState);
 		const elapsed = now - throttleState.lastFired;
 
-		const fire = async () => fireJsonlAppend(path, throttleState);
+		const fire = (): void =>
+		{
+			detach(async () => fireJsonlAppend(path, throttleState, signal));
+		};
 
 		if (throttleState.timer !== undefined) clearTimeout(throttleState.timer);
 
 		if (elapsed >= JSONL_THROTTLE_MS || takeJsonlExpedite(path))
 		{
 			// Enough time has passed, or the app just answered this session -- fire immediately.
-			void fire();
+			fire();
 		}
 		else
 		{
 			// Schedule a trailing fire for the remaining interval.
-			throttleState.timer = setTimeout(() => void fire(), JSONL_THROTTLE_MS - elapsed);
+			throttleState.timer = setTimeout(fire, JSONL_THROTTLE_MS - elapsed);
 		}
 	}
 	else if (ext === ".json" && statuslineDir && path.startsWith(statuslineDir))
@@ -1124,13 +1163,18 @@ function onFileUnlink(path: string): void
 
 async function handleFileUnlink(path: string): Promise<void>
 {
+	// A call rather than a property read: the signal aborts during the awaits between checks.
+	const {signal} = closing;
+	const stopped = (): boolean => signal.aborted;
 	if (handleSessionRegistryEvent(path)) return;
 	if (handleJobFileEvent(path, jobsDir, broadcastTyped)) return;
 	if (handleContextMirrorEvent(path, contextMirrorDir, broadcastTyped)) return;
 	await awaitInitialIndexScan();
+	if (stopped()) return;
 	if (isPathInsideFileContentRoots(path, fileContentRoots))
 	{
 		await awaitInitialScan();
+		if (stopped()) return;
 		try
 		{
 			handleFileContentUnlink(getDb().index, path);
@@ -1301,10 +1345,7 @@ export const __testing =
 	handleFileChange,
 	handleFileUnlink,
 	/** Resolve once every indexing job handleFileChange detached, including ones started meanwhile, has finished. */
-	async settleDetachedWork(): Promise<void>
-	{
-		while (detachedWork.size > 0) await Promise.allSettled(detachedWork);
-	},
+	settleDetachedWork,
 	handleJobFileEvent,
 	handleWorkflowFileEvent,
 	resetWorkflowThrottle,

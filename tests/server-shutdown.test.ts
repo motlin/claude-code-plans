@@ -1,6 +1,7 @@
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import
 {
+	holdRequestsUntil,
 	listenForTakeover,
 	onServerShutdown,
 	requestTakeover,
@@ -141,6 +142,62 @@ describe("server shutdown hooks", () =>
 		stop();
 
 		expect(events).toStrictEqual(["previous:teardown:start", "previous:teardown:end", "new:takeover-complete"]);
+	});
+
+	it("holdRequestsUntil holds a request that arrives mid-takeover until the takeover finishes, so it cannot open the databases alongside the previous instance", async () =>
+	{
+		const events: string[] = [];
+		const stop = listenForTakeover(async () =>
+		{
+			events.push("previous:teardown:start");
+			await new Promise((resolve) =>
+			{
+				setTimeout(resolve, 50);
+			});
+			events.push("previous:teardown:end");
+		});
+		const takeover = requestTakeover(
+			{
+				ackWindowMs: 20,
+			},
+		).then(() =>
+		{
+			events.push("new:takeover-complete");
+		});
+		const fetch = holdRequestsUntil(takeover, (request: Request) =>
+		{
+			events.push(`handled ${new URL(request.url).pathname}`);
+			return new Response("ok");
+		});
+
+		const response = await fetch(new Request("http://localhost/api/sessions"));
+		stop();
+
+		expect(
+			{
+				events,
+				body: await response.text(),
+			},
+		).toStrictEqual(
+			{
+				events: [
+					"previous:teardown:start",
+					"previous:teardown:end",
+					"new:takeover-complete",
+					"handled /api/sessions",
+				],
+				body: "ok",
+			},
+		);
+	});
+
+	it("holdRequestsUntil lets requests through, without waiting again, once startup settles even when it failed", async () =>
+	{
+		const fetch = holdRequestsUntil(Promise.reject(new Error("takeover failed")), () => new Response("handled"));
+
+		const response = await fetch(new Request("http://localhost/"));
+
+		expect(await response.text()).toBe("handled");
 	});
 
 	it("an instance tears down only once, for the first takeover", async () =>

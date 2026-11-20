@@ -43,6 +43,7 @@ import {DOMAIN_EVENTS} from "../src/lib/hook-events";
 import {eq, sql} from "drizzle-orm";
 import type {SessionEntry} from "../src/lib/sessions";
 import * as sessions from "../src/lib/sessions";
+import * as eventLoopStalls from "../src/lib/perf/event-loop-stalls";
 import type {TaskRow} from "../src/lib/db/queries";
 import {markSessionActive, markSessionEnded, setSessionState} from "../src/lib/active-session-store";
 import * as recursiveWatch from "../src/lib/recursive-watch";
@@ -231,6 +232,27 @@ describe("handleFileChange", () =>
 				new Set([alicePath, bobPath]),
 			);
 		});
+	});
+
+	it("an event still in flight when the watcher closes reads and indexes nothing", async () =>
+	{
+		const path = join(testDir, "closing-session.jsonl");
+		writeFileSync(
+			path,
+			jsonl(
+				{
+					type: "user",
+					sessionId: "closing-session",
+				},
+			),
+		);
+		const trackActivity = vi.spyOn(eventLoopStalls, "trackActivity");
+
+		const event = __testing.handleFileChange(path);
+		await closeWatcher();
+		await event;
+
+		expect(trackActivity.mock.calls.map(([label]) => label)).toStrictEqual([]);
 	});
 });
 

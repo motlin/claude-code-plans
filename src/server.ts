@@ -13,7 +13,7 @@ import
 	rebroadcastSessionsById,
 	resolveIgnoredDirNames,
 } from "./lib/watcher";
-import {getDb, getShutdownSignal, initDb, runInitialScan, shutdownDb} from "./lib/db";
+import {getDb, getShutdownSignal, holdDbUntilInit, initDb, runInitialScan, shutdownDb} from "./lib/db";
 import {startSweep, stopSweep} from "./lib/active-session-store";
 import {startAutoArchive, stopAutoArchive} from "./lib/auto-archive-service";
 import {startTurnVerdictWorker} from "./lib/turn-verdict";
@@ -35,7 +35,7 @@ import {getHeadlessRegistry, initHeadlessRegistry} from "./lib/headless/registry
 import {resolveFileSearchRoots} from "./lib/config";
 import type {RecursiveWatcher} from "./lib/recursive-watch";
 import {initPrStatusService} from "./lib/pr-status-service";
-import {takeOverServerShutdown} from "./lib/server-shutdown";
+import {holdRequestsUntil, takeOverServerShutdown} from "./lib/server-shutdown";
 import {announceThisDevEnvReady} from "./lib/dev-env-ready-gate";
 import {defined} from "./lib/defined";
 import {nodeFastModeBlockDependencies} from "./lib/composer-state-server";
@@ -74,6 +74,17 @@ let stopStallMonitor: (() => void) | null = import.meta.env.DEV
 		)
 	: null;
 
+// Nothing opens the databases until the previous instance has released them
+// and initDb() runs below; requests wait for that instead of failing.
+holdDbUntilInit();
+let markDatabasesOpened = (): void =>
+{
+};
+const databasesOpened = new Promise<void>((resolve) =>
+{
+	markDatabasesOpened = resolve;
+});
+
 void (async () =>
 {
 	// Release every long-lived handle startup creates so the process can exit
@@ -111,16 +122,19 @@ void (async () =>
 	});
 	// A call rather than a property read: the signal aborts during the awaits between checks.
 	const stopped = (): boolean => stopping.aborted;
-	if (stopped()) return;
-
 	try
 	{
+		if (stopped()) return;
 		await trackActivity("startup open database", async () => initDb());
 	}
 	catch (err)
 	{
 		console.error("Failed to initialize database:", err);
 		return;
+	}
+	finally
+	{
+		markDatabasesOpened();
 	}
 	if (stopped()) return;
 
@@ -271,13 +285,16 @@ void (async () =>
 
 export default createServerEntry(
 	{
-		fetch: withHeadBodyCancel(
-			withServerTiming(
-				withActivityTracking(
-					withShellChinLabels(
-						(request): Response | Promise<Response> => handler.fetch(request),
-						readClaudeSettings,
-						nodeFastModeBlockDependencies,
+		fetch: holdRequestsUntil(
+			databasesOpened,
+			withHeadBodyCancel(
+				withServerTiming(
+					withActivityTracking(
+						withShellChinLabels(
+							(request): Response | Promise<Response> => handler.fetch(request),
+							readClaudeSettings,
+							nodeFastModeBlockDependencies,
+						),
 					),
 				),
 			),

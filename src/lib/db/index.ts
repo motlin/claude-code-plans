@@ -32,6 +32,12 @@ type DbState =
 	/** The file-content scan has ended, so content search covers every indexed root. */
 	fileContentScanDone: boolean;
 	controller: AbortController;
+	/**
+	 * getDb() throws instead of opening the databases: shutdownDb() ran, or a
+	 * starting server is still waiting for the previous instance to release
+	 * them (holdDbUntilInit). Only initDb() opens them again.
+	 */
+	closed: boolean;
 };
 
 const DB_STATE = Symbol.for("claude-code-browser.db-state");
@@ -53,6 +59,7 @@ function getDbState(): DbState
 		indexPromise: null,
 		fileContentScanDone: false,
 		controller: new AbortController(),
+		closed: false,
 	};
 	Reflect.set(globalThis, DB_STATE, created);
 	return created;
@@ -61,7 +68,23 @@ function getDbState(): DbState
 export function getDb(): AppDb
 {
 	const state = getDbState();
+	if (state.closed)
+	{
+		throw new Error(
+			"The databases are closed: this server instance shut down or has not finished taking over from the previous one",
+		);
+	}
 	return (state.db ??= openAppDb());
+}
+
+/**
+ * Keeps getDb() from opening the databases until initDb() runs. A starting
+ * server calls this before its takeover, so nothing opens them while the
+ * previous instance may still hold the write lock.
+ */
+export function holdDbUntilInit(): void
+{
+	getDbState().closed = true;
 }
 
 /**
@@ -76,8 +99,25 @@ export function replaceDb(db: AppDb | null): AppDb | null
 	return previous;
 }
 
+/**
+ * Opens the databases, reopening them for a server instance that took over
+ * from one that shut down earlier in this thread, with a fresh scan state.
+ */
 export async function initDb(): Promise<AppDb>
 {
+	const state = getDbState();
+	if (state.closed)
+	{
+		// The previous instance's shutdownDb() has finished: its scan ended and its connection closed.
+		if (state.controller.signal.aborted)
+		{
+			state.controller = new AbortController();
+			state.scanPromise = null;
+			state.indexPromise = null;
+			state.fileContentScanDone = false;
+		}
+		state.closed = false;
+	}
 	return Promise.resolve(getDb());
 }
 
@@ -118,9 +158,8 @@ export function runInitialScan(
 		holder.scanPromise = (async () =>
 		{
 			await indexPromise;
-			const db = getDb();
 			await runScan("Initial file-content scan", signal, async () =>
-				scanFileContentRoots(db.index, fileContentRoots, ignoredDirNames, signal),
+				scanFileContentRoots(getDb().index, fileContentRoots, ignoredDirNames, signal),
 			);
 			holder.fileContentScanDone = true;
 		})();
@@ -158,15 +197,16 @@ export function getShutdownSignal(): AbortSignal
 
 /**
  * Stops the initial scan and closes the databases, so a restarted server's
- * scan never contends with this instance for the write lock.
+ * scan never contends with this instance for the write lock. Work still
+ * running afterwards gets an error from getDb() rather than reopening them;
+ * a server instance started later in this thread reopens them with initDb().
  */
 export async function shutdownDb(): Promise<void>
 {
 	const state = getDbState();
+	state.closed = true;
 	state.controller.abort();
 	await state.scanPromise;
-	// A server instance started later in this thread opens its own connection and scan.
-	if (Reflect.get(globalThis, DB_STATE) === state) Reflect.deleteProperty(globalThis, DB_STATE);
 	const db = state.db;
 	state.db = null;
 	db?.close();
