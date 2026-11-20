@@ -2462,7 +2462,7 @@ describe("message metadata fields", () =>
 		expect(result.lines[1]!).not.toHaveProperty("isApiErrorMessage");
 	});
 
-	it("carries the request id, message id and string error code on API error lines only", () =>
+	it("carries the request id, message id, string error code and API error type on API error lines only", () =>
 	{
 		const records = [
 			{
@@ -2487,6 +2487,7 @@ describe("message metadata fields", () =>
 				apiErrorStatus: 529,
 				requestId: "req_011CfHarGaksRjzuQwv2aEni",
 				error: "server_error",
+				apiErrorType: "overloaded_error",
 			},
 			{
 				...assistantRecord(
@@ -2521,6 +2522,7 @@ describe("message metadata fields", () =>
 							requestId: line.requestId,
 							messageId: line.messageId,
 							apiErrorCode: line.apiErrorCode,
+							apiErrorType: line.apiErrorType,
 						}
 					: null,
 			),
@@ -2529,11 +2531,13 @@ describe("message metadata fields", () =>
 				requestId: "req_011CfHarGaksRjzuQwv2aEni",
 				messageId: "69f6c760-e79e-4483-bdfe-5fb492ef4838",
 				apiErrorCode: "server_error",
+				apiErrorType: "overloaded_error",
 			},
 			{
 				requestId: undefined,
 				messageId: undefined,
 				apiErrorCode: undefined,
+				apiErrorType: undefined,
 			},
 		]);
 	});

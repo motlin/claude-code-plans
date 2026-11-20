@@ -1185,7 +1185,7 @@ describe("AttachmentBanner", () =>
 			).toStrictEqual([["Available again, announced earlier (2)", "mcp__docs__batch\nmcp__docs__guide"]]);
 		});
 
-		it("lists failed MCP servers with their error code and error, and servers that need sign-in", () =>
+		it("lists failed MCP servers with their error code, error and retry policy, and servers that need sign-in", () =>
 		{
 			expect(
 				detailSections(
@@ -1199,6 +1199,7 @@ describe("AttachmentBanner", () =>
 							},
 							{
 								name: "plugin:1password:1password",
+								willRetry: "on_reach",
 							},
 							{
 								name: "cf",
@@ -1215,7 +1216,7 @@ describe("AttachmentBanner", () =>
 			).toStrictEqual([
 				[
 					"Failed MCP servers (4)",
-					`imcp · CONNECT_TIMEOUT: timed out\nplugin:1password:1password\ncf · 410\nlong: ${"e".repeat(199)}…`,
+					`imcp · CONNECT_TIMEOUT: timed out\nplugin:1password:1password (will retry on reach)\ncf · 410\nlong: ${"e".repeat(199)}…`,
 				],
 				["Needs sign-in (1)", "claude.ai Gmail"],
 			]);

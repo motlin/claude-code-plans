@@ -83,6 +83,7 @@ describe("faultFor", () =>
 		},
 		{
 			name: "plugin:1password:1password",
+			willRetry: "on_reach",
 		},
 		{
 			name: "claude.ai Gmail",
@@ -128,7 +129,7 @@ describe("faultFor", () =>
 			},
 			{
 				name: "Failed to connect",
-				sentence: "This server failed to connect.",
+				sentence: "This server failed to connect. Will retry on reach.",
 			},
 			undefined,
 		]);

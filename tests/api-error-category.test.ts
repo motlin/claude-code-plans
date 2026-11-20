@@ -104,7 +104,7 @@ describe("classifyApiError", () =>
 		]);
 	});
 
-	it("follows upstream's MQ order: refusal, usage-limit text, the He codes, the text table, the code map, then the status", () =>
+	it("follows upstream's MQ order: refusal, usage-limit text, the He codes, the text table, the apiErrorType, the code map, then the status", () =>
 	{
 		expect([
 			classify(
@@ -206,6 +206,33 @@ describe("classifyApiError", () =>
 					status: 400,
 				},
 			),
+			classify(
+				{
+					text: "nothing recognisable",
+					errorType: "rate_limit_error",
+					code: "billing_error",
+				},
+			),
+			classify(
+				{
+					text: "Request too large",
+					errorType: "overloaded_error",
+				},
+			),
+			classify(
+				{
+					text: "nothing recognisable",
+					errorType: "authentication_error",
+					status: 500,
+				},
+			),
+			classify(
+				{
+					text: "nothing recognisable",
+					errorType: "some_new_error",
+					status: 500,
+				},
+			),
 		]).toStrictEqual([
 			"usage_policy",
 			"rate_limit",
@@ -224,6 +251,10 @@ describe("classifyApiError", () =>
 			"context_length",
 			"output_token_limit",
 			"context_length",
+			"server_rate_limit",
+			"request_too_large",
+			"auth",
+			"server_error",
 		]);
 	});
 });

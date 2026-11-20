@@ -38,6 +38,8 @@ export interface ApiErrorCardProps
 	messageId?: string;
 	/** The record's string `error` code. */
 	code?: string;
+	/** The record's `apiErrorType`, the API's own error type. */
+	errorType?: string;
 	/** The assistant message's `stop_reason`; `refusal` is a safeguards flag. */
 	stopReason?: string;
 	/** The live session's recovery handlers; only the transcript's last entry gets them. */
@@ -217,6 +219,7 @@ function resolveApiError({
 	requestId,
 	messageId,
 	code,
+	errorType,
 	stopReason,
 	hint: hintContext =
 	{
@@ -235,6 +238,7 @@ function resolveApiError({
 			text,
 			status,
 			code,
+			errorType,
 			stopReason,
 		},
 	);

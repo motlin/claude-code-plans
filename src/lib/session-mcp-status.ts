@@ -20,6 +20,7 @@ const FailedMcpSnapshotSchema = z.object(
 							name: z.string(),
 							errorCode: z.string().optional(),
 							error: z.string().optional(),
+							willRetry: z.string().optional(),
 						},
 					),
 				),
@@ -32,7 +33,7 @@ function failedServers(record: unknown): SessionMcpStatus["failed"] | undefined
 {
 	const parsed = FailedMcpSnapshotSchema.safeParse(record);
 	if (!parsed.success) return undefined;
-	return parsed.data.attachment.failedMcpServers.map(({name, errorCode, error}) => (
+	return parsed.data.attachment.failedMcpServers.map(({name, errorCode, error, willRetry}) => (
 	{
 		name,
 		...(errorCode === undefined
@@ -46,6 +47,12 @@ function failedServers(record: unknown): SessionMcpStatus["failed"] | undefined
 			:
 				{
 					error,
+				}),
+		...(willRetry === undefined
+			? {}
+			:
+				{
+					willRetry,
 				}),
 	}));
 }

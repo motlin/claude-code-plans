@@ -30,6 +30,7 @@ import
 	Zap,
 } from "lucide-react";
 import {assertNever} from "../lib/assert-never";
+import {willRetryPhrase} from "../lib/customize/session-mcp-rows";
 import {parsePeerMessage, peerOriginOf} from "../lib/agent-message";
 import {PeerMessageRow} from "./agent-message-row";
 import type {z} from "zod";
@@ -150,15 +151,17 @@ function linesSection(label: string, lines: (string | false | undefined)[]): Det
 /** Longest failed-server error a detail line shows before cutting to 199 characters and `…`. */
 const MAX_MCP_ERROR_LENGTH = 200;
 
-/** A failed MCP server as `name · errorCode: error`, each part only when present. */
+/** A failed MCP server as `name · errorCode: error (will retry …)`, each part only when present. */
 function failedServerLine({
 	name,
 	errorCode,
 	error,
+	willRetry,
 }: {
 	name: string;
 	errorCode?: string | undefined;
 	error?: string | undefined;
+	willRetry?: string | undefined;
 }): string
 {
 	const code = errorCode === undefined ? "" : ` · ${errorCode}`;
@@ -166,7 +169,8 @@ function failedServerLine({
 		error === undefined
 			? ""
 			: `: ${error.length > MAX_MCP_ERROR_LENGTH ? `${error.slice(0, MAX_MCP_ERROR_LENGTH - 1)}…` : error}`;
-	return `${name}${code}${message}`;
+	const retry = willRetry === undefined ? "" : ` (will ${willRetryPhrase(willRetry)})`;
+	return `${name}${code}${message}${retry}`;
 }
 
 function textSection(label: string, text: string | undefined): DetailSection[]

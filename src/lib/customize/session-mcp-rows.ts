@@ -53,8 +53,15 @@ export function faultFor(
 	const sessionName = configNameForSession(server);
 	const entry = failed.find((candidate) => candidate.name === sessionName);
 	if (entry === undefined) return undefined;
+	const sentence = entry.error ?? "This server failed to connect.";
 	return {
 		name: entry.errorCode ?? "Failed to connect",
-		sentence: entry.error ?? "This server failed to connect.",
+		sentence: entry.willRetry === undefined ? sentence : `${sentence} Will ${willRetryPhrase(entry.willRetry)}.`,
 	};
+}
+
+/** A failed server's `willRetry` policy as a lowercase phrase: `on_reach` reads "retry on reach". */
+export function willRetryPhrase(willRetry: string): string
+{
+	return `retry ${willRetry.replaceAll("_", " ")}`;
 }

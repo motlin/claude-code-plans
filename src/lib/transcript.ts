@@ -150,6 +150,8 @@ const MessageLineSchema = z.object(
 		messageId: z.string().optional(),
 		/** An API error line's string `error` code, e.g. `server_error`, for classifying it. */
 		apiErrorCode: z.string().optional(),
+		/** An API error line's `apiErrorType`, the API's own error type, e.g. `rate_limit_error`, for classifying it. */
+		apiErrorType: z.string().optional(),
 		/** The rate-limit window of a synthetic usage-limit message. */
 		usageLimit: UsageLimitSchema.optional(),
 		errorDetails: z.union([z.string(), z.record(z.string(), JsonValueSchema)]).optional(),
@@ -2152,6 +2154,7 @@ function* processRecordBatchSteps(
 			{
 				processedLine.isApiErrorMessage = true;
 				if (typeof record.error === "string") processedLine.apiErrorCode = record.error;
+				if (record.apiErrorType !== undefined) processedLine.apiErrorType = record.apiErrorType;
 			}
 			// The Request disclosure rides on its request's first line, so a record that never renders (the empty
 			// thinking block a `thinkingDisplay: "updates"` request opens with) leaves the ref to the next one.

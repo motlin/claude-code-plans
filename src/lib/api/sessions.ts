@@ -437,6 +437,8 @@ export const SessionMcpStatusResponse = z.strictObject(
 					name: z.string(),
 					errorCode: z.string().optional(),
 					error: z.string().optional(),
+					/** When the CLI will try the server again, e.g. `on_reach`. */
+					willRetry: z.string().optional(),
 				},
 			),
 		),

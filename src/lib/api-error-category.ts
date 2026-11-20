@@ -37,6 +37,8 @@ export interface ApiErrorInput
 	text: string;
 	/** The JSONL record's `error` code, e.g. `authentication_failed`. */
 	code?: string;
+	/** The JSONL record's `apiErrorType`, the API's own error type, e.g. `rate_limit_error`. */
+	errorType?: string;
 	/** The JSONL record's `apiErrorStatus`. */
 	status?: number;
 	/** The assistant message's `stop_reason`. */
@@ -159,6 +161,22 @@ const CODE_CATEGORIES: Readonly<Record<string, ApiErrorCategory>> =
 	overloaded: "overloaded",
 };
 
+/**
+ * The API's error types (the `error.type` of its error body), which the CLI copies to `apiErrorType`.
+ * They name what the text table would match in a JSON error body, so they rank just after it.
+ */
+const ERROR_TYPE_CATEGORIES: Readonly<Record<string, ApiErrorCategory>> =
+{
+	invalid_request_error: "invalid_request",
+	authentication_error: "auth",
+	billing_error: "billing",
+	permission_error: "permission",
+	request_too_large: "request_too_large",
+	rate_limit_error: "server_rate_limit",
+	api_error: "server_error",
+	overloaded_error: "overloaded",
+};
+
 /** Upstream's `He`: codes that win over the message text. */
 const DECISIVE_CODES = new Set([
 	"model_not_found",
@@ -193,8 +211,11 @@ function statusCategory(status: number): ApiErrorCategory
 /** Upstream's `signedInAgain` (`QiWrYy`): an auth error's marker once the user has signed in again. */
 export const SIGNED_IN_AGAIN_LABEL = "Signed in again";
 
-/** Upstream's `MQ`, in its order: refusal, usage-limit text, decisive codes, the text table, the code map, then the status. */
-export function classifyApiError({text, code, status, stopReason}: ApiErrorInput): ApiErrorCategory
+/**
+ * Upstream's `MQ`, in its order: refusal, usage-limit text, decisive codes, the text table, the code map, then the status.
+ * The API error type, which upstream doesn't read, slots in after the text table.
+ */
+export function classifyApiError({text, code, errorType, status, stopReason}: ApiErrorInput): ApiErrorCategory
 {
 	if (stopReason === "refusal") return "usage_policy";
 	if (isUsageLimitText(text)) return "rate_limit";
@@ -205,6 +226,11 @@ export function classifyApiError({text, code, status, stopReason}: ApiErrorInput
 	}
 	const fromText = TEXT_CATEGORIES.find(([rule]) => (typeof rule === "function" ? rule(text) : rule.test(text)))?.[1];
 	if (fromText !== undefined) return fromText;
+	const fromType =
+		errorType !== undefined && Object.hasOwn(ERROR_TYPE_CATEGORIES, errorType)
+			? ERROR_TYPE_CATEGORIES[errorType]
+			: undefined;
+	if (fromType !== undefined) return fromType;
 	const fromCode = codeCategory(code);
 	if (fromCode !== undefined) return fromCode;
 	const resolvedStatus = status ?? numberOrUndefined(TEXT_STATUS.exec(text)?.[1]);
@@ -537,16 +563,18 @@ export function autoCompactFailed(text: string): boolean
 	return /(?:^|\s)Prompt is too long · automatic compaction failed: /.test(text);
 }
 
-/** The category the transcript card classifies an error into, from its text, code, status (number or digits) and stop reason. */
+/** The category the transcript card classifies an error into, from its text, code, API error type, status (number or digits) and stop reason. */
 export function apiErrorCategory({
 	text,
 	status,
 	code,
+	errorType,
 	stopReason,
 }: {
 	text: string;
 	status: number | string | undefined;
 	code: string | undefined;
+	errorType: string | undefined;
 	stopReason: string | undefined;
 }): ApiErrorCategory
 {
@@ -557,6 +585,10 @@ export function apiErrorCategory({
 			...(code !== undefined &&
 			{
 				code,
+			}),
+			...(errorType !== undefined &&
+			{
+				errorType,
 			}),
 			...(stopReason !== undefined &&
 			{

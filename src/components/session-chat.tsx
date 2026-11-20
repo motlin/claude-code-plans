@@ -7357,6 +7357,7 @@ function signedInAgain(line: MessageSessionLine, text: string, reloginAt: number
 			text,
 			status: line.apiErrorStatus,
 			code: line.apiErrorCode,
+			errorType: line.apiErrorType,
 			stopReason: line.stopReason,
 		},
 	);
@@ -7410,6 +7411,10 @@ function ApiErrorCardForLine({line, text}: {line: MessageSessionLine; text: stri
 			{...(line.apiErrorCode !== undefined &&
 			{
 				code: line.apiErrorCode,
+			})}
+			{...(line.apiErrorType !== undefined &&
+			{
+				errorType: line.apiErrorType,
 			})}
 			{...(line.stopReason !== undefined &&
 			{
