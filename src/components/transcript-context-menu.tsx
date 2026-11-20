@@ -11,6 +11,7 @@ import {markdownToPlainText} from "../lib/markdown-plain-text";
 import {createPressRecorder, touchOnTextOrSelection, wantsNativeContextMenu} from "../lib/native-context-menu";
 import {useFileRefsCwd} from "./file-refs-context";
 import {FileActionsMenuItems} from "./files/file-actions-menu";
+import {ImageMenuItems} from "./image-context-menu";
 import {ContextMenu, ContextMenuTrigger, MenuContent, MenuItem, MenuSeparator} from "./ui/menu";
 import
 {
@@ -27,7 +28,8 @@ import {useOpenInDefaultApp} from "./use-open-in-default-app";
  * tool rows (Pin and Fork only) and user bubbles (adds Rewind). A file
  * ref opens only the shared file actions menu, as on desktop, or, without an
  * absolute path, the prose menu led by Copy path (upstream's browser `jb`).
- * A text selection in the turn adds Copy and attaches as an Excerpt.
+ * A text selection in the turn adds Copy and attaches as an Excerpt. An image
+ * with no menu of its own leads the prose menu with Copy image · Save image.
  *
  * As upstream's host (`Qx`), the browser's own menu opens instead when a
  * right-click lands on the selection over a tool row (which has no Attach
@@ -141,6 +143,51 @@ function resolveMenuTarget(element: Element | null, fallback: "prose" | "tool"):
 	};
 }
 
+interface TranscriptMenuImage
+{
+	src: string;
+	fileName: string | undefined;
+}
+
+/** Upstream `vw`'s source protocols, besides the page's own. */
+const IMAGE_PROTOCOLS = new Set(["http:", "https:", "data:", "blob:"]);
+
+/** Upstream `Tw`'s `imageFileName`: an empty attribute counts as none. */
+function fileNameOf(image: HTMLImageElement): string | undefined
+{
+	const fileName = image.getAttribute("data-image-file-name");
+	return fileName === null || fileName === "" ? undefined : fileName;
+}
+
+/**
+ * Upstream `Tw`'s `imageSrc`/`imageFileName`: the right-clicked image that has no menu of its own, with its full-size
+ * source, or null when there is none or its source isn't one the menu can fetch (upstream `vw`).
+ */
+function resolveMenuImage(element: Element | null): TranscriptMenuImage | null
+{
+	const image = element?.closest<HTMLImageElement>('img:not([draggable="false"])');
+	if (image === null || image === undefined) return null;
+	// Upstream skips empty strings here, not just missing attributes.
+	const src = [image.getAttribute("data-image-original-src"), image.currentSrc, image.src].find(
+		(candidate) => candidate !== null && candidate !== "",
+	);
+	if (src === undefined || src === null) return null;
+	try
+	{
+		const protocol = new URL(src, image.baseURI).protocol;
+		if (!IMAGE_PROTOCOLS.has(protocol) && protocol !== image.ownerDocument.defaultView?.location.protocol)
+			return null;
+	}
+	catch
+	{
+		return null;
+	}
+	return {
+		src,
+		fileName: fileNameOf(image),
+	};
+}
+
 /**
  * Upstream `ux`'s `selectionText`: the document selection when it reaches into
  * `turn`, or null when there is none or it is blank.
@@ -242,6 +289,7 @@ export function TranscriptMessageMenu({
 		},
 	);
 	const [selectionText, setSelectionText] = useState<string | null>(null);
+	const [image, setImage] = useState<TranscriptMenuImage | null>(null);
 	const [keyboardArticle, setKeyboardArticle] = useState<HTMLElement | null>(null);
 	const closingMenu = useRef<Element | null>(null);
 	const queryClient = useContext(QueryClientContext);
@@ -328,6 +376,7 @@ export function TranscriptMessageMenu({
 						return;
 					}
 					setTarget(nextTarget);
+					setImage(resolveMenuImage(event.target instanceof Element ? event.target : null));
 					setSelectionText(snapshotSelection(event.currentTarget));
 					setGone(false);
 					goneCheck.current = null;
@@ -391,6 +440,7 @@ export function TranscriptMessageMenu({
 					speaker={speaker}
 					target={target}
 					selectionText={selectionText}
+					image={image}
 					markdown={markdown}
 					message={
 						uuid === undefined
@@ -435,6 +485,7 @@ function TranscriptMenuItems({
 	speaker,
 	target,
 	selectionText,
+	image,
 	markdown,
 	message,
 	sessionId,
@@ -444,6 +495,8 @@ function TranscriptMenuItems({
 	target: TranscriptMenuTarget;
 	/** The text selected in this turn when the menu opened, or null. */
 	selectionText: string | null;
+	/** The right-clicked image with no menu of its own, or null. */
+	image: TranscriptMenuImage | null;
 	markdown: string;
 	message: TranscriptMessageRef | undefined;
 	sessionId: string;
@@ -527,6 +580,7 @@ function TranscriptMenuItems({
 	const excerpt = excerptOf(selectionText);
 	return (
 		<>
+			{image !== null && <ImageMenuItems src={image.src} fileName={image.fileName} />}
 			{selectionText !== null && (
 				<MenuItem
 					shortcut="cmd+c"
@@ -574,8 +628,8 @@ function TranscriptMenuItems({
 					</MenuItem>
 				</>
 			)}
-			{/* Upstream `ie`: the selection, code, path and link rows share one group and one separator. */}
-			{(selectionText !== null || target.kind !== "prose") && <MenuSeparator />}
+			{/* Upstream `ie`: the image, selection, code, path and link rows share one group and one separator. */}
+			{(image !== null || selectionText !== null || target.kind !== "prose") && <MenuSeparator />}
 			<MenuItem
 				onSelect={() =>
 				{

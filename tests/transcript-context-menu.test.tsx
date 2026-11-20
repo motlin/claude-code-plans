@@ -1946,3 +1946,139 @@ describe("portaled content", () =>
 		);
 	});
 });
+
+describe("bare image target (upstream Tw imageSrc)", () =>
+{
+	afterEach(() =>
+	{
+		vi.restoreAllMocks();
+	});
+
+	function renderTurn(image: ReactNode): HTMLElement
+	{
+		render(
+			<ToastProvider>
+				<TranscriptMessageMenu
+					speaker="assistant"
+					sessionId="test-session"
+					uuid="assistant-1"
+					markdown="Here is the chart"
+					render={<div data-testid="turn" />}
+				>
+					<p>Here is the chart</p>
+					{image}
+				</TranscriptMessageMenu>
+			</ToastProvider>,
+		);
+		return screen.getByTestId("image");
+	}
+
+	it("leads the menu with Copy image and Save image above the message rows", () =>
+	{
+		const image = renderTurn(<img data-testid="image" src="data:image/png;base64,AA" alt="" />);
+
+		expect(menuRows(openMenuOn(image))).toStrictEqual([
+			"Copy image",
+			"Save image",
+			"---",
+			"Copy message",
+			"Copy message as Markdown",
+			"---",
+			"Attach message as context",
+		]);
+	});
+
+	it("keeps the image rows in the link group for an image inside a link", () =>
+	{
+		const image = renderTurn(
+			<a href="https://example.com/chart">
+				<img data-testid="image" src="https://example.com/chart.png" alt="" />
+			</a>,
+		);
+
+		expect(menuRows(openMenuOn(image)).slice(0, 5)).toStrictEqual([
+			"Copy image",
+			"Save image",
+			"Open in default browser",
+			"Copy link",
+			"---",
+		]);
+	});
+
+	it("offers no image rows for an image marked draggable=false or with an unsupported source", () =>
+	{
+		const image = renderTurn(
+			<span>
+				<img data-testid="image" draggable={false} src="data:image/png;base64,AA" alt="" />
+				<img data-testid="ftp" src="ftp://example.com/chart.png" alt="" />
+			</span>,
+		);
+
+		expect(
+			{
+				undraggable: menuRows(openMenuOn(image))[0],
+				ftp: menuRows(openMenuOn(screen.getByTestId("ftp")))[0],
+			},
+		).toStrictEqual(
+			{
+				undraggable: "Copy message",
+				ftp: "Copy message",
+			},
+		);
+	});
+
+	it("saves under data-image-file-name and reads data-image-original-src first", async () =>
+	{
+		const fetched: string[] = [];
+		vi.spyOn(globalThis, "fetch").mockImplementation(async (input) =>
+		{
+			fetched.push(String(input));
+			return Promise.resolve(
+				new Response(
+					new Blob(
+						["x"],
+						{
+							type: "image/png",
+						},
+					),
+				),
+			);
+		});
+		vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:fake");
+		vi.spyOn(URL, "revokeObjectURL").mockReturnValue(undefined);
+		const downloads: string[] = [];
+		vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (this: HTMLAnchorElement)
+		{
+			downloads.push(this.download);
+		});
+		const image = renderTurn(
+			<img
+				data-testid="image"
+				src="https://example.com/thumb.png"
+				data-image-original-src="https://example.com/full.png"
+				data-image-file-name="chart.png"
+				alt=""
+			/>,
+		);
+		clickItem(openMenuOn(image), "Save image");
+		await act(async () =>
+		{
+			await new Promise((resolve) =>
+			{
+				setTimeout(resolve, 0);
+			});
+		});
+
+		expect(
+			{
+				fetched,
+				downloads,
+			},
+		).toStrictEqual(
+			{
+				fetched: ["https://example.com/full.png"],
+				downloads: ["chart.png"],
+			},
+		);
+	});
+});

@@ -138,8 +138,8 @@ async function saveImage(src: string, fileName: string | undefined): Promise<voi
 	}
 }
 
-/** Upstream `A`: the Copy image and Save image rows. */
-function ImageMenuItems({src, fileName}: {src: string; fileName: string | undefined})
+/** Upstream `A` (`$f` in the transcript menu): the Copy image and Save image rows. */
+export function ImageMenuItems({src, fileName}: {src: string; fileName: string | undefined})
 {
 	const toast = useToast();
 	return (
