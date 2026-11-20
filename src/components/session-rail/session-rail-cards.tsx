@@ -73,6 +73,7 @@ import
 import {useToast} from "../toast-context";
 import {Menu, MenuContent, MenuItem, MenuTrigger} from "../ui/menu";
 import {Skeleton} from "../ui/skeleton";
+import {useMenuOpensOnContextMenu} from "../ui/use-menu-opens-on-context-menu";
 import {RailChangesPrRow, RailChangesRow} from "./rail-changes-row";
 import
 {
@@ -177,10 +178,12 @@ function EnvironmentMenuRow({
 	children: React.ReactNode;
 })
 {
+	// Upstream's rail repository and branch rows open their own dropdown on right-click, anchored to the row.
+	const {rootProps, onContextMenu} = useMenuOpensOnContextMenu();
 	return (
 		<div className="relative flex min-w-0 flex-1">
-			<Menu>
-				<MenuTrigger title={title} className={ENVIRONMENT_MENU_BUTTON_CLASS}>
+			<Menu {...rootProps}>
+				<MenuTrigger title={title} className={ENVIRONMENT_MENU_BUTTON_CLASS} onContextMenu={onContextMenu}>
 					<span data-rail-row-label="" className="min-w-0 flex-1 truncate text-primary">
 						{label}
 					</span>

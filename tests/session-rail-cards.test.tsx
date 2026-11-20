@@ -1415,6 +1415,42 @@ describe("Environment card", () =>
 			},
 		);
 	});
+
+	it("opens the branch row's own dropdown on right-click, as upstream's rail rows do", async () =>
+	{
+		await renderCards(BASE, withGitHub);
+		const card = screen.getByRole(
+			"region",
+			{
+				name: /^Environment/,
+			},
+		);
+		const trigger = within(card).getByRole(
+			"button",
+			{
+				name: /alice\/sync-upstream/,
+			},
+		);
+
+		const notPrevented = fireEvent.contextMenu(trigger);
+		const menu = await screen.findByRole("menu");
+
+		expect(
+			{
+				prevented: !notPrevented,
+				expanded: trigger.getAttribute("aria-expanded"),
+				items: within(menu)
+					.getAllByRole("menuitem")
+					.map((item) => item.textContent),
+			},
+		).toStrictEqual(
+			{
+				prevented: true,
+				expanded: "true",
+				items: ["Copy branch name", "Open branch on GitHub"],
+			},
+		);
+	});
 });
 
 describe("Goal card", () =>

@@ -2,7 +2,7 @@ import {getSingularPatch} from "@pierre/diffs";
 import {type MouseEvent, type ReactNode, useCallback, useEffect, useMemo, useRef, useState} from "react";
 
 import {writeClipboardText} from "../../lib/clipboard";
-import {attachContext} from "../../lib/context-attach";
+import {attachContext, type ContextAttachment} from "../../lib/context-attach";
 import {type DiffSide, openDiffCommentDraft} from "../../lib/diff-comments";
 import {anchorSpan} from "../../lib/diff-range-anchor";
 import {detectLanguage} from "../../lib/diff-utils";
@@ -316,7 +316,8 @@ function usePendingChip()
 
 /**
  * The Changes pane body's right-click menu, as on claude.ai/code:
- * Attach as context · Add comment · ─ · Copy ⌘C.
+ * Attach as context · Add comment · ─ · Copy ⌘C. Rows are omitted, never disabled: off a line
+ * (an "N unmodified lines" expander) there is no Add comment, and Copy is disabled without a row.
  * `patch` is the file's shown diff, which anchors comments as line-number drags do (upstream `pd` `anchorSpan`).
  */
 export function DiffContextMenu({
@@ -373,8 +374,7 @@ export function DiffContextMenu({
 
 	function attach(lines: DiffLineSelection)
 	{
-		const attached = attachContext(
-			sessionId,
+		attachOrToast(
 			{
 				kind: "selection",
 				path,
@@ -387,7 +387,22 @@ export function DiffContextMenu({
 				language: detectLanguage(path),
 			},
 		);
-		if (!attached)
+	}
+
+	// Upstream's body menu attaches the host file (`onAttachFile(hostFilePath)`), so off a line row it stays enabled.
+	function attachFile()
+	{
+		attachOrToast(
+			{
+				kind: "file",
+				path,
+			},
+		);
+	}
+
+	function attachOrToast(context: ContextAttachment)
+	{
+		if (!attachContext(sessionId, context))
 		{
 			toast(
 				{
@@ -497,29 +512,25 @@ export function DiffContextMenu({
 			</ContextMenuTrigger>
 			<MenuContent>
 				<MenuItem
-					disabled={target === null}
 					onSelect={() =>
 					{
 						if (target) attach(target);
+						else attachFile();
 					}}
 				>
 					Attach as context
 				</MenuItem>
-				<MenuItem
-					disabled={target === null}
-					{...(target === null
-						? {}
-						:
-							{
-								"aria-label": `Add comment on ${linesLabel(target)}`,
-							})}
-					onSelect={() =>
-					{
-						if (target) comment(target);
-					}}
-				>
-					Add comment
-				</MenuItem>
+				{target !== null && (
+					<MenuItem
+						aria-label={`Add comment on ${linesLabel(target)}`}
+						onSelect={() =>
+						{
+							comment(target);
+						}}
+					>
+						Add comment
+					</MenuItem>
+				)}
 				<MenuSeparator />
 				<MenuItem
 					shortcut="cmd+c"

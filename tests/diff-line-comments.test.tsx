@@ -1312,6 +1312,70 @@ describe("Changes pane right-click menu", () =>
 		]);
 	});
 
+	it("omits Add comment off a line, keeps Copy disabled, and attaches the file (upstream c44d00c7f)", async () =>
+	{
+		const stop = registerComposer(
+			SESSION,
+			{
+				insertText: () =>
+				{
+				},
+				focus: () =>
+				{
+				},
+			},
+		);
+		const {container} = renderPane();
+		// The diff body outside any line row, as on an "N unmodified lines" expander.
+		const body = await waitFor(() =>
+		{
+			const root = container.querySelector("diffs-container")?.shadowRoot;
+			if (!root?.querySelector("[data-line]")) throw new Error("diff not rendered yet");
+			const found = root.querySelector("pre");
+			if (!found) throw new Error("no diff body");
+			return found;
+		});
+		fireEvent.contextMenu(body);
+		const menu = await screen.findByRole("menu");
+		const rows = menuRows(menu);
+		const copyDisabled = within(menu)
+			.getByRole(
+				"menuitem",
+				{
+					name: /^Copy/,
+				},
+			)
+			.getAttribute("aria-disabled");
+		fireEvent.click(
+			within(menu).getByRole(
+				"menuitem",
+				{
+					name: "Attach as context",
+				},
+			),
+		);
+		stop();
+
+		expect(
+			{
+				rows,
+				copyDisabled,
+				chips: takeContextChips(SESSION).map(({id: _id, ...chip}) => chip),
+			},
+		).toStrictEqual(
+			{
+				rows: ["Attach as context", "─", "Copy"],
+				copyDisabled: "true",
+				chips: [
+					{
+						kind: "file",
+						path: "src/greet.ts",
+					},
+				],
+			},
+		);
+	});
+
 	it("attaches the clicked line as @path#L with its code fenced", async () =>
 	{
 		const stop = registerComposer(
