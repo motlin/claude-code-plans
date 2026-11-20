@@ -21,6 +21,7 @@ import {projectsQueryOptions} from "../src/lib/api/projects";
 import {recentSessionsQueryOptions} from "../src/lib/api/sessions";
 import {SSE_EVENTS} from "../src/lib/hook-events";
 import {findLaunchedSession, startSessionProjects} from "../src/lib/palette-start-session";
+import {__pendingLaunchTesting, launchSettledAt, readPendingLaunches} from "../src/lib/pending-launch-store";
 
 const MAC_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36";
 
@@ -412,6 +413,7 @@ describe("⌘K palette: start a new session", () =>
 		vi.restoreAllMocks();
 		vi.unstubAllGlobals();
 		writeText.mockClear();
+		__pendingLaunchTesting.reset();
 		// The palette remembers its last mode in localStorage, which jsdom keeps for the whole file.
 		localStorage.clear();
 	});
@@ -965,6 +967,15 @@ describe("⌘K palette: start a new session", () =>
 		);
 		expect(groupLabels(dialog, "Quick actions")).toStrictEqual(["Starting session…"]);
 		expect(within(dialog).getByRole("combobox")).toHaveProperty("disabled", true);
+		expect(readPendingLaunches().map(({key: _key, since: _since, ...launch}) => launch)).toStrictEqual([
+			{
+				projectId: "-users-dev-older",
+				projectName: "older",
+				cwd: "/users/dev/older",
+				opens: true,
+				sessionId: null,
+			},
+		]);
 	});
 
 	it("launches Compose attachments as chips ahead of the prompt", async () =>
@@ -1242,6 +1253,17 @@ describe("⌘K palette: start a new session", () =>
 		{
 			expect(router.state.location.pathname).toBe("/session/new-session");
 		});
+		expect(
+			{
+				pending: readPendingLaunches(),
+				settled: launchSettledAt("new-session") !== undefined,
+			},
+		).toStrictEqual(
+			{
+				pending: [],
+				settled: true,
+			},
+		);
 		await waitFor(() =>
 		{
 			expect(
@@ -1323,6 +1345,7 @@ describe("⌘K palette: start a new session", () =>
 				["cd '/users/dev/newest' && claude 'hello there, please say hello back to me from the new session'"],
 			]);
 		});
+		expect(readPendingLaunches()).toStrictEqual([]);
 	});
 
 	it("refuses Escape while the send is held, keeping the Starting session… row", async () =>

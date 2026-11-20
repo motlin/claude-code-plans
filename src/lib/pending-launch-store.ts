@@ -25,7 +25,16 @@ export type PendingLaunchInput = Omit<PendingLaunchEntry, "key" | "sessionId">;
 /** How long a settled launch's row keeps revealing its title (upstream `UT(pending, 1500)`), in ms. */
 const LAUNCH_REVEAL_MS = 1500;
 
+/**
+ * How long a started launch's row waits for its session, in ms: upstream's give-up for a code spawn (`zV`), counted
+ * from herdr's answer as upstream counts from the spawn's settle. A launch whose session never shows up (claude exited,
+ * the tab was closed) drops its row then; a session that arrives later still gets its real row.
+ */
+const LAUNCH_GIVE_UP_MS = 15_000;
+
 let entries: readonly PendingLaunchEntry[] = [];
+/** Each started launch's give-up timer, by key. */
+const giveUpTimers = new Map<string, ReturnType<typeof setTimeout>>();
 /** When each launched session's launch settled, for its row's first-title reveal. */
 const settledAt = new Map<string, number>();
 const listeners = new Set<() => void>();
@@ -34,6 +43,12 @@ function publish(next: readonly PendingLaunchEntry[]): void
 {
 	entries = next;
 	for (const listener of listeners) listener();
+}
+
+function cancelGiveUp(key: string): void
+{
+	clearTimeout(giveUpTimers.get(key));
+	giveUpTimers.delete(key);
 }
 
 /** Publish a launch that is starting; returns its key. */
@@ -51,10 +66,19 @@ export function addPendingLaunch(launch: PendingLaunchInput): string
 	return key;
 }
 
-/** Record the id herdr reported for a pending launch. */
-export function setPendingLaunchSessionId(key: string, sessionId: string): void
+/** herdr answered the launch, naming the new agent's session when it knew it: start waiting for that session's row. */
+export function markPendingLaunchStarted(key: string, sessionId: string | null): void
 {
 	if (!entries.some((entry) => entry.key === key)) return;
+	cancelGiveUp(key);
+	giveUpTimers.set(
+		key,
+		setTimeout(() =>
+		{
+			clearPendingLaunch(key);
+		}, LAUNCH_GIVE_UP_MS),
+	);
+	if (sessionId === null) return;
 	publish(
 		entries.map((entry) =>
 			entry.key === key
@@ -72,13 +96,15 @@ export function setPendingLaunchSessionId(key: string, sessionId: string): void
 export function settlePendingLaunch(key: string, sessionId: string): void
 {
 	if (!entries.some((entry) => entry.key === key)) return;
+	cancelGiveUp(key);
 	settledAt.set(sessionId, Date.now());
 	publish(entries.filter((entry) => entry.key !== key));
 }
 
-/** The launch failed: drop its skeleton row. */
+/** The launch failed or gave up: drop its skeleton row. */
 export function clearPendingLaunch(key: string): void
 {
+	cancelGiveUp(key);
 	if (!entries.some((entry) => entry.key === key)) return;
 	publish(entries.filter((entry) => entry.key !== key));
 }
@@ -206,6 +232,8 @@ export const __pendingLaunchTesting =
 {
 	reset(): void
 	{
+		for (const timer of giveUpTimers.values()) clearTimeout(timer);
+		giveUpTimers.clear();
 		entries = [];
 		settledAt.clear();
 	},

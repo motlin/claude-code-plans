@@ -34,7 +34,7 @@ import
 	__pendingLaunchTesting,
 	addPendingLaunch,
 	readPendingLaunches,
-	setPendingLaunchSessionId,
+	markPendingLaunchStarted,
 	settlePendingLaunch,
 } from "../src/lib/pending-launch-store";
 import {PIN_STORAGE_KEY} from "../src/lib/pin-store";
@@ -3736,35 +3736,61 @@ describe("SessionGroups pending launch row", () =>
 		);
 	});
 
-	it("links the skeleton row to the session once herdr names it", async () =>
+	it("links the skeleton row to the session once herdr names it, and drops it if that session never arrives", async () =>
 	{
-		const key = addPendingLaunch(
+		vi.useFakeTimers(
 			{
-				...LAUNCH,
-				since: Date.now(),
-				opens: false,
+				shouldAdvanceTime: true,
 			},
 		);
-		const {container} = await renderGroups(FIXTURE);
-		act(() =>
+		try
 		{
-			setPendingLaunchSessionId(key, "s-herdr");
-		});
-		const main = workingRows(container)[0]!.querySelector("[data-row-main-button]")!;
-
-		expect(
+			const key = addPendingLaunch(
+				{
+					...LAUNCH,
+					since: Date.now(),
+					opens: false,
+				},
+			);
+			const {container} = await renderGroups(FIXTURE);
+			act(() =>
+			{
+				markPendingLaunchStarted(key, "s-herdr");
+			});
+			const main = workingRows(container)[0]!.querySelector("[data-row-main-button]")!;
+			const named =
 			{
 				tag: main.tagName,
 				href: main.getAttribute("href"),
 				selected: main.getAttribute("data-selected"),
-			},
-		).toStrictEqual(
+			};
+
+			act(() =>
 			{
-				tag: "A",
-				href: "/session/s-herdr",
-				selected: null,
-			},
-		);
+				vi.advanceTimersByTime(15_000);
+			});
+
+			expect(
+				{
+					named,
+					after: workingRows(container).map((row) => row.getAttribute("data-row-key")),
+				},
+			).toStrictEqual(
+				{
+					named:
+					{
+						tag: "A",
+						href: "/session/s-herdr",
+						selected: null,
+					},
+					after: ["w1"],
+				},
+			);
+		}
+		finally
+		{
+			vi.useRealTimers();
+		}
 	});
 
 	it("reveals only the launched row's first title, for 1500 ms after its launch settled", async () =>

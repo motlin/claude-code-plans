@@ -39,7 +39,7 @@ import
 {
 	addPendingLaunch,
 	clearPendingLaunch,
-	setPendingLaunchSessionId,
+	markPendingLaunchStarted,
 	settlePendingLaunch,
 } from "../../lib/pending-launch-store";
 import {Composer} from "../composer";
@@ -445,7 +445,7 @@ export function HomeComposer({
 			// The launch ends this draft, so its Worktree override goes back to the preference and its agent goes.
 			worktree.endDraft();
 			setSelectedAgent(undefined);
-			if (sessionId !== null) setPendingLaunchSessionId(key, sessionId);
+			markPendingLaunchStarted(key, sessionId);
 			if (stay)
 			{
 				if (sessionId === null) setPendingLaunchGroup(null);
@@ -493,7 +493,7 @@ export function HomeComposer({
 				error.sessionId !== undefined
 			)
 			{
-				setPendingLaunchSessionId(key, error.sessionId);
+				markPendingLaunchStarted(key, error.sessionId);
 				setPendingLaunch(
 					{
 						cwd: request.cwd,

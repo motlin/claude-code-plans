@@ -7,7 +7,7 @@ import
 	findLaunchedRow,
 	launchSettledAt,
 	readPendingLaunches,
-	setPendingLaunchSessionId,
+	markPendingLaunchStarted,
 	settlePendingLaunch,
 	subscribePendingLaunches,
 } from "../src/lib/pending-launch-store";
@@ -41,7 +41,7 @@ describe("pending-launch store", () =>
 
 		const key = addPendingLaunch(LAUNCH);
 		const added = readPendingLaunches();
-		setPendingLaunchSessionId(key, "s-new");
+		markPendingLaunchStarted(key, "s-new");
 		const named = readPendingLaunches();
 		settlePendingLaunch(key, "s-new");
 		const settled = readPendingLaunches();
@@ -91,6 +91,60 @@ describe("pending-launch store", () =>
 				notified: 5,
 				settledAt: 1_795_000_000_000,
 				otherSettledAt: undefined,
+			},
+		);
+	});
+
+	it("drops a started launch whose row never arrives 15 s after herdr answered, as upstream gives up on a code spawn", () =>
+	{
+		vi.useFakeTimers(
+			{
+				now: 1_795_000_000_000,
+			},
+		);
+		const unnamed = addPendingLaunch(LAUNCH);
+		const named = addPendingLaunch(
+			{
+				...LAUNCH,
+				since: 2_000,
+			},
+		);
+		const settled = addPendingLaunch(
+			{
+				...LAUNCH,
+				since: 3_000,
+			},
+		);
+		vi.advanceTimersByTime(60_000);
+		const unstarted = readPendingLaunches().map((entry) => entry.key);
+		markPendingLaunchStarted(unnamed, null);
+		markPendingLaunchStarted(named, "s-named");
+		markPendingLaunchStarted(settled, "s-settled");
+		settlePendingLaunch(settled, "s-settled");
+		vi.advanceTimersByTime(14_999);
+		const before = readPendingLaunches().map((entry) => [entry.key, entry.sessionId]);
+		const listener = vi.fn<() => void>();
+		subscribePendingLaunches(listener);
+		vi.advanceTimersByTime(1);
+
+		expect(
+			{
+				unstarted,
+				before,
+				after: readPendingLaunches(),
+				notified: listener.mock.calls.length,
+				namedSettledAt: launchSettledAt("s-named"),
+			},
+		).toStrictEqual(
+			{
+				unstarted: ["launch:1000", "launch:2000", "launch:3000"],
+				before: [
+					["launch:1000", null],
+					["launch:2000", "s-named"],
+				],
+				after: [],
+				notified: 2,
+				namedSettledAt: undefined,
 			},
 		);
 	});

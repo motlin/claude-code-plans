@@ -88,6 +88,13 @@ import {isTypeMediaIconWord, resolveArtifactMark, TYPE_MEDIA_ICONS} from "../lib
 import {ArtifactGlyph, ArtifactMark} from "./artifact-mark";
 import {encodeFilePath} from "../lib/api/file";
 import {launchHerdrSession} from "../lib/api/herdr";
+import
+{
+	addPendingLaunch,
+	clearPendingLaunch,
+	markPendingLaunchStarted,
+	settlePendingLaunch,
+} from "../lib/pending-launch-store";
 import {projectMemoriesQueryOptions} from "../lib/api/memories";
 import {plansQueryOptions, type PlanListItem} from "../lib/api/plans";
 import {assertNever} from "../lib/assert-never";
@@ -1627,7 +1634,13 @@ function PalettePopup({
 	const toast = useToast();
 	const activeSessions = useActiveSessionsIfAvailable();
 	const [startStep, setStartStep] = useState<StartStep>("idle");
-	const [pendingLaunch, setPendingLaunch] = useState<PendingLaunch | null>(null);
+	const [pendingLaunch, setPendingLaunch] = useState<
+		| (PendingLaunch &
+		  {
+				key: string;
+		  })
+		| null
+	>(null);
 	// Controlled so the picker can preselect its first project; cmdk selects the first row otherwise.
 	const [selectedValue, setSelectedValue] = useState("");
 	// Upstream's onDwell: a settings command reached by the keyboard warms its section like a hover does.
@@ -2361,19 +2374,32 @@ function PalettePopup({
 		const since = Date.now();
 		reportSendHold(true);
 		setStartStep("launching");
+		// The sidebar draws the launch's skeleton row, as it does for home's launches.
+		const key = addPendingLaunch(
+			{
+				projectId: project.id,
+				projectName: project.name,
+				cwd: launch.cwd,
+				since,
+				opens: true,
+			},
+		);
 		try
 		{
 			const {sessionId} = await launchHerdrSession(launch);
+			markPendingLaunchStarted(key, sessionId);
 			setPendingLaunch(
 				{
 					cwd: launch.cwd,
 					since,
 					sessionId,
+					key,
 				},
 			);
 		}
 		catch
 		{
+			clearPendingLaunch(key);
 			const copied = await writeClipboardText(buildClaudeCopyCommand(launch));
 			toast(
 				copied
@@ -2399,6 +2425,7 @@ function PalettePopup({
 		if (pendingLaunch === null) return;
 		const id = findLaunchedSession(activeSessions.values(), pendingLaunch);
 		if (id === null) return;
+		settlePendingLaunch(pendingLaunch.key, id);
 		restoreFocusRef.current = false;
 		reportSendHold(false);
 		onOpenChange(false);
