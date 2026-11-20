@@ -7,6 +7,7 @@ import type {Hooks} from "crossws";
 import wsAdapter from "crossws/adapters/node";
 import {H3} from "nitro/h3";
 import {afterAll, beforeAll, beforeEach, describe, expect, it} from "vite-plus/test";
+import {holdRequestsUntil} from "../src/lib/server-shutdown";
 import shellSocket from "../server/routes/api/shell/[ptyKey]";
 import controlSocket from "../server/routes/api/herdr/control";
 import observeSocket from "../server/routes/api/herdr/observe";
@@ -238,6 +239,41 @@ describe("per-route WebSocket upgrade checks under the crossws node adapter", ()
 				handshake(OBSERVE_PATH, PROXIED),
 			]);
 			expect(results).toStrictEqual([SWITCHED, SWITCHED, SWITCHED, SWITCHED, SWITCHED, SWITCHED]);
+		});
+		it("holds every socket's upgrade during a restart takeover, then upgrades it once the databases open", async () =>
+		{
+			const events: string[] = [];
+			let openDatabases = (): void =>
+			{
+			};
+			holdRequestsUntil(
+				new Promise<void>((resolve) =>
+				{
+					openDatabases = resolve;
+				}),
+				() => new Response("unused"),
+			);
+			const upgraded = Promise.all(
+				[SHELL_PATH, CONTROL_PATH, OBSERVE_PATH].map(async (path) =>
+				{
+					const result = await handshake(path, SAME_ORIGIN);
+					events.push(`${String(result.status)} ${new URL(path, "http://localhost").pathname}`);
+				}),
+			);
+			setTimeout(() =>
+			{
+				events.push("databases opened");
+				openDatabases();
+			}, 100);
+
+			await upgraded;
+
+			expect(events.slice(0, 1)).toStrictEqual(["databases opened"]);
+			expect(events.slice(1).toSorted()).toStrictEqual([
+				"101 /api/herdr/control",
+				"101 /api/herdr/observe",
+				"101 /api/shell/00000000-0000-4000-8000-000000000000",
+			]);
 		});
 	});
 

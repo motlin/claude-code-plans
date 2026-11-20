@@ -9,6 +9,7 @@ import
 } from "../../../../src/lib/terminal-host";
 import {hmrDispose} from "../../../../src/lib/hmr-persist";
 import {isLoopbackPeer, LOCAL_ONLY_CLOSE_REASON} from "../../../../src/lib/loopback-guard";
+import {requestsReleased} from "../../../../src/lib/server-shutdown";
 
 interface Connection
 {
@@ -35,8 +36,10 @@ function stopConnection(peerId: string): void
 /** Interactive twin of `observe`, gated by the herdr writes setting. */
 export default defineWebSocketHandler(
 	{
-		upgrade(request)
+		async upgrade(request)
 		{
+			// During a dev restart takeover the databases stay closed until this instance opens them.
+			await requestsReleased();
 			const rejection = authorizeTerminalControl(request);
 			if (rejection) throw rejection;
 

@@ -245,10 +245,32 @@ export async function takeOverServerShutdown(hook: ShutdownHook): Promise<AbortS
 	return stopping.signal;
 }
 
+// The SSR entry sets the hold, but the WebSocket routes are Nitro routes in
+// another bundle, so the hold lives on globalThis like the hook registry.
+const REQUEST_HOLD = Symbol.for("claude-code-browser.request-hold");
+
+/** Only holdRequestsUntil writes the hold slot, so a Promise there is the hold. */
+function isRequestHold(value: unknown): value is Promise<void>
+{
+	return value instanceof Promise;
+}
+
+/**
+ * Resolves once requests held by {@link holdRequestsUntil} may proceed, at
+ * once when nothing holds them. Routes outside the SSR entry's fetch (the
+ * WebSocket upgrades) await it before touching the databases.
+ */
+export async function requestsReleased(): Promise<void>
+{
+	const hold: unknown = Reflect.get(globalThis, REQUEST_HOLD);
+	if (isRequestHold(hold)) await hold;
+}
+
 /**
  * Hold each request until `ready` settles: a request served during the
  * takeover would open the databases while the previous instance may still
  * hold them. A failed startup lets requests through, to fail on their own.
+ * {@link requestsReleased} waits for the same hold.
  */
 export function holdRequestsUntil<R>(
 	ready: Promise<unknown>,
@@ -259,6 +281,7 @@ export function holdRequestsUntil<R>(
 		() => {},
 		() => {},
 	);
+	Reflect.set(globalThis, REQUEST_HOLD, settled);
 	return async (request) =>
 	{
 		await settled;

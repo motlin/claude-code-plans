@@ -2,6 +2,7 @@ import {defineWebSocketHandler} from "nitro";
 import {z} from "zod";
 import {authorizeShellSocket, getShellRegistry, type ShellConnection} from "../../../../src/lib/shell-pty";
 import {isLoopbackPeer} from "../../../../src/lib/loopback-guard";
+import {requestsReleased} from "../../../../src/lib/server-shutdown";
 
 const PtyKeySchema = z.uuid();
 
@@ -16,8 +17,10 @@ function detach(peerId: string): void
 /** Shell tab socket: speaks the `{resize,data,close}` / `{opened,data,exit,error}` protocol. */
 export default defineWebSocketHandler(
 	{
-		upgrade(request)
+		async upgrade(request)
 		{
+			// During a dev restart takeover the databases stay closed until this instance opens them.
+			await requestsReleased();
 			const rejection = authorizeShellSocket(request);
 			if (rejection) throw rejection;
 
