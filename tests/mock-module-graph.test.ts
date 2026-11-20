@@ -1,6 +1,6 @@
 import {EvaluatedModules} from "vite/module-runner";
 import {describe, expect, it} from "vite-plus/test";
-import {forgetMockModules} from "./mock-module-graph";
+import {forgetImporters, forgetMockModules} from "./mock-module-graph";
 
 describe("forgetMockModules", () =>
 {
@@ -32,6 +32,41 @@ describe("forgetMockModules", () =>
 				nextMockByUrl: true,
 				earlierMockInFileMap: false,
 				sourceKept: true,
+			},
+		);
+	});
+
+	it("drops every module that imports a newly mocked path, so the next import evaluates it against the mock", () =>
+	{
+		const graph = new EvaluatedModules();
+		const engine = graph.ensureModule("/src/lib/shrinkwrap.ts", "/src/lib/shrinkwrap.ts");
+		const loader = graph.ensureModule("/src/lib/shrinkwrap-loader.ts", "/src/lib/shrinkwrap-loader.ts");
+		const tooltip = graph.ensureModule("/src/components/ui/tooltip.tsx", "/src/components/ui/tooltip.tsx");
+		const unrelated = graph.ensureModule("/src/lib/defined.ts", "/src/lib/defined.ts");
+		engine.importers.add(loader.id);
+		loader.importers.add(tooltip.id);
+		// A cycle back to the loader must not loop.
+		tooltip.importers.add(loader.id);
+
+		forgetImporters(graph, engine.id);
+
+		expect(
+			{
+				engine: graph.getModuleById(engine.id) === engine,
+				loader: graph.getModuleById(loader.id),
+				loaderByUrl: graph.getModuleByUrl(loader.url),
+				loaderInFileMap: graph.getModulesByFile(loader.file)?.has(loader),
+				tooltip: graph.getModuleById(tooltip.id),
+				unrelated: graph.getModuleById(unrelated.id) === unrelated,
+			},
+		).toStrictEqual(
+			{
+				engine: true,
+				loader: undefined,
+				loaderByUrl: undefined,
+				loaderInFileMap: false,
+				tooltip: undefined,
+				unrelated: true,
 			},
 		);
 	});
