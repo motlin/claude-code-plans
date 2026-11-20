@@ -11,6 +11,7 @@ import type {Terminal} from "ghostty-web";
 
 export type Rgb = readonly [number, number, number];
 
+const BOLD = 1;
 const FAINT = 128;
 const INVERSE = 16;
 
@@ -124,14 +125,70 @@ export interface ContrastCell
 	flags: number;
 }
 
-/** The slice of ghostty-web's `CanvasRenderer` the floor wraps. */
+/**
+ * The slice of ghostty-web's `CanvasRenderer` the floor wraps. `palette`
+ * (the theme's 16 ANSI colours) and `isInSelection` are private in
+ * ghostty-web's types, so they are optional here: without them bold stays
+ * the normal colour and selected text follows the theme.
+ */
 export interface ContrastRenderer
 {
 	theme:
 	{
 		background: string;
+		selectionBackground?: string;
+		selectionForeground?: string;
 	};
+	palette?: readonly string[];
+	isInSelection?(x: number, y: number): boolean;
 	renderCellText(cell: ContrastCell, x: number, y: number): void;
+}
+
+/**
+ * xterm's `drawBoldTextInBrightColors` (on by default): bold text in ANSI
+ * 0-7 is drawn in 8-15. ghostty cells carry RGB only, so a colour that
+ * equals one of the first eight palette entries counts as that entry.
+ */
+function brightBold(palette: readonly string[] | undefined, fg: Rgb): Rgb
+{
+	if (palette === undefined) return fg;
+	for (let index = 0; index < 8; index++)
+	{
+		const normal = parseHexColor(palette[index] ?? "");
+		if (normal?.[0] === fg[0] && normal[1] === fg[1] && normal[2] === fg[2])
+		{
+			return parseHexColor(palette[index + 8] ?? "") ?? fg;
+		}
+	}
+	return fg;
+}
+
+/** The alpha of `#rrggbbaa` / `#rgba` from 0 to 255, 255 for any other form. */
+function hexAlpha(color: string): number
+{
+	const digits = /^#[0-9a-f]*$/i.test(color) ? color.slice(1) : "";
+	if (digits.length === 4) return Number.parseInt(digits.slice(3).repeat(2), 16);
+	if (digits.length === 8) return Number.parseInt(digits.slice(6), 16);
+	return 255;
+}
+
+/**
+ * The selection colour as drawn: ghostty fills a selected cell with the
+ * (possibly translucent) selection colour over the row's theme background,
+ * which is the opaque colour xterm measures selected text against. The
+ * blend rounds like xterm's `color.blend`.
+ */
+function selectionBehind(theme: ContrastRenderer["theme"]): Rgb | undefined
+{
+	const background = parseHexColor(theme.background);
+	const selection = parseHexColor(theme.selectionBackground ?? "");
+	if (background === undefined || selection === undefined) return background;
+	const alpha = hexAlpha(theme.selectionBackground ?? "") / 255;
+	return [
+		background[0] + Math.round((selection[0] - background[0]) * alpha),
+		background[1] + Math.round((selection[1] - background[1]) * alpha),
+		background[2] + Math.round((selection[2] - background[2]) * alpha),
+	];
 }
 
 /**
@@ -139,27 +196,62 @@ export interface ContrastRenderer
  * against the cell's background (its own, else the theme background) is
  * drawn adjusted, then restores the pooled cell. The ratio is read on every
  * draw, so a change applies on the next render; 1 turns the floor off, and
- * faint text gets half the floor, like xterm's dim.
+ * faint text gets half the floor, like xterm's dim. Bold text in ANSI 0-7
+ * is drawn in the bright colour first, as xterm does.
+ *
+ * ghostty paints every selected glyph in `theme.selectionForeground`, while
+ * xterm keeps each cell's colours unless the theme names a selection
+ * foreground. So unless `namedSelectionForeground`, a selected cell's text
+ * colour (floored against the drawn selection) becomes the theme's
+ * selection foreground for that one draw.
  */
-export function installMinimumContrast(renderer: ContrastRenderer, ratio: () => number): void
+export function installMinimumContrast(
+	renderer: ContrastRenderer,
+	ratio: () => number,
+	namedSelectionForeground = false,
+): void
 {
 	const renderCellText = renderer.renderCellText.bind(renderer);
 	renderer.renderCellText = (cell, x, y) =>
 	{
-		const floor = ratio() / (cell.flags & FAINT ? 2 : 1);
-		if (floor <= 1 || isExemptGlyph(cell.codepoint))
-		{
-			renderCellText(cell, x, y);
-			return;
-		}
 		const inverse = (cell.flags & INVERSE) !== 0;
 		const fg: Rgb = [cell.fg_r, cell.fg_g, cell.fg_b];
 		const bg: Rgb = [cell.bg_r, cell.bg_g, cell.bg_b];
-		const text = inverse ? bg : fg;
+		const original = inverse ? bg : fg;
+		// Under inverse the bold colour fills the background, which ghostty draws in another pass.
+		const text = inverse || (cell.flags & BOLD) === 0 ? original : brightBold(renderer.palette, fg);
+		const selected = !namedSelectionForeground && renderer.isInSelection?.(x, y) === true;
+		const floor = ratio() / (cell.flags & FAINT ? 2 : 1);
 		const hasOwnBackground = inverse || bg[0] !== 0 || bg[1] !== 0 || bg[2] !== 0;
-		const behind = inverse ? fg : hasOwnBackground ? bg : parseHexColor(renderer.theme.background);
-		const adjusted = behind === undefined ? undefined : ensureContrastRatio(behind, text, floor);
-		if (adjusted === undefined)
+		const behind = selected
+			? selectionBehind(renderer.theme)
+			: inverse
+				? fg
+				: hasOwnBackground
+					? bg
+					: parseHexColor(renderer.theme.background);
+		const floored =
+			floor <= 1 || isExemptGlyph(cell.codepoint) || behind === undefined
+				? undefined
+				: ensureContrastRatio(behind, text, floor);
+		const shown = floored ?? text;
+
+		if (selected)
+		{
+			const {selectionForeground} = renderer.theme;
+			renderer.theme.selectionForeground = `rgb(${shown[0]}, ${shown[1]}, ${shown[2]})`;
+			try
+			{
+				renderCellText(cell, x, y);
+			}
+			finally
+			{
+				if (selectionForeground === undefined) delete renderer.theme.selectionForeground;
+				else renderer.theme.selectionForeground = selectionForeground;
+			}
+			return;
+		}
+		if (shown === original)
 		{
 			renderCellText(cell, x, y);
 			return;
@@ -169,14 +261,14 @@ export function installMinimumContrast(renderer: ContrastRenderer, ratio: () => 
 			if (inverse) [cell.bg_r, cell.bg_g, cell.bg_b] = rgb;
 			else [cell.fg_r, cell.fg_g, cell.fg_b] = rgb;
 		};
-		writeText(adjusted);
+		writeText(shown);
 		try
 		{
 			renderCellText(cell, x, y);
 		}
 		finally
 		{
-			writeText(text);
+			writeText(original);
 		}
 	};
 }
@@ -201,11 +293,15 @@ const CONTRAST_MORE = "(prefers-contrast: more)";
  * the media-listener cleanup; a renderer without the expected text pass (a
  * ghostty-web upgrade that renamed it) is left as-is.
  */
-export function installContrastFloor(renderer: unknown, redraw: () => void): () => void
+export function installContrastFloor(
+	renderer: unknown,
+	redraw: () => void,
+	namedSelectionForeground = false,
+): () => void
 {
 	if (!isContrastRenderer(renderer)) return () => undefined;
 	const media = window.matchMedia(CONTRAST_MORE);
-	installMinimumContrast(renderer, () => minimumContrastRatio(media.matches));
+	installMinimumContrast(renderer, () => minimumContrastRatio(media.matches), namedSelectionForeground);
 	media.addEventListener("change", redraw);
 	return () =>
 	{
@@ -213,14 +309,22 @@ export function installContrastFloor(renderer: unknown, redraw: () => void): () 
 	};
 }
 
-/** {@link installContrastFloor} on an opened terminal, redrawing every row on a change. */
+/**
+ * {@link installContrastFloor} on an opened terminal, redrawing every row on
+ * a change. Selected text keeps its colours unless the terminal was built
+ * with a theme that names a selection foreground.
+ */
 export function installTerminalContrast(terminal: Terminal): () => void
 {
-	return installContrastFloor(terminal.renderer, () =>
-	{
-		if (terminal.renderer && terminal.wasmTerm)
+	return installContrastFloor(
+		terminal.renderer,
+		() =>
 		{
-			terminal.renderer.render(terminal.wasmTerm, true, terminal.viewportY, terminal);
-		}
-	});
+			if (terminal.renderer && terminal.wasmTerm)
+			{
+				terminal.renderer.render(terminal.wasmTerm, true, terminal.viewportY, terminal);
+			}
+		},
+		terminal.options.theme.selectionForeground !== undefined,
+	);
 }

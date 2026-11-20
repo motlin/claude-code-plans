@@ -115,8 +115,10 @@ vi.mock("ghostty-web", () => (
 	{
 		cols = 80;
 		rows = 24;
+		options: unknown;
 		constructor(options: unknown)
 		{
+			this.options = options;
 			terminalState.constructorOptions.push(options);
 		}
 		onData(listener: (data: string) => void)

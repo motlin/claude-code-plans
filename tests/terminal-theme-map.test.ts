@@ -67,7 +67,6 @@ describe("terminalThemeFromCodeTheme", () =>
 				cursor: "#ff00ff",
 				cursorAccent: "#112233",
 				selectionBackground: "#3a3d4180",
-				selectionForeground: "#d0d1d2",
 				black: "#000001",
 				red: "#aa0000",
 				green: "#00aa00",
@@ -118,7 +117,6 @@ describe("terminalThemeFromCodeTheme", () =>
 				cursor: "#24292e",
 				cursorAccent: "#ffffff",
 				selectionBackground: "#0099ff4d",
-				selectionForeground: "#24292e",
 				red: "#d73a49",
 				green: "#00aa00",
 			},
@@ -184,7 +182,6 @@ describe("terminalThemeFromCodeTheme", () =>
 				cursor: "#000011",
 				cursorAccent: "#ffffff",
 				selectionBackground: "#11223344",
-				selectionForeground: "#000011",
 			},
 		);
 	});
@@ -289,16 +286,8 @@ describe("terminalThemeFromCodeTheme", () =>
 			},
 		).toStrictEqual(
 			{
-				light:
-				{
-					...LIGHT,
-					selectionForeground: "#14181f",
-				},
-				dark:
-				{
-					...DARK,
-					selectionForeground: "#eaecf0",
-				},
+				light: LIGHT,
+				dark: DARK,
 				lightBase: LIGHT,
 				darkBase: DARK,
 			},

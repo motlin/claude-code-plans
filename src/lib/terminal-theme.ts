@@ -130,9 +130,9 @@ export function terminalBaseFromCodeTheme(theme: CodeThemeColors): ITheme
  * Claude theme for the mode) as claude.ai/code's `Ae` does: keys the theme
  * names replace the base's, the foreground may fall back to the editor's,
  * selection falls back to the editor selection, and a theme without cursor
- * colours draws the cursor in its foreground over its background. Ghostty
- * paints selected text in `selectionForeground` regardless of the
- * background's alpha, so it follows the foreground unless the theme names one.
+ * colours draws the cursor in its foreground over its background. A theme
+ * that names no selection foreground leaves it out, so selected text keeps
+ * its own colours (see `installMinimumContrast`).
  */
 export function terminalThemeFromCodeTheme(theme: CodeThemeColors, base: ITheme = {}): ITheme
 {
@@ -177,7 +177,6 @@ export function terminalThemeFromCodeTheme(theme: CodeThemeColors, base: ITheme 
 	{
 		result.cursorAccent = result.background;
 	}
-	if (result.foreground !== undefined) result.selectionForeground ??= result.foreground;
 	return result;
 }
 

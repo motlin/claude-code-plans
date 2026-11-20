@@ -181,6 +181,136 @@ describe("installMinimumContrast", () =>
 	});
 });
 
+describe("installMinimumContrast bold and selection colours", () =>
+{
+	const PALETTE = [
+		"#101010",
+		"#aa0000",
+		"#00aa00",
+		"#aaaa00",
+		"#0000aa",
+		"#aa00aa",
+		"#00aaaa",
+		"#aaaaaa",
+		"#555555",
+		"#ff5555",
+		"#55ff55",
+		"#ffff55",
+		"#5555ff",
+		"#ff55ff",
+		"#55ffff",
+		"#ffffff",
+	];
+	const BOLD = 1;
+	const RED: Rgb = [0xaa, 0, 0];
+
+	function fakeRenderer(selected: boolean)
+	{
+		const drawn:
+		{
+			fg: Rgb;
+			selectionForeground: string;
+		}[] = [];
+		const renderer =
+		{
+			theme:
+			{
+				background: "#ffffff",
+				selectionBackground: "#0073e640",
+				selectionForeground: "#1e1e1e",
+			},
+			palette: PALETTE,
+			isInSelection: (_x: number, _y: number) => selected,
+			renderCellText(c: ContrastCell, _x: number, _y: number)
+			{
+				drawn.push(
+					{
+						fg: [c.fg_r, c.fg_g, c.fg_b],
+						selectionForeground: renderer.theme.selectionForeground,
+					},
+				);
+			},
+		};
+		return {
+			renderer,
+			drawn,
+		};
+	}
+
+	it("draws bold text in ANSI 0-7 in the bright colour, as xterm's drawBoldTextInBrightColors does, then restores the cell", () =>
+	{
+		const {renderer, drawn} = fakeRenderer(false);
+		installMinimumContrast(renderer, () => 1);
+		const bold = cell(RED, [0, 0, 0], BOLD);
+		renderer.renderCellText(bold, 0, 0);
+		renderer.renderCellText(cell(RED), 0, 0);
+		renderer.renderCellText(cell([1, 2, 3], [0, 0, 0], BOLD), 0, 0);
+		renderer.renderCellText(cell([0xff, 0x55, 0x55], [0, 0, 0], BOLD), 0, 0);
+		expect(
+			{
+				drawn: drawn.map(({fg}) => fg),
+				restored: [bold.fg_r, bold.fg_g, bold.fg_b],
+			},
+		).toStrictEqual(
+			{
+				drawn: [[0xff, 0x55, 0x55], RED, [1, 2, 3], [0xff, 0x55, 0x55]],
+				restored: RED,
+			},
+		);
+	});
+
+	it("applies the floor to the bright colour, not the normal one", () =>
+	{
+		const {renderer, drawn} = fakeRenderer(false);
+		installMinimumContrast(renderer, () => 4.5);
+		renderer.renderCellText(cell([0xaa, 0xaa, 0], [0, 0, 0], BOLD), 0, 0);
+		expect(drawn.map(({fg}) => fg)).toStrictEqual([ensureContrastRatio([255, 255, 255], [0xff, 0xff, 0x55], 4.5)]);
+	});
+
+	it("draws selected text in its own colour, floored against the selection over the background, and restores the theme", () =>
+	{
+		const {renderer, drawn} = fakeRenderer(true);
+		installMinimumContrast(renderer, () => 1);
+		renderer.renderCellText(cell(RED, [0, 0, 0], BOLD), 0, 0);
+		renderer.renderCellText(cell(RED), 0, 0);
+		const floored = fakeRenderer(true);
+		installMinimumContrast(floored.renderer, () => 4.5);
+		renderer.renderCellText(cell([0xee, 0xee, 0xee]), 0, 0);
+		floored.renderer.renderCellText(cell([0xee, 0xee, 0xee]), 0, 0);
+		// #0073e640 over #ffffff is rgb(191, 220, 249), the opaque selection xterm measures against.
+		const pale = ensureContrastRatio([191, 220, 249], [0xee, 0xee, 0xee], 4.5) ?? [0, 0, 0];
+		expect(
+			{
+				selectionForeground: [...drawn, ...floored.drawn].map((draw) => draw.selectionForeground),
+				after: [renderer.theme.selectionForeground, floored.renderer.theme.selectionForeground],
+			},
+		).toStrictEqual(
+			{
+				selectionForeground: [
+					"rgb(255, 85, 85)",
+					"rgb(170, 0, 0)",
+					"rgb(238, 238, 238)",
+					`rgb(${pale.join(", ")})`,
+				],
+				after: ["#1e1e1e", "#1e1e1e"],
+			},
+		);
+	});
+
+	it("leaves selected text to the theme's selection foreground when the theme names one", () =>
+	{
+		const {renderer, drawn} = fakeRenderer(true);
+		installMinimumContrast(renderer, () => 1, true);
+		renderer.renderCellText(cell(RED), 0, 0);
+		expect(drawn).toStrictEqual([
+			{
+				fg: RED,
+				selectionForeground: "#1e1e1e",
+			},
+		]);
+	});
+});
+
 describe("installContrastFloor", () =>
 {
 	afterEach(() =>
@@ -261,6 +391,42 @@ describe("installContrastFloor", () =>
 		);
 		cleanup();
 		expect(contrast.listeners.size).toBe(0);
+	});
+
+	it("passes a theme-named selection foreground through, so selected text follows the theme", () =>
+	{
+		stubContrastMore(false);
+		const drawn: string[] = [];
+		const renderer =
+		{
+			theme:
+			{
+				background: "#ffffff",
+				selectionForeground: "#1e1e1e",
+			},
+			isInSelection: () => true,
+			renderCellText(_c: ContrastCell)
+			{
+				drawn.push(renderer.theme.selectionForeground);
+			},
+		};
+		const keeps =
+		{
+			...renderer,
+			theme:
+			{
+				...renderer.theme,
+			},
+			renderCellText(_c: ContrastCell)
+			{
+				drawn.push(keeps.theme.selectionForeground);
+			},
+		};
+		installContrastFloor(renderer, () => undefined, true);
+		installContrastFloor(keeps, () => undefined);
+		renderer.renderCellText(cell([0xaa, 0, 0]));
+		keeps.renderCellText(cell([0xaa, 0, 0]));
+		expect(drawn).toStrictEqual(["#1e1e1e", "rgb(170, 0, 0)"]);
 	});
 
 	it("leaves a renderer without a text pass alone", () =>
