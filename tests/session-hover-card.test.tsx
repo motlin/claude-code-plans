@@ -2,9 +2,11 @@
 
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
+import {useContext} from "react";
 import {afterEach, beforeAll, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {isAnsweredHeld, releaseAnswered} from "../src/lib/answered-sessions";
+import {RowHoverCardContext} from "../src/components/row-hover-card-context";
 import {SessionHoverCard} from "../src/components/session-hover-card";
 import {ToastProvider} from "../src/components/toast";
 import {approvalsQueryOptions, type PendingApprovalItem} from "../src/lib/api/approvals";
@@ -417,6 +419,61 @@ describe("SessionHoverCard timing and shell", () =>
 		await advance(600);
 
 		expect(card()).toBeNull();
+	});
+});
+
+// Upstream shared-20 `bF`: `ls.Provider value={ve}` tells the row's title that the card is live, so its tooltip stays off.
+describe("SessionHoverCard row-card context", () =>
+{
+	function CardLive()
+	{
+		return <span data-testid="live">{String(useContext(RowHoverCardContext))}</span>;
+	}
+
+	it.each([
+		{
+			name: "a Needs input row",
+			summary: null,
+			aiTitle: null,
+			blocked: true,
+			live: "true",
+		},
+		{
+			name: "a row with a summary",
+			summary: "Shipped the parser.",
+			aiTitle: null,
+			blocked: false,
+			live: "true",
+		},
+		{
+			name: "a row with only an AI title",
+			summary: null,
+			aiTitle: "Parser work",
+			blocked: false,
+			live: "true",
+		},
+		{
+			name: "a row with nothing to show",
+			summary: null,
+			aiTitle: null,
+			blocked: false,
+			live: "false",
+		},
+	])("tells $name's children the card is live: $live", ({summary, aiTitle, blocked, live}) =>
+	{
+		render(
+			<SessionHoverCard
+				sessionId={SESSION_ID}
+				title="Row"
+				summary={summary}
+				aiTitle={aiTitle}
+				blocked={blocked}
+				render={<div data-testid="row" />}
+			>
+				<CardLive />
+			</SessionHoverCard>,
+		);
+		expect(screen.getByTestId("live").textContent).toBe(live);
 	});
 });
 

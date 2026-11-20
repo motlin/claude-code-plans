@@ -13,7 +13,7 @@ import
 	Tag,
 	Users,
 } from "lucide-react";
-import {lazy, type ReactNode, Suspense, useCallback, useState} from "react";
+import {lazy, type ReactElement, type ReactNode, Suspense, useCallback, useState} from "react";
 
 import {useFizzyLake} from "../lib/fizzy-lake";
 import {foldBudget, PANE_SLOTS} from "../lib/titlebar-fold";
@@ -443,6 +443,12 @@ export interface SessionTitlebarProps
 	titlePending?: boolean;
 }
 
+/** Upstream `Y$` → `Wi`: the title button itself is the title ContextMenu's trigger, marked `data-title-menu-trigger`. */
+function titleMenuTrigger(button: ReactElement): ReactElement
+{
+	return <ContextMenuTrigger render={button} data-title-menu-trigger="" />;
+}
+
 /**
  * claude.ai/code's 32px session titlebar. Lead: the parent-session back pill
  * (subagent transcripts only), the rename title button (right-click opens the header menu at the pointer), the chevron header
@@ -597,21 +603,25 @@ export function SessionTitlebar({
 									onOpenChangeComplete={contextRename.onOpenChangeComplete}
 									disabled={rename.editing}
 								>
-									{/* Upstream's title wrapper is an h2 named by the title, and a span while renaming (`k = D ? "span" : "h2"`). */}
-									<ContextMenuTrigger
-										className={TITLE_HEADING_CLASS}
-										render={({children, ...props}) =>
-											rename.editing ? (
-												<span {...props}>{children}</span>
-											) : (
-												<h2 {...props} aria-label={rename.title}>
-													{children}
-												</h2>
-											)
-										}
-									>
-										<SessionTitleButton rename={rename} className={TITLE_CLASS} summary={summary} />
-									</ContextMenuTrigger>
+									{/* Upstream's title wrapper is a plain h2 named by the title, and a span while renaming (`k = D ? "span" : "h2"`). */}
+									{rename.editing ? (
+										<span className={TITLE_HEADING_CLASS}>
+											<SessionTitleButton
+												rename={rename}
+												className={TITLE_CLASS}
+												summary={summary}
+											/>
+										</span>
+									) : (
+										<h2 className={TITLE_HEADING_CLASS} aria-label={rename.title}>
+											<SessionTitleButton
+												rename={rename}
+												className={TITLE_CLASS}
+												summary={summary}
+												trigger={titleMenuTrigger}
+											/>
+										</h2>
+									)}
 									<MenuContent finalFocus={contextRename.finalFocus}>
 										<HeaderMenuBody
 											sessionId={sessionId}

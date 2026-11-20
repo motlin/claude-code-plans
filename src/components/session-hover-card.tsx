@@ -23,6 +23,7 @@ import
 	type HoverCardKind,
 } from "./session-hover-card-classes";
 import {PrCardContext} from "./pr-card-context";
+import {RowHoverCardContext} from "./row-hover-card-context";
 import {useDensity} from "./ui/density-context";
 import {AwaitingBodySkeleton} from "./session-awaiting-skeleton";
 
@@ -106,7 +107,10 @@ export function SessionHoverCard({
 			}}
 		>
 			<PreviewCard.Trigger render={render} data-hover-card-trigger="" delay={delay} closeDelay={CLOSE_DELAY_MS}>
-				<PrCardContext.Provider value={prCard}>{children}</PrCardContext.Provider>
+				{/* Upstream `bF`'s `ve = !le && (awaiting || !R)`: live unless the card is disabled or has nothing to show. */}
+				<RowHoverCardContext.Provider value={showsCard && !disabled}>
+					<PrCardContext.Provider value={prCard}>{children}</PrCardContext.Provider>
+				</RowHoverCardContext.Provider>
 			</PreviewCard.Trigger>
 			{showsCard && (
 				<PreviewCard.Portal>

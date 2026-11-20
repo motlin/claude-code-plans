@@ -2,7 +2,7 @@
 
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {createMemoryHistory, createRootRoute, createRouter, RouterProvider} from "@tanstack/react-router";
-import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
+import {act, cleanup, fireEvent, render, screen, within} from "@testing-library/react";
 import type {ReactNode} from "react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
@@ -775,6 +775,32 @@ describe("SessionTitlebar title and chevron", () =>
 				leadIsGroup: true,
 			},
 		);
+
+		// Upstream `Y$` → `Wi`: the button itself is the title ContextMenu's trigger and carries `data-title-menu-trigger`.
+		fireEvent.contextMenu(heading);
+		const menuFromHeading = screen.queryByRole("menu");
+		fireEvent.contextMenu(title);
+		expect(
+			{
+				menuTrigger: title.getAttribute("data-title-menu-trigger"),
+				markers: document.querySelectorAll("[data-title-menu-trigger]").length,
+				menuFromHeading,
+				renameFromTitle:
+					within(await screen.findByRole("menu")).getByRole(
+						"menuitem",
+						{
+							name: /^Rename/,
+						},
+					) instanceof HTMLElement,
+			},
+		).toStrictEqual(
+			{
+				menuTrigger: "",
+				markers: 1,
+				menuFromHeading: null,
+				renameFromTitle: true,
+			},
+		);
 	});
 
 	it("drops the h2 for a span while the title is being renamed, as upstream's k = D ? span : h2", async () =>
@@ -799,11 +825,13 @@ describe("SessionTitlebar title and chevron", () =>
 					},
 				),
 				input: screen.getByRole("textbox").closest(".cc-lined-title-group") !== null,
+				menuTrigger: document.querySelector("[data-title-menu-trigger]"),
 			},
 		).toStrictEqual(
 			{
 				heading: null,
 				input: true,
+				menuTrigger: null,
 			},
 		);
 	});

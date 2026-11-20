@@ -1,3 +1,5 @@
+import type {ReactElement} from "react";
+
 import {type SessionRename, useSessionRename} from "../hooks/use-session-rename";
 import {ArchivedBadge} from "./archived-badge";
 import {InlineRenameInput} from "./inline-rename-input";
@@ -12,10 +14,13 @@ export function SessionTitleButton({
 	rename,
 	className,
 	summary = null,
+	trigger,
 }: {
 	rename: SessionRename;
 	className: string;
 	summary?: string | null;
+	/** Wraps the button in another trigger rendered as the button itself, e.g. the titlebar's title ContextMenu. */
+	trigger?: (button: ReactElement) => ReactElement;
 })
 {
 	const hasSummary = summary !== null && summary !== "";
@@ -23,25 +28,28 @@ export function SessionTitleButton({
 	{
 		return <InlineRenameInput value={rename.initialValue} onCommit={rename.commit} onCancel={rename.cancel} />;
 	}
+	const button = (
+		<button
+			type="button"
+			aria-label={`${rename.title}, rename session`}
+			{...(hasSummary
+				?
+					{
+						"aria-description": summary,
+					}
+				: {})}
+			onClick={rename.startEditing}
+			data-titlebar-title=""
+			data-pane-title=""
+			data-focus-region="header"
+			className={className}
+		>
+			{rename.title}
+		</button>
+	);
 	return (
 		<Tooltip content="Rename" side="bottom" className="min-w-0">
-			<button
-				type="button"
-				aria-label={`${rename.title}, rename session`}
-				{...(hasSummary
-					?
-						{
-							"aria-description": summary,
-						}
-					: {})}
-				onClick={rename.startEditing}
-				data-titlebar-title=""
-				data-pane-title=""
-				data-focus-region="header"
-				className={className}
-			>
-				{rename.title}
-			</button>
+			{trigger === undefined ? button : trigger(button)}
 		</Tooltip>
 	);
 }

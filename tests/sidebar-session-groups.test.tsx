@@ -3558,6 +3558,68 @@ describe("SessionGroups hover cards", () =>
 		);
 	});
 
+	// Upstream `a_`: the title tooltip trigger is disabled while the row's hover card is live (`ls`), else marked live.
+	it("marks each title as upstream's tooltip trigger, disabled on rows whose hover card is live", async () =>
+	{
+		const {container} = await renderGroups([
+			session("b1", "Blocked one", "blocked", 3),
+			{
+				...session("d1", "Completed summarised", "done", 5),
+				summary: "Shipped the parser.",
+			},
+			session("d2", "Completed plain", "done", 6),
+		]);
+		const marks = (label: Element | null | undefined) => (
+		{
+			disabled: label?.getAttribute("data-trigger-disabled") ?? null,
+			trigger: label?.getAttribute("data-base-ui-tooltip-trigger") ?? null,
+		});
+		const rowLabel = (title: string) =>
+			[...container.querySelectorAll("a[data-row-main-button]")]
+				.find((node) => rowTitle(node) === title)
+				?.querySelector(".dframe-fade-label");
+		expect(
+			{
+				blocked: marks(rowLabel("Blocked one")),
+				summarised: marks(rowLabel("Completed summarised")),
+				plain: marks(rowLabel("Completed plain")),
+				groups: [...container.querySelectorAll("[data-group-name] .dframe-fade-label")].map(marks),
+			},
+		).toStrictEqual(
+			{
+				blocked:
+				{
+					disabled: "",
+					trigger: null,
+				},
+				summarised:
+				{
+					disabled: "",
+					trigger: null,
+				},
+				plain:
+				{
+					disabled: null,
+					trigger: "",
+				},
+				groups: [
+					{
+						disabled: null,
+						trigger: "",
+					},
+					{
+						disabled: null,
+						trigger: "",
+					},
+					{
+						disabled: null,
+						trigger: "",
+					},
+				],
+			},
+		);
+	});
+
 	it("opens the blocked card on a Needs input row", async () =>
 	{
 		const {container} = await renderGroups([session("b1", "Blocked one", "blocked", 3)]);

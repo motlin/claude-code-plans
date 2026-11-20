@@ -6,6 +6,7 @@ import
 {
 	Fragment,
 	useCallback,
+	useContext,
 	useEffect,
 	useId,
 	useLayoutEffect,
@@ -55,6 +56,9 @@ import {usePins} from "../../lib/pin-store";
 import {familyStubLabel, familyStubTally, type FamilyStubTally} from "./family-stub-label";
 import {SessionActionsMenu, SessionRowTitle} from "../session-actions-menu";
 import {SessionHoverCard} from "../session-hover-card";
+import {RowHoverCardContext} from "../row-hover-card-context";
+import {TOUCH_QUERY} from "../../lib/touch-reveal";
+import {useMediaQuery} from "../../lib/use-phone-sheet";
 import {QUICK_REPLY_HINT} from "../session-hover-card-classes";
 import {SidebarRowDecoration, SidebarRowSrText} from "../session-unread-control";
 import {ShimmerText} from "../shimmer-text";
@@ -1524,6 +1528,20 @@ export function FadeLabel({
 	const ref = useRef<HTMLSpanElement>(null);
 	const textRef = useRef<HTMLSpanElement>(null);
 	const [overflowing, setOverflowing] = useState(false);
+	// Upstream `a_`: a hover-capable device makes the label a tooltip trigger, disabled while the row's card is live.
+	const touch = useMediaQuery(TOUCH_QUERY);
+	const cardLive = useContext(RowHoverCardContext);
+	const triggerMark = touch
+		? undefined
+		: cardLive
+			?
+				{
+					"data-trigger-disabled": "",
+				}
+			:
+				{
+					"data-base-ui-tooltip-trigger": "",
+				};
 
 	useLayoutEffect(() =>
 	{
@@ -1556,7 +1574,13 @@ export function FadeLabel({
 	}, [text]);
 
 	return (
-		<span ref={ref} dir="auto" className="dframe-fade-label" data-overflowing={overflowing ? "" : undefined}>
+		<span
+			ref={ref}
+			dir="auto"
+			className="dframe-fade-label"
+			{...triggerMark}
+			data-overflowing={overflowing ? "" : undefined}
+		>
 			<span ref={textRef} className="inline-block whitespace-nowrap align-top">
 				<span className="relative" data-attention={attention}>
 					{skeleton ? (
