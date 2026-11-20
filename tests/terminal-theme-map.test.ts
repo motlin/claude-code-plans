@@ -68,7 +68,7 @@ describe("terminalThemeFromCodeTheme", () =>
 				cursorAccent: "#112233",
 				selectionBackground: "#3a3d4180",
 				selectionForeground: "#d0d1d2",
-				black: "#000000",
+				black: "#000001",
 				red: "#aa0000",
 				green: "#00aa00",
 				yellow: "#aaaa00",
@@ -301,6 +301,31 @@ describe("terminalThemeFromCodeTheme", () =>
 				},
 				lightBase: LIGHT,
 				darkBase: DARK,
+			},
+		);
+	});
+
+	it("draws pure black as #000001, since ghostty-vt reads a 0 colour as its built-in default", () =>
+	{
+		const theme = terminalThemeFromCodeTheme(
+			{
+				colors:
+				{
+					"editor.background": "#ffffff",
+					"terminal.ansiBlack": "#000000",
+					"terminal.foreground": "#000",
+				},
+			},
+		);
+		expect(
+			{
+				black: theme.black,
+				foreground: theme.foreground,
+			},
+		).toStrictEqual(
+			{
+				black: "#000001",
+				foreground: "#000001",
 			},
 		);
 	});

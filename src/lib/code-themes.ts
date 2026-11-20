@@ -1,5 +1,6 @@
 import type {HighlighterCore, ThemeRegistration} from "@shikijs/core";
 import {z} from "zod";
+import {completeCodeTheme} from "./code-theme-completions";
 
 /*
  * Settings ▸ Appearance ▸ Code, as on claude.ai/code: 11 light and
@@ -142,12 +143,12 @@ const THEME_LOADERS: Record<CodeThemeId, () => ThemeModule> =
 	"slack-dark": async () => import("shiki/themes/slack-dark.mjs"),
 };
 
-/** Imports a theme's module on demand, registered under its settings id. */
+/** Imports a theme's module on demand, completed as upstream's are and registered under its settings id. */
 export async function loadCodeTheme(id: CodeThemeId): Promise<ThemeRegistration>
 {
 	const module = await THEME_LOADERS[id]();
 	return {
-		...module.default,
+		...completeCodeTheme(id, module.default),
 		name: id,
 	};
 }

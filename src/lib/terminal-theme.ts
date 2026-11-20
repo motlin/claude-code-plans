@@ -65,10 +65,15 @@ function normalizeHex(color: string | undefined): string | undefined
  * Ghostty's WASM core parses palette, foreground and background as 24-bit
  * integers, so those drop any alpha channel. Selection is only painted on
  * the canvas and keeps its translucency.
+ *
+ * ghostty-web hands those integers to ghostty-vt, which reads 0 as "use the
+ * built-in default" (node_modules/ghostty-web/dist/index.d.ts:417), so pure
+ * black would draw as ghostty's `#1d1f21`; `#000001` draws as black.
  */
 function opaqueHex(color: string | undefined): string | undefined
 {
-	return normalizeHex(color)?.slice(0, 7);
+	const opaque = normalizeHex(color)?.slice(0, 7);
+	return opaque === "#000000" ? "#000001" : opaque;
 }
 
 /** Upstream's colour parser `x`: `#rgb` and `#rrggbb` only, so a colour with alpha is unparseable. */

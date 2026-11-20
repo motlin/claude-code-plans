@@ -10,6 +10,7 @@ import
 	codeLeadingPx,
 	codeRowLeadingPx,
 	loadCodeTheme,
+	type CodeThemeId,
 } from "../src/lib/code-themes";
 import {codeThemeDarkLabels, codeThemeLightLabels} from "../src/lib/schema-choices";
 
@@ -335,6 +336,59 @@ describe("code theme settings", () =>
 				scopes: Object.fromEntries(Object.keys(expected.scopes).map((scope) => [scope, foreground(scope)])),
 			},
 		).toStrictEqual(expected);
+	});
+
+	it("completes themes with upstream completeCodeTheme's terminal colours", async () =>
+	{
+		const colors = async (id: CodeThemeId, keys: readonly string[]) =>
+		{
+			const theme = await loadCodeTheme(id);
+			return Object.fromEntries(keys.map((key) => [key, theme.colors?.[key]]));
+		};
+		expect(
+			{
+				"one-light": await colors("one-light", [
+					"terminal.ansiWhite",
+					"terminal.ansiBrightBlack",
+					"terminal.selectionBackground",
+				]),
+				"min-light": await colors("min-light", ["terminal.ansiBlue"]),
+				"min-dark": await colors("min-dark", ["editor.foreground", "terminal.ansiBrightWhite"]),
+				"slack-dark": await colors("slack-dark", ["terminal.ansiBlack"]),
+				"catppuccin-latte": await colors("catppuccin-latte", ["terminalCursor.foreground"]),
+				"rose-pine-dawn": await colors("rose-pine-dawn", ["terminalCursor.background"]),
+			},
+		).toStrictEqual(
+			{
+				"one-light":
+				{
+					"terminal.ansiWhite": "#696c77",
+					"terminal.ansiBrightBlack": "#626772",
+					"terminal.selectionBackground": "#07071227",
+				},
+				"min-light":
+				{
+					"terminal.ansiBlue": "#1976d2",
+				},
+				"min-dark":
+				{
+					"editor.foreground": "#bbbbbb",
+					"terminal.ansiBrightWhite": "#fafbfc",
+				},
+				"slack-dark":
+				{
+					"terminal.ansiBlack": "#000000",
+				},
+				"catppuccin-latte":
+				{
+					"terminalCursor.foreground": "#4c4f69",
+				},
+				"rose-pine-dawn":
+				{
+					"terminalCursor.background": "#faf4ed",
+				},
+			},
+		);
 	});
 
 	it("lazily loads every offered theme under its own id", async () =>
