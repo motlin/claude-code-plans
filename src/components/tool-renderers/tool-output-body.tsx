@@ -1,53 +1,18 @@
-import type {ThemedToken} from "@shikijs/core";
-import {useCodeThemeBackground} from "../../hooks/use-code-theme-background";
-import {useHighlightedLines} from "../../hooks/use-shiki";
 import {pageIsRtl} from "../../lib/page-direction";
 import {stripMemoryTags} from "../../lib/task-checklist";
 import type {ToolBodyKind} from "../../lib/tool-body-kind";
+import {CodeTile} from "../code-tile";
 import {linkifyToolText} from "../linkify-plain";
 import {InlineMarkdown} from "./inline-markdown";
 import {PlainText} from "./plain-text";
 import {TOOL_OUTPUT_CLAMP, TOOL_OUTPUT_REGION} from "./tool-output-region";
 
-/**
- * Upstream's code tile (`Hv` > `$c`, the Bash command card's look): no header or line numbers, wrapped lines,
- * always left-to-right, on the code theme's background (`Zr`).
- */
+/** Upstream `Wv`: JSON in the shared code tile, with no leading element. */
 function JsonTile({code}: {code: string})
 {
-	const tokens = useHighlightedLines(code, "json");
-	const background = useCodeThemeBackground();
 	return (
 		<div className="p-px">
-			<div
-				dir="ltr"
-				className="epitaxy-diff epitaxy-code-card rounded-lg flex overflow-clip px-md py-xs text-code"
-				style={
-				{
-					background,
-				}}
-			>
-				<div className="min-w-0 flex-1">
-					{tokens === null
-						? code
-						: tokens.map((line: ThemedToken[], lineIndex: number) => (
-								<span key={lineIndex}>
-									{lineIndex > 0 && "\n"}
-									{line.map((token: ThemedToken, tokenIndex: number) => (
-										<span
-											key={tokenIndex}
-											style={
-											{
-												color: token.color,
-											}}
-										>
-											{token.content}
-										</span>
-									))}
-								</span>
-							))}
-				</div>
-			</div>
+			<CodeTile code={code} lang="json" />
 		</div>
 	);
 }

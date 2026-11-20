@@ -356,13 +356,14 @@ export function ApprovalCardShell({
 				<ApprovalStackGhosts queueDepth={presentation === "dock" ? queueDepth : 0} />
 				{presentation === "dock" && <ApprovalDockBackdrop />}
 				{band && (
-					<div
+					<ApprovalScrollRegion
 						ref={titleRef}
 						data-testid="approval-title-region"
+						label="Request"
 						className="shrink-0 overflow-y-auto max-h-[max(2rem,min(30vh,calc(60vh-10rem)))] -mx-pad-lg px-lg"
 					>
 						<div className="-mx-pad-lg flex flex-col gap-xs px-lg bg-alpha-1 py-md">{title}</div>
-					</div>
+					</ApprovalScrollRegion>
 				)}
 				{/* Docked, the title band is upstream's card-only frame: the title heads the card unbanded. */}
 				{presentation === "dock" && title !== undefined && (

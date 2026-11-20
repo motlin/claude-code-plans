@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import {cleanup, fireEvent, render} from "@testing-library/react";
+import {cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import {ToolOutputBody} from "../src/components/tool-renderers/tool-output-body";
 import {CODE_THEME_BG_FALLBACK} from "../src/hooks/use-code-theme-background";
@@ -16,7 +16,39 @@ vi.mock("../src/hooks/use-shiki", () => (
 	},
 }));
 
-afterEach(cleanup);
+/** Props each code tile File received; the stub draws a bare `diffs-container` holding the code. */
+const tileFiles = vi.hoisted(
+	() =>
+		[] as
+		{
+			code: string;
+			lang: string;
+		}[],
+);
+
+vi.mock("../src/components/code-tile-file", async () =>
+{
+	const {createElement} = await import("react");
+	return {
+		CodeTileFile: (props: {code: string; lang: string}) =>
+		{
+			tileFiles.push(props);
+			return createElement(
+				"diffs-container",
+				{
+					"data-testid": "file",
+				},
+				props.code,
+			);
+		},
+	};
+});
+
+afterEach(() =>
+{
+	cleanup();
+	tileFiles.length = 0;
+});
 
 /** An obviously fake GitHub token: the prefix plus 36 repeated letter. */
 const FAKE_GH = `ghp_${"A".repeat(36)}`;
@@ -44,9 +76,12 @@ function region(container: HTMLElement): HTMLElement
 
 describe("ToolOutputBody (upstream aS / oS)", () =>
 {
-	it("draws JSON pretty-printed in the code tile inside the 400px Tool output scroller", () =>
+	it("draws JSON pretty-printed in the code tile inside the 400px Tool output scroller", async () =>
 	{
 		const container = draw('{"a":1}');
+		// Upstream $c: the code theme's background (`Zr`), here before either theme has loaded.
+		const background = container.querySelector<HTMLElement>(".epitaxy-code-card")?.style.background;
+		const file = await screen.findByTestId("file");
 		const scroller = region(container);
 		const wrap = scroller.firstElementChild;
 		const tile = wrap?.firstElementChild;
@@ -57,9 +92,11 @@ describe("ToolOutputBody (upstream aS / oS)", () =>
 				wrapDir: wrap?.getAttribute("dir"),
 				tile: tile?.className,
 				tileDir: tile?.getAttribute("dir"),
-				background: (tile as HTMLElement | null | undefined)?.style.background,
+				background,
+				children: tile?.children.length,
 				inner: tile?.firstElementChild?.className,
-				text: tile?.textContent,
+				fileInInner: file.parentElement === tile?.firstElementChild,
+				files: tileFiles.at(-1),
 			},
 		).toStrictEqual(
 			{
@@ -68,10 +105,15 @@ describe("ToolOutputBody (upstream aS / oS)", () =>
 				wrapDir: null,
 				tile: "epitaxy-diff epitaxy-code-card rounded-lg flex overflow-clip px-md py-xs text-code",
 				tileDir: "ltr",
-				// Upstream $c: the code theme's background (`Zr`), here before either theme has loaded.
 				background: CODE_THEME_BG_FALLBACK,
+				children: 1,
 				inner: "min-w-0 flex-1",
-				text: '{\n  "a": 1\n}',
+				fileInInner: true,
+				files:
+				{
+					code: '{\n  "a": 1\n}',
+					lang: "json",
+				},
 			},
 		);
 	});

@@ -75,13 +75,13 @@ import
 import {visibleSingleLine} from "../lib/visible-text";
 import {useBackgroundTasksOpener} from "./background-tasks-opener-context";
 import {APPROVAL_ACTION_SHORTCUT_CLASS, ApprovalActionButton} from "./approval-action-button";
-import {APPROVAL_SENDING_LABEL, ApprovalCardShell} from "./approval-card";
+import {APPROVAL_SENDING_LABEL, ApprovalCardShell, ApprovalScrollRegion} from "./approval-card";
+import {CommandCodeTile} from "./code-tile";
 import {LinedScript} from "./lined-script";
 import {PermissionFileChangePreview} from "./permission-file-change-body";
 import {PermissionRowsList, PERMISSION_ROWS_LABEL} from "./permission-rows";
 import {ReadOnlyAnswerHint} from "./terminal-writes-tip";
 import * as Collapsible from "./ui/collapsible";
-import {HighlightedCommand} from "./tool-renderers/bash-renderer";
 import {DisabledReason} from "./ui/disabled-reason";
 import {Shortcut} from "./ui/shortcut";
 import {type SplitItem, SplitDropdownButton} from "./ui/split-dropdown-button";
@@ -575,11 +575,8 @@ export function PermissionCard({
 			{detail !== null && (
 				<div data-permission-detail className="flow-root">
 					<div data-approval-value>
-						<div className={CODE_CARD_CLASS}>
-							<HighlightedCommand
-								command={detail}
-								language={detailLang === "bash" ? "shellscript" : detailLang}
-							/>
+						<div className="contents" dir="ltr">
+							<CommandCodeTile command={detail} lang={detailLang} />
 						</div>
 					</div>
 				</div>
@@ -671,7 +668,18 @@ export function PermissionCard({
 				<>
 					<div className="flex flex-col gap-[12px] empty:hidden">
 						{detailFirst && detailBlock}
-						{description !== null && <div className={DESCRIPTION_CLASS}>{description}</div>}
+						{description !== null && (
+							<ApprovalScrollRegion
+								label="Description"
+								className={
+									presentation === "card" && detailGated
+										? DESCRIPTION_READ_GATED_CLASS
+										: DESCRIPTION_CLASS
+								}
+							>
+								{description}
+							</ApprovalScrollRegion>
+						)}
 						{!rowsTrail && hasRows && <PermissionRowsList rows={rows} />}
 						{persistentAllow !== null && persistentAllowSaves !== null && (
 							<AlwaysAllowSaves saves={persistentAllowSaves} />
@@ -1111,16 +1119,16 @@ function usePermissionDigitKeys(
 /** Upstream's body classes (`epitaxy-code-size` hooks, held at the default size by the card's data-fixed-code-size): the detail block (`Lg`), its footnote (`kg`) and the description line (`Dg`). */
 const DETAIL_CLASS =
 	"epitaxy-code-size bg-alpha-1 rounded-r4 py-md px-lg text-code text-secondary whitespace-pre-wrap break-words select-text [unicode-bidi:plaintext]";
-/** Upstream's command detail (`epitaxy-code-card`): the code theme's background at default density. */
-const CODE_CARD_CLASS =
-	"epitaxy-code-size flex overflow-clip rounded-lg px-md py-xs text-code bg-surface-1 dark:bg-surface-2 select-text [unicode-bidi:plaintext]";
 /** Upstream's `U` paragraph (`gy`) for a change over the preview cap. */
 const TOO_LARGE_CLASS = "text-body text-secondary select-text break-words";
 const FILE_CHANGE_TOO_LARGE =
 	"Preview unavailable — this change is too large to show here (over 200,000 characters). The full change appears in the conversation after it runs.";
 const DETAIL_NOTE_CLASS = "text-footnote text-muted-as-secondary select-text break-words [unicode-bidi:plaintext]";
 const DESCRIPTION_CLASS =
-	"text-body text-secondary select-text break-words max-h-[calc(3*var(--text-body--line-height))] overflow-y-auto [unicode-bidi:plaintext]";
+	"text-body text-secondary select-text break-words max-h-[calc(3*var(--text-body--line-height))] overflow-y-auto scroll-fade-size-[calc(1*var(--text-body--line-height))] [unicode-bidi:plaintext]";
+/** Upstream's `vC`: beside an in-flow card's read-gated detail, the description drops the three-line clamp for 12 lines. */
+const DESCRIPTION_READ_GATED_CLASS =
+	"text-body text-secondary select-text break-words [unicode-bidi:plaintext] max-h-[12lh] overflow-y-auto";
 
 /** Upstream's title gate hint (`1oftTg`). */
 export const TITLE_READ_HINT = "Scroll the title to its end to allow this.";

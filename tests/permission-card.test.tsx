@@ -25,6 +25,15 @@ import
 import type {PermissionDialogShape} from "../src/lib/herdr/permission-screen";
 import type {PersistentAllowKind, PersistentAllowSave} from "../src/lib/permission-suggestions";
 
+/** The code tile's lazily loaded pierre File, as a bare `diffs-container` holding its code. */
+vi.mock("../src/components/code-tile-file", async () =>
+{
+	const {createElement} = await import("react");
+	return {
+		CodeTileFile: ({code}: {code: string}) => createElement("diffs-container", null, code),
+	};
+});
+
 let frameQueue: ReturnType<typeof queueFrames>;
 beforeEach(() =>
 {
@@ -3164,10 +3173,20 @@ describe("PermissionCard", () =>
 				),
 				title: card.querySelector("[data-permission-title]")?.getAttribute("class"),
 				value: card.querySelector("[data-permission-detail]")?.getAttribute("class"),
-				codeCard: card
+				wrapper: card
 					.querySelector("[data-permission-detail] > [data-approval-value] > div")
 					?.getAttribute("class"),
+				wrapperDir: card
+					.querySelector("[data-permission-detail] > [data-approval-value] > div")
+					?.getAttribute("dir"),
+				codeCard: card
+					.querySelector("[data-permission-detail] > [data-approval-value] > div > div")
+					?.getAttribute("class"),
 				gutter: card.querySelector("[data-permission-detail] .select-none")?.textContent,
+				gutterHidden: card.querySelector("[data-permission-detail] .select-none")?.getAttribute("aria-hidden"),
+				gutterOmitted: card
+					.querySelector("[data-permission-detail] .select-none")
+					?.getAttribute("data-find-omitted"),
 				pathDetail,
 				deny: missing(
 					screen.getByRole(
@@ -3209,15 +3228,39 @@ describe("PermissionCard", () =>
 				dockLook: [],
 				title: "text-body min-w-0 break-words",
 				value: "flow-root",
-				codeCard:
-					"epitaxy-code-size flex overflow-clip rounded-lg px-md py-xs text-code bg-surface-1 dark:bg-surface-2 select-text [unicode-bidi:plaintext]",
+				wrapper: "contents",
+				wrapperDir: "ltr",
+				codeCard: "epitaxy-diff epitaxy-code-card rounded-lg flex overflow-clip px-md py-xs text-code",
 				pathDetail:
 					"epitaxy-code-size bg-alpha-1 rounded-r4 py-md px-lg text-code text-secondary whitespace-pre-wrap break-words select-text [unicode-bidi:plaintext]",
 				gutter: "$ ",
+				gutterHidden: "true",
+				gutterOmitted: "",
 				deny: [],
 				allow: [],
 			},
 		);
+	});
+
+	it("prompts a PowerShell command with upstream's `> ` gutter", () =>
+	{
+		const {container} = render(
+			<PermissionCard
+				title={
+				{
+					action: "run this command",
+					meta: null,
+				}}
+				detail="Get-ChildItem"
+				detailLang="powershell"
+				clampTitle={false}
+				canAnswer
+				onDecision={async () =>
+				{
+				}}
+			/>,
+		);
+		expect(container.querySelector("[data-permission-detail] .select-none")?.textContent).toBe("> ");
 	});
 
 	it("spaces the card as upstream's inline permission card: 480px wide, 24px gaps, a tinted title band and 12px details", () =>
@@ -3273,7 +3316,7 @@ describe("PermissionCard", () =>
 					"epitaxy-tool-card-in-flow",
 				],
 				regionIsFirstChild: true,
-				region: "shrink-0 overflow-y-auto max-h-[max(2rem,min(30vh,calc(60vh-10rem)))] -mx-pad-lg px-lg",
+				region: "epitaxy-scroll-clamp scroll-fade-y focus-visible:outline-hidden focus-visible:shadow-focus shrink-0 overflow-y-auto max-h-[max(2rem,min(30vh,calc(60vh-10rem)))] -mx-pad-lg px-lg",
 				band: "-mx-pad-lg flex flex-col gap-xs px-lg bg-alpha-1 py-md",
 				titleChain: [
 					"flex items-start gap-xs min-w-0",
@@ -3406,6 +3449,103 @@ describe("PermissionCard", () =>
 				isBody: true,
 				inCard: true,
 				tabIndex: "0",
+			},
+		);
+		vi.unstubAllGlobals();
+	});
+
+	it("makes the description and title band upstream's 'Description' and 'Request' scroll clamps, focusable only while they overflow", () =>
+	{
+		const callbacks: ResizeObserverCallback[] = [];
+		vi.stubGlobal(
+			"ResizeObserver",
+			class
+			{
+				constructor(callback: ResizeObserverCallback)
+				{
+					callbacks.push(callback);
+				}
+				observe()
+				{
+				}
+				unobserve()
+				{
+				}
+				disconnect()
+				{
+				}
+			},
+		);
+		const {container} = renderCard();
+		const description = screen.getByText("Remove the build output");
+		const region = container.querySelector<HTMLElement>("[data-testid=approval-title-region]")!;
+		const attributes = (element: Element) => (
+		{
+			tabindex: element.getAttribute("tabindex"),
+			role: element.getAttribute("role"),
+			"aria-label": element.getAttribute("aria-label"),
+			"data-fixed-code-size": element.getAttribute("data-fixed-code-size"),
+		});
+		const fits = [attributes(description), attributes(region)];
+		for (const element of [description, region])
+		{
+			vi.spyOn(element, "scrollHeight", "get").mockReturnValue(160);
+			vi.spyOn(element, "clientHeight", "get").mockReturnValue(57);
+		}
+		act(() =>
+		{
+			for (const callback of callbacks) callback([], {} as ResizeObserver);
+		});
+		expect(
+			{
+				fits,
+				overflows: [attributes(description), attributes(region)],
+				groups: [
+					screen.getByRole(
+						"group",
+						{
+							name: "Description",
+						},
+					) === description,
+					screen.getByRole(
+						"group",
+						{
+							name: "Request",
+						},
+					) === region,
+				],
+			},
+		).toStrictEqual(
+			{
+				fits: [
+					{
+						tabindex: null,
+						role: null,
+						"aria-label": null,
+						"data-fixed-code-size": "",
+					},
+					{
+						tabindex: null,
+						role: null,
+						"aria-label": null,
+						"data-fixed-code-size": "",
+					},
+				],
+				overflows: [
+					{
+						tabindex: "0",
+						role: "group",
+						"aria-label": "Description",
+						"data-fixed-code-size": "",
+					},
+					{
+						tabindex: "0",
+						role: "group",
+						"aria-label": "Request",
+						"data-fixed-code-size": "",
+					},
+				],
+				groups: [true, true],
 			},
 		);
 		vi.unstubAllGlobals();
@@ -3547,7 +3687,7 @@ describe("PermissionCard", () =>
 			{
 				details: [
 					[
-						"text-body text-secondary select-text break-words max-h-[calc(3*var(--text-body--line-height))] overflow-y-auto [unicode-bidi:plaintext]",
+						"epitaxy-scroll-clamp scroll-fade-y focus-visible:outline-hidden focus-visible:shadow-focus text-body text-secondary select-text break-words max-h-[calc(3*var(--text-body--line-height))] overflow-y-auto scroll-fade-size-[calc(1*var(--text-body--line-height))] [unicode-bidi:plaintext]",
 						"Replies ok",
 					],
 					[
@@ -7019,6 +7159,19 @@ describe("PermissionCard read gates", () =>
 			perUseOnly: true,
 			persistentAllow: "always",
 		};
+
+		it("drops the description's three-line clamp for upstream's 12-line cap beside a read-gated command", () =>
+		{
+			renderCard(
+				{
+					...COMMAND_CARD,
+					description: "Posts the payload to the hook",
+				},
+			);
+			expect(screen.getByText("Posts the payload to the hook").className).toBe(
+				"epitaxy-scroll-clamp scroll-fade-y focus-visible:outline-hidden focus-visible:shadow-focus text-body text-secondary select-text break-words [unicode-bidi:plaintext] max-h-[12lh] overflow-y-auto",
+			);
+		});
 
 		it("caps the command to six lines in a labelled scroller and holds Allow until the command and its note were seen", async () =>
 		{
