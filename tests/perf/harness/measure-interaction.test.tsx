@@ -8,6 +8,7 @@ import {FakeEventSource, installFakeEventSource} from "./fake-event-source";
 import {installFixedResizeObserver} from "./fixed-resize-observer";
 import {measureInteraction, useRenderCount} from "./measure-interaction";
 import {PerfSubtree} from "./perf-subtree";
+import {readSidebarState, recordRecentsRowCount} from "../../../src/lib/sidebar-store";
 
 afterEach(() =>
 {
@@ -168,6 +169,16 @@ function PaintedAfterTwoFrames()
 		};
 	}, []);
 	return <p data-testid="painted">{painted ? "painted" : "waiting"}</p>;
+}
+
+/** Remembers three Recents rows once mounted, as the sidebar does once its list settles. */
+function RecentsOfThree()
+{
+	useEffect(() =>
+	{
+		recordRecentsRowCount(3);
+	}, []);
+	return <p>three rows</p>;
 }
 
 describe("measureInteraction", () =>
@@ -442,6 +453,45 @@ describe("measureInteraction", () =>
 				commits: 0,
 				mutations: 0,
 				text: "painted",
+			},
+		);
+	});
+
+	it("fails while the sidebar's Recents row-count write waits on the real 2s clock, which a slow run would measure", async () =>
+	{
+		await expect(
+			measureInteraction(
+				() => <RecentsOfThree />,
+				() => {},
+				{
+					fixtures: {},
+				},
+			),
+		).rejects.toThrow(
+			"measureInteraction: a Recents row-count write is waiting on the real 2s clock and would commit inside a slow measurement; pass rememberedRecentsRows",
+		);
+	});
+
+	it("remembers the Recents row count before mounting, so the sidebar schedules no write", async () =>
+	{
+		const result = await measureInteraction(
+			() => <RecentsOfThree />,
+			() => {},
+			{
+				fixtures: {},
+				rememberedRecentsRows: 3,
+			},
+		);
+
+		expect(
+			{
+				commits: result.commits,
+				recentsRowCount: readSidebarState().recentsRowCount,
+			},
+		).toStrictEqual(
+			{
+				commits: 0,
+				recentsRowCount: 3,
 			},
 		);
 	});

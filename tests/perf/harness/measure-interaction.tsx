@@ -3,6 +3,7 @@ import {act, render} from "@testing-library/react";
 import {Profiler, type ReactNode} from "react";
 import {vi} from "vite-plus/test";
 import {openEventSourceListeners} from "./fake-event-source";
+import {hasPendingRecentsRowCount, readSidebarState, writeSidebarState} from "../../../src/lib/sidebar-store";
 
 /**
  * Client lab harness (measurement plan §4.3). It renders a tree, lets it settle, then counts what one interaction
@@ -37,6 +38,12 @@ export interface MeasureOptions
 	queryClient?: QueryClient;
 	/** Query fetches the interaction is supposed to make; only the rest count as hidden reloads. */
 	expectedQueryFetches?: number;
+	/**
+	 * How many Recents rows the sidebar shows once settled, stored before mounting as a tab that has had the page open a
+	 * while remembers it. Without it, a mounted sidebar queues the write of that count on the real 2s clock (upstream
+	 * `Fg`), and a run slowed past 2s by a loaded machine commits the write inside the measured interaction.
+	 */
+	rememberedRecentsRows?: number;
 }
 
 export interface InteractionContext
@@ -125,6 +132,17 @@ function fixtureFor(
 }
 
 const MAX_SETTLE_ROUNDS = 100;
+
+/** Fails while a Recents row-count write waits on the real clock, where how loaded the machine is decides if it lands. */
+function assertNoPendingRecentsRowCount(): void
+{
+	if (!vi.isFakeTimers() && hasPendingRecentsRowCount())
+	{
+		throw new Error(
+			"measureInteraction: a Recents row-count write is waiting on the real 2s clock and would commit inside a slow measurement; pass rememberedRecentsRows",
+		);
+	}
+}
 
 /**
  * Animation frames still queued on real timers, as tests/setup.ts tracks them. jsdom runs frames on a wall-clock
@@ -312,6 +330,16 @@ export async function measureInteraction(
 		}
 	});
 
+	if (options.rememberedRecentsRows !== undefined)
+	{
+		writeSidebarState(
+			{
+				...readSidebarState(),
+				recentsRowCount: options.rememberedRecentsRows,
+			},
+		);
+	}
+
 	try
 	{
 		render(
@@ -320,6 +348,7 @@ export async function measureInteraction(
 			</Profiler>,
 		);
 		await settle();
+		assertNoPendingRecentsRowCount();
 
 		observer.observe(
 			document.body,
@@ -346,6 +375,7 @@ export async function measureInteraction(
 		}
 		mutations += observer.takeRecords().length;
 		recorder.measuring = false;
+		assertNoPendingRecentsRowCount();
 
 		if (unmatched.length > 0)
 		{

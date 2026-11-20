@@ -290,6 +290,12 @@ export function cancelPendingRecentsRowCount(): void
 	pendingRowCount = undefined;
 }
 
+/** Whether a Recents count is still waiting to be written; the client perf lab fails on one left on the real clock. */
+export function hasPendingRecentsRowCount(): boolean
+{
+	return pendingRowCount !== undefined;
+}
+
 /** Upstream `Xw`: the remembered Recents row count clamped to 0…21, or undefined when none is stored. */
 export function rememberedRecentsRows(): number | undefined
 {

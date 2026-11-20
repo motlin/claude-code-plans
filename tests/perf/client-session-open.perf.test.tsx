@@ -35,7 +35,6 @@ import {installFakeEventSource} from "./harness/fake-event-source";
 import {installFixedResizeObserver} from "./harness/fixed-resize-observer";
 import {type InteractionMeasurement, measureInteraction} from "./harness/measure-interaction";
 import {metricIds} from "./perf-ids";
-import {readSidebarState, writeSidebarState} from "../../src/lib/sidebar-store";
 import {ratchet} from "./ratchet";
 import {preloadComposerSurfaces} from "../../src/components/composer-surfaces-entry";
 import {preloadSideChatPanel} from "../../src/components/side-chat-panel-module";
@@ -570,14 +569,6 @@ async function measureApp(
 ): Promise<InteractionMeasurement>
 {
 	installBrowserStubs();
-	// The sidebar writes a changed Recents row count 2s after its list settles (upstream `Fg`), a real timer the
-	// mount starts. Stored up front, the count never changes, so that write cannot land inside a slow measurement.
-	writeSidebarState(
-		{
-			...readSidebarState(),
-			recentsRowCount: SIDEBAR_RECENTS_ROWS,
-		},
-	);
 	const queryClient = new QueryClient(
 		{
 			defaultOptions:
@@ -599,11 +590,8 @@ async function measureApp(
 		{
 			fixtures,
 			queryClient,
+			rememberedRecentsRows: SIDEBAR_RECENTS_ROWS,
 		},
-	);
-	// A list of another length would start the deferred write again.
-	expect(document.querySelectorAll('nav a[data-row-main-button][href^="/session/"]')).toHaveLength(
-		SIDEBAR_RECENTS_ROWS,
 	);
 	return measurement;
 }
