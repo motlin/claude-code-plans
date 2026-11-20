@@ -3,7 +3,7 @@
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {createMemoryHistory, createRootRoute, createRouter, RouterProvider} from "@tanstack/react-router";
 import {cleanup, fireEvent, render, screen, waitFor} from "@testing-library/react";
-import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
+import {afterEach, beforeAll, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {ClaudeEventsProvider} from "../src/components/claude-events-provider";
 import {type HerdrPaneIndexData, herdrPanesQueryOptions} from "../src/lib/api/herdr";
 import
@@ -20,6 +20,7 @@ import {usageQueryOptions} from "../src/lib/api/usage";
 import {takePendingHomeLaunchFolder} from "../src/lib/home-composer-focus";
 import {ToastProvider} from "../src/components/toast";
 import {SettingsProvider} from "../src/components/settings-provider";
+import {preloadSessionPageChunks} from "./session-page-chunks";
 
 // session-chat pulls in HMR-persisted module state that jsdom cannot evaluate.
 vi.mock("../src/components/session-chat", () => (
@@ -308,6 +309,13 @@ function stubBrowserGlobals(): void
 }
 
 const card = () => document.querySelector('[data-testid="cold-resume-card"]');
+
+// Load the chunks SessionPage imports lazily, including the /advisor dialog's, so a cold module graph under load
+// cannot outlast findByRole's timeout.
+beforeAll(async () =>
+{
+	await Promise.all([preloadSessionPageChunks(), import("../src/components/advisor-dialog")]);
+});
 
 beforeEach(() =>
 {
