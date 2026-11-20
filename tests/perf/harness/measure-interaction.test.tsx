@@ -149,6 +149,27 @@ function Invalidator()
 	);
 }
 
+/** Commits once two animation frames after mounting, as a transcript scrolls to its end after its first paint. */
+function PaintedAfterTwoFrames()
+{
+	const [painted, setPainted] = useState(false);
+	useEffect(() =>
+	{
+		let frame = requestAnimationFrame(() =>
+		{
+			frame = requestAnimationFrame(() =>
+			{
+				setPainted(true);
+			});
+		});
+		return () =>
+		{
+			cancelAnimationFrame(frame);
+		};
+	}, []);
+	return <p data-testid="painted">{painted ? "painted" : "waiting"}</p>;
+}
+
 describe("measureInteraction", () =>
 {
 	it("counts the commits, mutations and fetches of a click that makes two state updates and one fetch", async () =>
@@ -396,6 +417,31 @@ describe("measureInteraction", () =>
 				fetches: 0,
 				renders: {},
 				text: "3",
+			},
+		);
+	});
+
+	it("settles the animation frames a mount queues before measuring, so a frame that commits lands outside the interaction", async () =>
+	{
+		const result = await measureInteraction(
+			() => <PaintedAfterTwoFrames />,
+			() => {},
+			{
+				fixtures: {},
+			},
+		);
+
+		expect(
+			{
+				commits: result.commits,
+				mutations: result.mutations,
+				text: screen.getByTestId("painted").textContent,
+			},
+		).toStrictEqual(
+			{
+				commits: 0,
+				mutations: 0,
+				text: "painted",
 			},
 		);
 	});

@@ -126,7 +126,20 @@ function fixtureFor(
 
 const MAX_SETTLE_ROUNDS = 100;
 
-/** Drains microtasks and one macrotask turn, which is where TanStack Query's notifyManager delivers updates. */
+/**
+ * Animation frames still queued on real timers, as tests/setup.ts tracks them. jsdom runs frames on a wall-clock
+ * interval, so a frame a mount queues (a transcript scrolling to its end after its first paint, say) would otherwise
+ * land before or inside the interaction depending on how loaded the machine is.
+ */
+function pendingAnimationFrames(): number
+{
+	return vi.isFakeTimers() ? 0 : (window.ccbPendingAnimationFrames?.size ?? 0);
+}
+
+/**
+ * Drains microtasks and one macrotask turn, which is where TanStack Query's notifyManager delivers updates, or the
+ * next animation frame while one is queued.
+ */
 async function flushRound(): Promise<void>
 {
 	await act(async () =>
@@ -138,6 +151,16 @@ async function flushRound(): Promise<void>
 		if (vi.isFakeTimers())
 		{
 			vi.advanceTimersByTime(0);
+		}
+		else if (pendingAnimationFrames() > 0)
+		{
+			await new Promise<void>((resolve) =>
+			{
+				requestAnimationFrame(() =>
+				{
+					resolve();
+				});
+			});
 		}
 		else
 		{
@@ -249,10 +272,15 @@ export async function measureInteraction(
 		};
 	};
 
-	const idle = () => inFlight === 0 && queryClient.isFetching() === 0 && queryClient.isMutating() === 0;
+	const idle = () =>
+		inFlight === 0 &&
+		queryClient.isFetching() === 0 &&
+		queryClient.isMutating() === 0 &&
+		pendingAnimationFrames() === 0;
 	let allCommits = 0;
-	// Settled means a whole round that stays idle and commits nothing: a component that mounts in that round (the
-	// router rendering a route, say) can start a fetch of its own, which must land before measuring starts.
+	// Settled means a whole round that stays idle (no animation frame queued either) and commits nothing: a component
+	// that mounts in that round (the router rendering a route, say) can start a fetch of its own, which must land before
+	// measuring starts.
 	const settle = async () =>
 	{
 		for (let round = 0; round < MAX_SETTLE_ROUNDS; round++)

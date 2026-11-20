@@ -33,6 +33,7 @@ import {installFixedResizeObserver} from "./harness/fixed-resize-observer";
 import {type InteractionMeasurement, measureInteraction} from "./harness/measure-interaction";
 import {metricIds} from "./perf-ids";
 import {ratchet} from "./ratchet";
+import {readSidebarState, writeSidebarState} from "../../src/lib/sidebar-store";
 import {preloadComposerSurfaces} from "../../src/components/composer-surfaces-entry";
 import {loadSessionPromptCards} from "../../src/components/session-prompt-cards-entry";
 import {preloadSideChatPanel} from "../../src/components/side-chat-panel-module";
@@ -611,6 +612,25 @@ function openSessionSummary(): unknown
 	return summary;
 }
 
+/**
+ * A tab that has had the session open for a while already remembers how many Recents rows its sidebar shows. Without
+ * it, every mount queues the 2s write of that count on the real clock, and a mount slowed past 2s by a loaded machine
+ * commits the write inside the measured event.
+ */
+function rememberRecentsRowCount(served: Record<string, unknown>): void
+{
+	const recent = served["/api/sessions/recent?limit=50&live=1"] as
+	{
+		sessions: Array<unknown>;
+	};
+	writeSidebarState(
+		{
+			...readSidebarState(),
+			recentsRowCount: recent.sessions.length,
+		},
+	);
+}
+
 async function measureEvent(
 	deliver: (eventSource: FakeEventSource) => void,
 	served: Record<string, unknown> = fixtures,
@@ -621,6 +641,7 @@ async function measureEvent(
 }>
 {
 	installBrowserStubs();
+	rememberRecentsRowCount(served);
 	const queryClient = new QueryClient(
 		{
 			defaultOptions:
