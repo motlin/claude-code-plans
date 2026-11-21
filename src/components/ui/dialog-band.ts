@@ -1,9 +1,9 @@
 import {useCallback, useRef} from "react";
 
 import {useFizzyLake} from "../../lib/fizzy-lake";
+import {CDS_GHOST_HOVER} from "./cds-button";
 
-export const GHOST_ICON_BUTTON =
-	"flex shrink-0 items-center justify-center text-primary transition-colors hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
+export const GHOST_ICON_BUTTON = `flex shrink-0 items-center justify-center text-primary transition-colors ${CDS_GHOST_HOVER} hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus`;
 
 /*
  * Upstream `JK` (the panels dialog body): the band's scroll timeline, `scroll-fade-hide-top` under a

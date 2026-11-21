@@ -156,7 +156,7 @@ describe("TextInput", () =>
 					iconOnly: "",
 					size: "sm",
 					className:
-						"flex shrink-0 items-center justify-center size-[var(--fhn)] rounded-[calc(var(--fr)-(var(--fh)-var(--fhn))/2)] text-primary hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus",
+						"flex shrink-0 items-center justify-center size-[var(--fhn)] rounded-[calc(var(--fr)-(var(--fh)-var(--fhn))/2)] text-primary hover:bg-fill-ghost-hover stacks:hover:bg-fill-button-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus",
 				},
 			},
 		);

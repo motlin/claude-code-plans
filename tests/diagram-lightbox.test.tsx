@@ -177,6 +177,7 @@ describe("DiagramLightbox (upstream c3fde7009 Zr + qr)", () =>
 					.filter((name) => /^(epitaxy-root|w-|min-w-|max-w-|break-words)/.test(name)),
 				title: dialog.querySelector(".sr-only")?.textContent,
 				zoom: [...group.querySelectorAll("button")].map((button) => button.getAttribute("aria-label")),
+				zoomClass: group.querySelector("button")?.className,
 				region:
 				{
 					tabIndex: region.tabIndex,
@@ -197,6 +198,8 @@ describe("DiagramLightbox (upstream c3fde7009 Zr + qr)", () =>
 				popup: ["epitaxy-root", "w-max", "min-w-[min(720px,90vw)]", "max-w-[90vw]", "break-words"],
 				title: "Diagram",
 				zoom: ["Zoom out", "Reset zoom", "Zoom in"],
+				zoomClass:
+					"flex shrink-0 items-center justify-center text-primary transition-colors hover:bg-fill-ghost-hover stacks:hover:bg-fill-button-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus aspect-square size-8 panels-fine:size-7 rounded-r6",
 				region:
 				{
 					tabIndex: 0,

@@ -34,6 +34,7 @@ import
 } from "react";
 
 import {Icon} from "./icon";
+import {CDS_GHOST_HOVER} from "./cds-button";
 
 const FIELD_CLASS = "flex flex-col gap-xs font-sans";
 
@@ -137,8 +138,7 @@ function sizeAttr(size: TextInputSize | undefined)
 }
 
 /** Upstream's sm ghost icon-only Button with the nested `!size-[var(--fhn)]` / radius overrides. */
-export const TEXT_INPUT_CLEAR_CLASS =
-	"flex shrink-0 items-center justify-center size-[var(--fhn)] rounded-[calc(var(--fr)-(var(--fh)-var(--fhn))/2)] text-primary hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
+export const TEXT_INPUT_CLEAR_CLASS = `flex shrink-0 items-center justify-center size-[var(--fhn)] rounded-[calc(var(--fr)-(var(--fh)-var(--fhn))/2)] text-primary ${CDS_GHOST_HOVER} hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus`;
 
 /** Upstream's tailwind-merge drops `w-full` under a consumer width such as Customize's `w-64`. */
 function withConsumer(base: string, className: string | undefined): string

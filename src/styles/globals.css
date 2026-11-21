@@ -290,6 +290,8 @@ html[data-interface-font="dyslexic"]
 	--color-fill-button-ghost-hover: var(--upstream-fill-button-ghost-hover);
 	/* Upstream --cds-fill-button-layer: the hovered segment's extra layer over a fizzy ghost split's group hover. */
 	--color-fill-button-layer: var(--upstream-fill-button-layer);
+	/* Upstream --cds-fill-primary-layer: a fizzy primary cds Button's press layer. */
+	--color-fill-primary-layer: var(--upstream-fill-primary-layer);
 	--color-fill-ghost-selected: var(--upstream-fill-ghost-selected);
 	/* The ⌘K palette's selected row: ghost hover until fizzy-lake color, then upstream's measured ghost-selected. */
 	--color-palette-selected: var(--palette-selected);
@@ -631,6 +633,8 @@ html[data-interface-font="dyslexic"]
 	--upstream-fill-button-ghost-hover: var(--upstream-fill-ghost-hover);
 	/* Upstream leaves --cds-fill-button-layer unset before the fizzy colour rollout. */
 	--upstream-fill-button-layer: initial;
+	/* Likewise --cds-fill-primary-layer. */
+	--upstream-fill-primary-layer: initial;
 	/* Upstream's pressed rail toggle (session-presets gate): 10% ink. */
 	--upstream-fill-ghost-selected: rgb(11 11 11 / 0.1);
 	--palette-selected: var(--upstream-fill-ghost-hover);
@@ -1241,6 +1245,8 @@ html[data-interface-font="dyslexic"]
 	--upstream-fill-button-ghost-hover: #0000001a;
 	/* Upstream `--cds-fill-button-layer`: the `layers-*-fill-button-layer` gradient over a button paint. */
 	--upstream-fill-button-layer: #0000000e;
+	/* Upstream `--cds-fill-primary-layer`: the `layers-1-fill-primary-layer` press gradient over a primary paint. */
+	--upstream-fill-primary-layer: #0000001a;
 	/* Upstream `--cds-fizzy-lake-color-plain-secondary`: the message toolbar's button ink. */
 	--upstream-plain-secondary: #0009;
 	/* Upstream `--cds-text-warning` (pre-rollout yellow-600 / yellow-300). */
@@ -1401,6 +1407,7 @@ html[data-interface-font="dyslexic"]
 	--upstream-bg-neutral-hover: #ffffff13;
 	--upstream-fill-button-ghost-hover: #ffffff13;
 	--upstream-fill-button-layer: #ffffff13;
+	--upstream-fill-primary-layer: #ffffff26;
 	--upstream-plain-secondary: #ffffff91;
 	--upstream-warning: #e49c06;
 	--upstream-text-primary: #ffffffed;
@@ -2094,6 +2101,27 @@ input.cds-input::-webkit-search-cancel-button
 @utility layers-1-fill-button-layer
 {
 	background-image: linear-gradient(var(--color-fill-button-layer) 0 0);
+}
+
+/* Upstream `layers-2-fill-button-layer`: two stacked fill-button-layer gradients (an open or pressed secondary). */
+@utility layers-2-fill-button-layer
+{
+	background-image:
+		linear-gradient(var(--color-fill-button-layer) 0 0), linear-gradient(var(--color-fill-button-layer) 0 0);
+}
+
+/* Upstream `layers-3-fill-button-layer`: three stacked fill-button-layer gradients (a hovered open secondary). */
+@utility layers-3-fill-button-layer
+{
+	background-image:
+		linear-gradient(var(--color-fill-button-layer) 0 0), linear-gradient(var(--color-fill-button-layer) 0 0),
+		linear-gradient(var(--color-fill-button-layer) 0 0);
+}
+
+/* Upstream `layers-1-fill-primary-layer`: one fill-primary-layer gradient over a pressed primary paint. */
+@utility layers-1-fill-primary-layer
+{
+	background-image: linear-gradient(var(--color-fill-primary-layer) 0 0);
 }
 
 /* Upstream `cursor-interactive`: the pointer cursor on chips and other clickable inline atoms. */

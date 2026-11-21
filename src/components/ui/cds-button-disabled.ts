@@ -13,5 +13,12 @@ export const CDS_ICON_ONLY_DISABLED =
 /** Upstream's filled-variant disabled paint (`stacks:…bg-fill-disabled`), for a button that paints itself. */
 export const CDS_BUTTON_DISABLED_FILL = "stacks:[&:disabled:not([aria-busy])]:bg-fill-disabled";
 
+/**
+ * Upstream's filled-variant disabled paint over an open menu: the open paint ties the disabled fill's specificity, so
+ * a disabled open button repeats the fill and drops the open layers.
+ */
+export const CDS_BUTTON_DISABLED_OPEN_FILL =
+	"stacks:[&:disabled:not([aria-busy])]:[&[aria-haspopup][aria-expanded=true]]:bg-fill-disabled stacks:[&:disabled:not([aria-busy])]:[&[aria-haspopup][aria-expanded=true]]:bg-none";
+
 /** Upstream `CL`: a ghost paint layer stays transparent while its button is disabled. */
 export const CDS_GHOST_PAINT_DISABLED = "stacks:group-[:disabled:not([aria-busy])]/btn:bg-transparent";

@@ -5,7 +5,12 @@ import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {RewindConfirm} from "../src/components/rewind-confirm";
 import {ToastProvider} from "../src/components/toast";
-import {CDS_BUTTON_DISABLED, CDS_BUTTON_DISABLED_FILL} from "../src/components/ui/cds-button-disabled";
+import
+{
+	CDS_BUTTON_DISABLED,
+	CDS_BUTTON_DISABLED_FILL,
+	CDS_BUTTON_DISABLED_OPEN_FILL,
+} from "../src/components/ui/cds-button-disabled";
 import {type RewindRequestDependencies, useRewindRequest} from "../src/hooks/use-rewind-request";
 import type {RewindFileChanges} from "../src/lib/api/rewind-files";
 
@@ -342,8 +347,16 @@ describe("useRewindRequest + RewindConfirm", () =>
 			"after:rounded-[inherit]",
 			"[:root:not([data-cds-fizzy-lake~=color])_&]:after:shadow-[inset_0_0_0_1px_var(--color-fill-secondary-ring)]",
 			"text-primary",
+			"aria-pressed:text-upstream-accent",
 			"hover:bg-fill-secondary-hover",
+			"stacks:hover:bg-fill-secondary",
+			"stacks:[&[aria-haspopup][aria-expanded=true]]:bg-fill-secondary",
+			"stacks:hover:layers-1-fill-button-layer",
+			"stacks:[&[aria-haspopup][aria-expanded=true]]:layers-2-fill-button-layer",
+			"stacks:hover:[&[aria-haspopup][aria-expanded=true]]:layers-3-fill-button-layer",
+			"stacks:active:layers-2-fill-button-layer",
 			CDS_BUTTON_DISABLED_FILL,
+			...CDS_BUTTON_DISABLED_OPEN_FILL.split(" "),
 		]);
 	});
 
@@ -383,6 +396,9 @@ describe("useRewindRequest + RewindConfirm", () =>
 			"text-surface-1",
 			"[--shortcut-cap-ink:currentColor]",
 			"hover:bg-primary/80",
+			"stacks:active:bg-fill-primary-hover",
+			"stacks:active:layers-1-fill-primary-layer",
+			"stacks:[&[aria-haspopup][aria-expanded=true]]:bg-none",
 			CDS_BUTTON_DISABLED_FILL,
 		]);
 	});
@@ -610,7 +626,11 @@ describe("useRewindRequest + RewindConfirm", () =>
 					busy: "true",
 					cancelDisabled: true,
 					disabledLooks: [
-						[...CDS_BUTTON_DISABLED.split(" "), CDS_BUTTON_DISABLED_FILL],
+						[
+							...CDS_BUTTON_DISABLED.split(" "),
+							CDS_BUTTON_DISABLED_FILL,
+							...CDS_BUTTON_DISABLED_OPEN_FILL.split(" "),
+						],
 						[...CDS_BUTTON_DISABLED.split(" "), CDS_BUTTON_DISABLED_FILL],
 					],
 					restores: 1,

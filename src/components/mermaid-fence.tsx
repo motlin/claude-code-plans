@@ -19,6 +19,7 @@ import {useResolvedTheme} from "./theme-context";
 import {MermaidDiagram, type MermaidStatus} from "./mermaid-diagram";
 import {Icon} from "./ui/icon";
 import {Tooltip} from "./ui/tooltip";
+import {CDS_GHOST_HOVER} from "./ui/cds-button";
 
 /*
  * Upstream's mermaid fence (c9e4d0c57 EpitaxyMermaidFence `we`, dumps/mermaid-fence-secret-fallback-c9e4d0c57.js.txt):
@@ -37,8 +38,7 @@ const MERMAID_RENDER_FAILED_NOTE = "This diagram couldn\u2019t be drawn. Showing
  * Upstream's toolbar button: cds `Button` ghost, iconOnly, size base, the same component as the code card's Copy,
  * so it takes the Copy button's look (24px, 6px radius, t6 ink lifting to primary on the ghost hover).
  */
-const TOOLBAR_BUTTON_CLASS =
-	"inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-r5 border-0 bg-transparent p-0 text-t6 hover:bg-[hsl(0_0%_4.3137%_/_0.06)] hover:text-primary dark:hover:bg-[hsl(0_0%_100%_/_0.08)] [&_svg]:size-4";
+const TOOLBAR_BUTTON_CLASS = `inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-r5 border-0 bg-transparent p-0 text-t6 ${CDS_GHOST_HOVER} hover:text-primary [&_svg]:size-4`;
 
 /** Upstream `ve`. */
 const MOTION = "duration-base ease-out motion-reduce:transition-none";

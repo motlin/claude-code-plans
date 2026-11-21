@@ -555,6 +555,8 @@ describe("QuestionCard Skip while read-only, as upstream's disabled cds Button",
 					"stacks:[&:disabled:not([aria-busy])]:text-button-disabled",
 					"stacks:[&:disabled:not([aria-busy])]:[--shortcut-cap-ink:currentColor]",
 					"stacks:[&:disabled:not([aria-busy])]:bg-fill-disabled",
+					"stacks:[&:disabled:not([aria-busy])]:[&[aria-haspopup][aria-expanded=true]]:bg-fill-disabled",
+					"stacks:[&:disabled:not([aria-busy])]:[&[aria-haspopup][aria-expanded=true]]:bg-none",
 				],
 			},
 		);
