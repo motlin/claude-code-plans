@@ -248,11 +248,38 @@ export async function takeOverServerShutdown(hook: ShutdownHook): Promise<AbortS
 // The SSR entry sets the hold, but the WebSocket routes are Nitro routes in
 // another bundle, so the hold lives on globalThis like the hook registry.
 const REQUEST_HOLD = Symbol.for("claude-code-browser.request-hold");
+// Releases the placeholder hold expectRequestHold installed, once the SSR entry's hold replaces it.
+const REQUEST_HOLD_RELEASE = Symbol.for("claude-code-browser.request-hold-release");
 
-/** Only holdRequestsUntil writes the hold slot, so a Promise there is the hold. */
+/** Only this module writes the hold slot, so a Promise there is the hold. */
 function isRequestHold(value: unknown): value is Promise<void>
 {
 	return value instanceof Promise;
+}
+
+function isHoldRelease(value: unknown): value is (hold: Promise<void>) => void
+{
+	return typeof value === "function";
+}
+
+/**
+ * Holds requests until the SSR entry calls {@link holdRequestsUntil}. In dev,
+ * WebSocket upgrades bypass the dev server's request gate and can reach the
+ * Nitro routes before the SSR entry has loaded and set its hold, so they
+ * would open the databases while the previous instance may still hold them.
+ * A no-op once a hold is set.
+ */
+export function expectRequestHold(): void
+{
+	if (isRequestHold(Reflect.get(globalThis, REQUEST_HOLD))) return;
+	const placeholder = new Promise<void>((resolve) =>
+	{
+		Reflect.set(globalThis, REQUEST_HOLD_RELEASE, (hold: Promise<void>) =>
+		{
+			resolve(hold);
+		});
+	});
+	Reflect.set(globalThis, REQUEST_HOLD, placeholder);
 }
 
 /**
@@ -270,7 +297,8 @@ export async function requestsReleased(): Promise<void>
  * Hold each request until `ready` settles: a request served during the
  * takeover would open the databases while the previous instance may still
  * hold them. A failed startup lets requests through, to fail on their own.
- * {@link requestsReleased} waits for the same hold.
+ * {@link requestsReleased} waits for the same hold, including callers already
+ * waiting on {@link expectRequestHold}'s placeholder.
  */
 export function holdRequestsUntil<R>(
 	ready: Promise<unknown>,
@@ -282,6 +310,9 @@ export function holdRequestsUntil<R>(
 		() => {},
 	);
 	Reflect.set(globalThis, REQUEST_HOLD, settled);
+	const release: unknown = Reflect.get(globalThis, REQUEST_HOLD_RELEASE);
+	Reflect.deleteProperty(globalThis, REQUEST_HOLD_RELEASE);
+	if (isHoldRelease(release)) release(settled);
 	return async (request) =>
 	{
 		await settled;
