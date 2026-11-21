@@ -2800,6 +2800,65 @@ describe("JsonlRecordSchema observed 2026-09 transcript fields", () =>
 				organizationUuid: "org-123",
 				sessionId: "sess-123",
 			},
+			{
+				type: "derived-from",
+				v: 1,
+				sessionId: "sess-123",
+				sessions: [
+					{
+						type: "claude_code_session",
+						id: "sess-123",
+						via: "resume",
+					},
+				],
+			},
+			{
+				type: "data-flow-records",
+				v: 1,
+				sessionId: "sess-123",
+				agentId: "agent-123",
+				snapshot: true,
+				records: [
+					{
+						response_id: "msg-123",
+						listed: ["msg-123"],
+						mark_sent_by: "sess-123",
+					},
+					{
+						tool_name: "mcp__srv__tool",
+						tool_use_id: "toolu-123",
+						mcp_tool_name: "tool",
+						server:
+						{
+							type: "client_configured",
+							transport: "stdio",
+							plugin_id_hash: "abc",
+						},
+					},
+					{
+						event_id: "event-123",
+						touched:
+						{
+							kind: "session",
+							id: null,
+							action: "write",
+						},
+					},
+					{
+						event_id: "event-124",
+						source:
+						{
+							type: "claude_code_session",
+							id: "sess-122",
+						},
+					},
+				],
+			},
+			{
+				type: "data-flow-incomplete",
+				v: 1,
+				sessionId: "sess-123",
+			},
 			attachmentRecord(
 				{
 					type: "edited_text_file",

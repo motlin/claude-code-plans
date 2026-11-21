@@ -298,6 +298,37 @@ export const jsonlRecordFixtures =
 		sessionId: "session-alice-100",
 		continuedInSessionId: "session-alice-200",
 	},
+	"derived-from":
+	{
+		type: "derived-from",
+		v: 1,
+		sessionId: "session-alice-100",
+		sessions: [
+			{
+				type: "claude_code_session",
+				id: "session-alice-100",
+				via: "compact",
+			},
+		],
+	},
+	"data-flow-records":
+	{
+		type: "data-flow-records",
+		v: 1,
+		sessionId: "session-alice-100",
+		records: [
+			{
+				tool_name: "Bash",
+				tool_use_id: "toolu-alice-100",
+			},
+		],
+	},
+	"data-flow-incomplete":
+	{
+		type: "data-flow-incomplete",
+		v: 1,
+		sessionId: "session-alice-100",
+	},
 	"api-request":
 	{
 		type: "api-request",

@@ -337,6 +337,8 @@ const BaseRecordFields =
 	// Agent type that produced the record, e.g. "Explore" or "git:commit-handler".
 	// Written on subagent transcripts only.
 	attributionAgent: z.string().optional(),
+	// Validated-only: observed always true; meaning undocumented.
+	dataFlowOn: z.boolean().optional(),
 };
 
 export const PromptSourceSchema = z.enum(["typed", "system", "sdk", "queued", "suggestion_accepted"]);
@@ -802,6 +804,8 @@ export const AssistantRecordSchema = z
 			apiError: z.string().optional(),
 			// The API's error `type`, e.g. "rate_limit_error".
 			apiErrorType: z.string().optional(),
+			// The API's error code, e.g. "oauth_not_allowed_for_organization".
+			apiErrorCode: z.string().optional(),
 			apiErrorParams: z
 				.object(
 					{
@@ -977,6 +981,10 @@ const HookBaseFields =
 	hookName: z.string(),
 	toolUseID: z.string().optional(),
 	hookEvent: z.string(),
+	// Kinds of hook that produced the payload, e.g. ["PluginHookText"].
+	hookKinds: z.array(z.string()).optional(),
+	// Whether this hook run belonged to an account-memory batch (observed false on PostToolBatch).
+	accountMemoryBatch: z.boolean().optional(),
 };
 
 const HookSuccessAttachmentPayload = z
@@ -990,8 +998,6 @@ const HookSuccessAttachmentPayload = z
 			exitCode: z.number().optional(),
 			command: z.string().optional(),
 			durationMs: z.number().optional(),
-			// Whether this hook run belonged to an account-memory batch (observed false on PostToolBatch).
-			accountMemoryBatch: z.boolean().optional(),
 		},
 	)
 	.strict();
@@ -2801,6 +2807,100 @@ const ContinuedInRecordSchema = z
 	)
 	.strict();
 
+// Names the sessions this one was derived from, and how (e.g. "compact", "resume").
+const DerivedFromRecordSchema = z
+	.object(
+		{
+			type: z.literal("derived-from"),
+			v: z.number(),
+			sessionId: z.string(),
+			sessions: z.array(
+				z
+					.object(
+						{
+							type: z.string(),
+							id: z.string(),
+							via: z.string(),
+						},
+					)
+					.strict(),
+			),
+		},
+	)
+	.strict();
+
+// Data-flow ledger: what each API response, tool call or event touched.
+// Validated-only: nothing reads it yet.
+const DataFlowEntrySchema = z
+	.object(
+		{
+			response_id: z.string().optional(),
+			listed: z.array(z.string()).optional(),
+			mark_sent_by: z.string().optional(),
+			event_id: z.string().optional(),
+			tool_name: z.string().optional(),
+			tool_use_id: z.string().optional(),
+			mcp_tool_name: z.string().optional(),
+			no_message: z.boolean().optional(),
+			server: z
+				.object(
+					{
+						type: z.string(),
+						id: z.string().optional(),
+						transport: z.string().optional(),
+						plugin_id_hash: z.string().optional(),
+					},
+				)
+				.strict()
+				.optional(),
+			touched: z
+				.object(
+					{
+						kind: z.string(),
+						id: z.union([z.string(), z.null()]),
+						action: z.string(),
+					},
+				)
+				.strict()
+				.optional(),
+			source: z
+				.object(
+					{
+						type: z.string(),
+						id: z.union([z.string(), z.null()]),
+					},
+				)
+				.strict()
+				.optional(),
+		},
+	)
+	.strict();
+
+const DataFlowRecordsRecordSchema = z
+	.object(
+		{
+			type: z.literal("data-flow-records"),
+			v: z.number(),
+			sessionId: z.string(),
+			agentId: z.string().optional(),
+			records: z.array(DataFlowEntrySchema),
+			snapshot: z.boolean().optional(),
+		},
+	)
+	.strict();
+
+// Marks a session whose data-flow ledger is incomplete.
+const DataFlowIncompleteRecordSchema = z
+	.object(
+		{
+			type: z.literal("data-flow-incomplete"),
+			v: z.number(),
+			sessionId: z.string(),
+			agentId: z.string().optional(),
+		},
+	)
+	.strict();
+
 // Names the tools a session has used so far.
 const ToolsUsedRecordSchema = z
 	.object(
@@ -3344,6 +3444,9 @@ export const JsonlRecordSchema = z.discriminatedUnion("type", [
 	ToolsUsedRecordSchema,
 	SessionOwnerRecordSchema,
 	ContinuedInRecordSchema,
+	DerivedFromRecordSchema,
+	DataFlowRecordsRecordSchema,
+	DataFlowIncompleteRecordSchema,
 	ApiRequestRecordSchema,
 	ApiRequestBlobRecordSchema,
 	ApiRequestShapeRecordSchema,
