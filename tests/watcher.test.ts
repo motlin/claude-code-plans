@@ -175,8 +175,10 @@ describe("handleFileChange", () =>
 		__testing.resetJsonlThrottle();
 	});
 
-	afterEach(() =>
+	afterEach(async () =>
 	{
+		// A fired append keeps indexing after its test asserts; let it finish so it cannot land in the next test's spies.
+		await __testing.settleDetachedWork();
 		__testing.resetJsonlThrottle();
 		vi.restoreAllMocks();
 		vi.useRealTimers();
@@ -293,8 +295,10 @@ describe("expediteSessionJsonlRead", () =>
 		);
 	});
 
-	afterEach(() =>
+	afterEach(async () =>
 	{
+		// A fired append keeps indexing after its test asserts; let it finish so it cannot land in the next test's spies.
+		await __testing.settleDetachedWork();
 		__testing.resetJsonlThrottle();
 		vi.restoreAllMocks();
 		vi.useRealTimers();
