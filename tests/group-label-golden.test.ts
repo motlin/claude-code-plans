@@ -25,8 +25,6 @@ interface Specimen
 		leading: number;
 		trailing: number;
 	};
-	/** Why the local label cannot match yet. */
-	skip?: string;
 }
 
 function label(specimen: Specimen): string
@@ -38,14 +36,8 @@ const all = specimens as Specimen[];
 
 describe("group label golden specimens", () =>
 {
-	it.each(all.filter((specimen) => specimen.skip === undefined))("$session:$line reads $upstream", (specimen) =>
+	it.each(all)("$session:$line reads $upstream", (specimen) =>
 	{
-		expect(label(specimen)).toBe(withTrailingFailedCount(specimen.upstream));
-	});
-
-	it.for(all.filter((specimen) => specimen.skip !== undefined))("$session:$line ($skip)", (specimen, {skip}) =>
-	{
-		skip(specimen.skip);
 		expect(label(specimen)).toBe(withTrailingFailedCount(specimen.upstream));
 	});
 });

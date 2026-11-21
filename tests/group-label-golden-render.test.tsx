@@ -87,8 +87,6 @@ interface RecordedSpecimen
 	line: number;
 	upstream: string;
 	records: unknown[];
-	/** Why the local render cannot match yet. */
-	skip?: string;
 }
 
 const recorded = (
@@ -156,14 +154,8 @@ function groupLabels(records: unknown[]): (string | null)[]
 
 describe("group label golden specimens rendered from JSONL", () =>
 {
-	it.each(recorded.filter((specimen) => specimen.skip === undefined))("$session:$line reads $upstream", (specimen) =>
+	it.each(recorded)("$session:$line reads $upstream", (specimen) =>
 	{
-		expect(groupLabels(specimen.records)).toStrictEqual([withTrailingFailedCount(specimen.upstream)]);
-	});
-
-	it.for(recorded.filter((specimen) => specimen.skip !== undefined))("$session:$line ($skip)", (specimen, {skip}) =>
-	{
-		skip(specimen.skip);
 		expect(groupLabels(specimen.records)).toStrictEqual([withTrailingFailedCount(specimen.upstream)]);
 	});
 });
@@ -186,8 +178,6 @@ interface RowSpecimen
 	turnEnd?: true;
 	/** The session's subagents, as the live page loads them beside the transcript. */
 	subagents?: Subagent[];
-	/** Why the local render cannot match the capture yet. */
-	skip?: string;
 }
 
 /** A row label part's text, with a diff stat's counts spaced as they read: "+1 −1". */
@@ -257,14 +247,8 @@ describe("transcript row golden specimens rendered from JSONL", () =>
 					},
 				],
 	);
-	it.each(captured.filter((specimen) => specimen.skip === undefined))("$session:$line", (specimen) =>
+	it.each(captured)("$session:$line", (specimen) =>
 	{
-		expect(transcriptRows(specimen)).toStrictEqual(specimen.upstream.map(withTrailingFailedCount));
-	});
-
-	it.for(captured.filter((specimen) => specimen.skip !== undefined))("$session:$line ($skip)", (specimen, {skip}) =>
-	{
-		skip(specimen.skip);
 		expect(transcriptRows(specimen)).toStrictEqual(specimen.upstream.map(withTrailingFailedCount));
 	});
 });
