@@ -31,18 +31,18 @@ export const COMPOSER_CHIN_SLIDE_CLASS =
 
 /**
  * The chin row (rp `H`, `data-size="xs" data-touch-size`): 6px under the card (8px at comfortable), its inline pads
- * drawn in by the touch grow (globals.css), and caption-sized text in a chin of 25rem or less. Like upstream's trailing
- * wrapper (`my`), it scales the body type to 13px/20px through the variables (local `--upstream-text-body`/
- * `--upstream-leading-body`), and the slots' buttons stay in text-body, so the caption only reaches bare row text.
+ * drawn in by the touch grow (globals.css), and caption-sized text in a chin of 25rem or less. Its xs scope (globals.css
+ * [data-size="xs"]) sets the body and caption type on the xs scale, so the 13px/20px body sits on the trailing wrapper.
  */
 export const COMPOSER_CHIN_ROW_CLASS =
-	"flex min-h-6 items-center gap-0 mt-1.5 comfortable:mt-2 ps-[calc(var(--cmp-chin-start)_-_var(--cmp-chin-touch-grow,0px))] pe-[calc(var(--cmp-chin-end)_-_var(--cmp-chin-touch-grow,0px))] [--cmp-chin-start:7px] [--cmp-chin-end:10px] [--cmp-chin-row-h:1.5rem] [--upstream-text-body:calc(0.8125rem*var(--cds-rem-scale,1))] [--upstream-leading-body:calc(1.25rem*var(--cds-rem-scale,1))] text-body text-secondary @max-[25rem]:text-caption";
+	"flex min-h-6 items-center gap-0 mt-1.5 comfortable:mt-2 ps-[calc(var(--cmp-chin-start)_-_var(--cmp-chin-touch-grow,0px))] pe-[calc(var(--cmp-chin-end)_-_var(--cmp-chin-touch-grow,0px))] [--cmp-chin-start:7px] [--cmp-chin-end:10px] [--cmp-chin-row-h:1.5rem] text-body text-secondary @max-[25rem]:text-caption";
 
 /** The chin's leading slot wrapper. */
 export const COMPOSER_CHIN_LEADING_CLASS = "flex items-center self-start";
 
-/** The chin's trailing slot wrapper. */
-export const COMPOSER_CHIN_TRAILING_CLASS = "ms-auto flex min-w-0 items-center gap-1 ps-2";
+/** The chin's trailing slot wrapper (upstream `my`): it scales the body type to 13px/20px through the variables. */
+export const COMPOSER_CHIN_TRAILING_CLASS =
+	"ms-auto flex min-w-0 items-center gap-1 ps-2 [--upstream-text-body:calc(0.8125rem*var(--cds-rem-scale,1))] [--upstream-leading-body:calc(1.25rem*var(--cds-rem-scale,1))]";
 
 /** A leading-less chin's narrow-container pads (upstream `gj` on the row, `d0` on the trailing wrapper). */
 export const CHIN_LEADING_LESS_ROW_CLASS = "@max-[24rem]:px-0";

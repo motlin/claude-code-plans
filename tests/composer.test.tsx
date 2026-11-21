@@ -805,7 +805,8 @@ describe("Composer", () =>
 						className: "flex items-center self-start",
 						children: ['<span aria-hidden="true"></span>'],
 					},
-					trailing: "ms-auto flex min-w-0 items-center gap-1 ps-2",
+					trailing:
+						"ms-auto flex min-w-0 items-center gap-1 ps-2 [--upstream-text-body:calc(0.8125rem*var(--cds-rem-scale,1))] [--upstream-leading-body:calc(1.25rem*var(--cds-rem-scale,1))]",
 					controls: ["ModelSelector", "Button", "Button"],
 					grid: "grid min-w-0 grid-flow-col auto-cols-[minmax(0,max-content)] items-center gap-1 compact:me-1",
 					gridChildren: ["model", "inline-flex min-w-0", "flex shrink-0 ms-px", "sr-only"],

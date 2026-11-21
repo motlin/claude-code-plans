@@ -99,7 +99,7 @@ describe("density type tokens", () =>
 					"--upstream-text-heading": "15px",
 					"--upstream-leading-heading": "20px",
 				},
-				comfortableDeclarations: 49,
+				comfortableDeclarations: 57,
 				compact:
 				{
 					"--upstream-text-body": "13px",
@@ -115,7 +115,7 @@ describe("density type tokens", () =>
 					"--upstream-text-heading": "14px",
 					"--upstream-leading-heading": "18px",
 				},
-				compactDeclarations: 49,
+				compactDeclarations: 57,
 				caption: "var(--upstream-text-caption)",
 				captionLeading: "var(--upstream-leading-caption)",
 			},
@@ -153,39 +153,98 @@ describe("control height token", () =>
 
 describe("xs control tokens", () =>
 {
-	it("copies upstream's --cds-h-control--xs (20px compact, 24px comfortable and on :root) and --cds-radius--xs (5px / 6px), which a MessageActions bar maps onto --cds-h-control", () =>
+	it("copies upstream's --xs control and type tokens at every density and maps the whole scale in every [data-size=xs] subtree", () =>
 	{
-		const pair = (source: string) => (
+		const scale = (source: string) => (
 		{
 			height: token(source, "--cds-h-control--xs"),
 			radius: token(source, "--cds-radius--xs"),
+			nested: token(source, "--cds-h-control-nested--xs"),
+			icon: token(source, "--cds-icon--xs"),
+			switch: token(source, "--cds-switch-h--xs"),
+			caption: token(source, "--upstream-text-caption--xs"),
+			body: token(source, "--upstream-text-body--xs"),
+			prose: token(source, "--upstream-text-prose--xs"),
+			bodyLeading: token(source, "--upstream-leading-body--xs"),
+			proseLeading: token(source, "--upstream-leading-prose--xs"),
 		});
+		const comfortableScale =
+		{
+			height: "calc(1.5rem * var(--cds-rem-scale, 1))",
+			radius: "0.375rem",
+			nested: "calc(1.125rem * var(--cds-rem-scale, 1))",
+			icon: "calc(1rem * var(--cds-rem-scale, 1))",
+			switch: "calc(1rem * var(--cds-rem-scale, 1))",
+			caption: "calc(0.6875rem * var(--cds-rem-scale, 1))",
+			body: "calc(0.8125rem * var(--cds-rem-scale, 1))",
+			prose: "0.875rem",
+			bodyLeading: "calc(1.1875rem * var(--cds-rem-scale, 1))",
+			proseLeading: "1.25rem",
+		};
+		const declarations = (source: string) =>
+			[...source.matchAll(/(--[\w-]+):\s*([^;]+);/g)].map(([, name, value]) => [name, value]);
+		const panelsFineStart = styles.indexOf(
+			`@media ${FIZZY_LAKE_PANELS_FINE_POINTER_QUERY}\n{\n\t[data-cds-fizzy-lake~="panels"]\n`,
+		);
+		const panelsFine =
+			panelsFineStart === -1 ? "" : styles.slice(panelsFineStart, styles.indexOf("\n}\n", panelsFineStart));
 
 		expect(
 			{
-				root: pair(block(":root")),
-				comfortable: pair(block('[data-density="comfortable"]')),
-				compact: pair(block('[data-density="compact"]')),
-				bar: token(block('[data-cds="MessageActions"][data-size="xs"]'), "--cds-h-control"),
+				root: scale(block(":root")),
+				comfortable: scale(block('[data-density="comfortable"]')),
+				compact: scale(block('[data-density="compact"]')),
+				xs: declarations(block('[data-size="xs"]')),
+				panelsFine: declarations(panelsFine),
+				scopedRules: [
+					'[data-cds="MessageActions"][data-size="xs"]',
+					'[data-view-tab-bar] [data-size="xs"]',
+					'[data-cds="MessageAttachmentsQuote"][data-variant="row"] [data-size="xs"]',
+				].filter((selector) => ruleStart(styles, selector) !== -1),
 			},
 		).toStrictEqual(
 			{
-				root:
-				{
-					height: "calc(1.5rem * var(--cds-rem-scale, 1))",
-					radius: "0.375rem",
-				},
-				comfortable:
-				{
-					height: "calc(1.5rem * var(--cds-rem-scale, 1))",
-					radius: "0.375rem",
-				},
+				root: comfortableScale,
+				comfortable: comfortableScale,
 				compact:
 				{
 					height: "calc(1.25rem * var(--cds-rem-scale, 1))",
 					radius: "0.3125rem",
+					nested: "calc(1rem * var(--cds-rem-scale, 1))",
+					icon: "calc(0.75rem * var(--cds-rem-scale, 1))",
+					switch: "calc(0.875rem * var(--cds-rem-scale, 1))",
+					caption: "calc(0.625rem * var(--cds-rem-scale, 1))",
+					body: "calc(0.75rem * var(--cds-rem-scale, 1))",
+					prose: "0.8125rem",
+					bodyLeading: "calc(1.0625rem * var(--cds-rem-scale, 1))",
+					proseLeading: "1.1875rem",
 				},
-				bar: "var(--cds-h-control--xs)",
+				xs: [
+					["--upstream-radius", "var(--cds-radius--xs)"],
+					["--cds-h-control", "var(--cds-h-control--xs)"],
+					["--cds-h-control-nested", "var(--cds-h-control-nested--xs)"],
+					["--cds-icon", "var(--cds-icon--xs)"],
+					["--cds-pad-xs", "var(--cds-pad-xs--xs)"],
+					["--cds-pad-sm", "var(--cds-pad-sm--xs)"],
+					["--cds-pad-md", "var(--cds-pad-md--xs)"],
+					["--cds-pad-lg", "var(--cds-pad-lg--xs)"],
+					["--cds-pad-xl", "var(--cds-pad-xl--xs)"],
+					["--upstream-text-caption", "var(--upstream-text-caption--xs)"],
+					["--upstream-text-body", "var(--upstream-text-body--xs)"],
+					["--upstream-text-prose", "var(--upstream-text-prose--xs)"],
+					["--upstream-leading-body", "var(--upstream-leading-body--xs)"],
+					["--upstream-leading-prose", "var(--upstream-leading-prose--xs)"],
+					["--cds-checkbox", "var(--cds-checkbox--xs, 1rem)"],
+					["--cds-checkbox-glyph", "var(--cds-checkbox-glyph--xs, 1rem)"],
+					["--cds-checkbox-radius", "0.25rem"],
+					["--cds-switch-h", "var(--cds-switch-h--xs)"],
+				],
+				panelsFine: [
+					["--cds-button-pad-max--xs", "calc(0.375rem * var(--cds-rem-scale, 1))"],
+					["--cds-h-control", "var(--cds-h-control--xs)"],
+					["--cds-button-pad-max", "var(--cds-button-pad-max--xs)"],
+				],
+				scopedRules: [],
 			},
 		);
 	});

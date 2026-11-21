@@ -10,6 +10,7 @@ import
 	COMPOSER_CHIN_GRID_CLASS,
 	COMPOSER_CHIN_ROW_CLASS,
 	COMPOSER_CHIN_SLIDE_CLASS,
+	COMPOSER_CHIN_TRAILING_CLASS,
 } from "../src/components/composer-tokens";
 
 afterEach(cleanup);
@@ -125,13 +126,16 @@ describe("ComposerChinFrame", () =>
 			{
 				name: "both",
 				row: "<row> justify-between",
-				slots: ["flex items-center self-start", "ms-auto flex min-w-0 items-center gap-1 ps-2"],
+				slots: [
+					"flex items-center self-start",
+					"ms-auto flex min-w-0 items-center gap-1 ps-2 [--upstream-text-body:calc(0.8125rem*var(--cds-rem-scale,1))] [--upstream-leading-body:calc(1.25rem*var(--cds-rem-scale,1))]",
+				],
 			},
 			{
 				name: "trailing only",
 				row: "<row> @max-[24rem]:px-0 justify-between",
 				slots: [
-					"ms-auto flex min-w-0 items-center gap-1 ps-2 @max-[24rem]:ps-0 @max-[24rem]:[&_:is([data-cds=Button],[data-cds=ModelSelector])]:px-1",
+					"ms-auto flex min-w-0 items-center gap-1 ps-2 [--upstream-text-body:calc(0.8125rem*var(--cds-rem-scale,1))] [--upstream-leading-body:calc(1.25rem*var(--cds-rem-scale,1))] @max-[24rem]:ps-0 @max-[24rem]:[&_:is([data-cds=Button],[data-cds=ModelSelector])]:px-1",
 				],
 			},
 			{
@@ -142,9 +146,14 @@ describe("ComposerChinFrame", () =>
 		]);
 	});
 
-	it("gives the row upstream's comfortable margin and narrow caption, while the row scales text-body to 13px/20px for its text-body chin buttons", () =>
+	it("gives the xs row upstream's comfortable margin and narrow caption, and sets the 13px/20px body on the trailing wrapper (upstream `my`) its text-body chin buttons read", () =>
 	{
+		const vars = [
+			"[--upstream-text-body:calc(0.8125rem*var(--cds-rem-scale,1))]",
+			"[--upstream-leading-body:calc(1.25rem*var(--cds-rem-scale,1))]",
+		];
 		const row = COMPOSER_CHIN_ROW_CLASS.split(" ");
+		const trailing = COMPOSER_CHIN_TRAILING_CLASS.split(" ");
 		const button = CHIN_BUTTON_CLASS.split(" ");
 
 		expect(
@@ -154,15 +163,16 @@ describe("ComposerChinFrame", () =>
 					"comfortable:mt-2",
 					"@max-[25rem]:text-caption",
 					"[--cmp-chin-row-h:1.5rem]",
-					"[--upstream-text-body:calc(0.8125rem*var(--cds-rem-scale,1))]",
-					"[--upstream-leading-body:calc(1.25rem*var(--cds-rem-scale,1))]",
 					"text-body",
+					...vars,
 				].map((name) => row.includes(name)),
+				trailingHas: vars.map((name) => trailing.includes(name)),
 				buttonHas: ["text-body"].map((name) => button.includes(name)),
 			},
 		).toStrictEqual(
 			{
-				rowHas: [true, true, true, true, true, true, true],
+				rowHas: [true, true, true, true, true, false, false],
+				trailingHas: [true, true],
 				buttonHas: [true],
 			},
 		);

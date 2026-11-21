@@ -331,12 +331,12 @@ describe("upstream cds TextInput tokens", () =>
 		).toStrictEqual(
 			{
 				// :root is a comfortable context (like --cds-h-control), then [data-density=comfortable] and compact,
-				// then a composer Quote row's xs Badge (measured 18px at comfortable).
+				// then every [data-size=xs] subtree's xs nested height (18px comfortable, 16px compact).
 				nested: [
 					"calc(1.375rem * var(--cds-rem-scale, 1))",
 					"calc(1.375rem * var(--cds-rem-scale, 1))",
 					"calc(1.125rem * var(--cds-rem-scale, 1))",
-					"calc(1.125rem * var(--cds-rem-scale, 1))",
+					"var(--cds-h-control-nested--xs)",
 				],
 				invalid: ["inset 0 0 0 1px #dc3c3d", "inset 0 0 0 1px #dc3c3d"],
 				invalidUtility: ["var(--field-invalid-shadow)"],

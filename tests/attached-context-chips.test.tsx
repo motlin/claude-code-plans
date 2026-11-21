@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
+import {readFileSync} from "node:fs";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {AttachedContextChips} from "../src/components/attached-context-chips";
 import {ToastProvider} from "../src/components/toast";
@@ -24,6 +25,8 @@ import
 	saveDiffComment,
 	useDiffComments,
 } from "../src/lib/diff-comments";
+import {ruleStart} from "./css-rule";
+import {compileAll} from "./helpers/tailwind-design-system";
 
 const SESSION = "session-alice";
 
@@ -437,7 +440,7 @@ describe("AttachedContextChips cds tiles", () =>
 						"font-medium",
 						"font-sans",
 						"gap-1",
-						"h-5",
+						"h-control-nested",
 						"inline-flex",
 						"items-center",
 						"max-w-full",
@@ -482,6 +485,44 @@ describe("AttachedContextChips cds tiles", () =>
 						"z-[1]",
 					],
 				},
+			},
+		);
+	});
+
+	it("sizes an xs Card's Badge from the xs nested control height (18px comfortable, 16px compact) and xs caption", async () =>
+	{
+		const {container} = renderChips([
+			{
+				id: "chip-e",
+				kind: "excerpt",
+				text: " \n ",
+			},
+		]);
+		const badge = container.querySelector("[data-cds=Badge]");
+		const styles = readFileSync("src/styles/globals.css", "utf8");
+		const xsStart = ruleStart(styles, '[data-size="xs"]');
+		const xsRule = styles.slice(xsStart, styles.indexOf("}", xsStart));
+		const sizing = classes(badge).filter((name) => /^(h-|text-caption$)/.test(name));
+		const compiled = await compileAll(sizing);
+		expect(
+			{
+				scope: badge?.closest("[data-size]")?.getAttribute("data-cds"),
+				compiled,
+				xs: xsRule.match(/--cds-h-control-nested:\s*([^;]+);|--upstream-text-caption:\s*([^;]+);/g),
+			},
+		).toStrictEqual(
+			{
+				scope: "Card",
+				compiled:
+				{
+					"h-control-nested": ".h-control-nested { height: var(--cds-h-control-nested); }",
+					"text-caption":
+						".text-caption { font-size: var(--upstream-text-caption); line-height: var(--tw-leading, var(--upstream-leading-caption)); }",
+				},
+				xs: [
+					"--cds-h-control-nested: var(--cds-h-control-nested--xs);",
+					"--upstream-text-caption: var(--upstream-text-caption--xs);",
+				],
 			},
 		);
 	});
