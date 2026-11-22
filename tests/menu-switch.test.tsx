@@ -80,6 +80,31 @@ describe("MenuSwitch", () =>
 		);
 	});
 
+	it("renders upstream's sm switch as a 32.4x18 track with a 14px knob that travels 14.4px", () =>
+	{
+		render(<MenuSwitch checked={false} size="sm" aria-label="Fast mode" />);
+		const track = screen.getByRole(
+			"switch",
+			{
+				name: "Fast mode",
+			},
+		);
+
+		expect(
+			{
+				size: track.getAttribute("data-size"),
+				trackClass: track.className,
+				knobClass: track.firstElementChild?.className,
+			},
+		).toStrictEqual(
+			{
+				size: "sm",
+				trackClass: TRACK_CLASS.replace("h-[14px] w-[25.2px]", "h-[18px] w-[32.4px]"),
+				knobClass: KNOB_CLASS.replace("size-[10px]", "size-[14px]").replaceAll("11.2px", "14.4px"),
+			},
+		);
+	});
+
 	it("marks the track and the knob data-checked when on", () =>
 	{
 		render(<MenuSwitch checked aria-label="Worktree" />);

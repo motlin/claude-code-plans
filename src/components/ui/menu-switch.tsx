@@ -1,23 +1,27 @@
 /*
  * Upstream's cds `Switch` as it renders inside a compact menu row: never a tab
  * stop (the menu item is the focus target). `xs` is a 25.2x14 track with a 10px
- * knob that springs 11.2px on (mirrored under RTL); `base` is cds step 2, a
+ * knob that springs 11.2px on (mirrored under RTL); `sm` (--cds-switch-h 1.125rem)
+ * is a 32.4x18 track with a 14px knob and 14.4px travel; `base` is cds step 2, a
  * 28.8x16 track with a 12px knob and 12.8px travel, and step 4 (36x20, 16px knob,
  * 16px travel) in a comfortable scope.
  */
 
-const XS_SIZE =
-{
-	track: "h-[14px] w-[25.2px]",
-	knob: "size-[10px]",
-	travel: "data-[checked]:translate-x-[11.2px] rtl:data-[checked]:-translate-x-[11.2px]",
-};
-
 /* Literals, so Tailwind's scanner emits every size. */
 const SIZE_CLASS =
 {
-	xs: XS_SIZE,
-	sm: XS_SIZE,
+	xs:
+	{
+		track: "h-[14px] w-[25.2px]",
+		knob: "size-[10px]",
+		travel: "data-[checked]:translate-x-[11.2px] rtl:data-[checked]:-translate-x-[11.2px]",
+	},
+	sm:
+	{
+		track: "h-[18px] w-[32.4px]",
+		knob: "size-[14px]",
+		travel: "data-[checked]:translate-x-[14.4px] rtl:data-[checked]:-translate-x-[14.4px]",
+	},
 	base:
 	{
 		track: "h-[16px] w-[28.8px] comfortable:h-[20px] comfortable:w-[36px]",
@@ -40,7 +44,7 @@ export interface MenuSwitchProps
 	/** Display-only switches (the row does something else on click). */
 	readOnly?: boolean | undefined;
 	/**
-	 * Upstream's cds size: `xs` in the folder menu, `sm` on the Model menu's Fast row (both draw 25.2x14 here),
+	 * Upstream's cds size: `xs` in the folder menu, `sm` (32.4x18) on the Model menu's Ultracode and Fast rows,
 	 * `base` on a connector row with a description.
 	 */
 	size?: "xs" | "sm" | "base" | undefined;

@@ -2123,7 +2123,7 @@ describe("Composer model menu Fast mode section", () =>
 	}
 
 	const SWITCH_CLASS =
-		"relative inline-flex h-[14px] w-[25.2px] shrink-0 rounded-full p-[2px] bg-[var(--menu-switch-track)] hover:bg-[var(--menu-switch-track-hover)] data-[checked]:bg-accent-100 data-[disabled]:opacity-40 forced-colors:border forced-colors:border-solid forced-colors:border-[CanvasText] forced-colors:p-px forced-colors:data-[checked]:border-[Highlight] forced-colors:data-[checked]:!bg-[Highlight]";
+		"relative inline-flex h-[18px] w-[32.4px] shrink-0 rounded-full p-[2px] bg-[var(--menu-switch-track)] hover:bg-[var(--menu-switch-track-hover)] data-[checked]:bg-accent-100 data-[disabled]:opacity-40 forced-colors:border forced-colors:border-solid forced-colors:border-[CanvasText] forced-colors:p-px forced-colors:data-[checked]:border-[Highlight] forced-colors:data-[checked]:!bg-[Highlight]";
 
 	function fastRow(menu: HTMLElement)
 	{
@@ -2429,7 +2429,7 @@ describe("Composer model menu Fast mode section", () =>
 											{
 												"aria-hidden": "true",
 												"data-unchecked": "",
-												class: expect.stringContaining("data-[checked]:translate-x-[11.2px]"),
+												class: expect.stringContaining("data-[checked]:translate-x-[14.4px]"),
 											},
 											children: [],
 										},
