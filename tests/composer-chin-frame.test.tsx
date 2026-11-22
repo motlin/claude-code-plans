@@ -165,13 +165,15 @@ describe("ComposerChinFrame", () =>
 					"[--cmp-chin-row-h:1.5rem]",
 					"text-body",
 					...vars,
+					"[--cmp-chin-start:8px]",
+					"[--cmp-chin-start:7px]",
 				].map((name) => row.includes(name)),
 				trailingHas: vars.map((name) => trailing.includes(name)),
 				buttonHas: ["text-body"].map((name) => button.includes(name)),
 			},
 		).toStrictEqual(
 			{
-				rowHas: [true, true, true, true, true, false, false],
+				rowHas: [true, true, true, true, true, false, false, true, false],
 				trailingHas: [true, true],
 				buttonHas: [true],
 			},

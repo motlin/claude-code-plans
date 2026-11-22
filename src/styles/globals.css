@@ -3803,7 +3803,8 @@ main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-reg
  * Upstream's chin touch-size row (c6a992d55, unlayered so it beats the row's own custom-property utilities). A coarse
  * pointer always resolves comfortable, where upstream's control is 2rem and panels' 28px sizes are fine-only, so the
  * grow is (32px - the row's 24px) / 2 = 4px. Each chin control takes that back as a negative block margin, so the
- * row stays 24px, and the row's pads lose it too. --cmp-chin-end is the comfortable glyph end, 8 + (32 - 24) / 2.
+ * row stays 24px, and the row's pads lose it too: calc(8px - 4px) / calc(12px - 4px) = 4px / 8px. --cmp-chin-end is the
+ * comfortable glyph end, 8 + (32 - 24) / 2.
  * The controls' 8px radius stands in for upstream's re-inherited --cds-radius (.5rem).
  */
 @media (pointer: coarse), (hover: none)
