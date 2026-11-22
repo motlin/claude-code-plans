@@ -24,6 +24,8 @@ const CDS_BUTTON_VARIANTS =
 {
 	secondary: `bg-fill-secondary font-control-regular ${PRE_FIZZY}:shadow-field-drop after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] ${PRE_FIZZY}:after:shadow-[inset_0_0_0_1px_var(--color-fill-secondary-ring)] text-primary aria-pressed:text-upstream-accent hover:bg-fill-secondary-hover stacks:hover:bg-fill-secondary stacks:${OPEN}:bg-fill-secondary stacks:hover:layers-1-fill-button-layer stacks:${OPEN}:layers-2-fill-button-layer stacks:hover:${OPEN}:layers-3-fill-button-layer stacks:active:layers-2-fill-button-layer ${CDS_BUTTON_DISABLED_FILL} ${CDS_BUTTON_DISABLED_OPEN_FILL}`,
 	ghost: `font-control-regular text-primary aria-pressed:text-upstream-accent ${CDS_GHOST_HOVER} stacks:${OPEN}:bg-fill-button-ghost-hover stacks:hover:${OPEN}:layers-1-fill-button-layer stacks:active:bg-fill-button-ghost-hover stacks:active:layers-1-fill-button-layer stacks:${DISABLED}:bg-transparent stacks:${DISABLED}:${OPEN}:bg-transparent`,
+	/** The local destructive confirm: the danger menu fill on the primary's geometry and weight. */
+	danger: `bg-[var(--menu-danger-fill)] font-control text-[var(--menu-on-danger)] [--shortcut-cap-ink:currentColor] hover:opacity-90 ${CDS_BUTTON_DISABLED_FILL}`,
 	primary: `bg-primary font-control text-surface-1 [--shortcut-cap-ink:currentColor] hover:bg-primary/80 stacks:active:bg-fill-primary-hover stacks:active:layers-1-fill-primary-layer stacks:${OPEN}:bg-none ${CDS_BUTTON_DISABLED_FILL}`,
 } as const;
 
@@ -45,7 +47,7 @@ const CDS_BUTTON_SIZES =
 export type CdsButtonVariant = keyof typeof CDS_BUTTON_VARIANTS;
 export type CdsButtonSize = keyof typeof CDS_BUTTON_SIZES;
 
-/** Classes for upstream's ghost, filled secondary or black primary cds Button, at the control height (or sm/xs). */
+/** Classes for upstream's ghost, filled secondary or black primary cds Button (or the red danger confirm), at the control height (or sm/xs). */
 export function cdsButtonClass(variant: CdsButtonVariant, size: CdsButtonSize = "default"): string
 {
 	return `${CDS_BUTTON_BASE} ${CDS_BUTTON_SIZES[size]} ${CDS_BUTTON_VARIANTS[variant]}`;

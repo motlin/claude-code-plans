@@ -6,6 +6,7 @@ import {useState} from "react";
 import {afterEach, describe, expect, it} from "vite-plus/test";
 
 import {ConfirmDialog} from "../src/components/confirm-dialog";
+import {cdsButtonClass} from "../src/components/ui/cds-button";
 import {PanelsOff} from "./fizzy-lake-off";
 
 afterEach(cleanup);
@@ -100,6 +101,75 @@ describe("ConfirmDialog", () =>
 				},
 				title: "pointer-events-auto min-w-0 flex-1 last:me-2 text-[15px]/[21px] font-semibold break-words text-primary py-[5.5px] panels-fine:py-[3.5px]",
 				description: "text-body font-normal text-secondary break-words -mt-[13.5px] panels-fine:-mt-[11.5px]",
+			},
+		);
+	});
+
+	it("draws Cancel and confirm as upstream's cds Buttons in the dialog-footer part, the danger confirm on the same geometry", async () =>
+	{
+		const {unmount} = render(dialog());
+		const footer = (
+			await screen.findByRole(
+				"button",
+				{
+					name: "Cancel",
+				},
+			)
+		).parentElement;
+		const primary =
+		{
+			footer: footer?.getAttribute("data-cds-part") ?? null,
+			cancel: screen.getByRole(
+				"button",
+				{
+					name: "Cancel",
+				},
+			).className,
+			confirm: screen.getByRole(
+				"button",
+				{
+					name: "Delete",
+				},
+			).className,
+		};
+		unmount();
+		render(
+			<ConfirmDialog
+				open
+				onOpenChange={() =>
+				{
+				}}
+				title="Remove saved draft?"
+				confirmLabel="Remove"
+				variant="danger"
+				onConfirm={() =>
+				{
+				}}
+			/>,
+		);
+		const danger = (
+			await screen.findByRole(
+				"button",
+				{
+					name: "Remove",
+				},
+			)
+		).className;
+
+		expect(
+			{
+				primary,
+				danger,
+			},
+		).toStrictEqual(
+			{
+				primary:
+				{
+					footer: "dialog-footer",
+					cancel: cdsButtonClass("secondary"),
+					confirm: cdsButtonClass("primary"),
+				},
+				danger: cdsButtonClass("danger"),
 			},
 		);
 	});

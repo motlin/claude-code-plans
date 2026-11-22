@@ -4,16 +4,8 @@ import {AlertDialogPopup} from "./ui/dialog-popup";
 import {useFizzyLake} from "../lib/fizzy-lake";
 import {DensityScope} from "./ui/density";
 import {DIALOG_FOOTER_CLASS} from "./ui/dialog-pad";
+import {type CdsButtonVariant, cdsButtonClass} from "./ui/cds-button";
 import {DIALOG_BODY_CLASS, DIALOG_NESTED_SCRIM_BLUR_CLASS} from "./ui/dialog-classes";
-
-const BUTTON_BASE_CLASS =
-	"h-8 rounded-r6 px-3 text-body font-medium transition-colors hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
-
-const CONFIRM_VARIANT_CLASS =
-{
-	primary: "bg-fill-primary text-on-primary hover:bg-fill-primary-hover",
-	danger: "bg-[var(--menu-danger-fill)] text-[var(--menu-on-danger)] hover:opacity-90",
-} as const;
 
 /** Upstream shared-frame `kV`: the dialog's width per size. */
 const SIZE_CLASS =
@@ -81,7 +73,8 @@ export const ConfirmDialog = memo(function ConfirmDialog({
 	children?: ReactNode;
 	confirmLabel: string;
 	cancelLabel?: string;
-	variant?: keyof typeof CONFIRM_VARIANT_CLASS;
+	/** The confirm button: the black primary cds Button, or red for destructive actions. */
+	variant?: Extract<CdsButtonVariant, "primary" | "danger">;
 	size?: keyof typeof SIZE_CLASS;
 	/** Upstream ConfirmationDialog `disabled`: the confirm button can't be pressed yet. */
 	confirmDisabled?: boolean;
@@ -122,12 +115,12 @@ export const ConfirmDialog = memo(function ConfirmDialog({
 		<>
 			{details !== undefined && <div className="mt-2 min-h-0 overflow-y-auto">{details}</div>}
 			{children}
-			<div className={DIALOG_FOOTER_CLASS}>
+			<div data-cds-part="dialog-footer" className={DIALOG_FOOTER_CLASS}>
 				<AlertDialog.Close
 					ref={cancelRef}
 					type="button"
 					onClick={onCancel}
-					className={`${BUTTON_BASE_CLASS} border border-strong text-primary hover:bg-fill-ghost-hover`}
+					className={cdsButtonClass("secondary")}
 				>
 					{cancelLabel}
 				</AlertDialog.Close>
@@ -142,7 +135,7 @@ export const ConfirmDialog = memo(function ConfirmDialog({
 						onConfirm();
 						onOpenChange(false);
 					}}
-					className={`${BUTTON_BASE_CLASS} ${CONFIRM_VARIANT_CLASS[variant]} disabled:opacity-disabled disabled:pointer-events-none`}
+					className={cdsButtonClass(variant)}
 				>
 					{confirmLabel}
 				</button>
