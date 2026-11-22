@@ -898,7 +898,7 @@ describe("usage band as a notice card", () =>
 				lastChild: true,
 				slot: "-me-[2px] flex h-[1lh] shrink-0 items-center",
 				dismiss:
-					"inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-r5 p-0 text-ink-muted transition-colors hover:bg-fill-ghost-hover hover:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus",
+					"inline-flex h-control w-control aspect-square shrink-0 cursor-pointer items-center justify-center rounded-[var(--upstream-radius)] px-0 text-secondary transition-colors hover:bg-fill-ghost-hover stacks:hover:bg-fill-button-ghost-hover hover:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus",
 				glyph: "lucide lucide-x size-4",
 				calls: 1,
 			},

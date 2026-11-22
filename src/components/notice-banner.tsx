@@ -1,7 +1,7 @@
 import {X} from "lucide-react";
 import {type ReactNode, useLayoutEffect, useRef, useState} from "react";
 
-import {GHOST_DISMISS_CLASS} from "./error-card-shell";
+import {CDS_GHOST_HOVER} from "./ui/cds-button";
 import {NOTICE_SURFACE_CLASS} from "./notice-banner-classes";
 
 /* Upstream's cds spacing, verbatim; the CSS density scope picks the values. */
@@ -23,6 +23,12 @@ const UNCALIBRATED_END = "-me-[calc(var(--cds-pad-md)-6px)]";
 const ACTION_INLINE = "min-h-[var(--cds-h-control)] my-[calc((1lh-var(--cds-h-control))/2)]";
 /* Upstream `ki`: a stacked keyline card un-stacks only once the root grows this far past its stacking width. */
 const UNSTACK_HYSTERESIS_PX = 64;
+
+/*
+ * Upstream Banner's Dismiss: a cds ghost iconOnly Button (`h-control aspect-square w-control px-0`, the cds
+ * radius, `text-secondary`), 28px square with an 8px radius in the dock's comfortable scope.
+ */
+const DISMISS_CLASS = `inline-flex h-control w-control aspect-square shrink-0 cursor-pointer items-center justify-center rounded-[var(--upstream-radius)] px-0 text-secondary transition-colors ${CDS_GHOST_HOVER} hover:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus`;
 
 type CtaLayout = "inline" | "wrapped" | "stacked";
 
@@ -182,7 +188,7 @@ export function NoticeBanner({
 			</div>
 			{dismissible && (
 				<span className={`${dismiss} flex h-[1lh] shrink-0 items-center`}>
-					<button type="button" aria-label="Dismiss" className={GHOST_DISMISS_CLASS} onClick={onDismiss}>
+					<button type="button" aria-label="Dismiss" className={DISMISS_CLASS} onClick={onDismiss}>
 						<X aria-hidden="true" className="size-4" />
 					</button>
 				</span>

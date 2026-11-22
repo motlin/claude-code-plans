@@ -42,7 +42,7 @@ const DISMISS_SPACING = "-me-pad-xs";
 const HINT_SPACING = "gap-md px-lg pt-lg pb-md last:pb-lg";
 
 /** Upstream's ghost icon-only X (cds `tw` ghost, iconOnly): 24px, muted, lifting to primary on hover. */
-export const GHOST_DISMISS_CLASS =
+const GHOST_DISMISS_CLASS =
 	"inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-r5 p-0 text-ink-muted transition-colors hover:bg-fill-ghost-hover hover:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
 
 function CardIcon({icon}: {icon: ErrorCardIcon}): ReactNode

@@ -46,6 +46,7 @@ function metrics(wrap: (banner: ReactNode) => ReactNode, keyline?: "glyph" | "te
 		iconSlot: banner?.children[0]?.className,
 		body: banner?.children[1]?.className,
 		dismissSlot: banner?.lastElementChild?.className,
+		dismiss: banner?.querySelector('button[aria-label="Dismiss"]')?.className,
 		scope: banner?.closest("[data-density]")?.getAttribute("data-density") ?? null,
 	};
 }
@@ -63,6 +64,9 @@ const CARD =
 	iconSlot: ICON_SLOT,
 	body: GLYPH_BODY,
 	dismissSlot: "-me-[2px] flex h-[1lh] shrink-0 items-center",
+	// Upstream's cds ghost iconOnly Button: control-high square, the cds radius, text-secondary ink.
+	dismiss:
+		"inline-flex h-control w-control aspect-square shrink-0 cursor-pointer items-center justify-center rounded-[var(--upstream-radius)] px-0 text-secondary transition-colors hover:bg-fill-ghost-hover stacks:hover:bg-fill-button-ghost-hover hover:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus",
 };
 
 describe("NoticeBanner composer keyline", () =>
