@@ -82,12 +82,12 @@ describe("BashRenderer code card", () =>
 					text: "Bash",
 				},
 				label: "flex-1 text-body text-secondary",
-				body: "flex flex-col gap-g6 px-p6 pb-p8 font-mono",
+				body: "flex flex-col px-md pb-lg epitaxy-code-size gap-md text-code",
 				card: CARD,
 				cardText: "$\u{a0}git status",
 				action: "flex h-[1lh] shrink-0 items-center gap-1",
 				copyInAction: true,
-				output: "epitaxy-code-size max-h-[400px] overflow-y-auto whitespace-pre-wrap break-all text-[length:var(--code-size,12px)]/[var(--code-leading,17px)] text-secondary",
+				output: "max-h-[400px] overflow-y-auto whitespace-pre-wrap break-words text-secondary",
 				outputText: "nothing to commit",
 			},
 		);
@@ -99,12 +99,12 @@ describe("BashRenderer code card", () =>
 
 		expect(layout(container)).toStrictEqual(
 			{
-				body: "flex-1 min-w-0 flex flex-col gap-g6 font-mono",
+				body: "flex-1 min-w-0 flex flex-col justify-center epitaxy-code-size gap-md text-code",
 				card: CARD,
 				cardText: "$\u{a0}git status",
 				action: "flex h-[1lh] shrink-0 items-center gap-1",
 				copyInAction: true,
-				output: "epitaxy-code-size max-h-[400px] overflow-y-auto whitespace-pre-wrap break-all text-[length:var(--code-size,12px)]/[var(--code-leading,17px)] text-secondary",
+				output: "max-h-[400px] overflow-y-auto whitespace-pre-wrap break-words text-secondary",
 				outputText: "nothing to commit",
 			},
 		);

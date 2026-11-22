@@ -197,13 +197,15 @@ describe("blocked tool bodies", () =>
 				children: Array.from(column.children, (child) =>
 					child.classList.contains("epitaxy-code-card") ? "tile" : child.className,
 				),
+				wrapped: Array.from(column.lastElementChild!.children, (child) => child.className),
 				important: container.textContent.includes("IMPORTANT:"),
 				reason: column.lastElementChild?.textContent,
 			},
 		).toStrictEqual(
 			{
 				output: null,
-				children: ["tile", ROOT_CLASS],
+				children: ["tile", "contents"],
+				wrapped: [ROOT_CLASS],
 				important: false,
 				reason: "Blocked by auto mode: [Credential Materialization]",
 			},

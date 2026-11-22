@@ -129,9 +129,7 @@ describe("expanded tool bodies cap at 400px", () =>
 			},
 		).toStrictEqual(
 			{
-				classNames: [
-					`epitaxy-code-size ${CAP} whitespace-pre-wrap break-all text-[length:var(--code-size,12px)]/[var(--code-leading,17px)] text-secondary`,
-				],
+				classNames: [`${CAP} whitespace-pre-wrap break-words text-secondary`],
 				capsOutput: "alice.ts",
 			},
 		);
@@ -155,9 +153,7 @@ describe("expanded tool bodies cap at 400px", () =>
 			/>,
 		);
 
-		expect(cappedClassNames(container)).toStrictEqual([
-			`epitaxy-code-size ${CAP} whitespace-pre-wrap break-all text-[length:var(--code-size,12px)]/[var(--code-leading,17px)] text-danger-ink`,
-		]);
+		expect(cappedClassNames(container)).toStrictEqual([`${CAP} whitespace-pre-wrap break-words text-danger-ink`]);
 	});
 
 	it("caps the Read body without hiding lines behind an expand button", () =>

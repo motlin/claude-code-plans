@@ -98,6 +98,24 @@ export function HighlightedCommand({command, language = "shellscript"}: {command
 	);
 }
 
+/**
+ * Upstream `My`: under a command, the output column beside a hover-revealed "Copy output" on its first line;
+ * without a command or output (`copyText` undefined) its children sit in the parent column untouched.
+ */
+function BashOutputRow({copyText, children}: {copyText: string | undefined; children: ReactNode})
+{
+	if (copyText === undefined) return <div className="contents">{children}</div>;
+
+	return (
+		<div className="flex min-w-0 items-start gap-xs">
+			<div className="flex min-w-0 flex-1 flex-col gap-md">{children}</div>
+			<div className="flex h-[1lh] shrink-0 items-center pe-md">
+				<ToolBodyCopyButton compact label="Copy output" text={() => copyText} />
+			</div>
+		</div>
+	);
+}
+
 export function BashRenderer({toolCall, nested = false}: ToolRendererProps)
 {
 	const command = inputString(toolCall.input, "command") ?? "";
@@ -121,7 +139,7 @@ export function BashRenderer({toolCall, nested = false}: ToolRendererProps)
 	const shownCommand = blocked ? visibleMultiline(maskedCommand) : maskedCommand;
 	// Upstream `gg`: only the command (escapes shown when blocked, else CRLF normalised), without trailing space.
 	const commandCopyText = (blocked ? shownCommand : maskedCommand.replaceAll("\r\n", "\n")).trimEnd();
-	// An output-only body copies its output without ANSI codes.
+	// The output's Copy (beside the body when there is no command) copies it without ANSI codes.
 	const outputCopyText = resultContent ? stripAnsi(secrets.show(resultContent)) : "";
 	// Upstream passes `alwaysVisible: tool.status === "running"`: a call whose result has not arrived yet.
 	const running = !blocked && toolCall.resultUuid === undefined && toolCall.result === undefined && isError !== true;
@@ -150,16 +168,18 @@ export function BashRenderer({toolCall, nested = false}: ToolRendererProps)
 					}
 				/>
 			)}
-			{resultContent && (
-				<div
-					data-bash-output=""
-					{...TOOL_OUTPUT_REGION}
-					className={`epitaxy-code-size max-h-[400px] overflow-y-auto whitespace-pre-wrap break-all text-[length:var(--code-size,12px)]/[var(--code-leading,17px)] ${isError ? "text-danger-ink" : "text-secondary"}`}
-				>
-					<AnsiText content={resultContent} masked={!secrets.revealed} />
-				</div>
-			)}
-			{blocked && <PolicyDenialReason call={toolCall} />}
+			<BashOutputRow copyText={command && resultContent ? outputCopyText : undefined}>
+				{resultContent && (
+					<div
+						data-bash-output=""
+						{...TOOL_OUTPUT_REGION}
+						className={`max-h-[400px] overflow-y-auto whitespace-pre-wrap break-words ${isError ? "text-danger-ink" : "text-secondary"}`}
+					>
+						<AnsiText content={resultContent} masked={!secrets.revealed} />
+					</div>
+				)}
+				{blocked && <PolicyDenialReason call={toolCall} />}
+			</BashOutputRow>
 		</>
 	);
 
@@ -169,7 +189,9 @@ export function BashRenderer({toolCall, nested = false}: ToolRendererProps)
 	{
 		return (
 			<>
-				<div className="flex-1 min-w-0 flex flex-col gap-g6 font-mono">{body}</div>
+				<div className="flex-1 min-w-0 flex flex-col justify-center epitaxy-code-size gap-md text-code">
+					{body}
+				</div>
 				{!command && <SecretRevealButton {...secrets} />}
 				{!command && <ToolBodyCopyButton text={outputCopyText} />}
 			</>
@@ -185,7 +207,7 @@ export function BashRenderer({toolCall, nested = false}: ToolRendererProps)
 				{!command && <ToolBodyCopyButton text={outputCopyText} />}
 			</div>
 
-			<div className="flex flex-col gap-g6 px-p6 pb-p8 font-mono">{body}</div>
+			<div className="flex flex-col px-md pb-lg epitaxy-code-size gap-md text-code">{body}</div>
 		</>
 	);
 }
