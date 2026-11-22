@@ -501,6 +501,52 @@ describe("AskUserQuestionRenderer", () =>
 				buttons: 0,
 			},
 		);
+
+		cleanup();
+		const codeQuestion = "Open `docs/a.md` or see https://example.com/a?";
+		const coded = render(
+			<AskUserQuestionRenderer
+				toolCall={makeCall(
+					{
+						input:
+						{
+							question: codeQuestion,
+							options: [
+								{
+									label: "Open",
+									description: "",
+								},
+							],
+						},
+						result: `Your questions have been answered: "${codeQuestion}"="Open". You can now continue with these answers in mind.`,
+					},
+				)}
+			/>,
+		);
+		const questionLine = coded.container.querySelector("[data-answered-question] > div")!;
+		expect(
+			{
+				codes: [...questionLine.querySelectorAll("code")].map((code) => (
+				{
+					className: code.className,
+					text: code.textContent,
+				})),
+				text: questionLine.textContent,
+				anchors: questionLine.querySelectorAll("a").length,
+			},
+		).toStrictEqual(
+			{
+				codes: [
+					{
+						className:
+							"rounded-[calc(var(--cds-h-control-nested)/4)] bg-alpha-1 px-xs font-mono text-code font-normal",
+						text: "docs/a.md",
+					},
+				],
+				text: "Open docs/a.md or see https://example.com/a?",
+				anchors: 0,
+			},
+		);
 	});
 
 	it("fades the receipt in (upstream's epitaxy-question-receipt-enter) only when its answer was sent from this page", () =>

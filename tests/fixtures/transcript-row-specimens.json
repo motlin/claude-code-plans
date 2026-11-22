@@ -13987,7 +13987,7 @@
 		"upstream": [
 			"prose",
 			"answered: CLOUDFLARE_API_TOKEN is set but Cloudflare rejects it (\"Invalid format for Authorization header\", code 6111). How should agents get a working token? / Wrap commands in op run",
-			"answered: Production mutations: `just release` deploys to staging then production, and one task wipes all production data (the only account, its questions, answers, push subscriptions, and every OAuth grant). What standing authorization do agents get? / Full standing approval",
+			"answered: Production mutations: just release deploys to staging then production, and one task wipes all production data (the only account, its questions, answers, push subscriptions, and every OAuth grant). What standing authorization do agents get? / Full standing approval",
 			"answered: Two tasks cannot be completed by any agent: registering the production GitHub and Google OAuth apps (third-party consoles, human login plus 2FA) and verifying swipe-undo and pinch-zoom on a real phone. How should I rewrite these? / Agent preps, you finish (Recommended)",
 			"answered: CF_ACCESS_CLIENT_ID and CF_ACCESS_CLIENT_SECRET are missing. The admin storage CLI (Durable Object diagnostics and cleanup) needs them — that's the 'prune dead registrations' task and the verification steps of the wipe. / Let's start by getting these into dotenvrc as one password secret references, like our other environment variables we just discussed."
 		],

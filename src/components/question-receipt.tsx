@@ -2,6 +2,7 @@ import {useState} from "react";
 import {maskSecrets} from "../lib/secret-mask";
 import {stripMemoryTags} from "../lib/task-checklist";
 import {revealSpoofing} from "../lib/visible-text";
+import {UserInlineText} from "./user-plain-text";
 
 /** One answered question of a receipt: the question, the answer line, and the user's notes when they add something. */
 export interface QuestionReceiptRow
@@ -39,7 +40,8 @@ function receiptText(text: string, separator: string): string
 }
 
 /**
- * One row of upstream's question receipt: the question in primary at the control weight (435 under fizzy type) over the
+ * One row of upstream's question receipt: the question in primary at the control weight (435 under fizzy type), its code
+ * spans drawn as the question chip and its URLs left plain, over the
  * chosen answer (or the Other text, or the unanswered outcome's word) in secondary,
  * its newlines kept and capped at 250px with its own scroll. Unchosen options are omitted.
  */
@@ -49,7 +51,7 @@ function AnsweredQuestion({question, answer, notes}: QuestionReceiptRow)
 	return (
 		<div data-answered-question className="flex flex-col gap-0.5 px-lg py-md">
 			<div className="text-body font-control text-primary break-words [unicode-bidi:plaintext]">
-				{receiptText(question, " ")}
+				<UserInlineText text={receiptText(question, " ")} codeLook="chip" links={false} />
 			</div>
 			{shown !== "" && (
 				<div className="max-h-[250px] overflow-y-auto whitespace-pre-wrap text-body text-secondary [overflow-wrap:anywhere] [unicode-bidi:plaintext]">
