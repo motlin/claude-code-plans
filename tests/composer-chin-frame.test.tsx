@@ -81,7 +81,7 @@ describe("ComposerChinFrame", () =>
 			{
 				chinAria: "true",
 				gridClass: `${COMPOSER_CHIN_GRID_CLASS} grid-rows-[0fr]`,
-				slideClass: `${COMPOSER_CHIN_SLIDE_CLASS} -translate-y-1.5 compact:-translate-y-1.5 comfortable:-translate-y-2 opacity-0`,
+				slideClass: `${COMPOSER_CHIN_SLIDE_CLASS} -translate-y-2 opacity-0`,
 				slideInert: true,
 				buttons: 0,
 			},
@@ -146,7 +146,7 @@ describe("ComposerChinFrame", () =>
 		]);
 	});
 
-	it("gives the xs row upstream's comfortable margin and narrow caption, and sets the 13px/20px body on the trailing wrapper (upstream `my`) its text-body chin buttons read", () =>
+	it("gives the xs row upstream's flat 8px margin and narrow caption, and sets the 13px/20px body on the trailing wrapper (upstream `my`) its text-body chin buttons read", () =>
 	{
 		const vars = [
 			"[--upstream-text-body:calc(0.8125rem*var(--cds-rem-scale,1))]",
@@ -159,6 +159,7 @@ describe("ComposerChinFrame", () =>
 		expect(
 			{
 				rowHas: [
+					"mt-2",
 					"mt-1.5",
 					"comfortable:mt-2",
 					"@max-[25rem]:text-caption",
@@ -173,7 +174,7 @@ describe("ComposerChinFrame", () =>
 			},
 		).toStrictEqual(
 			{
-				rowHas: [true, true, true, true, true, false, false, true, false],
+				rowHas: [true, false, false, true, true, true, false, false, true, false],
 				trailingHas: [true, true],
 				buttonHas: [true],
 			},

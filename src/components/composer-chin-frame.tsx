@@ -40,9 +40,7 @@ export function ComposerChinFrame({open = true, leading, trailing, children, ...
 			<div className={`${COMPOSER_CHIN_GRID_CLASS} ${open ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
 				<div
 					className={`${COMPOSER_CHIN_SLIDE_CLASS} ${
-						open
-							? "translate-none opacity-100"
-							: "-translate-y-1.5 compact:-translate-y-1.5 comfortable:-translate-y-2 opacity-0"
+						open ? "translate-none opacity-100" : "-translate-y-2 opacity-0"
 					}`}
 					inert={!open || undefined}
 				>
