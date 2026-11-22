@@ -19,10 +19,11 @@ const BODY_OFFSET: Record<ComposerKeyline, string> =
 /* The calibrated end margin (Dismiss slot `we`, Dismiss-less action) and the uncalibrated one (`b9`). */
 const KEYLINE_END = "-me-[2px]";
 const UNCALIBRATED_END = "-me-[calc(var(--cds-pad-md)-6px)]";
-/* Upstream `k5`: the inline action is a control-high row centred on the first text line. */
-const ACTION_INLINE = "min-h-[var(--cds-h-control)] my-[calc((1lh-var(--cds-h-control))/2)]";
-/* Upstream `ki`: a stacked keyline card un-stacks only once the root grows this far past its stacking width. */
-const UNSTACK_HYSTERESIS_PX = 64;
+/* Upstream's inline action: a control-high row centred on the first text line, pushed to the end. */
+const ACTION_INLINE = "min-h-control my-[calc((1lh-var(--cds-h-control))/2)] ms-auto";
+/* Upstream's wrapped/stacked action lets its cds Buttons grow to wrap their label. */
+const ACTION_CHILD_BUTTONS =
+	"cds-child-Button:h-auto cds-child-Button:min-h-control cds-child-Button:shrink cds-child-Button:py-[calc((var(--cds-h-control)-1lh)/2)] cds-child-Button:text-balance cds-child-Button:wrap-anywhere cds-child-Button:whitespace-normal";
 
 /*
  * Upstream Banner's Dismiss: a cds ghost iconOnly Button (`h-control aspect-square w-control px-0`, the cds
@@ -50,8 +51,16 @@ function rootClass(keyline: ComposerKeyline | null, layout: CtaLayout, dismissib
 function actionClass(keyline: ComposerKeyline | null, layout: CtaLayout, dismissible: boolean): string
 {
 	const classes = ["flex shrink-0 items-center gap-xs"];
-	if (layout === "inline") classes.push(ACTION_INLINE, "-ms-[2px]");
-	else classes.push("max-w-full flex-wrap");
+	if (layout === "inline") classes.push(ACTION_INLINE);
+	else
+	{
+		// A Dismiss beside the wrapped action lends it the control width it overhangs.
+		classes.push(
+			"flex-wrap",
+			dismissible ? "max-w-[calc(100%+var(--cds-h-control))]" : "max-w-full",
+			ACTION_CHILD_BUTTONS,
+		);
+	}
 	if (layout === "stacked") classes.push("basis-full");
 	if (!dismissible) classes.push(keyline === null ? UNCALIBRATED_END : KEYLINE_END);
 	return classes.join(" ");
@@ -74,7 +83,7 @@ function bodyClass(keyline: ComposerKeyline | null, layout: CtaLayout, dismissib
 /**
  * Upstream `ah`'s CTA measurement: a ResizeObserver on the root marks the card wrapped when the
  * action's top sits more than half a text line below the text's top. A wrapped keyline card records
- * the root width and stacks; it un-stacks only once the root grows `ki` (64px) past that width.
+ * the widest root width it stacked at; growing past it locks the root's height and re-measures inline.
  */
 function useCtaLayout(hasAction: boolean, calibrated: boolean)
 {
@@ -87,27 +96,41 @@ function useCtaLayout(hasAction: boolean, calibrated: boolean)
 	useLayoutEffect(() =>
 	{
 		if (!calibrated || !hasAction) stackedWidth.current = 0;
-		if (!hasAction) return undefined;
 		const root = rootRef.current;
+		if (!hasAction)
+		{
+			root?.style.removeProperty("min-height");
+			return undefined;
+		}
 		const Observer = root?.ownerDocument.defaultView?.ResizeObserver;
 		if (root === null || Observer === undefined) return undefined;
-		const measure = () =>
+		/** Returns whether the card is (still) stacked, so the locked min-height must stay. */
+		const measure = (): boolean =>
 		{
 			if (stacked)
 			{
-				if (root.offsetWidth > stackedWidth.current + UNSTACK_HYSTERESIS_PX) setWrapped(false);
-				return;
+				const grew = root.offsetWidth > stackedWidth.current;
+				if (grew)
+				{
+					// Hold the stacked height while the inline re-measure renders, so the card does not jump.
+					root.style.minHeight = getComputedStyle(root).height;
+					stackedWidth.current = root.offsetWidth;
+					setWrapped(false);
+				}
+				return grew;
 			}
 			const text = textRef.current;
 			const action = actionRef.current;
-			if (text === null || action === null) return;
+			if (text === null || action === null) return false;
 			const lineHeight = Number.parseFloat(getComputedStyle(text).lineHeight);
-			if (!Number.isFinite(lineHeight) || lineHeight <= 0) return;
+			if (!Number.isFinite(lineHeight) || lineHeight <= 0) return false;
 			const isWrapped = action.getBoundingClientRect().top - text.getBoundingClientRect().top > lineHeight / 2;
-			if (isWrapped && calibrated) stackedWidth.current = root.offsetWidth;
+			const stacks = isWrapped && calibrated;
+			stackedWidth.current = stacks ? Math.max(stackedWidth.current, root.offsetWidth) : 0;
 			setWrapped(isWrapped);
+			return stacks;
 		};
-		measure();
+		if (!measure()) root.style.removeProperty("min-height");
 		const observer = new Observer(measure);
 		observer.observe(root);
 		return () =>
@@ -134,7 +157,8 @@ function useCtaLayout(hasAction: boolean, calibrated: boolean)
  * body offset and a `-me-[2px]` Dismiss margin. The current `ah` reads no fizzy-lake part or density.
  * `keyline` defaults to `glyph`, the local composer having a leading "+" button; `keyline={null}` is
  * the uncalibrated Banner outside the composer (`px-lg`, `rounded-card`, `!py-lg`, the `b9` end margin). The region's list is the live region, so the card's role defaults to `none`.
- * `data-cta-layout` is measured (`inline` / `wrapped` / keyline `stacked`, which hides the neutral icon).
+ * `data-cta-layout` is measured (`inline` / `wrapped` / keyline `stacked`). Upstream hides only its default
+ * variant glyph when stacked; every local card passes its icon (or `null`), so the slot never hides.
  */
 export function NoticeBanner({
 	icon,
@@ -167,12 +191,13 @@ export function NoticeBanner({
 			data-icon-layout="first-line"
 			data-cta-layout={layout}
 			data-action-align="first-line"
+			data-banner-variant="neutral"
 			data-composer-keyline={keyline ?? undefined}
 			data-testid={testId}
 			role={role}
 			className={`${rootClass(keyline, layout, dismissible)} ${NOTICE_SURFACE_CLASS} @container`}
 		>
-			{icon !== null && layout !== "stacked" && (
+			{icon !== null && (
 				// Upstream `Se.neutral` is `text-secondary`.
 				<span className={`flex min-h-[1lh] shrink-0 items-center${iconOffset} text-secondary`}>{icon}</span>
 			)}
@@ -181,13 +206,13 @@ export function NoticeBanner({
 					{children}
 				</div>
 				{hasAction && (
-					<span ref={actionRef} className={actionClass(keyline, layout, dismissible)}>
+					<span ref={actionRef} data-cds-part="action" className={actionClass(keyline, layout, dismissible)}>
 						{action}
 					</span>
 				)}
 			</div>
 			{dismissible && (
-				<span className={`${dismiss} flex h-[1lh] shrink-0 items-center`}>
+				<span data-cds-part="dismiss" className={`${dismiss} flex h-[1lh] shrink-0 items-center`}>
 					<button type="button" aria-label="Dismiss" className={DISMISS_CLASS} onClick={onDismiss}>
 						<X aria-hidden="true" className="size-4" />
 					</button>

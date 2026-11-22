@@ -147,8 +147,11 @@ describe("NoticeBanner composer keyline", () =>
 	});
 });
 
-const ACTION_BASE =
-	"flex shrink-0 items-center gap-xs min-h-[var(--cds-h-control)] my-[calc((1lh-var(--cds-h-control))/2)] -ms-[2px]";
+const ACTION_BASE = "flex shrink-0 items-center gap-xs min-h-control my-[calc((1lh-var(--cds-h-control))/2)] ms-auto";
+/* Upstream's wrapped/stacked action: its cds Buttons grow to wrap their label. */
+const ACTION_CHILD_BUTTONS =
+	"cds-child-Button:h-auto cds-child-Button:min-h-control cds-child-Button:shrink cds-child-Button:py-[calc((var(--cds-h-control)-1lh)/2)] cds-child-Button:text-balance cds-child-Button:wrap-anywhere cds-child-Button:whitespace-normal";
+const WRAPPED_DISMISSIBLE_ACTION = `flex shrink-0 items-center gap-xs flex-wrap max-w-[calc(100%+var(--cds-h-control))] ${ACTION_CHILD_BUTTONS}`;
 
 function actionMetrics(banner: ReactNode)
 {
@@ -157,6 +160,8 @@ function actionMetrics(banner: ReactNode)
 	const body = root?.querySelector(":scope > div");
 	return {
 		role: root?.getAttribute("role"),
+		variant: root?.getAttribute("data-banner-variant"),
+		parts: [...(root?.querySelectorAll("[data-cds-part]") ?? [])].map((part) => part.getAttribute("data-cds-part")),
 		keyline: root?.getAttribute("data-composer-keyline") ?? null,
 		ctaLayout: root?.getAttribute("data-cta-layout"),
 		root: root?.className,
@@ -189,6 +194,8 @@ describe("NoticeBanner action slot", () =>
 		).toStrictEqual(
 			{
 				role: "none",
+				variant: "neutral",
+				parts: ["action", "dismiss"],
 				keyline: "glyph",
 				ctaLayout: "inline",
 				root: CARD.root,
@@ -231,6 +238,8 @@ describe("NoticeBanner action slot", () =>
 		).toStrictEqual(
 			{
 				role: "status",
+				variant: "neutral",
+				parts: ["action"],
 				keyline: null,
 				ctaLayout: "inline",
 				root: `${LEAD} !py-lg font-sans text-body font-normal break-words px-lg rounded-card ${FIZZY_SURFACE}`,
@@ -337,7 +346,7 @@ describe("NoticeBanner CTA wrap measurement", () =>
 			{
 				ctaLayout: "wrapped",
 				root: `${LEAD} !py-lg font-sans text-body font-normal break-words px-lg pb-lg rounded-card ${FIZZY_SURFACE}`,
-				action: "span.flex shrink-0 items-center gap-xs max-w-full flex-wrap",
+				action: `span.${WRAPPED_DISMISSIBLE_ACTION}`,
 			},
 		);
 	});
@@ -355,7 +364,7 @@ describe("NoticeBanner CTA wrap measurement", () =>
 		).toBe("inline");
 	});
 
-	it("stacks a wrapped keyline card, hides its neutral icon, and un-stacks only past 64px of growth", () =>
+	it("stacks a wrapped keyline card, keeps its passed icon, and re-measures whenever it outgrows its widest stacking width", () =>
 	{
 		const {layout, resize} = stubLayout();
 		layout.actionDrop = 30;
@@ -389,21 +398,37 @@ describe("NoticeBanner CTA wrap measurement", () =>
 		{
 			ctaLayout: "stacked",
 			root: CARD.root,
-			first: "DIV",
+			first: "SPAN",
 			body: "flex min-w-0 flex-wrap items-start gap-y-xs gap-x-md flex-1 ms-[4px]",
-			action: "flex shrink-0 items-center gap-xs max-w-full flex-wrap basis-full",
+			action: `${WRAPPED_DISMISSIBLE_ACTION} basis-full`,
 		};
+		expect(read()).toStrictEqual(stacked);
+		// Not wider than the stacking width: no re-measure, even though the action would now fit.
+		resize(
+			{
+				width: 600,
+				actionDrop: 0,
+			},
+		);
+		expect(read()).toStrictEqual(stacked);
+		// Wider: re-measure, still wraps, so it stays stacked and records the new width.
+		resize(
+			{
+				width: 620,
+				actionDrop: 30,
+			},
+		);
 		expect(read()).toStrictEqual(stacked);
 		resize(
 			{
-				width: 640,
+				width: 620,
 				actionDrop: 0,
 			},
 		);
 		expect(read()).toStrictEqual(stacked);
 		resize(
 			{
-				width: 670,
+				width: 621,
 				actionDrop: 0,
 			},
 		);
@@ -437,7 +462,7 @@ describe("NoticeBanner CTA wrap measurement", () =>
 			{
 				root: `${LEAD} py-[calc(var(--cds-pad-md)+2px)] font-sans text-body font-normal break-words px-md pt-[calc(var(--cds-pad-md)-2px)] rounded-composer ${FIZZY_SURFACE}`,
 				body: "flex min-w-0 flex-wrap items-start gap-y-xs gap-x-md flex-1 me-[2px] ms-[4px]",
-				action: "span.flex shrink-0 items-center gap-xs max-w-full flex-wrap basis-full -me-[2px]",
+				action: `span.flex shrink-0 items-center gap-xs flex-wrap max-w-full ${ACTION_CHILD_BUTTONS} basis-full -me-[2px]`,
 			},
 		);
 	});

@@ -87,6 +87,8 @@
 @custom-variant comfortable (&:where([data-density="comfortable"] *):not(:where([data-density="comfortable"] [data-density="compact"] *):not(:where([data-density="comfortable"] [data-density="compact"] [data-density="comfortable"] *):not(:where([data-density="comfortable"] [data-density="compact"] [data-density="comfortable"] [data-density="compact"] *)))));
 /* Upstream cds `cds-Icon:*` variants: style the Icons inside an element (`cds-Icon:text-secondary`). */
 @custom-variant cds-Icon (& [data-cds=Icon]);
+/* Upstream cds `cds-child-Button:*` variants: style an element's direct cds Button children. */
+@custom-variant cds-child-Button (& > [data-cds=Button]);
 
 /* Upstream `stacks:`: fizzy colour on (outside a `data-cds-theme` scope), never under forced colours. */
 @custom-variant stacks

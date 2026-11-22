@@ -820,6 +820,7 @@ describe("usage band as a notice card", () =>
 						"data-icon-layout": "first-line",
 						"data-cta-layout": "inline",
 						"data-action-align": "first-line",
+						"data-banner-variant": "neutral",
 						"data-composer-keyline": "glyph",
 						"data-testid": "usage-limit-reached-card",
 						role: "none",
