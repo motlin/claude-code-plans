@@ -288,6 +288,7 @@ describe("fizzy-lake color tokens (upstream data-cds-fizzy-lake~=color)", () =>
 			"--upstream-bg-danger",
 			"--warning-tint",
 			"--pro-tint",
+			"--border-pro",
 			"--muted-as-secondary",
 			"--palette-selected",
 		] as const;
@@ -323,6 +324,7 @@ describe("fizzy-lake color tokens (upstream data-cds-fizzy-lake~=color)", () =>
 					"--upstream-bg-danger": "#dc3c3d1f",
 					"--warning-tint": "#fbb31529",
 					"--pro-tint": "#785ee81f",
+					"--border-pro": "#785ee839",
 					"--muted-as-secondary": "var(--upstream-text-secondary)",
 					"--palette-selected": "var(--upstream-fill-ghost-selected)",
 				},
@@ -351,6 +353,7 @@ describe("fizzy-lake color tokens (upstream data-cds-fizzy-lake~=color)", () =>
 					"--upstream-bg-danger": null,
 					"--warning-tint": "#fbb31514",
 					"--pro-tint": null,
+					"--border-pro": null,
 					"--muted-as-secondary": null,
 					"--palette-selected": null,
 				},
@@ -369,6 +372,7 @@ describe("fizzy-lake color tokens (upstream data-cds-fizzy-lake~=color)", () =>
 			"--upstream-surface-popover",
 			"--upstream-fill-danger",
 			"--pro-tint",
+			"--border-pro",
 			"--palette-selected",
 		] as const;
 		expect(
@@ -388,6 +392,7 @@ describe("fizzy-lake color tokens (upstream data-cds-fizzy-lake~=color)", () =>
 					"--upstream-surface-popover": "#fff",
 					"--upstream-fill-danger": "#d03b3b",
 					"--pro-tint": "#785ee81f",
+					"--border-pro": "#785ee839",
 					"--palette-selected": "var(--upstream-fill-ghost-hover)",
 				},
 				dark:
@@ -400,6 +405,7 @@ describe("fizzy-lake color tokens (upstream data-cds-fizzy-lake~=color)", () =>
 					"--upstream-surface-popover": "#20201f",
 					"--upstream-fill-danger": "#d03b3b",
 					"--pro-tint": "#785ee833",
+					"--border-pro": "#785ee839",
 					"--palette-selected": null,
 				},
 			},

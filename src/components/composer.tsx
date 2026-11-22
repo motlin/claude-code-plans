@@ -610,8 +610,8 @@ const BASH_PILL_CLASS =
 /** Sits just left of the send cell (28px, or the 49px touch split, after its 6px / 8px leading gap). */
 const BASH_PILL_SLOT_CLASS =
 	"absolute bottom-0 right-[34px] comfortable:right-[36px] pointer-coarse:right-[55px] comfortable:pointer-coarse:right-[57px] flex min-h-7 items-center";
-/** Upstream `ed`: the host card's ring while in bash mode. */
-const BASH_CARD_CLASS = "inset-ring-1 inset-ring-[var(--text-pro)]";
+/** Upstream `ed`: the host card's ring while in bash mode (`inset-ring-pro` = `--cds-border-pro`). */
+const BASH_CARD_CLASS = "inset-ring-1 inset-ring-[var(--border-pro)]";
 /** Room for the pill beside the send cell, so the command never runs under it. */
 const BASH_ROW_PADDING_CLASS =
 	"pr-[78px]! comfortable:pr-[80px]! pointer-coarse:pr-[99px]! comfortable:pointer-coarse:pr-[101px]!";

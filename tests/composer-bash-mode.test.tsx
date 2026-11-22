@@ -625,18 +625,22 @@ describe("Composer bash mode with a live pane", () =>
 				onShellCommand: vi.fn<(command: string) => Promise<boolean>>().mockResolvedValue(true),
 			},
 		);
-		const before = card().className.includes("inset-ring-1");
+		const ring = () =>
+			card()
+				.className.split(" ")
+				.filter((name) => name.startsWith("inset-ring"));
+		const before = ring();
 		pressBang(textarea);
 
 		expect(
 			{
 				before,
-				after: card().className.includes("inset-ring-1"),
+				after: ring(),
 			},
 		).toStrictEqual(
 			{
-				before: false,
-				after: true,
+				before: [],
+				after: ["inset-ring-1", "inset-ring-[var(--border-pro)]"],
 			},
 		);
 	});

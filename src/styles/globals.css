@@ -672,6 +672,8 @@ html[data-interface-font="dyslexic"]
 	--text-pro: #5437b8;
 	/* Upstream --cds-bg-tint-violet (the pro Badge, e.g. the composer's bash-mode pill). */
 	--pro-tint: #785ee81f;
+	/* Upstream --cds-border-pro (bash-mode card ring), the same in both modes. */
+	--border-pro: #785ee839;
 	--accent-000: hsl(210 73.7% 40.2%);
 	/* Upstream claude.ai/code accent ink: transcript links, file refs, PR chips,
 	   and pressed toggles (`--cds-text-accent`, read live from .cds-root 2026-10-29). */
@@ -1053,6 +1055,8 @@ html[data-interface-font="dyslexic"]
 	--warning-tint: #fbb31514;
 	--text-pro: #a89af0;
 	--pro-tint: #785ee833;
+	/* Upstream --cds-border-pro (bash-mode card ring), the same in both modes. */
+	--border-pro: #785ee839;
 	--accent-000: hsl(210 65.5% 67.1%);
 	/* Upstream `--cds-text-accent` (dark; read live from .cds-root 2026-10-29). */
 	--upstream-accent: #6aabf1;
@@ -1378,6 +1382,8 @@ html[data-interface-font="dyslexic"]
 	--warning-tint: #fbb31529;
 	/* Upstream `--cds-bg-tint-violet` / `--cds-bg-pro`, the same in both modes. */
 	--pro-tint: #785ee81f;
+	/* Upstream --cds-border-pro (bash-mode card ring), the same in both modes. */
+	--border-pro: #785ee839;
 }
 
 :root.dark[data-cds-fizzy-lake~="color"]
