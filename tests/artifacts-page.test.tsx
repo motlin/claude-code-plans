@@ -3224,7 +3224,7 @@ describe("artifacts route", () =>
 		]);
 	});
 
-	it("scrolls the list top back by the depth it sits under the pinned header on a sort change, never down, leaving focus on the radio", async () =>
+	it("scrolls the list top back by the depth it sits under the pinned header on any sort, filter or search change, never down, leaving focus on the radio", async () =>
 	{
 		storage.removeItem(ARTIFACTS_LAYOUT_STORAGE_KEY);
 		const scrollIntoView = vi.fn<(arg?: boolean | ScrollIntoViewOptions) => void>();
@@ -3286,6 +3286,10 @@ describe("artifacts route", () =>
 				},
 			);
 		});
+		await waitFor(() =>
+		{
+			expect(scroller.scrollTop).toBe(260);
+		});
 		const scrolled =
 		{
 			scrollTop: scroller.scrollTop,
@@ -3293,12 +3297,127 @@ describe("artifacts route", () =>
 		};
 		top = 100;
 		fireEvent.click(radio("Last opened"));
+		await waitFor(() =>
+		{
+			expect(
+				{
+					...router.state.location.search,
+				},
+			).toStrictEqual({});
+		});
+		const belowHeader = scroller.scrollTop;
+
+		// Upstream cce84abcc's listing key: any filter or search change scrolls the list top back too.
+		const afterChange = async (change: () => Promise<void> | void, search: Record<string, string>) =>
+		{
+			scroller.scrollTop = 290;
+			top = 30;
+			await change();
+			await waitFor(() =>
+			{
+				expect(
+					{
+						...router.state.location.search,
+					},
+				).toStrictEqual(search);
+			});
+			await waitFor(() =>
+			{
+				expect(scroller.scrollTop).toBe(260);
+			});
+			return scroller.scrollTop;
+		};
+		// The Filter and sort menu stays open across picks; open each submenu from its root.
+		const filterMenu = async (label: string) =>
+		{
+			const menu = screen.getAllByRole("menu")[0];
+			if (menu === undefined) throw new Error("no menu");
+			return openSubmenu(menu, label);
+		};
+		const opened = await afterChange(
+			async () =>
+			{
+				fireEvent.click(
+					within(await filterMenu("Date opened")).getByRole(
+						"menuitemradio",
+						{
+							name: "Past 30 days",
+						},
+					),
+				);
+			},
+			{
+				opened: "month",
+			},
+		);
+		scroller.scrollTop = 290;
+		top = 30;
+		fireEvent.click(
+			screen.getByRole(
+				"menuitemradio",
+				{
+					name: "Past 30 days",
+				},
+			),
+		);
+		const openedRepick = scroller.scrollTop;
+		const typed = await afterChange(
+			async () =>
+			{
+				const types = await filterMenu("Type");
+				const first = within(types).getAllByRole("menuitemcheckbox")[0];
+				if (first === undefined) throw new Error("no type");
+				fireEvent.click(first);
+			},
+			expect.objectContaining(
+				{
+					opened: "month",
+					type: expect.any(String),
+				},
+			) as Record<string, string>,
+		);
+		const searched = await afterChange(
+			() =>
+			{
+				fireEvent.click(
+					screen.getByRole(
+						"button",
+						{
+							name: "Search your artifacts",
+						},
+					),
+				);
+				fireEvent.change(
+					screen.getByRole(
+						"searchbox",
+						{
+							name: "Search your artifacts",
+						},
+					),
+					{
+						target:
+						{
+							value: "a",
+						},
+					},
+				);
+			},
+			expect.objectContaining(
+				{
+					search: "a",
+				},
+			) as Record<string, string>,
+		);
 
 		expect(
 			{
 				repick,
 				scrolled,
-				belowHeader: scroller.scrollTop,
+				belowHeader,
+				opened,
+				openedRepick,
+				typed,
+				searched,
 				listingScrollIntoViewCalls: scrollIntoView.mock.contexts.filter((context) => context === listing)
 					.length,
 			},
@@ -3311,6 +3430,10 @@ describe("artifacts route", () =>
 					focus: "Last edited",
 				},
 				belowHeader: 260,
+				opened: 260,
+				openedRepick: 290,
+				typed: 260,
+				searched: 260,
 				listingScrollIntoViewCalls: 0,
 			},
 		);

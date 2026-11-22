@@ -3,7 +3,7 @@ import {createFileRoute, Link, useNavigate} from "@tanstack/react-router";
 import {useSuspenseQuery} from "@tanstack/react-query";
 import {Tabs} from "@base-ui/react/tabs";
 import {LayoutGrid, Link as LinkIcon, List, Lock, Pin, SlidersVertical} from "lucide-react";
-import {type CSSProperties, type ReactNode, useEffect, useId, useMemo, useRef, useState} from "react";
+import {type CSSProperties, type ReactNode, useEffect, useId, useLayoutEffect, useMemo, useRef, useState} from "react";
 import {artifactsQueryOptions, type ArtifactSummary} from "../lib/api/artifacts";
 import
 {
@@ -457,6 +457,16 @@ function ArtifactsPage()
 		setLayout(readArtifactsLayout());
 	}, []);
 
+	// Upstream cce84abcc's listing key: any view, filter, search or sort change scrolls the list top back.
+	const listingKey = JSON.stringify([view, filters, search.trim(), sort]);
+	const shownListingKey = useRef(listingKey);
+	useLayoutEffect(() =>
+	{
+		if (shownListingKey.current === listingKey) return;
+		shownListingKey.current = listingKey;
+		scrollListTopIntoView(listTopRef.current);
+	}, [listingKey]);
+
 	const inView = useMemo(
 		() => artifacts.filter((artifact) => artifactInView(artifact.audience, view)),
 		[artifacts, view],
@@ -611,7 +621,6 @@ function ArtifactsPage()
 										sort: next,
 									},
 								);
-								if (next !== sort) scrollListTopIntoView(listTopRef.current);
 							}}
 						/>
 						<Tooltip content={layoutLabel}>
@@ -685,7 +694,7 @@ function ArtifactsPage()
 }
 
 /**
- * Upstream cd75b47e6 `x`: after a sort change, scroll the list top back down to the pinned header's bottom edge
+ * Upstream cd75b47e6 `x`: after a listing change, scroll the list top back down to the pinned header's bottom edge
  * (its scroll-margin-top) whenever it sits above it, by exactly that depth and never down. Scroll only; focus
  * stays on the menu radio.
  */
