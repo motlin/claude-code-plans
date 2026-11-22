@@ -1,11 +1,13 @@
 /**
  * Upstream's composer notice region renders every registered notice, stacked
- * in this fixed slot order (`Ym` in claude.ai/code ca8b34310, crawl 2026-11-06;
- * `eagerCookie` = cold-resume notice and `tokenLimit` = 3P token-cap band,
- * neither has a local registrant yet).
+ * in this fixed slot order (`xJ` in claude.ai/code cc43287c9, crawl 2026-11-21;
+ * `eagerCookie` = cold-resume notice and `tokenLimit` = 3P token-cap band;
+ * `eagerCookie`, `tokenLimit`, `accountNotice`, `keenSwing`, `softTide` and
+ * `notLive` have no local registrant yet).
  */
 export const NOTICE_ORDER = [
 	"ops",
+	"accountNotice",
 	"paused",
 	"environment",
 	"acorn",
@@ -17,7 +19,10 @@ export const NOTICE_ORDER = [
 	"refusal",
 	"sleep",
 	"keptAwake",
+	"keenSwing",
+	"softTide",
 	"bridge",
+	"notLive",
 	"hostSandbox",
 	"repository",
 	"credentialNudge",

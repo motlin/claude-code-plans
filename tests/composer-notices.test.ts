@@ -4,10 +4,11 @@ import type {Notice, NoticeSlot} from "../src/lib/composer-notices";
 
 describe("NOTICE_ORDER", () =>
 {
-	it("matches upstream's Ym order list (2026-11-06)", () =>
+	it("matches upstream's xJ order list (2026-11-21)", () =>
 	{
 		expect(NOTICE_ORDER).toStrictEqual([
 			"ops",
+			"accountNotice",
 			"paused",
 			"environment",
 			"acorn",
@@ -19,7 +20,10 @@ describe("NOTICE_ORDER", () =>
 			"refusal",
 			"sleep",
 			"keptAwake",
+			"keenSwing",
+			"softTide",
 			"bridge",
+			"notLive",
 			"hostSandbox",
 			"repository",
 			"credentialNudge",
@@ -135,6 +139,56 @@ describe("orderNotices", () =>
 				notice:
 				{
 					id: "code_refusal_fallback",
+				},
+			},
+		]);
+	});
+
+	it("orders accountNotice first and notLive after limit like upstream's xJ", () =>
+	{
+		const entries = new Map<NoticeSlot, Notice>();
+		entries.set(
+			"notLive",
+			{
+				id: "code_not_live",
+			},
+		);
+		entries.set(
+			"limit",
+			{
+				id: "code_usage_limit",
+			},
+		);
+		entries.set(
+			"accountNotice",
+			{
+				id: "code_account_notice",
+			},
+		);
+
+		expect(orderNotices(entries)).toStrictEqual([
+			{
+				key: "code-accountNotice:code_account_notice",
+				slot: "accountNotice",
+				notice:
+				{
+					id: "code_account_notice",
+				},
+			},
+			{
+				key: "code-limit:code_usage_limit",
+				slot: "limit",
+				notice:
+				{
+					id: "code_usage_limit",
+				},
+			},
+			{
+				key: "code-notLive:code_not_live",
+				slot: "notLive",
+				notice:
+				{
+					id: "code_not_live",
 				},
 			},
 		]);
