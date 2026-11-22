@@ -3790,6 +3790,7 @@ describe("ChangesPane PR chip", () =>
 		const menuFromCi = screen.queryByRole("menu");
 		const rows = openChipMenu(link);
 		const marked = link.closest("[data-popup-open]") !== null;
+		const insidePrevented = !fireEvent.contextMenu(screen.getAllByRole("menuitem")[0]!);
 		fireEvent.click(
 			screen.getByRole(
 				"menuitem",
@@ -3818,6 +3819,7 @@ describe("ChangesPane PR chip", () =>
 				menuFromCi,
 				rows,
 				marked,
+				insidePrevented,
 				opened,
 				copied: clipboard.write.mock.calls.at(-1),
 				toast: toast.textContent,
@@ -3828,6 +3830,7 @@ describe("ChangesPane PR chip", () =>
 				menuFromCi: null,
 				rows: ["Open on GitHub", "─", "Copy link"],
 				marked: true,
+				insidePrevented: true,
 				opened: [[URL_56, "_blank", "noopener,noreferrer"]],
 				copied: [URL_56],
 				toast: "Link copied to clipboard.",

@@ -1,6 +1,7 @@
 import {type ComponentProps, useState} from "react";
 
 import {writeClipboardText} from "../lib/clipboard";
+import {SUPPRESS_NATIVE_MENU_POPUP_PROPS} from "../lib/native-context-menu";
 import {openablePrUrl, prHostLabel} from "../lib/pr-url";
 import {useToast} from "./toast-context";
 import {ContextMenu, ContextMenuTrigger, MenuContent, MenuItem, MenuSeparator} from "./ui/menu";
@@ -32,7 +33,7 @@ export function PrLinkContextMenu({
 				</Tooltip>
 			</ContextMenuTrigger>
 			{url !== undefined && (
-				<MenuContent>
+				<MenuContent popupProps={SUPPRESS_NATIVE_MENU_POPUP_PROPS}>
 					<MenuItem
 						onSelect={() =>
 						{
