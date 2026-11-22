@@ -75,6 +75,7 @@ import {CodePageHeader} from "../components/code-page-header";
 import {MakeSomethingNew} from "../components/make-something-new";
 import {CDS_TAB_CLASS, CDS_TAB_LIST_CLASS} from "../components/ui/cds-tabs";
 import {Icon} from "../components/ui/icon";
+import {findScrollContainer} from "../components/scroll-container";
 import {Tooltip} from "../components/ui/tooltip";
 
 /** The gallery's URL state: upstream's `?search=` and `?tab=`, plus the local Filter and sort picks. */
@@ -639,53 +640,62 @@ function ArtifactsPage()
 				className={`${ARTIFACTS_BOX_CLASS} flex flex-col pb-12 ${titleTravel > 0 ? "pt-5" : "pt-1"}`}
 				style={LIST_HEADER_SCROLL_OFFSET_STYLE}
 			>
+				{/* Upstream cabf52553's zero-height anchor, the sort scroll's target only while the hero is hidden;
+				    the hero always shows here, so the listing wrapper below is always the target. */}
+				<div className={LIST_SCROLL_MARGIN_CLASS} />
 				<MakeSomethingNew />
-				<div ref={listTopRef} className={LIST_SCROLL_MARGIN_CLASS} />
-				{inView.length === 0 && (artifacts.length === 0 || !searching) ? (
-					<ArtifactsEmptyState view={view} />
-				) : visible.length === 0 ? (
-					searching ? (
-						<div className="mt-10 flex flex-col items-center gap-3">
-							<div role="status" className="text-center text-body text-ink-muted">
-								{`No artifacts matching “${search}”`}
+				<div ref={listTopRef} className={`flex flex-col ${LIST_SCROLL_MARGIN_CLASS}`}>
+					{inView.length === 0 && (artifacts.length === 0 || !searching) ? (
+						<ArtifactsEmptyState view={view} />
+					) : visible.length === 0 ? (
+						searching ? (
+							<div className="mt-10 flex flex-col items-center gap-3">
+								<div role="status" className="text-center text-body text-ink-muted">
+									{`No artifacts matching “${search}”`}
+								</div>
 							</div>
-						</div>
+						) : (
+							<div className="mt-10 flex flex-col items-center gap-3 text-body text-muted-as-secondary">
+								<span role="status">Nothing matches. Try clearing a filter.</span>
+								<button
+									type="button"
+									className={FILTER_EMPTY_CLEAR_CLASS}
+									onClick={() =>
+									{
+										updateSearch(
+											{
+												filters: NO_ARTIFACT_FILTERS,
+											},
+										);
+									}}
+								>
+									Clear filters
+								</button>
+							</div>
+						)
+					) : layout === "grid" ? (
+						<ArtifactGrid pinned={pinned} artifacts={unpinned} now={now} />
 					) : (
-						<div className="mt-10 flex flex-col items-center gap-3 text-body text-muted-as-secondary">
-							<span role="status">Nothing matches. Try clearing a filter.</span>
-							<button
-								type="button"
-								className={FILTER_EMPTY_CLEAR_CLASS}
-								onClick={() =>
-								{
-									updateSearch(
-										{
-											filters: NO_ARTIFACT_FILTERS,
-										},
-									);
-								}}
-							>
-								Clear filters
-							</button>
-						</div>
-					)
-				) : layout === "grid" ? (
-					<ArtifactGrid pinned={pinned} artifacts={unpinned} now={now} />
-				) : (
-					<ArtifactList pinned={pinned} artifacts={unpinned} now={now} sort={sort} />
-				)}
+						<ArtifactList pinned={pinned} artifacts={unpinned} now={now} sort={sort} />
+					)}
+				</div>
 			</div>
 		</div>
 	);
 }
 
 /**
- * Upstream c230724a2 `si`/`oi`: after a sort change, jump the list top back under the pinned header when it has
- * scrolled above the viewport. Scroll only; focus stays on the menu radio.
+ * Upstream cd75b47e6 `x`: after a sort change, scroll the list top back down to the pinned header's bottom edge
+ * (its scroll-margin-top) whenever it sits above it, by exactly that depth and never down. Scroll only; focus
+ * stays on the menu radio.
  */
-function scrollListTopIntoView(anchor: HTMLElement | null): void
+function scrollListTopIntoView(target: HTMLElement | null): void
 {
-	if (anchor && anchor.getBoundingClientRect().top < 0) anchor.scrollIntoView();
+	if (!target) return;
+	const scroller = findScrollContainer(target);
+	const {scrollMarginTop} = getComputedStyle(target);
+	const headerBottom = scroller.getBoundingClientRect().top + (parseFloat(scrollMarginTop) || 0);
+	scroller.scrollTop -= Math.max(0, headerBottom - target.getBoundingClientRect().top);
 }
 
 /**

@@ -3182,22 +3182,27 @@ describe("artifacts route", () =>
 		);
 	});
 
-	it("puts upstream's list-top anchor between Make something new and the listing, in grid and list layout", async () =>
+	it("puts upstream's list-top anchor before Make something new and wraps the listing in the scroll-margin box, in grid and list layout", async () =>
 	{
 		const layouts: Array<
 		{
 			anchor: string | undefined;
-			next: string | undefined;
+			next: string | null | undefined;
+			wrapper: string | undefined;
+			listing: string | undefined;
 		}> = [];
 		for (const layout of ["grid", "list"])
 		{
 			storage.setItem(ARTIFACTS_LAYOUT_STORAGE_KEY, layout);
 			await renderArtifactsPage("/artifacts", true);
-			const anchor = document.querySelector("[data-make-something-new]")?.nextElementSibling;
+			const anchor = document.querySelector("[data-scrolls-under-page-header]")?.firstElementChild;
+			const wrapper = document.querySelector("[data-make-something-new]")?.nextElementSibling;
 			layouts.push(
 				{
 					anchor: anchor?.outerHTML,
-					next: anchor?.nextElementSibling?.tagName,
+					next: anchor?.nextElementSibling?.getAttribute("data-make-something-new"),
+					wrapper: wrapper?.className,
+					listing: wrapper?.firstElementChild?.tagName,
 				},
 			);
 			cleanup();
@@ -3206,16 +3211,20 @@ describe("artifacts route", () =>
 		expect(layouts).toStrictEqual([
 			{
 				anchor: '<div class="[scroll-margin-top:var(--list-header-scroll-offset)]"></div>',
-				next: "UL",
+				next: "true",
+				wrapper: "flex flex-col [scroll-margin-top:var(--list-header-scroll-offset)]",
+				listing: "UL",
 			},
 			{
 				anchor: '<div class="[scroll-margin-top:var(--list-header-scroll-offset)]"></div>',
-				next: "DIV",
+				next: "true",
+				wrapper: "flex flex-col [scroll-margin-top:var(--list-header-scroll-offset)]",
+				listing: "DIV",
 			},
 		]);
 	});
 
-	it("scrolls the list top into view on a sort change only when it is above the viewport, leaving focus on the radio", async () =>
+	it("scrolls the list top back by the depth it sits under the pinned header on a sort change, never down, leaving focus on the radio", async () =>
 	{
 		storage.removeItem(ARTIFACTS_LAYOUT_STORAGE_KEY);
 		const scrollIntoView = vi.fn<(arg?: boolean | ScrollIntoViewOptions) => void>();
@@ -3226,22 +3235,25 @@ describe("artifacts route", () =>
 			HTMLElement.prototype.scrollIntoView = original;
 		});
 		const router = await renderArtifactsPage("/artifacts", true);
-		const anchor = document.querySelector("[data-make-something-new]")?.nextElementSibling;
-		if (!(anchor instanceof HTMLElement)) throw new Error("no list-top anchor");
-		let top = -400;
-		// Base UI also scrolls highlighted menu rows into view; count only the anchor's calls.
-		const anchorCalls = () =>
-			scrollIntoView.mock.calls.filter((_, index) => scrollIntoView.mock.contexts[index] === anchor);
-		vi.spyOn(anchor, "getBoundingClientRect").mockImplementation(() =>
+		const listing = document.querySelector("[data-make-something-new]")?.nextElementSibling;
+		if (!(listing instanceof HTMLElement)) throw new Error("no listing wrapper");
+		const scroller = document.body.firstElementChild;
+		if (!(scroller instanceof HTMLElement)) throw new Error("no scroller");
+		scroller.style.overflowY = "auto";
+		scroller.scrollTop = 290;
+		listing.style.scrollMarginTop = "60px";
+		const rectAt = (y: number) =>
 			DOMRect.fromRect(
 				{
 					x: 0,
-					y: top,
+					y,
 					width: 960,
 					height: 0,
 				},
-			),
-		);
+			);
+		let top = 30;
+		vi.spyOn(scroller, "getBoundingClientRect").mockImplementation(() => rectAt(0));
+		vi.spyOn(listing, "getBoundingClientRect").mockImplementation(() => rectAt(top));
 
 		fireEvent.click(
 			screen.getByRole(
@@ -3260,7 +3272,7 @@ describe("artifacts route", () =>
 				},
 			);
 		fireEvent.click(radio("Last opened"));
-		const repick = anchorCalls().length;
+		const repick = scroller.scrollTop;
 		fireEvent.click(radio("Last edited"));
 		await waitFor(() =>
 		{
@@ -3276,29 +3288,30 @@ describe("artifacts route", () =>
 		});
 		const scrolled =
 		{
-			calls: anchorCalls(),
+			scrollTop: scroller.scrollTop,
 			focus: document.activeElement?.textContent,
 		};
-		top = 0;
+		top = 100;
 		fireEvent.click(radio("Last opened"));
-		top = 40;
-		fireEvent.click(radio("Last edited"));
 
 		expect(
 			{
 				repick,
 				scrolled,
-				visibleCalls: anchorCalls().length,
+				belowHeader: scroller.scrollTop,
+				listingScrollIntoViewCalls: scrollIntoView.mock.contexts.filter((context) => context === listing)
+					.length,
 			},
 		).toStrictEqual(
 			{
-				repick: 0,
+				repick: 290,
 				scrolled:
 				{
-					calls: [[]],
+					scrollTop: 260,
 					focus: "Last edited",
 				},
-				visibleCalls: 1,
+				belowHeader: 260,
+				listingScrollIntoViewCalls: 0,
 			},
 		);
 	});
