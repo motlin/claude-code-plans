@@ -329,7 +329,7 @@ function MoreActionsButton({menu}: {menu: ReactNode})
 					onMouseDown={arm}
 					onKeyDown={arm}
 					onClick={arm}
-					className="flex size-6 cursor-pointer items-center justify-center rounded-r5 bg-transparent text-secondary hover:bg-fill-ghost-hover hover:text-primary data-[popup-open]:bg-fill-ghost-hover"
+					className="flex size-6 cursor-pointer items-center justify-center rounded-r5 bg-transparent text-primary hover:bg-fill-ghost-hover data-[popup-open]:bg-fill-ghost-hover"
 				>
 					<Icon name="DotsHorizontal" size="sm" />
 				</MenuTrigger>

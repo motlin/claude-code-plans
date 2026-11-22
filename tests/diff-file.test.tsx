@@ -1181,6 +1181,8 @@ describe("DiffFileHeader More actions (upstream c44d00c7f rc/ic/tc)", () =>
 		{
 			expanded: moreButton().getAttribute("aria-expanded"),
 			haspopup: moreButton().getAttribute("aria-haspopup"),
+			textPrimary: moreButton().classList.contains("text-primary"),
+			textSecondary: moreButton().classList.contains("text-secondary"),
 		};
 		fireEvent.pointerEnter(
 			moreButton(),
@@ -1205,6 +1207,8 @@ describe("DiffFileHeader More actions (upstream c44d00c7f rc/ic/tc)", () =>
 				{
 					expanded: "false",
 					haspopup: "menu",
+					textPrimary: true,
+					textSecondary: false,
 				},
 				open: "true",
 				align: "end",
