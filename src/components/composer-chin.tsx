@@ -659,7 +659,7 @@ export const ComposerChin = memo(function ComposerChin({
 			) : (
 				/* The new-session bar's pickers group; it has no live region. */
 				<div ref={pickersRef} className={ENVIRONMENT_PICKERS_CLASS}>
-					<div data-testid="environment-bar-model" className="flex items-center gap-1">
+					<div data-testid="environment-bar-model" className="flex items-center gap-1 empty:hidden">
 						<div className={ENVIRONMENT_SLOT_CLASS}>{modelMenu}</div>
 					</div>
 					<div

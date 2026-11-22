@@ -161,7 +161,7 @@ describe("ComposerChinFrame", () =>
 		]);
 	});
 
-	it("gives the xs row upstream's flat 8px margin and narrow caption, and inherits upstream's 13px/17px footnote, and sets the 13px/20px body on the trailing wrapper (upstream `my`) its text-body chin buttons read", () =>
+	it("gives the xs row upstream's flat 8px margin and narrow caption, and inherits upstream's 13px/17px regular-weight footnote, and sets the 13px/20px body on the trailing wrapper (upstream `my`) its text-body chin buttons read", () =>
 	{
 		const vars = [
 			"[--upstream-text-body:calc(0.8125rem*var(--cds-rem-scale,1))]",
@@ -180,6 +180,7 @@ describe("ComposerChinFrame", () =>
 					"@max-[25rem]:text-caption",
 					"[--cmp-chin-row-h:1.5rem]",
 					"text-footnote",
+					"font-normal",
 					"text-body",
 					...vars,
 					"[--cmp-chin-start:8px]",
@@ -190,7 +191,7 @@ describe("ComposerChinFrame", () =>
 			},
 		).toStrictEqual(
 			{
-				rowHas: [true, false, false, true, true, true, false, false, false, true, false],
+				rowHas: [true, false, false, true, true, true, true, false, false, false, true, false],
 				trailingHas: [true, true],
 				buttonHas: [true],
 			},

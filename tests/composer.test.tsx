@@ -867,7 +867,7 @@ describe("Composer", () =>
 				{
 					pickers: "flex grow items-center justify-end gap-x-1",
 					order: ["environment-bar-model", "environment-bar-mode", SLOT],
-					modelSlot: "flex items-center gap-1",
+					modelSlot: "flex items-center gap-1 empty:hidden",
 					modelWrapper: true,
 					mode: `${SLOT} shrink-0`,
 					ringSlot: SLOT,
