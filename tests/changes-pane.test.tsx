@@ -3831,7 +3831,7 @@ describe("ChangesPane PR chip", () =>
 				rows: ["Open on GitHub", "─", "Copy link"],
 				marked: true,
 				insidePrevented: true,
-				opened: [[URL_56, "_blank", "noopener,noreferrer"]],
+				opened: [[URL_56, "_blank", "noopener"]],
 				copied: [URL_56],
 				toast: "Link copied to clipboard.",
 			},

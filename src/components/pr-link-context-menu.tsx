@@ -37,7 +37,7 @@ export function PrLinkContextMenu({
 					<MenuItem
 						onSelect={() =>
 						{
-							window.open(url, "_blank", "noopener,noreferrer");
+							window.open(url, "_blank", "noopener");
 						}}
 					>
 						Open on {prHostLabel(url)}
