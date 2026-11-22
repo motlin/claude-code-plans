@@ -336,15 +336,32 @@ describe("QueuedMessageBar", () =>
 			},
 		).parentElement;
 
+		const headerClasses = header?.className.split(" ") ?? [];
+		const listClasses = screen.getByRole("list").className.split(" ");
+		const clearAllWrapper = screen.getByRole(
+			"button",
+			{
+				name: "Clear all",
+			},
+		).parentElement;
+
 		expect(
 			{
 				bar: barClasses.filter((c) => c.includes("min-h-")),
-				header: header?.className.split(" ").filter((c) => c.includes("min-h-")),
+				header: headerClasses.filter((c) => c.includes("min-h-")),
+				barPadding: barClasses.filter((c) => c === "px-lg" || c === "px-3"),
+				headerPadding: headerClasses.filter((c) => c === "px-lg" || c === "px-3"),
+				listPadding: listClasses.filter((c) => c.startsWith("p-")),
+				clearAllWrapper: clearAllWrapper?.className,
 			},
 		).toStrictEqual(
 			{
-				bar: ["min-h-10", "comfortable:min-h-12"],
-				header: ["min-h-10", "comfortable:min-h-12"],
+				bar: ["min-h-[calc(var(--cds-h-control)+16px)]"],
+				header: ["min-h-[calc(var(--cds-h-control)+16px)]"],
+				barPadding: ["px-lg"],
+				headerPadding: ["px-lg"],
+				listPadding: ["p-xs"],
+				clearAllWrapper: "flex justify-end px-lg py-sm",
 			},
 		);
 	});

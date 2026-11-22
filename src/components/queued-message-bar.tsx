@@ -246,7 +246,7 @@ export function QueuedMessageBar({
 				ref={receiveFocus}
 				type="button"
 				aria-expanded={false}
-				className={`flex items-center gap-1.25 w-full min-w-0 min-h-10 comfortable:min-h-12 px-3 rounded-card bg-alpha-1 select-none text-start cursor-pointer hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus hover:bg-alpha-2${join}`}
+				className={`flex items-center gap-1.25 w-full min-w-0 min-h-[calc(var(--cds-h-control)+16px)] px-lg rounded-card bg-alpha-1 select-none text-start cursor-pointer hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus hover:bg-alpha-2${join}`}
 				onClick={(event) =>
 				{
 					toggle(event, true);
@@ -268,7 +268,7 @@ export function QueuedMessageBar({
 			<div
 				className={`flex flex-col w-full rounded-card bg-alpha-1 select-none overflow-clip divide-y divide-border${join}`}
 			>
-				<div className="flex items-center gap-1.25 w-full min-h-10 comfortable:min-h-12 px-3">
+				<div className="flex items-center gap-1.25 w-full min-h-[calc(var(--cds-h-control)+16px)] px-lg">
 					<span className="min-w-0 flex-1 text-body font-medium text-primary">{count}</span>
 					<button
 						ref={receiveFocus}
@@ -299,7 +299,7 @@ export function QueuedMessageBar({
 					))}
 				</QueuedList>
 				{onClearAll !== undefined && (
-					<div className="flex justify-end px-3 py-2">
+					<div className="flex justify-end px-lg py-sm">
 						<span
 							role="button"
 							tabIndex={0}
@@ -387,7 +387,7 @@ function QueuedList({
 			ref={listRef}
 			role="list"
 			aria-label="Queued messages"
-			className="flex flex-col max-h-[min(40vh,22rem)] overflow-y-auto overscroll-contain p-1"
+			className="flex flex-col max-h-[min(40vh,22rem)] overflow-y-auto overscroll-contain p-xs"
 		>
 			{children}
 		</div>
