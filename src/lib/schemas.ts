@@ -1128,6 +1128,7 @@ const DeferredToolsDeltaAttachmentPayload = z
 			surfacedDefinitions: z.array(SurfacedToolDefinitionSchema).optional(),
 			restoredNames: z.array(z.string()).optional(),
 			loadedNames: z.array(z.string()).optional(),
+			replacedNames: z.array(z.string()).optional(),
 			retractedTools: z
 				.array(
 					z
@@ -2899,6 +2900,7 @@ const DataFlowIncompleteRecordSchema = z
 			v: z.number(),
 			sessionId: z.string(),
 			agentId: z.string().optional(),
+			codes: z.array(z.number()).optional(),
 		},
 	)
 	.strict();

@@ -2736,6 +2736,7 @@ describe("JsonlRecordSchema observed 2026-09 transcript fields", () =>
 				{
 					type: "deferred_tools_delta",
 					surfacedNames: ["mcp__docs__guide"],
+					replacedNames: ["mcp__docs__update"],
 					surfacedDefinitions: [
 						{
 							name: "mcp__docs__guide",
@@ -2858,6 +2859,7 @@ describe("JsonlRecordSchema observed 2026-09 transcript fields", () =>
 				type: "data-flow-incomplete",
 				v: 1,
 				sessionId: "sess-123",
+				codes: [9, 4],
 			},
 			attachmentRecord(
 				{
