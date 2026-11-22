@@ -3,6 +3,8 @@
 import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import {Composer} from "../src/components/composer";
+import {preloadComposerSurfaces} from "../src/components/composer-surfaces-entry";
+import {FILE_MENTION_DEBOUNCE_MS} from "../src/lib/file-mentions";
 import {composerDraftStorageKey} from "../src/lib/composer-draft-store";
 import
 {
@@ -107,6 +109,7 @@ interface RenderOptions
 	promptHistory?: readonly string[];
 	bashHistory?: readonly string[];
 	disabled?: boolean;
+	mentionSessionId?: string | undefined;
 }
 
 function renderComposer({
@@ -118,6 +121,7 @@ function renderComposer({
 	promptHistory,
 	bashHistory,
 	disabled = false,
+	mentionSessionId,
 }: RenderOptions = {})
 {
 	stubPointer(coarse);
@@ -144,6 +148,7 @@ function renderComposer({
 				promptHistory={promptHistory}
 				bashHistory={bashHistory}
 				disabled={disabled}
+				mentionSessionId={mentionSessionId}
 			/>
 		</ToastContext.Provider>,
 	);
@@ -616,6 +621,120 @@ describe("Composer bash mode with a live pane", () =>
 			.map((node) => (node.getAttribute("role") === "separator" ? "---" : node.textContent));
 
 		expect(entries).toStrictEqual(["Stop"]);
+	});
+
+	it("opens @ file mentions in bash mode and inserts the path as plain text, but never the / menu", async () =>
+	{
+		await preloadComposerSurfaces();
+		vi.stubGlobal(
+			"fetch",
+			vi.fn<(url: string) => Promise<Response>>(async (url) =>
+				Promise.resolve(
+					url === "/api/sessions/session-alice/files?q=rea&markIgnored=1"
+						? Response.json(
+								{
+									kind: "search",
+									dir: "",
+									query: "rea",
+									results: [
+										{
+											name: "README.md",
+											relPath: "README.md",
+											isDirectory: false,
+										},
+									],
+									partial: false,
+									capped: false,
+								},
+							)
+						: Response.json(
+								{
+									error: "unexpected",
+								},
+								{
+									status: 500,
+								},
+							),
+				),
+			),
+		);
+		const {textarea} = renderComposer(
+			{
+				onShellCommand: vi.fn<(command: string) => Promise<boolean>>().mockResolvedValue(true),
+				mentionSessionId: "session-alice",
+			},
+		);
+		pressBang(textarea);
+		fireEvent.change(
+			textarea,
+			{
+				target:
+				{
+					value: "/",
+				},
+			},
+		);
+		const slashListboxes = screen.queryAllByRole("listbox").length;
+		fireEvent.change(
+			textarea,
+			{
+				target:
+				{
+					value: "cat @rea",
+				},
+			},
+		);
+		await act(async () =>
+		{
+			await new Promise((resolve) =>
+			{
+				setTimeout(resolve, FILE_MENTION_DEBOUNCE_MS + 50);
+			});
+		});
+		const options = screen
+			.queryByRole(
+				"listbox",
+				{
+					name: "Mention suggestions",
+				},
+			)
+			?.querySelectorAll('[role="option"]').length;
+		fireEvent.keyDown(
+			textarea,
+			{
+				key: "Enter",
+			},
+		);
+		const value = textarea.value;
+		const open = screen.queryByRole("listbox");
+		// A chip would swallow Backspace at its end and delete the whole token; plain text leaves it to the textarea.
+		textarea.setSelectionRange(14, 14);
+		const backspaceNotCancelled = fireEvent.keyDown(
+			textarea,
+			{
+				key: "Backspace",
+			},
+		);
+
+		expect(
+			{
+				slashListboxes,
+				options,
+				value,
+				backspaceNotCancelled,
+				bashMode: composerRoot().getAttribute("data-bash-mode"),
+				open,
+			},
+		).toStrictEqual(
+			{
+				slashListboxes: 0,
+				options: 1,
+				value: "cat @README.md ",
+				backspaceNotCancelled: true,
+				bashMode: "true",
+				open: null,
+			},
+		);
 	});
 
 	it("rings the card in the pro colour while in bash mode", () =>

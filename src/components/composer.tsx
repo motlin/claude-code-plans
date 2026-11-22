@@ -1710,7 +1710,7 @@ export function Composer({
 		[subscribePrefill, setPrompt, refuseCommandInBox],
 	);
 
-	// Upstream disables the "/" and "@" suggestions in bash mode.
+	// Upstream disables the / and emoji suggestions in bash mode; @ mentions stay on.
 	const slash = bashMode
 		? null
 		: slashTrigger(
@@ -1976,7 +1976,7 @@ export function Composer({
 	// A caret right after an accepted chip isn't a query: upstream's atom never reopens the menu.
 	const mentionsOn = mentionSource !== undefined || mentionProviders.length > 0;
 	const trigger =
-		!mentionsOn || bashMode || slashOpen || mentionEndingAt(mentions, caret) !== undefined
+		!mentionsOn || slashOpen || mentionEndingAt(mentions, caret) !== undefined
 			? null
 			: fileMentionTrigger(prompt, caret);
 	// Esc suppresses the trigger at `start` while its token extends the dismissed one, as upstream does.
@@ -2188,7 +2188,8 @@ export function Composer({
 				text: next.text,
 				mentions: [
 					...remapMentions(prompt, next.text, mentions),
-					...(accepted === undefined ? [] : [accepted]),
+					// Bash mode keeps the token plain text: its painted highlight replaces the chip overlay.
+					...(accepted === undefined || bashMode ? [] : [accepted]),
 				],
 			},
 		);
