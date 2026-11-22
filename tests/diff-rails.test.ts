@@ -14,26 +14,25 @@ describe("DIFF_RAILS_CSS", () =>
 		const L = '[data-line-type="change-deletion"]';
 		const R = `:is(${I},${L})`;
 		const z = "@media (forced-colors:active),(prefers-contrast:more)";
-		const U = "6px";
-		const W = `${U} + 2px`;
+		const W = "6px + 2px";
 		const G = ":host([data-add-button]) [data-diff]:not([data-disable-line-numbers])";
-		const H =
+		const U =
 			":host{--diff-rail-added:light-dark(color-mix(in lab,var(--diffs-addition-base) 86%,black),color-mix(in lab,var(--diffs-addition-base) 80%,var(--diffs-bg)));--diff-rail-removed:light-dark(color-mix(in lab,var(--diffs-deletion-base) 90%,black),color-mix(in lab,var(--diffs-deletion-base) 76%,white))}";
-		const box = `content:"";position:absolute;left:0;width:${U};top:0;bottom:0;pointer-events:none`;
+		const box = 'content:"";position:absolute;left:0;width:6px;top:0;bottom:0;pointer-events:none';
 		const additions = "background:var(--diff-rail-added)";
 		const deletions =
 			"background:linear-gradient(135deg,var(--diff-rail-removed) 25%,transparent 25% 50%,var(--diff-rail-removed) 50% 75%,transparent 75%) 0 0/calc(var(--diffs-line-height,20px) / 4) calc(var(--diffs-line-height,20px) / 4)";
 		const forcedColors = "forced-color-adjust:none;--diff-rail-added:CanvasText;--diff-rail-removed:CanvasText";
 		const expected = `@supports (content:"x" / "y") and (color:light-dark(red,red)) and (color:color-mix(in lab,red,red)){${[
-			H,
-			`${P}{padding-inline-start:1ch}`,
-			`${P}${R}::before{opacity:0}`,
+			U,
+			`${P}{padding-inline-start:var(--diff-sign-inset,1ch)}`,
+			`${P}${R}::before{opacity:var(--diff-sign-opacity,0)}`,
 			`${P}${I}::before{content:"+" / var(--diff-word-added,"added")}`,
 			`${P}${L}::before{content:"−" / var(--diff-word-removed,"removed")}`,
 			`${z}{${P}{padding-inline-start:2ch}${P}${R}::before{opacity:1}}`,
 			`:host ${F}${R}{box-shadow:none}`,
 			`${F}${R}::after{${box}}`,
-			`[data-diff][data-disable-line-numbers] ${F}{min-width:calc(${U} + 3px)}`,
+			`[data-diff][data-disable-line-numbers] ${F}{min-width:calc(6px + 3px)}`,
 			`${F}${I}::after{${additions}}`,
 			`${F}${L}::after{${deletions}}`,
 			`${F}[data-rail-start]::after{border-top-left-radius:1px;border-top-right-radius:1px}`,
@@ -42,8 +41,10 @@ describe("DIFF_RAILS_CSS", () =>
 			"[data-gutter-utility-slot]{z-index:2}",
 			`${G} [data-gutter-utility-slot]{left:calc(${W} + 0.125rem)}`,
 			`${G} [data-column-number]{padding-left:max(2ch + 5px,${W} + 1rem + 1px)}`,
-			`${F}${I}{--mix-light:88%;--mix-dark:80%}`,
-			`:is(${F},${N})${L}{--mix-light:91.5%;--mix-dark:90%}`,
+			`:is(${F},${N})${I}{--mix-light:88%;--mix-dark:85%}`,
+			`:is(${F},${N})${L}{--mix-light:90%;--mix-dark:82%}`,
+			'[data-gutter-buffer="buffer"]{--diffs-line-bg:color-mix(in lab,var(--diffs-bg) 96%,var(--diffs-mixer))}',
+			`[data-content-buffer]{opacity:max(.7,var(--diff-sign-opacity,0))}${z}{[data-content-buffer]{opacity:1}}`,
 		].join("")}}`;
 		expect(DIFF_RAILS_CSS).toStrictEqual(expected);
 		for (const part of [

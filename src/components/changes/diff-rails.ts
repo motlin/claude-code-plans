@@ -12,34 +12,35 @@ const L = '[data-line-type="change-deletion"]';
 const R = `:is(${I},${L})`;
 /** Upstream c4860ec62 `p` (forced-colors or more contrast). */
 const z = "@media (forced-colors:active),(prefers-contrast:more)";
-/** Upstream ca9e46d28 `B`: the glyphs (U+2212 minus for deletions). */
-const B =
+/** Upstream ca9e46d28 `B`: the glyph opacity, overridable per host (no upstream host sets it). */
+const B = "var(--diff-sign-opacity,0)";
+/** Upstream ca9e46d28 `V`: the glyphs (U+2212 minus for deletions). */
+const V =
 {
 	additions: "+",
 	deletions: "−",
 } as const;
-/** Upstream ca9e46d28 `V`: change-row `--mix-light`/`--mix-dark`. */
-const V =
+/** Upstream ca9e46d28 `H`: change-row `--mix-light`/`--mix-dark`. */
+const H =
 {
 	additions:
 	{
 		light: "88%",
-		dark: "80%",
+		dark: "85%",
 	},
 	deletions:
 	{
-		light: "91.5%",
-		dark: "90%",
+		light: "90%",
+		dark: "82%",
 	},
 } as const;
-const H =
+const U =
 	":host{--diff-rail-added:light-dark(color-mix(in lab,var(--diffs-addition-base) 86%,black),color-mix(in lab,var(--diffs-addition-base) 80%,var(--diffs-bg)));--diff-rail-removed:light-dark(color-mix(in lab,var(--diffs-deletion-base) 90%,black),color-mix(in lab,var(--diffs-deletion-base) 76%,white))}";
-const U = "6px";
-const W = `${U} + 2px`;
+const W = "6px + 2px";
 const G = ":host([data-add-button]) [data-diff]:not([data-disable-line-numbers])";
 const K =
 {
-	box: `content:"";position:absolute;left:0;width:${U};top:0;bottom:0;pointer-events:none`,
+	box: 'content:"";position:absolute;left:0;width:6px;top:0;bottom:0;pointer-events:none',
 	additions: "background:var(--diff-rail-added)",
 	deletions:
 		"background:linear-gradient(135deg,var(--diff-rail-removed) 25%,transparent 25% 50%,var(--diff-rail-removed) 50% 75%,transparent 75%) 0 0/calc(var(--diffs-line-height,20px) / 4) calc(var(--diffs-line-height,20px) / 4)",
@@ -49,15 +50,15 @@ const K =
 const SUPPORTS = '(content:"x" / "y") and (color:light-dark(red,red)) and (color:color-mix(in lab,red,red))';
 
 export const DIFF_RAILS_CSS = `@supports ${SUPPORTS}{${[
-	H,
-	`${P}{padding-inline-start:1ch}`,
-	`${P}${R}::before{opacity:0}`,
-	`${P}${I}::before{content:"${B.additions}" / var(--diff-word-added,"added")}`,
-	`${P}${L}::before{content:"${B.deletions}" / var(--diff-word-removed,"removed")}`,
+	U,
+	`${P}{padding-inline-start:var(--diff-sign-inset,1ch)}`,
+	`${P}${R}::before{opacity:${B}}`,
+	`${P}${I}::before{content:"${V.additions}" / var(--diff-word-added,"added")}`,
+	`${P}${L}::before{content:"${V.deletions}" / var(--diff-word-removed,"removed")}`,
 	`${z}{${P}{padding-inline-start:2ch}${P}${R}::before{opacity:1}}`,
 	`:host ${F}${R}{box-shadow:none}`,
 	`${F}${R}::after{${K.box}}`,
-	`[data-diff][data-disable-line-numbers] ${F}{min-width:calc(${U} + 3px)}`,
+	`[data-diff][data-disable-line-numbers] ${F}{min-width:calc(6px + 3px)}`,
 	`${F}${I}::after{${K.additions}}`,
 	`${F}${L}::after{${K.deletions}}`,
 	`${F}[data-rail-start]::after{border-top-left-radius:1px;border-top-right-radius:1px}`,
@@ -66,8 +67,10 @@ export const DIFF_RAILS_CSS = `@supports ${SUPPORTS}{${[
 	"[data-gutter-utility-slot]{z-index:2}",
 	`${G} [data-gutter-utility-slot]{left:calc(${W} + 0.125rem)}`,
 	`${G} [data-column-number]{padding-left:max(2ch + 5px,${W} + 1rem + 1px)}`,
-	`${F}${I}{--mix-light:${V.additions.light};--mix-dark:${V.additions.dark}}`,
-	`:is(${F},${N})${L}{--mix-light:${V.deletions.light};--mix-dark:${V.deletions.dark}}`,
+	`:is(${F},${N})${I}{--mix-light:${H.additions.light};--mix-dark:${H.additions.dark}}`,
+	`:is(${F},${N})${L}{--mix-light:${H.deletions.light};--mix-dark:${H.deletions.dark}}`,
+	'[data-gutter-buffer="buffer"]{--diffs-line-bg:color-mix(in lab,var(--diffs-bg) 96%,var(--diffs-mixer))}',
+	`[data-content-buffer]{opacity:max(.7,${B})}${z}{[data-content-buffer]{opacity:1}}`,
 ].join("")}}`;
 
 /** Upstream `Q()`'s host style: the alt words the rails sheet's `content: … / var(--diff-word-*)` reads. */
