@@ -52,7 +52,7 @@ function metrics(wrap: (banner: ReactNode) => ReactNode, keyline?: "glyph" | "te
 
 const LEAD = "flex items-start gap-xs";
 const TYPE = "font-sans text-body font-normal break-words px-md rounded-composer";
-const FIZZY_SURFACE = "bg-page shadow-card-ring text-primary [--card-ring-color:var(--banner-line)] @container";
+const FIZZY_SURFACE = "bg-page shadow-[inset_0_0_0_1px_var(--banner-line)] text-primary @container";
 const ICON_SLOT = "flex min-h-[1lh] shrink-0 items-center ms-[4px] -me-[4px] text-secondary";
 const BODY = "flex min-w-0 flex-wrap items-start gap-y-sm gap-x-md flex-1";
 const GLYPH_BODY = `${BODY} ms-[4px]`;

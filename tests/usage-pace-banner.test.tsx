@@ -749,7 +749,7 @@ describe("usage limit band with held messages", () =>
 });
 
 const BANNER_CLASS =
-	"flex items-start gap-xs py-[calc(var(--cds-pad-md)+2px)] font-sans text-body font-normal break-words px-md rounded-composer bg-page shadow-card-ring text-primary [--card-ring-color:var(--banner-line)] @container";
+	"flex items-start gap-xs py-[calc(var(--cds-pad-md)+2px)] font-sans text-body font-normal break-words px-md rounded-composer bg-page shadow-[inset_0_0_0_1px_var(--banner-line)] text-primary @container";
 
 describe("usage band as a notice card", () =>
 {
