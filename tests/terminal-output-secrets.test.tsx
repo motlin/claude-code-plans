@@ -155,10 +155,10 @@ describe("BashRenderer secrets", () =>
 			railButtons: [...card.querySelectorAll("button")].map((b) => b.getAttribute("aria-label")),
 		});
 		const masked = state();
-		fireEvent.click(card.querySelector("button[aria-label='Copy']")!);
+		fireEvent.click(card.querySelector("button[aria-label='Copy command']")!);
 		fireEvent.click(card.querySelector("button[data-reveal-secrets]")!);
 		const revealed = state();
-		fireEvent.click(card.querySelector("button[aria-label='Copy']")!);
+		fireEvent.click(card.querySelector("button[aria-label='Copy command']")!);
 		expect(
 			{
 				masked,
@@ -171,18 +171,15 @@ describe("BashRenderer secrets", () =>
 				{
 					command: `$ echo ${MASKED_AWS}`,
 					output: `${MASKED_AWS}\ntoken=${MASKED_GH}`,
-					railButtons: ["Reveal 3 secrets", "Copy"],
+					railButtons: ["Reveal 3 secrets", "Copy command"],
 				},
 				revealed:
 				{
 					command: `$ echo ${FAKE_AWS}`,
 					output: `${FAKE_AWS}\ntoken=${FAKE_GH}`,
-					railButtons: ["Hide 3 secrets", "Copy"],
+					railButtons: ["Hide 3 secrets", "Copy command"],
 				},
-				copies: [
-					[`$ echo ${MASKED_AWS}\n\n${MASKED_AWS}\ntoken=${MASKED_GH}`],
-					[`$ echo ${FAKE_AWS}\n\n${FAKE_AWS}\ntoken=${FAKE_GH}`],
-				],
+				copies: [[`echo ${MASKED_AWS}`], [`echo ${FAKE_AWS}`]],
 			},
 		);
 	});

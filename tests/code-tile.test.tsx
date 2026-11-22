@@ -220,7 +220,7 @@ describe("CodeTile (upstream `el`)", () =>
 		).toStrictEqual(
 			{
 				dir: null,
-				children: ["min-w-0 flex-1", "flex h-[1lh] shrink-0 items-center"],
+				children: ["min-w-0 flex-1", "flex h-[1lh] shrink-0 items-center gap-1"],
 				action: '<button type="button">c</button>',
 			},
 		);
@@ -278,7 +278,7 @@ describe("CommandCodeTile codeFrame (upstream `gv` > `_v`)", () =>
 					className: "max-h-[calc(var(--code-leading,var(--upstream-leading-code))*10.5)] overflow-y-auto",
 					holdsFile: true,
 				},
-				action: "flex h-[1lh] shrink-0 items-center",
+				action: "flex h-[1lh] shrink-0 items-center gap-1",
 				actionHtml: '<button type="button">c</button>',
 			},
 		);

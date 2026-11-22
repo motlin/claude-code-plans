@@ -480,10 +480,13 @@ export function ToolBodyCopyButton({
 	text,
 	compact = false,
 	alwaysVisible = false,
+	label: restLabel = "Copy",
 }: {
 	text: string | (() => string);
 	compact?: boolean;
 	alwaysVisible?: boolean;
+	/** The resting label, as upstream `jy` passes "Copy command" for a Bash command. */
+	label?: string;
 })
 {
 	const [state, setState] = useState<CopyState>(null);
@@ -525,7 +528,7 @@ export function ToolBodyCopyButton({
 		);
 	}, [text]);
 
-	const label = state === "copied" ? "Copied" : state === "failed" ? "Couldn\u2019t copy" : "Copy";
+	const label = state === "copied" ? "Copied" : state === "failed" ? "Couldn\u2019t copy" : restLabel;
 	const icon = state === "copied" ? "Check" : state === "failed" ? "Warning" : "Copy";
 	return (
 		<div className={alwaysVisible ? "shrink-0" : TOOL_BODY_COPY_REVEAL}>

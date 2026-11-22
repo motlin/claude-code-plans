@@ -119,12 +119,14 @@ export function BashRenderer({toolCall, nested = false}: ToolRendererProps)
 	// Upstream `Cm`: a policy-blocked command shows its invisible and control characters (`SO`).
 	const maskedCommand = secrets.show(command);
 	const shownCommand = blocked ? visibleMultiline(maskedCommand) : maskedCommand;
-	// Upstream `Dm`: the prompt and command, a blank line, then the output without its ANSI codes.
-	const copyText = [command ? `$ ${shownCommand}` : "", resultContent ? stripAnsi(secrets.show(resultContent)) : ""]
-		.filter(Boolean)
-		.join("\n\n");
+	// Upstream `gg`: only the command (escapes shown when blocked, else CRLF normalised), without trailing space.
+	const commandCopyText = (blocked ? shownCommand : maskedCommand.replaceAll("\r\n", "\n")).trimEnd();
+	// An output-only body copies its output without ANSI codes.
+	const outputCopyText = resultContent ? stripAnsi(secrets.show(resultContent)) : "";
+	// Upstream passes `alwaysVisible: tool.status === "running"`: a call whose result has not arrived yet.
+	const running = !blocked && toolCall.resultUuid === undefined && toolCall.result === undefined && isError !== true;
 
-	// Upstream `tl`: the command in the shared code tile, with the Copy (after the local secrets Reveal) in the
+	// Upstream `tl`: the command in the shared code tile, with the Copy command (after the local secrets Reveal) in the
 	// tile's first-line action column; a long command scrolls in the 10.5-line Command frame.
 	const body = (
 		<>
@@ -135,7 +137,12 @@ export function BashRenderer({toolCall, nested = false}: ToolRendererProps)
 					action={
 						<>
 							<SecretRevealButton {...secrets} size="xs" />
-							<ToolBodyCopyButton compact text={() => copyText} />
+							<ToolBodyCopyButton
+								compact
+								label="Copy command"
+								alwaysVisible={running}
+								text={() => commandCopyText}
+							/>
 						</>
 					}
 					codeFrame={
@@ -164,7 +171,7 @@ export function BashRenderer({toolCall, nested = false}: ToolRendererProps)
 			<>
 				<div className="flex-1 min-w-0 flex flex-col gap-g6 font-mono">{body}</div>
 				{!command && <SecretRevealButton {...secrets} />}
-				{!command && <ToolBodyCopyButton text={copyText} />}
+				{!command && <ToolBodyCopyButton text={outputCopyText} />}
 			</>
 		);
 	}
@@ -175,7 +182,7 @@ export function BashRenderer({toolCall, nested = false}: ToolRendererProps)
 			<div className="flex items-center px-p6 py-p5">
 				<span className="flex-1 text-body text-secondary">Bash</span>
 				{!command && <SecretRevealButton {...secrets} />}
-				{!command && <ToolBodyCopyButton text={copyText} />}
+				{!command && <ToolBodyCopyButton text={outputCopyText} />}
 			</div>
 
 			<div className="flex flex-col gap-g6 px-p6 pb-p8 font-mono">{body}</div>

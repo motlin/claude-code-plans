@@ -119,6 +119,25 @@ describe("ToolBodyCopyButton (upstream `ge`)", () =>
 		);
 	});
 
+	it("rests on a given label, shows Copied for 1200ms, then the label again", async () =>
+	{
+		const {container} = render(<ToolBodyCopyButton compact label="Copy command" text="x" />);
+		const button = container.querySelector("button")!;
+		const rest = button.getAttribute("aria-label");
+		fireEvent.click(button);
+		await settle();
+		const copied = button.getAttribute("aria-label");
+		act(() =>
+		{
+			vi.advanceTimersByTime(1200);
+		});
+		expect([rest, copied, button.getAttribute("aria-label")]).toStrictEqual([
+			"Copy command",
+			"Copied",
+			"Copy command",
+		]);
+	});
+
 	it("says Couldn’t copy when the clipboard rejects", async () =>
 	{
 		writeText.mockImplementation(async () => Promise.reject(new Error("denied")));

@@ -50,8 +50,8 @@ describe("BashRenderer nested body", () =>
 				header: classNames(container, ".px-p6"),
 				body: classNames(container, ":scope > div:first-child"),
 				childCount: container.children.length,
-				copyInTile: container.querySelector(".epitaxy-code-card button[aria-label='Copy']") !== null,
-				copyOutsideTile: [...container.querySelectorAll("button[aria-label='Copy']")].some(
+				copyInTile: container.querySelector(".epitaxy-code-card button[aria-label='Copy command']") !== null,
+				copyOutsideTile: [...container.querySelectorAll("button[aria-label^='Copy']")].some(
 					(button) => button.closest(".epitaxy-code-card") === null,
 				),
 				command: container.textContent.includes("git status"),
@@ -78,7 +78,7 @@ describe("BashRenderer nested body", () =>
 			{
 				header: classNames(container, ".px-p6.py-p5"),
 				body: classNames(container, ".gap-g6"),
-				copyButton: container.querySelector("button[aria-label='Copy']") !== null,
+				copyButton: container.querySelector("button[aria-label='Copy command']") !== null,
 			},
 		).toStrictEqual(
 			{

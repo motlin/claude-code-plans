@@ -51,7 +51,7 @@ function layout(container: HTMLElement)
 		card: card?.className,
 		cardText: card?.textContent,
 		action: card?.lastElementChild?.className,
-		copyInAction: card?.lastElementChild?.querySelector("button[aria-label='Copy']") !== null,
+		copyInAction: card?.lastElementChild?.querySelector("button[aria-label='Copy command']") !== null,
 		output: output?.className,
 		outputText: output?.textContent,
 	};
@@ -85,7 +85,7 @@ describe("BashRenderer code card", () =>
 				body: "flex flex-col gap-g6 px-p6 pb-p8 font-mono",
 				card: CARD,
 				cardText: "$\u{a0}git status",
-				action: "flex h-[1lh] shrink-0 items-center",
+				action: "flex h-[1lh] shrink-0 items-center gap-1",
 				copyInAction: true,
 				output: "epitaxy-code-size max-h-[400px] overflow-y-auto whitespace-pre-wrap break-all text-[length:var(--code-size,12px)]/[var(--code-leading,17px)] text-secondary",
 				outputText: "nothing to commit",
@@ -102,7 +102,7 @@ describe("BashRenderer code card", () =>
 				body: "flex-1 min-w-0 flex flex-col gap-g6 font-mono",
 				card: CARD,
 				cardText: "$\u{a0}git status",
-				action: "flex h-[1lh] shrink-0 items-center",
+				action: "flex h-[1lh] shrink-0 items-center gap-1",
 				copyInAction: true,
 				output: "epitaxy-code-size max-h-[400px] overflow-y-auto whitespace-pre-wrap break-all text-[length:var(--code-size,12px)]/[var(--code-leading,17px)] text-secondary",
 				outputText: "nothing to commit",
@@ -135,7 +135,7 @@ describe("BashRenderer code card", () =>
 		);
 	});
 
-	it("copies upstream's `$ command`, a blank line, then the output without ANSI codes", async () =>
+	it("copies only the command as upstream `jy`'s Copy command, always visible while the call runs", async () =>
 	{
 		const writeText = vi.fn<Clipboard["writeText"]>(async () => Promise.resolve());
 		Object.defineProperty(
@@ -149,10 +149,13 @@ describe("BashRenderer code card", () =>
 				configurable: true,
 			},
 		);
+		const wrappers: (string | undefined)[] = [];
 		const copy = async (call: ClientToolCall) =>
 		{
 			const {container} = render(<BashRenderer toolCall={call} />);
-			fireEvent.click(container.querySelector("button[aria-label='Copy']")!);
+			const button = container.querySelector<HTMLElement>("button[aria-label='Copy command']")!;
+			wrappers.push(button.closest(".epitaxy-code-card > .gap-1 > div")?.className);
+			fireEvent.click(button);
 			await act(async () =>
 			{
 				await Promise.resolve();
@@ -168,11 +171,19 @@ describe("BashRenderer code card", () =>
 				result: "$ git status\n\u001b[31mred\u001b[0m",
 			},
 		);
-		expect(writeText.mock.calls).toStrictEqual([
-			["$ git status\n\nnothing to commit"],
-			["$ git status"],
-			["$ git status\n\nred"],
-		]);
+		expect(
+			{
+				writes: writeText.mock.calls,
+				runningWrapper: wrappers[1],
+				finishedVisible: wrappers[0] === "shrink-0",
+			},
+		).toStrictEqual(
+			{
+				writes: [["git status"], ["git status"], ["git status"]],
+				runningWrapper: "shrink-0",
+				finishedVisible: false,
+			},
+		);
 	});
 
 	it("shows a policy-blocked command's invisible characters, and leaves an unblocked one raw", () =>

@@ -49,7 +49,7 @@ export function CodeTile({
 		>
 			{leading}
 			<div className="min-w-0 flex-1">{codeFrame ? codeFrame(file) : file}</div>
-			{action ? <div className="flex h-[1lh] shrink-0 items-center">{action}</div> : null}
+			{action ? <div className="flex h-[1lh] shrink-0 items-center gap-1">{action}</div> : null}
 		</div>
 	);
 }

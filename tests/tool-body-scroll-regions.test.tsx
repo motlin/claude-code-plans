@@ -532,7 +532,7 @@ describe("CopyButton", () =>
 			/>,
 		);
 		const action = container.querySelector<HTMLElement>(".epitaxy-code-card > .flex.h-\\[1lh\\]")!;
-		const button = action.querySelector("button[aria-label='Copy']");
+		const button = action.querySelector("button[aria-label='Copy command']");
 
 		expect(
 			{
