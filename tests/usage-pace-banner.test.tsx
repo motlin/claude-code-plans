@@ -748,6 +748,9 @@ describe("usage limit band with held messages", () =>
 	});
 });
 
+/* The UsageGauge glyphs' shared dial; the needle points up (Middle) or toward the red end (High). */
+const USAGE_GAUGE_ARC = "M3.34 19a10 10 0 1 1 17.32 0";
+
 const BANNER_CLASS =
 	"flex items-start gap-xs py-[calc(var(--cds-pad-md)+2px)] font-sans text-body font-normal break-words px-md rounded-composer bg-page shadow-[inset_0_0_0_1px_var(--banner-line)] text-primary @container";
 
@@ -779,6 +782,7 @@ describe("usage band as a notice card", () =>
 					iconSlot: iconSlot?.className,
 					icon: iconSlot?.querySelector("svg")?.getAttribute("class"),
 					gauge: iconSlot?.querySelector("svg")?.getAttribute("data-testid"),
+					glyph: [...(iconSlot?.querySelectorAll("svg path") ?? [])].map((path) => path.getAttribute("d")),
 					body: body?.className,
 					content: content?.className,
 					words:
@@ -823,8 +827,9 @@ describe("usage band as a notice card", () =>
 					},
 					childCount: 2,
 					iconSlot: "flex min-h-[1lh] shrink-0 items-center ms-[4px] -me-[4px] text-secondary",
-					icon: "lucide lucide-gauge size-4",
+					icon: null,
 					gauge: "usage-limit-card-gauge",
+					glyph: [USAGE_GAUGE_ARC, "m12 14 5.2-2.6"],
 					body: "flex min-w-0 flex-wrap items-start gap-y-sm gap-x-md flex-1 ms-[4px]",
 					content: "max-w-full min-w-0 flex-auto",
 					words:
@@ -838,7 +843,7 @@ describe("usage band as a notice card", () =>
 						className: "min-w-0",
 						text: "Weekly limit reached",
 					},
-					detail: "min-w-0 text-ink-muted",
+					detail: "min-w-0 text-muted-as-secondary",
 					countdown: [
 						{
 							hidden: "true",
@@ -882,7 +887,10 @@ describe("usage band as a notice card", () =>
 		expect(
 			{
 				testId: banner?.getAttribute("data-testid"),
-				gauge: banner?.querySelector('[data-testid="usage-limit-card-gauge"]')?.tagName,
+				gauge: [...(banner?.querySelectorAll('[data-testid="usage-limit-card-gauge"] path') ?? [])].map(
+					(path) => path.getAttribute("d"),
+				),
+				detail: banner?.querySelector("[aria-atomic] > :last-child")?.className,
 				text: banner?.textContent,
 				lastChild: banner?.lastElementChild === dismiss.parentElement,
 				slot: dismiss.parentElement?.className,
@@ -893,7 +901,8 @@ describe("usage band as a notice card", () =>
 		).toStrictEqual(
 			{
 				testId: "usage-limit-approaching-card",
-				gauge: "svg",
+				gauge: [USAGE_GAUGE_ARC, "M12 14V8"],
+				detail: "min-w-0 text-muted-as-secondary",
 				text: "On pace to hit your weekly limit early29% used · Resets Tue, Oct 6, 4:00 AM",
 				lastChild: true,
 				slot: "-me-[2px] flex h-[1lh] shrink-0 items-center",

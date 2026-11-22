@@ -290,6 +290,44 @@ function Reorder({strokeWidth, ...props}: GlyphProps)
 	);
 }
 
+/** Upstream's `UsageGauge*` dial: lucide Gauge's arc with the needle at the level the name gives. */
+function usageGauge(needle: string)
+{
+	return function UsageGauge({strokeWidth, ...props}: GlyphProps)
+	{
+		return createElement(
+			"svg",
+			{
+				viewBox: "0 0 24 24",
+				fill: "none",
+				stroke: "currentColor",
+				strokeWidth,
+				strokeLinecap: "round",
+				strokeLinejoin: "round",
+				...svgAttributes(props),
+			},
+			createElement(
+				"path",
+				{
+					d: "M3.34 19a10 10 0 1 1 17.32 0",
+				},
+			),
+			createElement(
+				"path",
+				{
+					d: needle,
+				},
+			),
+		);
+	};
+}
+
+/** Upstream's `UsageGaugeMiddle` (approaching a limit): the needle straight up. */
+const UsageGaugeMiddle = usageGauge("M12 14V8");
+
+/** Upstream's `UsageGaugeHigh` (limit reached): the needle swung toward the dial's high end. */
+const UsageGaugeHigh = usageGauge("m12 14 5.2-2.6");
+
 export const DRAWN_GLYPHS =
 {
 	CaretDownFilled,
@@ -298,6 +336,8 @@ export const DRAWN_GLYPHS =
 	CheckCircleFilled,
 	Reorder,
 	StopFilled,
+	UsageGaugeHigh,
+	UsageGaugeMiddle,
 } satisfies Partial<Record<AnthropiconName, ComponentType<GlyphProps>>>;
 
 /** Upstream `Cb`: the names that flip under `dir=rtl`. */

@@ -7,6 +7,7 @@ import {heldCountText, parkedNoticeMessage, parkedResetDetail} from "../lib/park
 import {formatPaceBannerReset, limitReached, meterPercent, usageBand} from "../lib/usage";
 import {NoticeBanner} from "./notice-banner";
 import {cdsButtonClass} from "./ui/cds-button";
+import {Icon} from "./ui/icon";
 import {Spinner} from "./ui/spinner";
 import {ResetCountdown} from "./reset-countdown";
 import {useComposerNotice, useInNoticeRegion} from "./composer-notice-context";
@@ -17,7 +18,8 @@ import {useUsageBandDismissals, writeUsageBandDismissal} from "../lib/usage-pace
  * detail on one baseline 10px apart (the detail wrapping under it on a narrow dock), and an
  * optional Dismiss slot. Live region `polite`, centred on the first line via `1lh`. The exceeded
  * band inks its icon and headline `danger`; the detail is always muted. Under a notice region the
- * band draws as a cds Banner card instead.
+ * band draws as a cds Banner card instead: a cds UsageGauge glyph (Middle approaching, High reached) and
+ * a `text-muted-as-secondary` detail.
  */
 function UsageBandShell({
 	headline,
@@ -40,7 +42,13 @@ function UsageBandShell({
 	{
 		return (
 			<NoticeBanner
-				icon={<Gauge className="size-4" aria-hidden="true" data-testid="usage-limit-card-gauge" />}
+				icon={
+					<Icon
+						name={danger ? "UsageGaugeHigh" : "UsageGaugeMiddle"}
+						size="auto"
+						data-testid="usage-limit-card-gauge"
+					/>
+				}
 				data-testid={danger ? "usage-limit-reached-card" : "usage-limit-approaching-card"}
 				{...(actions === undefined
 					? {}
@@ -57,7 +65,7 @@ function UsageBandShell({
 			>
 				<span aria-atomic="true" className="flex flex-wrap items-baseline gap-x-2.5 gap-y-0.75">
 					<span className="min-w-0">{headline}</span>
-					<span className="min-w-0 text-ink-muted">{detail}</span>
+					<span className="min-w-0 text-muted-as-secondary">{detail}</span>
 				</span>
 			</NoticeBanner>
 		);
