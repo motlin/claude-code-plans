@@ -5,8 +5,13 @@ import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import {PermissionModeConsentDialog} from "../src/components/permission-mode-consent-dialog";
 import type {ConsentMode} from "../src/lib/permission-mode-consent";
 
+const REGION_CLASS =
+	"scroll-fade-y focus-visible:outline-hidden -mx-pad-xl -mb-pad-md flex min-h-9 flex-col overflow-y-auto px-xl pb-md scroll-fade-size-2 supports-[min-height:calc-size(auto,size)]:min-h-[calc-size(min-content,min(size,2.25rem))] focus-visible:shadow-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-fill-accent focus-visible:-outline-offset-2 focus-visible:scroll-fade-hide-top focus-visible:scroll-fade-hide-bottom";
+const FOLDER_CLASS = "mt-3 flex min-h-[calc-size(min-content,min(size,2*var(--upstream-leading-code)))] flex-col";
+const BOX_CLASS =
+	"-mt-pad-sm rounded-t pt-sm has-[>:focus-visible]:shadow-focus has-[>:focus-visible]:outline-hidden flex min-h-0 flex-col -mx-pad-md bg-alpha-1 px-md -mb-pad-sm rounded-b pb-sm";
 const PATH_CLASS =
-	"scroll-fade-y focus-visible:outline-hidden mt-3 max-h-24 overflow-y-auto font-mono-ui text-code text-primary break-all focus-visible:shadow-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-fill-accent focus-visible:-outline-offset-2 focus-visible:scroll-fade-hide-top focus-visible:scroll-fade-hide-bottom";
+	"scroll-fade-y focus-visible:outline-hidden font-mono-ui text-code text-primary break-all max-h-24 scroll-my-3 overflow-y-auto focus-visible:shadow-none focus-visible:scroll-fade-hide-top focus-visible:scroll-fade-hide-bottom";
 
 const restores: (() => void)[] = [];
 
@@ -50,9 +55,14 @@ function renderDialog(mode: ConsentMode, workspace: string)
 	};
 }
 
-function pathBlock(dialog: HTMLElement)
+function region(dialog: HTMLElement)
 {
 	return dialog.querySelector<HTMLElement>("[data-fixed-code-size]");
+}
+
+function pathBlock(dialog: HTMLElement)
+{
+	return dialog.querySelector<HTMLElement>("[data-fixed-code-size] [data-fixed-code-size]");
 }
 
 describe("PermissionModeConsentDialog", () =>
@@ -67,6 +77,7 @@ describe("PermissionModeConsentDialog", () =>
 			expect(document.activeElement?.textContent).toBe("Cancel");
 		});
 		const path = pathBlock(dialog);
+		const details = region(dialog);
 		const confirm = within(dialog).getByRole(
 			"button",
 			{
@@ -83,6 +94,16 @@ describe("PermissionModeConsentDialog", () =>
 		expect(
 			{
 				text: dialog.textContent,
+				region:
+				{
+					className: details?.className,
+					role: details?.getAttribute("role"),
+					tabIndex: details?.getAttribute("tabindex"),
+					label: details?.getAttribute("aria-label"),
+					children: [...(details?.children ?? [])].map((child) => child.className),
+				},
+				folder: [...(path?.parentElement?.parentElement?.children ?? [])].map((child) => child.className),
+				box: path?.parentElement?.className,
 				path:
 				{
 					className: path?.className,
@@ -92,8 +113,14 @@ describe("PermissionModeConsentDialog", () =>
 					tabIndex: path?.getAttribute("tabindex"),
 					label: path?.getAttribute("aria-label"),
 				},
-				footnote: link.parentElement?.className,
-				link: [link.getAttribute("href"), link.getAttribute("target"), link.getAttribute("rel")],
+				footnoteInRegion: link.parentElement?.parentElement === details,
+				link: [
+					link.className,
+					link.getAttribute("data-inherit-color"),
+					link.getAttribute("href"),
+					link.getAttribute("target"),
+					link.getAttribute("rel"),
+				],
 				confirm:
 				{
 					danger: confirm.className.includes("menu-danger"),
@@ -104,6 +131,16 @@ describe("PermissionModeConsentDialog", () =>
 		).toStrictEqual(
 			{
 				text: "Bypass all permissions?Claude will read, edit, and execute files without asking — including potentially destructive commands. Only use this in isolated or disposable environments./wYou won’t be asked again for this workspace. Read our security guide(opens in new tab) for details.CancelBypass permissions",
+				region:
+				{
+					className: REGION_CLASS,
+					role: null,
+					tabIndex: null,
+					label: null,
+					children: [FOLDER_CLASS, "mt-3 text-footnote text-secondary"],
+				},
+				folder: [BOX_CLASS],
+				box: BOX_CLASS,
 				path:
 				{
 					className: PATH_CLASS,
@@ -113,8 +150,14 @@ describe("PermissionModeConsentDialog", () =>
 					tabIndex: null,
 					label: null,
 				},
-				footnote: "mt-3 text-footnote text-muted-as-secondary",
-				link: ["https://code.claude.com/docs/en/security", "_blank", "noopener"],
+				footnoteInRegion: true,
+				link: [
+					"cds-reset text-link-inherit inline cursor-pointer",
+					"",
+					"https://code.claude.com/docs/en/security",
+					"_blank",
+					"noopener",
+				],
 				confirm:
 				{
 					danger: false,
@@ -125,7 +168,7 @@ describe("PermissionModeConsentDialog", () =>
 		);
 	});
 
-	it("makes an overflowing path a focusable group that tabs before the link, Cancel and confirm", async () =>
+	it("makes an overflowing region and path focusable groups that tab before the link, Cancel and confirm", async () =>
 	{
 		mockHeights(200, 96);
 		renderDialog("auto", "/w");
@@ -135,12 +178,18 @@ describe("PermissionModeConsentDialog", () =>
 			expect(pathBlock(dialog)?.getAttribute("role")).toBe("group");
 		});
 		const path = pathBlock(dialog);
+		const details = region(dialog);
 		const tabbables = [...dialog.querySelectorAll<HTMLElement>("a[href], button, [tabindex='0']")].map(
 			(element) => element.getAttribute("aria-label") ?? element.firstChild?.textContent,
 		);
 
 		expect(
 			{
+				region: [
+					details?.getAttribute("role"),
+					details?.getAttribute("tabindex"),
+					details?.getAttribute("aria-label"),
+				],
 				label: path?.getAttribute("aria-label"),
 				tabIndex: path?.getAttribute("tabindex"),
 				tabbables,
@@ -148,9 +197,10 @@ describe("PermissionModeConsentDialog", () =>
 			},
 		).toStrictEqual(
 			{
+				region: ["group", "0", "Workspace details"],
 				label: "Workspace folder",
 				tabIndex: "0",
-				tabbables: ["Workspace folder", "security guide", "Cancel", "Enable auto mode"],
+				tabbables: ["Workspace details", "Workspace folder", "security guide", "Cancel", "Enable auto mode"],
 				text: "Enable auto mode?Claude will decide which actions are safe to run without asking. Longer tasks run uninterrupted, with extra safeguards against prompt injection./wYou won’t be asked again. Read our security guide(opens in new tab) for details.CancelEnable auto mode",
 			},
 		);

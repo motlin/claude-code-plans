@@ -38,6 +38,8 @@ const POPUP_BASE_CLASS = `${DIALOG_NESTED_SCRIM_BLUR_CLASS} fixed top-1/2 left-1
  * - `jS` = `${Rf} -mt-[calc(toolbar-pad-block + (h-control - leading-heading) / 2)]`, `Rf` = `mx-0
  *   text-body font-normal text-secondary break-words`.
  */
+/** Upstream `_z` on the panels popup: children that bleed by pad-xl (the consent dialog's details) meet the 16px pad. */
+const PANELS_PAD_XL_CLASS = "[--cds-pad-xl:var(--cds-pad-lg)]";
 const PANELS_BODY_CLASS = `${DIALOG_BODY_CLASS} p-4 m-[var(--ring-inner)]`;
 const PANELS_BAND_CLASS =
 	"-mx-4 first:-mt-4 mb-1 flex shrink-0 items-center gap-1 self-stretch justify-self-stretch min-h-12 panels-fine:min-h-11 ps-4 pe-2 py-2 pointer-events-none";
@@ -139,7 +141,7 @@ export const ConfirmDialog = memo(function ConfirmDialog({
 						initialFocus={initialFocus === "confirm" ? confirmRef : cancelRef}
 						data-cds="ConfirmationDialog"
 						data-cds-fizzy={panels ? "" : undefined}
-						className={panels ? popupClass : `${popupClass} p-6`}
+						className={panels ? `${popupClass} ${PANELS_PAD_XL_CLASS}` : `${popupClass} p-6`}
 					>
 						{panels ? (
 							<div className={PANELS_BODY_CLASS}>

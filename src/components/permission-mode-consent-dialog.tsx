@@ -19,9 +19,18 @@ import {bidiIsolatedText, bidiRuns, visibleSingleLine} from "../lib/visible-text
 import {ConfirmDialog} from "./confirm-dialog";
 import {ExternalTextLink} from "./external-text-link";
 
-/** Upstream c2d1aeb56's scroll region class after tailwind-merge (verified live 2026-11-05). */
+/*
+ * Upstream cbf7370a7 (live 2026-11-21) after tailwind-merge. The "Workspace details" region bleeds to the dialog's
+ * pad-xl edges and scrolls when the dialog is short; inside it the path sits in a tinted alpha-1 box that draws the
+ * focus ring for its own scroll region. Upstream's `--cds-leading-code` is local `--upstream-leading-code`.
+ */
+const REGION_CLASS =
+	"scroll-fade-y focus-visible:outline-hidden -mx-pad-xl -mb-pad-md flex min-h-9 flex-col overflow-y-auto px-xl pb-md scroll-fade-size-2 supports-[min-height:calc-size(auto,size)]:min-h-[calc-size(min-content,min(size,2.25rem))] focus-visible:shadow-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-fill-accent focus-visible:-outline-offset-2 focus-visible:scroll-fade-hide-top focus-visible:scroll-fade-hide-bottom";
+const FOLDER_CLASS = "mt-3 flex min-h-[calc-size(min-content,min(size,2*var(--upstream-leading-code)))] flex-col";
+const BOX_CLASS =
+	"-mt-pad-sm rounded-t pt-sm has-[>:focus-visible]:shadow-focus has-[>:focus-visible]:outline-hidden flex min-h-0 flex-col -mx-pad-md bg-alpha-1 px-md -mb-pad-sm rounded-b pb-sm";
 const PATH_CLASS =
-	"scroll-fade-y focus-visible:outline-hidden mt-3 max-h-24 overflow-y-auto font-mono-ui text-code text-primary break-all focus-visible:shadow-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-fill-accent focus-visible:-outline-offset-2 focus-visible:scroll-fade-hide-top focus-visible:scroll-fade-hide-bottom";
+	"scroll-fade-y focus-visible:outline-hidden font-mono-ui text-code text-primary break-all max-h-24 scroll-my-3 overflow-y-auto focus-visible:shadow-none focus-visible:scroll-fade-hide-top focus-visible:scroll-fade-hide-bottom";
 
 export interface PendingConsent
 {
@@ -30,14 +39,13 @@ export interface PendingConsent
 }
 
 /**
- * Upstream's workspace folder block: the path on one visible line, RTL runs isolated, and a focusable "Workspace
- * folder" group only while it overflows its four lines.
+ * Upstream's scroll region props: a focusable labelled group only while its content overflows, scrolled into view
+ * on keyboard focus.
  */
-function WorkspacePath({workspace}: {workspace: string})
+function useOverflowGroup(label: string, content: string)
 {
 	const ref = useRef<HTMLDivElement>(null);
 	const [overflows, setOverflows] = useState(false);
-	const runs = bidiRuns(visibleSingleLine(workspace));
 	useLayoutEffect(() =>
 	{
 		const element = ref.current;
@@ -54,44 +62,86 @@ function WorkspacePath({workspace}: {workspace: string})
 		{
 			observer.disconnect();
 		};
-	}, [workspace]);
-	return (
-		<div
-			ref={ref}
-			data-fixed-code-size=""
-			dir="ltr"
-			title={bidiIsolatedText(runs)}
-			className={PATH_CLASS}
-			{...(overflows
-				?
+	}, [content]);
+	const groupProps = overflows
+		?
+			{
+				tabIndex: 0,
+				role: "group",
+				"aria-label": label,
+				onFocus: (event: React.FocusEvent<HTMLDivElement>) =>
+				{
+					if (event.currentTarget.matches(":focus-visible"))
 					{
-						tabIndex: 0,
-						role: "group",
-						"aria-label": "Workspace folder",
-						onFocus: (event: React.FocusEvent<HTMLDivElement>) =>
-						{
-							if (event.currentTarget.matches(":focus-visible"))
+						event.currentTarget.scrollIntoView(
 							{
-								event.currentTarget.scrollIntoView(
-									{
-										block: "nearest",
-									},
-								);
-							}
-						},
+								block: "nearest",
+							},
+						);
 					}
-				: {})}
-		>
-			{runs.map((run, index) =>
-				run.rtl ? (
-					// eslint-disable-next-line react/no-array-index-key -- runs have no identity beyond their order
-					<bdi key={index} dir="rtl">
-						{run.text}
-					</bdi>
-				) : (
-					run.text
-				),
-			)}
+				},
+			}
+		: {};
+	return {
+		ref,
+		groupProps,
+	};
+}
+
+/**
+ * Upstream's workspace folder block: the path on one visible line in a tinted box, RTL runs isolated, and a
+ * focusable "Workspace folder" group only while it overflows its four lines.
+ */
+function WorkspacePath({workspace}: {workspace: string})
+{
+	const runs = bidiRuns(visibleSingleLine(workspace));
+	const {ref, groupProps} = useOverflowGroup("Workspace folder", workspace);
+	return (
+		<div className={FOLDER_CLASS}>
+			<div className={BOX_CLASS}>
+				<div
+					ref={ref}
+					data-fixed-code-size=""
+					dir="ltr"
+					title={bidiIsolatedText(runs)}
+					className={PATH_CLASS}
+					{...groupProps}
+				>
+					{runs.map((run, index) =>
+						run.rtl ? (
+							// eslint-disable-next-line react/no-array-index-key -- runs have no identity beyond their order
+							<bdi key={index} dir="rtl">
+								{run.text}
+							</bdi>
+						) : (
+							run.text
+						),
+					)}
+				</div>
+			</div>
+		</div>
+	);
+}
+
+/** Upstream's "Workspace details" region: the folder and the security footnote, scrolling when the dialog is short. */
+function WorkspaceDetails({workspace, footnoteLead}: {workspace: string; footnoteLead: string})
+{
+	const {ref, groupProps} = useOverflowGroup("Workspace details", workspace);
+	return (
+		<div ref={ref} data-fixed-code-size="" className={REGION_CLASS} {...groupProps}>
+			{workspace !== "" && <WorkspacePath workspace={workspace} />}
+			<p className="mt-3 text-footnote text-secondary">
+				{footnoteLead}
+				<ExternalTextLink
+					href={PERMISSION_SECURITY_GUIDE_URL}
+					rel="noopener"
+					className="cds-reset text-link-inherit inline cursor-pointer"
+					data-inherit-color=""
+				>
+					security guide
+				</ExternalTextLink>
+				{" for details."}
+			</p>
 		</div>
 	);
 }
@@ -149,14 +199,7 @@ export function PermissionModeConsentDialog({
 				onConfirm();
 			}}
 		>
-			{workspace !== "" && <WorkspacePath workspace={workspace} />}
-			<p className="mt-3 text-footnote text-muted-as-secondary">
-				{copy.footnoteLead}
-				<ExternalTextLink href={PERMISSION_SECURITY_GUIDE_URL} rel="noopener">
-					security guide
-				</ExternalTextLink>
-				{" for details."}
-			</p>
+			<WorkspaceDetails workspace={workspace} footnoteLead={copy.footnoteLead} />
 		</ConfirmDialog>
 	);
 }
