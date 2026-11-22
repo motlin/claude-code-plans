@@ -28,9 +28,37 @@ class FakeHotChannel
 	}
 }
 
+class FakeSocket
+{
+	written: string[] = [];
+	ended = false;
+
+	end(data: string): void
+	{
+		this.written.push(data);
+		this.ended = true;
+	}
+}
+
+function upgradeContext(url: string)
+{
+	return {
+		node:
+		{
+			req:
+			{
+				url,
+			},
+			socket: new FakeSocket(),
+			head: Buffer.alloc(0),
+		},
+	};
+}
+
 function fakeServer()
 {
 	const dispatched: string[] = [];
+	const upgraded: string[] = [];
 	const nitroHot = new FakeHotChannel();
 	const ssrHot = new FakeHotChannel();
 	const nitro =
@@ -40,6 +68,14 @@ function fakeServer()
 		{
 			dispatched.push(new URL(request.url).pathname);
 			return Promise.resolve(new Response("ok"));
+		},
+		devServer:
+		{
+			upgrade: async (context: ReturnType<typeof upgradeContext>) =>
+			{
+				upgraded.push(context.node.req.url);
+				return Promise.resolve();
+			},
 		},
 	};
 	const server =
@@ -59,6 +95,7 @@ function fakeServer()
 		nitroHot,
 		ssrHot,
 		dispatched,
+		upgraded,
 	};
 }
 
@@ -81,27 +118,32 @@ describe("holdNitroRequestsUntilReady", () =>
 
 	it("holds a request that arrives while the server environments are still loading until both announce themselves", async () =>
 	{
-		const {server, nitro, nitroHot, ssrHot, dispatched} = fakeServer();
+		const {server, nitro, nitroHot, ssrHot, dispatched, upgraded} = fakeServer();
 		holdNitroRequestsUntilReady().configureServer(server);
 
+		// A WebSocket upgrade bypasses dispatchFetch; nitro's worker drops one that arrives before its entry loads.
 		const response = nitro.dispatchFetch(new Request("http://localhost/api/events"));
+		const upgrade = nitro.devServer.upgrade(upgradeContext("/api/herdr/observe"));
 		await vi.advanceTimersByTimeAsync(1000);
 		nitroHot.emit(DEV_ENV_READY_EVENT);
 		await vi.advanceTimersByTimeAsync(1000);
-		expect(dispatched).toStrictEqual([]);
+		expect([dispatched, upgraded]).toStrictEqual([[], []]);
 
 		ssrHot.emit(DEV_ENV_READY_EVENT);
 		const {status} = await response;
+		await upgrade;
 
 		expect(
 			{
 				status,
 				dispatched,
+				upgraded,
 			},
 		).toStrictEqual(
 			{
 				status: 200,
 				dispatched: ["/api/events"],
+				upgraded: ["/api/herdr/observe"],
 			},
 		);
 	});
@@ -110,7 +152,7 @@ describe("holdNitroRequestsUntilReady", () =>
 	{
 		const error = vi.spyOn(console, "error").mockImplementation(() => {});
 		const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-		const {server, nitro, dispatched} = fakeServer();
+		const {server, nitro, dispatched, upgraded} = fakeServer();
 		holdNitroRequestsUntilReady(
 			{
 				timeoutMs: 5000,
@@ -123,17 +165,24 @@ describe("holdNitroRequestsUntilReady", () =>
 		{
 			answered = true;
 		});
+		const context = upgradeContext("/api/shell/key");
+		const upgrade = nitro.devServer.upgrade(context);
 		await vi.advanceTimersByTimeAsync(4999);
-		expect(answered).toBe(false);
+		expect([answered, context.node.socket.ended]).toStrictEqual([false, false]);
 		await vi.advanceTimersByTimeAsync(1);
 		const response = await pending;
+		await upgrade;
 
+		const body = "Dev server is starting; retry shortly.\n";
 		expect(
 			{
 				status: response.status,
 				retryAfter: response.headers.get("retry-after"),
 				cacheControl: response.headers.get("cache-control"),
 				dispatched,
+				upgraded,
+				refusal: context.node.socket.written,
+				ended: context.node.socket.ended,
 				logged: [...error.mock.calls, ...warn.mock.calls],
 			},
 		).toStrictEqual(
@@ -142,6 +191,12 @@ describe("holdNitroRequestsUntilReady", () =>
 				retryAfter: "1",
 				cacheControl: "no-store",
 				dispatched: [],
+				upgraded: [],
+				refusal: [
+					"HTTP/1.1 503 Service Unavailable\r\nContent-Type: text/plain; charset=utf-8\r\nCache-Control: no-store\r\nRetry-After: 1\r\n" +
+						`Content-Length: ${body.length}\r\nConnection: close\r\n\r\n${body}`,
+				],
+				ended: true,
 				logged: [],
 			},
 		);

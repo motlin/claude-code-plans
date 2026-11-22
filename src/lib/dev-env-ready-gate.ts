@@ -7,6 +7,12 @@
 // The entries announce themselves over their environment's hot channel once loaded. Until every environment has,
 // requests wait here on the host instead of reaching the worker, and any still waiting after the timeout get a
 // quiet 503 with Retry-After that the client's retries and SSE reconnect back off on.
+//
+// WebSocket upgrades skip dispatchFetch: nitro hands them to its env runner's upgrade(), which proxies them to the
+// worker as soon as the worker listens. The worker's upgrade handler silently drops any upgrade that arrives before
+// the nitro entry has loaded (it neither answers nor closes the socket), so a socket opened in that window, which a
+// vite restart reopens every time, hung until the client gave up. Upgrades wait on the same gate, and one still
+// waiting after the timeout is refused with the same 503.
 
 export const DEV_ENV_READY_EVENT = "ccp:dev-env-ready";
 export const DEV_ENV_READY_QUERY = "ccp:dev-env-ready?";
@@ -20,17 +26,32 @@ interface HotChannelLike
 	on(event: string, listener: () => void): void;
 }
 
-interface NitroEnvironmentLike
+interface UpgradeContext
+{
+	node:
+	{
+		socket:
+		{
+			end(data: string): void;
+		};
+	};
+}
+
+interface NitroEnvironmentLike<Context extends UpgradeContext>
 {
 	hot: HotChannelLike;
 	dispatchFetch(request: Request): Promise<Response>;
+	devServer?:
+	{
+		upgrade?: (context: Context) => Promise<void>;
+	};
 }
 
-interface DevServerLike
+interface DevServerLike<Context extends UpgradeContext>
 {
 	environments:
 	{
-		nitro?: NitroEnvironmentLike;
+		nitro?: NitroEnvironmentLike<Context>;
 		ssr?:
 		{
 			hot: HotChannelLike;
@@ -42,7 +63,7 @@ interface DevPlugin
 {
 	name: string;
 	apply: "serve";
-	configureServer(server: DevServerLike): void;
+	configureServer<Context extends UpgradeContext>(server: DevServerLike<Context>): void;
 }
 
 /**
@@ -65,20 +86,36 @@ export function announceThisDevEnvReady(): void
 	announceDevEnvReady(import.meta.hot);
 }
 
+const UNAVAILABLE_BODY = "Dev server is starting; retry shortly.\n";
+const UNAVAILABLE_HEADERS =
+{
+	"Content-Type": "text/plain; charset=utf-8",
+	"Cache-Control": "no-store",
+	"Retry-After": "1",
+};
+
 function unavailable(): Response
 {
 	return new Response(
-		"Dev server is starting; retry shortly.\n",
+		UNAVAILABLE_BODY,
 		{
 			status: 503,
-			headers:
-			{
-				"Content-Type": "text/plain; charset=utf-8",
-				"Cache-Control": "no-store",
-				"Retry-After": "1",
-			},
+			headers: UNAVAILABLE_HEADERS,
 		},
 	);
+}
+
+/** The same 503 as {@link unavailable}, written raw to an upgrade's socket, which then closes. */
+function refuseUpgrade(context: UpgradeContext): void
+{
+	const headers = Object.entries(
+		{
+			...UNAVAILABLE_HEADERS,
+			"Content-Length": String(Buffer.byteLength(UNAVAILABLE_BODY)),
+			Connection: "close",
+		},
+	).map(([name, value]) => `${name}: ${value}\r\n`);
+	context.node.socket.end(`HTTP/1.1 503 Service Unavailable\r\n${headers.join("")}\r\n${UNAVAILABLE_BODY}`);
 }
 
 /** Holds requests bound for nitro's worker until every server environment's entry has loaded. */
@@ -121,28 +158,35 @@ export function holdNitroRequestsUntilReady({
 			// After one timeout, stop holding: if an announcement was missed (or the entry failed to load, which
 			// nitro reports itself), waiting longer would only put every request behind the same timeout.
 			let gaveUp = false;
-			const dispatchFetch = nitro.dispatchFetch.bind(nitro);
-			nitro.dispatchFetch = async (request) =>
+			/** Resolves true once the gate opens (or was given up on), false when this wait times out. */
+			const opens = async (): Promise<boolean> =>
 			{
-				if (waiting.size > 0 && !gaveUp)
+				if (waiting.size === 0 || gaveUp) return true;
+				let timer: ReturnType<typeof setTimeout> | undefined;
+				const timedOut = new Promise<false>((resolve) =>
 				{
-					let timer: ReturnType<typeof setTimeout> | undefined;
-					const timedOut = new Promise<true>((resolve) =>
+					timer = setTimeout(() =>
 					{
-						timer = setTimeout(() =>
-						{
-							resolve(true);
-						}, timeoutMs);
-					});
-					const timeout = await Promise.race([ready.then(() => false), timedOut]);
-					clearTimeout(timer);
-					if (timeout)
-					{
-						gaveUp = true;
-						return unavailable();
-					}
-				}
-				return dispatchFetch(request);
+						resolve(false);
+					}, timeoutMs);
+				});
+				const opened = await Promise.race([ready.then(() => true), timedOut]);
+				clearTimeout(timer);
+				if (!opened) gaveUp = true;
+				return opened;
+			};
+
+			const dispatchFetch = nitro.dispatchFetch.bind(nitro);
+			nitro.dispatchFetch = async (request) => ((await opens()) ? dispatchFetch(request) : unavailable());
+
+			// nitro looks up its runner's upgrade() on every upgrade, so replacing it here holds them too.
+			const runner = nitro.devServer;
+			const upgrade = runner?.upgrade;
+			if (runner === undefined || upgrade === undefined) return;
+			runner.upgrade = async (context) =>
+			{
+				if (await opens()) return upgrade(context);
+				refuseUpgrade(context);
 			};
 		},
 	};
