@@ -1838,32 +1838,13 @@ describe("Composer while working", () =>
 		};
 	}
 
-	it("probes upstream's full working placeholder on Mac and keeps it while it fits", () =>
+	it("probes and shows only upstream's compact queue hint on Mac while it fits", () =>
 	{
-		expect(workingHint(MAC_UA, [231, 231])).toStrictEqual(
+		expect(workingHint(MAC_UA, [94, 95])).toStrictEqual(
 			{
 				probes: [
 					{
-						text: "⏎ to send, ⌘⏎ to queue for later",
-						hidden: "true",
-						className: PROBE_CLASS,
-					},
-				],
-				visible: "⏎ to send, ⌘⏎ to queue for later",
-				ariaPlaceholder: "⏎ to send, ⌘⏎ to queue for later",
-				description: "Enter to send, Command+Enter to queue for later",
-				title: null,
-			},
-		);
-	});
-
-	it("swaps to upstream's compact working placeholder on Mac, with the full text as title, when it overflows", () =>
-	{
-		expect(workingHint(MAC_UA, [232, 231])).toStrictEqual(
-			{
-				probes: [
-					{
-						text: "⏎ to send, ⌘⏎ to queue for later",
+						text: "⌘⏎ to queue",
 						hidden: "true",
 						className: PROBE_CLASS,
 					},
@@ -1871,37 +1852,37 @@ describe("Composer while working", () =>
 				visible: "⌘⏎ to queue",
 				ariaPlaceholder: "⌘⏎ to queue",
 				description: "Enter to send, Command+Enter to queue for later",
-				title: "⏎ to send, ⌘⏎ to queue for later",
-			},
-		);
-	});
-
-	it("spells upstream's working placeholder with +-joined Enter and Ctrl off Mac", () =>
-	{
-		expect(workingHint(LINUX_UA, [231, 231])).toStrictEqual(
-			{
-				probes: [
-					{
-						text: "Enter to send, Ctrl+Enter to queue for later",
-						hidden: "true",
-						className: PROBE_CLASS,
-					},
-				],
-				visible: "Enter to send, Ctrl+Enter to queue for later",
-				ariaPlaceholder: "Enter to send, Ctrl+Enter to queue for later",
-				description: "Enter to send, Ctrl+Enter to queue for later",
 				title: null,
 			},
 		);
 	});
 
-	it("shows upstream's compact Ctrl+Enter working placeholder off Mac when the full one overflows", () =>
+	it("ellipsises upstream's compact queue hint on Mac, with it as title, when it overflows", () =>
 	{
-		expect(workingHint(LINUX_UA, [300, 200])).toStrictEqual(
+		expect(workingHint(MAC_UA, [95, 90])).toStrictEqual(
 			{
 				probes: [
 					{
-						text: "Enter to send, Ctrl+Enter to queue for later",
+						text: "⌘⏎ to queue",
+						hidden: "true",
+						className: PROBE_CLASS,
+					},
+				],
+				visible: "⌘⏎ to queue",
+				ariaPlaceholder: "⌘⏎ to queue",
+				description: "Enter to send, Command+Enter to queue for later",
+				title: "⌘⏎ to queue",
+			},
+		);
+	});
+
+	it("spells upstream's compact queue hint with +-joined Ctrl off Mac", () =>
+	{
+		expect(workingHint(LINUX_UA, [94, 95])).toStrictEqual(
+			{
+				probes: [
+					{
+						text: "Ctrl+Enter to queue",
 						hidden: "true",
 						className: PROBE_CLASS,
 					},
@@ -1909,7 +1890,26 @@ describe("Composer while working", () =>
 				visible: "Ctrl+Enter to queue",
 				ariaPlaceholder: "Ctrl+Enter to queue",
 				description: "Enter to send, Ctrl+Enter to queue for later",
-				title: "Enter to send, Ctrl+Enter to queue for later",
+				title: null,
+			},
+		);
+	});
+
+	it("titles upstream's compact Ctrl+Enter queue hint off Mac when it overflows", () =>
+	{
+		expect(workingHint(LINUX_UA, [300, 200])).toStrictEqual(
+			{
+				probes: [
+					{
+						text: "Ctrl+Enter to queue",
+						hidden: "true",
+						className: PROBE_CLASS,
+					},
+				],
+				visible: "Ctrl+Enter to queue",
+				ariaPlaceholder: "Ctrl+Enter to queue",
+				description: "Enter to send, Ctrl+Enter to queue for later",
+				title: "Ctrl+Enter to queue",
 			},
 		);
 	});
@@ -2012,7 +2012,7 @@ describe("Composer while working", () =>
 					},
 				},
 			);
-			expect(textarea.getAttribute("aria-placeholder")).toBe("Enter to send, Ctrl+Enter to queue for later");
+			expect(textarea.getAttribute("aria-placeholder")).toBe("Ctrl+Enter to queue");
 		}
 		finally
 		{

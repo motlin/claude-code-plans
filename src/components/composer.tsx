@@ -1915,8 +1915,8 @@ export function Composer({
 				isWindows,
 			},
 		);
-	// Upstream's placeholder pair: bash mode and the working hint each have a compact form, and the editor's
-	// `aria-description` carries the full hint (spoken for the working one).
+	// Upstream's placeholder pair: bash mode has a compact form and its full hint as `aria-description`; the working
+	// hint is the compact queue hint at every width (it only ellipsises), described by the spoken full hint.
 	const working = workingPlaceholders(isMac);
 	const hint = bashMode
 		?
@@ -1928,7 +1928,7 @@ export function Composer({
 		: showWorking
 			?
 				{
-					full: working.full,
+					full: working.compact,
 					compact: working.compact,
 					description: working.spoken,
 				}
@@ -1938,19 +1938,19 @@ export function Composer({
 	const [fitProbe, setFitProbe] = useState<HTMLDivElement | null>(null);
 	const compact = useIsOverflowing(hint === undefined ? null : fitProbe, fullPlaceholder);
 	const placeholder = hint !== undefined && compact ? hint.compact : fullPlaceholder;
-	// Upstream's editor hint: the full text as aria-description, and as title while the compact text shows.
+	// Upstream's editor hint: the description as aria-description, and the full text as title while it overflows.
 	const hintProps =
 		hint === undefined
 			? {}
 			:
 				{
 					"aria-description": hint.description,
-					...(placeholder === hint.full
-						? {}
-						:
+					...(compact
+						?
 							{
 								title: hint.full,
-							}),
+							}
+						: {}),
 				};
 	// The textarea's selection end, so a selection spanning exactly one chip paints it selected.
 	const [selectionEnd, setSelectionEnd] = useState(0);
