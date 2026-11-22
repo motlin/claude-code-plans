@@ -4,6 +4,7 @@ import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {ChangesFindingsBar} from "../src/components/changes/changes-findings-bar";
+import {cdsButtonClass} from "../src/components/ui/cds-button";
 import {clearDiffScrollTarget, diffScrollTarget} from "../src/lib/diff-scroll-target";
 import type {ReviewFinding} from "../src/lib/review-diff";
 import {clearReviewFindingCursor, currentReviewFinding} from "../src/lib/review-finding-cursor";
@@ -118,6 +119,13 @@ describe("ChangesFindingsBar (upstream c9bd7af9c zw)", () =>
 				status: screen.getByRole("status").className,
 				text: screen.getByRole("status").textContent,
 				spark: root?.querySelector('svg[data-cds="Spark"]')?.getAttribute("width"),
+				sparkClass: root?.querySelector('svg[data-cds="Spark"]')?.getAttribute("class"),
+				apply: screen.getByRole(
+					"button",
+					{
+						name: "Apply fixes",
+					},
+				).className,
 				buttons: [...(root?.querySelectorAll("button") ?? [])].map(
 					(element) => element.getAttribute("aria-label") ?? element.textContent,
 				),
@@ -132,6 +140,8 @@ describe("ChangesFindingsBar (upstream c9bd7af9c zw)", () =>
 				status: "text-body text-muted-as-secondary whitespace-nowrap tabular-nums",
 				text: "Finding 1 of 1",
 				spark: "16",
+				sparkClass: "spark shrink-0 mx-0.5",
+				apply: cdsButtonClass("secondary"),
 				buttons: ["Apply fixes", "Close findings bar"],
 			},
 		);

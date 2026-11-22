@@ -22,8 +22,8 @@ const TOOLBAR_CLASS =
 const WRAP_CLASS =
 	"flex min-w-0 flex-1 items-center gap-[4px] min-h-control flex-wrap ps-[calc(0.25rem*var(--cds-rem-scale,1))]";
 
-/** Upstream `Rw` (a 5px radius: r4) on a secondary `size="sm"` cds Button. */
-const APPLY_CLASS = `${cdsButtonClass("secondary", "sm")} rounded-r4 text-footnote px-[6px] text-secondary`;
+/** Upstream's live bar: a plain secondary cds Button at the default size. */
+const APPLY_CLASS = cdsButtonClass("secondary");
 
 /** Upstream cds Button ghost iconOnly at the default size: an h-control square. */
 const ICON_BUTTON_CLASS = `flex h-control aspect-square shrink-0 cursor-pointer items-center justify-center rounded-[var(--upstream-radius)] text-primary hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus ${CDS_BUTTON_DISABLED} ${CDS_ICON_ONLY_DISABLED}`;
@@ -185,7 +185,7 @@ export function ChangesFindingsBar({
 				<div className="flex min-w-0 flex-1 items-center gap-1 self-stretch">
 					<div className={WRAP_CLASS}>
 						<div className="flex h-control items-center gap-1 self-start">
-							<Spark size={16} />
+							<Spark size={16} className="mx-0.5" />
 							<span
 								role="status"
 								aria-live="polite"
