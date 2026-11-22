@@ -1015,7 +1015,24 @@ describe("TileHost", () =>
 		);
 	});
 
-	it("maximises the expanded pane over the whole window with a 9px inset", () =>
+	function expandedSlotState()
+	{
+		const section = screen.getByText("Test pane body").closest<HTMLElement>("[data-pane-root]");
+		if (section === null) throw new Error("expanded pane missing");
+		const slot = section.closest<HTMLElement>("[data-pane-expanded]");
+		if (slot === null) throw new Error("expanded slot missing");
+		return {
+			fixed: slot.classList.contains("fixed"),
+			inset9: slot.classList.contains("inset-[9px]"),
+			z40: slot.classList.contains("z-40"),
+			relative: slot.classList.contains("relative"),
+			flex: slot.style.flex,
+			radius: section.classList.contains("rounded-r7"),
+			shadow: section.classList.contains("shadow-panel-sm"),
+		};
+	}
+
+	it("renders the expanded pane in flow filling the tiles viewport, flat, as upstream cc43287c9 does", () =>
 	{
 		renderHost("session-a");
 		openTestPane();
@@ -1028,24 +1045,116 @@ describe("TileHost", () =>
 		);
 		const haspopup = expand.getAttribute("aria-haspopup");
 		fireEvent.click(expand);
-		const overlayClasses =
-			screen
-				.getByText("Test pane body")
-				.closest("[data-pane-root]")
-				?.closest("[data-pane-expanded]")
-				?.className.split(" ") ?? [];
 
 		expect(
 			{
 				haspopup,
-				fixed: overlayClasses.includes("fixed"),
-				inset: overlayClasses.includes("inset-[9px]"),
+				...expandedSlotState(),
 			},
 		).toStrictEqual(
 			{
 				haspopup: "dialog",
-				fixed: true,
-				inset: true,
+				fixed: false,
+				inset9: false,
+				z40: false,
+				relative: true,
+				flex: "1 1 0px",
+				radius: false,
+				shadow: false,
+			},
+		);
+	});
+
+	it("grows the column stack holding the expanded pane to flex 1 1 0px", () =>
+	{
+		const unregisterFiles = registerPane(
+			"files",
+			{
+				title: "Files",
+				render: () => <p>Files body</p>,
+			},
+		);
+		localStorage.setItem(
+			"ccb.paneLayout.v1",
+			JSON.stringify(
+				{
+					"session-a":
+					{
+						root:
+						{
+							kind: "stack",
+							direction: "row",
+							flex: 1,
+							children: [
+								{
+									kind: "tile",
+									tileId: "chat",
+									flex: 2,
+								},
+								{
+									kind: "stack",
+									direction: "column",
+									flex: 3,
+									children: [
+										{
+											kind: "tile",
+											tileId: "files",
+											flex: 1,
+										},
+										{
+											kind: "tile",
+											tileId: "plan",
+											flex: 1,
+										},
+									],
+								},
+							],
+						},
+						expanded: null,
+						focused: "plan",
+					},
+				},
+			),
+		);
+		renderHost("session-a");
+		fireEvent.click(
+			within(
+				screen.getByRole(
+					"region",
+					{
+						name: "Test pane",
+					},
+				),
+			).getByRole(
+				"button",
+				{
+					name: "Expand",
+				},
+			),
+		);
+		const column = document.querySelector<HTMLElement>("[data-tile-stack=column]");
+		unregisterFiles();
+
+		expect(
+			{
+				column: column?.style.flex,
+				wrapper: column?.parentElement?.style.flex,
+				slot: expandedSlotState(),
+			},
+		).toStrictEqual(
+			{
+				column: "1 1 0px",
+				wrapper: "1 1 0px",
+				slot:
+				{
+					fixed: false,
+					inset9: false,
+					z40: false,
+					relative: true,
+					flex: "1 1 0px",
+					radius: false,
+					shadow: false,
+				},
 			},
 		);
 	});
@@ -2655,7 +2764,8 @@ describe("TileHost on a phone", () =>
 		if (slot === null) throw new Error("pane slot missing");
 		return {
 			phone: slot.hasAttribute("data-pane-phone"),
-			fullWidth: ["fixed", "inset-0", "w-full"].every((name) => slot.classList.contains(name)),
+			// Upstream cc43287c9 at 390px keeps the expanded pane in flow: no fixed sheet, no h-dvh.
+			fixed: ["fixed", "h-dvh"].some((name) => slot.classList.contains(name)),
 			paneMin: slot.classList.contains("min-w-[280px]"),
 			sticky: slot.classList.contains("sticky"),
 			separators: screen.queryAllByRole("separator").map((separator) => (
@@ -2693,7 +2803,7 @@ describe("TileHost on a phone", () =>
 				pane:
 				{
 					phone: true,
-					fullWidth: false,
+					fixed: false,
 					paneMin: true,
 					sticky: false,
 					separators: [
@@ -2878,7 +2988,7 @@ describe("TileHost on a phone", () =>
 		expect(paneSlotState()).toStrictEqual(
 			{
 				phone: true,
-				fullWidth: true,
+				fixed: false,
 				paneMin: false,
 				sticky: false,
 				separators: [],
@@ -3182,7 +3292,7 @@ describe("TileHost on a phone", () =>
 				pane:
 				{
 					phone: false,
-					fullWidth: false,
+					fixed: false,
 					paneMin: false,
 					sticky: false,
 					separators: [
@@ -5172,6 +5282,54 @@ describe("TileHost wide title row (upstream shared-20 pv7 / xk Fp, cc43287c9 tFe
 				files: undefined,
 				rowClass: "absolute inset-x-0 top-0 px-2",
 				rowZ: "2",
+			},
+		);
+
+		// Upstream cc43287c9: the titlebar leaves with the hidden chat tile, so it never paints over the in-flow expanded pane.
+		const rowState = () =>
+		{
+			const row = document.querySelector<HTMLElement>("[data-wide-title-row]");
+			return {
+				visibility: row?.style.visibility,
+				inert: row?.hasAttribute("inert"),
+			};
+		};
+		const toggle = (name: "Expand" | "Collapse") =>
+		{
+			fireEvent.click(
+				within(
+					screen.getByRole(
+						"region",
+						{
+							name: "Test pane",
+						},
+					),
+				).getByRole(
+					"button",
+					{
+						name,
+					},
+				),
+			);
+			return rowState();
+		};
+		expect(
+			{
+				expanded: toggle("Expand"),
+				collapsed: toggle("Collapse"),
+			},
+		).toStrictEqual(
+			{
+				expanded:
+				{
+					visibility: "hidden",
+					inert: true,
+				},
+				collapsed:
+				{
+					visibility: "",
+					inert: false,
+				},
 			},
 		);
 	});

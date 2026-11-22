@@ -119,10 +119,14 @@ const PHONE_PANE_MIN_CLASS = "min-w-[280px]";
 const PHONE_CHAT_MIN_CLASS = "min-w-[100px]";
 /** Upstream `Ae` with no measured box: min(minTileBasePx, Infinity − 1). */
 const UNMEASURED_MIN_HEIGHT_PX = 100;
-/** Below 640px an expanded pane covers the viewport. */
-const PHONE_EXPANDED_SLOT_CLASSES = "fixed inset-0 z-40 w-full h-dvh";
-/** Upstream's expanded pane: maximised over the sidebar and titlebar, 9px in from the window edge. */
-const EXPANDED_SLOT_CLASSES = "fixed inset-[9px] z-40";
+/**
+ * Upstream cc43287c9: the expanded pane stays in flow and fills the tiles viewport (the sidebar stays visible),
+ * and every stack on its path grows to `flex: 1 1 0px` while its siblings leave the flow hidden.
+ */
+const EXPANDED_FLEX_STYLE =
+{
+	flex: "1 1 0px",
+} as const satisfies CSSProperties;
 /**
  * Upstream ca67f2c9d `rt`: a tile kept mounted while another is expanded leaves the flow but keeps its box,
  * and content-visibility keeps its rendering state (scroll offsets) without painting it.
@@ -1097,11 +1101,9 @@ function PaneSurface({kind, definition, host}: {kind: PaneKind; definition: Pane
 			data-perf-screen={kind}
 			data-focus-region="pane"
 			aria-label={definition.title}
-			className={`relative isolate flex h-full min-w-0 flex-col bg-surface-2 ${
-				// Upstream's line-mode tiles are flat: no radius, no card shadow (measured at 386px and 1032px, 2026-10-30).
-				// Only the desktop expanded overlay, floating 9px inside the window, keeps its card.
-				isExpanded && !host.phone ? "rounded-r7 shadow-panel-sm" : ""
-			}`}
+			// Upstream's line-mode tiles are flat: no radius, no card shadow (measured at 386px and 1032px, 2026-10-30),
+			// and the in-flow expanded pane is flat too (cc43287c9, 2026-11-21).
+			className="relative isolate flex h-full min-w-0 flex-col bg-surface-2"
 			style={codeSurfaceStyle(kind)}
 		>
 			<PaneCornersContext value={corners}>
@@ -1294,10 +1296,12 @@ function StackView({
 			style={
 				isRoot
 					? undefined
-					:
-						{
-							flex: `${stack.flex} 1 0`,
-						}
+					: holdsExpanded(stack, host)
+						? EXPANDED_FLEX_STYLE
+						:
+							{
+								flex: `${stack.flex} 1 0`,
+							}
 			}
 		>
 			{items}
@@ -1359,7 +1363,13 @@ function NodeView({
 								...style,
 								...HIDDEN_TILE_STYLE,
 							}
-						: style
+						: holdsExpanded(node, host)
+							?
+								{
+									...style,
+									...EXPANDED_FLEX_STYLE,
+								}
+							: style
 				}
 				{...(phone
 					?
@@ -1484,14 +1494,8 @@ function NodeView({
 			aheadKey={aheadKey}
 			shellClassName={overlay?.drawn ? "h-full tiles-overlay-shell" : "h-full"}
 			shellStyle={shellStyle}
-			className={
-				expanded
-					? `min-h-0 min-w-0 ${host.phone ? PHONE_EXPANDED_SLOT_CLASSES : EXPANDED_SLOT_CLASSES}`
-					: layered
-						? `${slotClass} z-[1]`
-						: slotClass
-			}
-			style={expanded ? undefined : overlay === null ? style : overlaySlotStyle(style, overlay.drawn)}
+			className={expanded ? "relative min-h-0 min-w-0" : layered ? `${slotClass} z-[1]` : slotClass}
+			style={expanded ? EXPANDED_FLEX_STYLE : overlay === null ? style : overlaySlotStyle(style, overlay.drawn)}
 			hidden={hidden}
 			phone={expanded ? host.phone : phone}
 			{...(expanded
@@ -1502,6 +1506,12 @@ function NodeView({
 				: {})}
 		/>
 	);
+}
+
+/** Whether the expanded tile sits somewhere inside this stack. */
+function holdsExpanded(stack: LayoutNode, host: InternalHost): boolean
+{
+	return host.expanded !== null && tileIdsOf(stack).includes(host.expanded);
 }
 
 /**
@@ -1732,6 +1742,12 @@ const CONTENTS_STYLE =
 const WIDE_ROW_STYLE =
 {
 	zIndex: 2,
+} as const satisfies CSSProperties;
+/** Upstream cc43287c9: the titlebar leaves with the hidden chat, so it never paints over an expanded pane. */
+const HIDDEN_WIDE_ROW_STYLE =
+{
+	...WIDE_ROW_STYLE,
+	visibility: "hidden",
 } as const satisfies CSSProperties;
 
 const BELOW_WIDE_ROW_STYLE =
@@ -2288,7 +2304,7 @@ export function TileHost({
 							ref={setRowEl}
 							data-wide-title-row=""
 							className="absolute inset-x-0 top-0 px-2"
-							style={WIDE_ROW_STYLE}
+							style={hidden.has("chat") ? HIDDEN_WIDE_ROW_STYLE : WIDE_ROW_STYLE}
 							inert={hidden.has("chat")}
 						/>
 					)}
