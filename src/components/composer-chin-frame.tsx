@@ -49,6 +49,7 @@ export function ComposerChinFrame({open = true, leading, trailing, children, ...
 						{children}
 						{hasTrailing && (
 							<div
+								data-cds-part="chin-trailing"
 								className={
 									hasLeading
 										? COMPOSER_CHIN_TRAILING_CLASS

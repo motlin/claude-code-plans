@@ -116,7 +116,11 @@ describe("ComposerChinFrame", () =>
 			{
 				name,
 				row: row.className.replace(COMPOSER_CHIN_ROW_CLASS, "<row>"),
-				slots: Array.from(row.children, (child) => child.className),
+				slots: Array.from(row.children, (child) => (
+				{
+					className: child.className,
+					part: child.getAttribute("data-cds-part"),
+				})),
 			};
 			unmount();
 			return result;
@@ -127,15 +131,26 @@ describe("ComposerChinFrame", () =>
 				name: "both",
 				row: "<row> justify-between",
 				slots: [
-					"flex items-center self-start",
-					"ms-auto flex min-w-0 items-center gap-1 ps-2 [--upstream-text-body:calc(0.8125rem*var(--cds-rem-scale,1))] [--upstream-leading-body:calc(1.25rem*var(--cds-rem-scale,1))]",
+					{
+						className: "flex items-center self-start",
+						part: null,
+					},
+					{
+						className:
+							"ms-auto flex min-w-0 items-center gap-1 ps-2 [--upstream-text-body:calc(0.8125rem*var(--cds-rem-scale,1))] [--upstream-leading-body:calc(1.25rem*var(--cds-rem-scale,1))]",
+						part: "chin-trailing",
+					},
 				],
 			},
 			{
 				name: "trailing only",
 				row: "<row> @max-[24rem]:px-0 justify-between",
 				slots: [
-					"ms-auto flex min-w-0 items-center gap-1 ps-2 [--upstream-text-body:calc(0.8125rem*var(--cds-rem-scale,1))] [--upstream-leading-body:calc(1.25rem*var(--cds-rem-scale,1))] @max-[24rem]:ps-0 @max-[24rem]:[&_:is([data-cds=Button],[data-cds=ModelSelector])]:px-1",
+					{
+						className:
+							"ms-auto flex min-w-0 items-center gap-1 ps-2 [--upstream-text-body:calc(0.8125rem*var(--cds-rem-scale,1))] [--upstream-leading-body:calc(1.25rem*var(--cds-rem-scale,1))] @max-[24rem]:ps-0 @max-[24rem]:[&_:is([data-cds=Button],[data-cds=ModelSelector])]:px-1",
+						part: "chin-trailing",
+					},
 				],
 			},
 			{
