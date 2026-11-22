@@ -32,16 +32,36 @@ function preview(name: string)
 			name,
 		},
 	);
+	const root = figure.querySelector("diffs-container")?.shadowRoot;
 	return {
 		theme: figure.getAttribute("data-code-theme"),
-		background: figure.style.backgroundColor,
-		text: figure.textContent,
+		background: /--diffs-bg:([^;]*)/.exec(root?.querySelector("style[data-theme-css]")?.textContent ?? "")?.[1],
+		rows: [...(root?.querySelectorAll("[data-content] > [data-line]") ?? [])].map((row) => row.textContent),
 	};
+}
+
+class FakeResizeObserver
+{
+	observe()
+	{
+	}
+	unobserve()
+	{
+	}
+	disconnect()
+	{
+	}
+	takeRecords()
+	{
+		return [];
+	}
 }
 
 beforeEach(() =>
 {
 	installLocalStorage();
+	// The preview's pierre FileDiff observes its size, which jsdom lacks.
+	vi.stubGlobal("ResizeObserver", FakeResizeObserver);
 	// The Sessions rows load /api/claude-code-settings; keep them loading and off the network.
 	vi.stubGlobal(
 		"fetch",
@@ -103,7 +123,7 @@ describe("Appearance settings ▸ Code", () =>
 
 		await waitFor(() =>
 		{
-			expect(preview("Dark code theme preview").background).toBe("rgb(25, 25, 25)");
+			expect(preview("Dark code theme preview").background).toBe("#191919");
 		});
 		const before = preview("Dark code theme preview");
 
@@ -126,7 +146,7 @@ describe("Appearance settings ▸ Code", () =>
 
 		await waitFor(() =>
 		{
-			expect(preview("Dark code theme preview").background).toBe("rgb(46, 52, 64)");
+			expect(preview("Dark code theme preview").background).toBe("#2e3440ff");
 		});
 
 		expect(
@@ -141,14 +161,24 @@ describe("Appearance settings ▸ Code", () =>
 				before:
 				{
 					theme: "claude-dark",
-					background: "rgb(25, 25, 25)",
-					text: '1function greet(name: string) {2-  return "Hello, " + name;2+  return `Hello, ${name}!`;3}',
+					background: "#191919",
+					rows: [
+						"function greet(name: string) {",
+						'  return "Hello, " + name;',
+						"  return `Hello, ${name}!`;",
+						"}",
+					],
 				},
 				after:
 				{
 					theme: "nord",
-					background: "rgb(46, 52, 64)",
-					text: '1function greet(name: string) {2-  return "Hello, " + name;2+  return `Hello, ${name}!`;3}',
+					background: "#2e3440ff",
+					rows: [
+						"function greet(name: string) {",
+						'  return "Hello, " + name;',
+						"  return `Hello, ${name}!`;",
+						"}",
+					],
 				},
 				stored: "nord",
 				light: "claude-light",
@@ -156,7 +186,8 @@ describe("Appearance settings ▸ Code", () =>
 		);
 	});
 
-	it("lays out the theme grid and diff preview with upstream's comfortable classes", async () =>
+	// Upstream cda9efc49: the preview is a pierre FileDiff through ne() = Q(true, false), so rails, never the add button.
+	it("lays out the theme grid and draws the preview as a pierre diff with change rails", async () =>
 	{
 		await Promise.all([
 			import("../src/components/settings/code-theme-preview"),
@@ -165,62 +196,56 @@ describe("Appearance settings ▸ Code", () =>
 			requestTheme("claude-dark"),
 		]);
 		await renderAppearance();
-		await waitFor(() =>
-		{
-			expect(
-				screen.getByRole(
-					"figure",
-					{
-						name: "Light code theme preview",
-					},
-				).style.backgroundColor,
-			).not.toBe("");
-		});
-
-		const grid = document.querySelector('[data-settings-row="code-theme"]');
 		const figure = screen.getByRole(
 			"figure",
 			{
 				name: "Light code theme preview",
 			},
 		);
-		const rows = [...figure.children];
+		const grid = document.querySelector('[data-settings-row="code-theme"]');
 
-		expect(
-			{
-				grid: grid?.className,
-				columns: [...(grid?.children ?? [])].map((column) => column.className),
-				wrapper: figure.parentElement?.className,
-				numbers: rows.map((row) => row.firstElementChild?.className),
-				words: [...figure.querySelectorAll("[data-diff-word]")].map((word) => (
+		await waitFor(() =>
+		{
+			const host = figure.querySelector("diffs-container");
+			const root = host?.shadowRoot;
+			if (!root?.querySelector("[data-gutter] > [data-line-type]")) throw new Error("no rendered rows yet");
+			expect(
 				{
-					text: word.textContent,
-					className: word.className,
-				})),
-			},
-		).toStrictEqual(
-			{
-				grid: "grid grid-cols-2 gap-4 py-3",
-				columns: ["flex min-w-0 flex-col gap-2", "flex min-w-0 flex-col gap-2"],
-				wrapper: "epitaxy-codeblock overflow-clip rounded-lg border",
-				numbers: [
-					"w-8 shrink-0 pr-2 text-right opacity-50 select-none",
-					"w-8 shrink-0 pr-2 text-right text-[var(--upstream-git-removed)] select-none",
-					"w-8 shrink-0 pr-2 text-right text-[var(--upstream-git-added)] select-none",
-					"w-8 shrink-0 pr-2 text-right opacity-50 select-none",
-				],
-				words: [
-					{
-						text: '" +',
-						className: "bg-[color-mix(in_srgb,var(--upstream-git-removed)_30%,transparent)]",
-					},
-					{
-						text: "${name}!",
-						className: "bg-[color-mix(in_srgb,var(--upstream-git-added)_30%,transparent)]",
-					},
-				],
-			},
-		);
+					grid: grid?.className,
+					columns: [...(grid?.children ?? [])].map((column) => column.className),
+					wrapper: figure.parentElement?.className,
+					rails: root.adoptedStyleSheets.some((sheet) =>
+						[...sheet.cssRules].some((rule) => rule.cssText.includes("--diff-rail-added")),
+					),
+					marks: [...root.querySelectorAll("[data-gutter] > [data-line-type]")].map((row) =>
+						[
+							row.getAttribute("data-line-type"),
+							row.hasAttribute("data-rail-start") ? "start" : "",
+							row.hasAttribute("data-rail-end") ? "end" : "",
+						]
+							.filter(Boolean)
+							.join(":"),
+					),
+					rows: [...root.querySelectorAll("[data-content] > [data-line]")].map((row) => row.textContent),
+					addButton: host?.hasAttribute("data-add-button"),
+				},
+			).toStrictEqual(
+				{
+					grid: "grid grid-cols-2 gap-4 py-3",
+					columns: ["flex min-w-0 flex-col gap-2", "flex min-w-0 flex-col gap-2"],
+					wrapper: "epitaxy-codeblock overflow-clip rounded-lg border",
+					rails: true,
+					marks: ["context", "change-deletion:start", "change-addition:end", "context"],
+					rows: [
+						"function greet(name: string) {",
+						'  return "Hello, " + name;',
+						"  return `Hello, ${name}!`;",
+						"}",
+					],
+					addButton: false,
+				},
+			);
+		});
 	});
 
 	// Upstream `JG`: the preview's min-height is 4 code lines + 18px, the leading round(px * 1.45), 19px at Default.

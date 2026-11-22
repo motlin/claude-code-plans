@@ -3,6 +3,7 @@ import {FileDiff} from "@pierre/diffs/react";
 import type {FileDiffOptions} from "@pierre/diffs/react";
 import {type CSSProperties, useMemo} from "react";
 import {useCodeThemes} from "../../hooks/use-code-themes";
+import type {CodeThemeId} from "../../lib/code-themes";
 import {buildPatchFromHunks, buildUnifiedHunk, type PatchHunk} from "../../lib/diff-utils";
 import {railsPostRender} from "../changes/diff-rails";
 import {DIFFS_HOST_CLASS, INLINE_DIFFS_STYLE_OVERRIDES, diffsInjectedCss} from "../changes/diffs-config";
@@ -126,34 +127,47 @@ export function InlineDiff({
 
 /**
  * The cds FileDiff host (`Va`) drawing one git-style patch with the inline options; `disableLineNumbers`
- * keeps only the sign column (upstream's input-only excerpt), and `hostStyle` adds to the host's style.
+ * keeps only the sign column (upstream's input-only excerpt), `hostStyle` adds to the host's style, and
+ * `theme` draws it in that one code theme instead of the Settings pair (the code-theme preview).
  */
 export function InlinePatchDiff({
 	patch,
 	disableLineNumbers = false,
 	hostStyle,
+	theme,
 }: {
 	patch: string;
 	disableLineNumbers?: boolean;
 	hostStyle?: CSSProperties;
+	theme?: CodeThemeId;
 })
 {
 	const fileDiff = useMemo(() => getSingularPatch(patch), [patch]);
-	return <InlineFileDiff fileDiff={fileDiff} disableLineNumbers={disableLineNumbers} hostStyle={hostStyle} />;
+	return (
+		<InlineFileDiff
+			fileDiff={fileDiff}
+			disableLineNumbers={disableLineNumbers}
+			hostStyle={hostStyle}
+			theme={theme}
+		/>
+	);
 }
 
 function InlineFileDiff({
 	fileDiff,
 	disableLineNumbers,
 	hostStyle,
+	theme,
 }: {
 	fileDiff: FileDiffMetadata;
 	disableLineNumbers: boolean;
 	hostStyle?: CSSProperties | undefined;
+	theme?: CodeThemeId | undefined;
 })
 {
 	const resolvedTheme = useResolvedTheme();
-	const codeThemes = useCodeThemes();
+	const settingsThemes = useCodeThemes();
+	const codeThemes = theme ?? settingsThemes;
 	const panels = useFizzyLake("panels");
 
 	const options = useMemo<FileDiffOptions<undefined, undefined>>(
