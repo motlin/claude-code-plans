@@ -152,6 +152,8 @@ const MessageLineSchema = z.object(
 		apiErrorCode: z.string().optional(),
 		/** An API error line's `apiErrorType`, the API's own error type, e.g. `rate_limit_error`, for classifying it. */
 		apiErrorType: z.string().optional(),
+		/** An API error line's `apiErrorCode`, the API's own error code, e.g. `oauth_not_allowed_for_organization`. */
+		apiErrorDetailCode: z.string().optional(),
 		/** The rate-limit window of a synthetic usage-limit message. */
 		usageLimit: UsageLimitSchema.optional(),
 		errorDetails: z.union([z.string(), z.record(z.string(), JsonValueSchema)]).optional(),
@@ -240,6 +242,25 @@ const ContinuedInLineSchema = z.object(
 		type: z.literal("continued-in"),
 		continuedInSessionId: z.string(),
 		timestamp: z.string(),
+		lineIndex: z.number(),
+	},
+);
+
+/**
+ * The other Claude Code sessions this one was derived from, from a `derived-from` record, and how (`via`, e.g.
+ * "compact" or "resume"). The CLI lists the session itself too; that entry is left out.
+ */
+const DerivedFromLineSchema = z.object(
+	{
+		type: z.literal("derived-from"),
+		sessions: z.array(
+			z.object(
+				{
+					id: z.string(),
+					via: z.string(),
+				},
+			),
+		),
 		lineIndex: z.number(),
 	},
 );
@@ -525,6 +546,7 @@ export const RenderedLineSchema = z.discriminatedUnion("type", [
 	ArtifactLinkLineSchema,
 	ArtifactWatchLineSchema,
 	ContinuedInLineSchema,
+	DerivedFromLineSchema,
 	BackgroundLaunchLineSchema,
 	QueuedTaskNotificationLineSchema,
 	QueuedPromptLineSchema,
@@ -1759,6 +1781,28 @@ function* processRecordBatchSteps(
 			continue;
 		}
 
+		if (record.type === "derived-from")
+		{
+			const sessions = record.sessions
+				.filter((session) => session.type === "claude_code_session" && session.id !== record.sessionId)
+				.map((session) => (
+				{
+					id: session.id,
+					via: session.via,
+				}));
+			if (sessions.length > 0)
+			{
+				sessionLines.push(
+					{
+						type: "derived-from",
+						sessions,
+						lineIndex,
+					},
+				);
+			}
+			continue;
+		}
+
 		if (record.type === "frame-link")
 		{
 			// Most frame-link records are count-only heartbeats; a republish that
@@ -2155,6 +2199,7 @@ function* processRecordBatchSteps(
 				processedLine.isApiErrorMessage = true;
 				if (typeof record.error === "string") processedLine.apiErrorCode = record.error;
 				if (record.apiErrorType !== undefined) processedLine.apiErrorType = record.apiErrorType;
+				if (record.apiErrorCode !== undefined) processedLine.apiErrorDetailCode = record.apiErrorCode;
 			}
 			// The Request disclosure rides on its request's first line, so a record that never renders (the empty
 			// thinking block a `thinkingDisplay: "updates"` request opens with) leaves the ref to the next one.

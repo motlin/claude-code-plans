@@ -5093,6 +5093,56 @@ describe("continued-in records", () =>
 	});
 });
 
+describe("derived-from records", () =>
+{
+	it("emits a derived-from line for the other sessions this one was derived from, skipping its own id", () =>
+	{
+		const records = [
+			{
+				type: "derived-from",
+				v: 1,
+				sessionId: "session-alice-100",
+				sessions: [
+					{
+						type: "claude_code_session",
+						id: "session-alice-100",
+						via: "resume",
+					},
+					{
+						type: "claude_code_session",
+						id: "session-alice-050",
+						via: "compact",
+					},
+				],
+			},
+			{
+				type: "derived-from",
+				v: 1,
+				sessionId: "session-alice-100",
+				sessions: [
+					{
+						type: "claude_code_session",
+						id: "session-alice-100",
+						via: "compact",
+					},
+				],
+			},
+		];
+		expect(processTranscript(records).lines).toStrictEqual([
+			{
+				type: "derived-from",
+				sessions: [
+					{
+						id: "session-alice-050",
+						via: "compact",
+					},
+				],
+				lineIndex: 0,
+			},
+		]);
+	});
+});
+
 describe("artifact records", () =>
 {
 	const uuid = "29d89ae8-e33b-4f55-bbbd-874d5d316169";

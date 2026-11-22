@@ -2830,7 +2830,9 @@ const DerivedFromRecordSchema = z
 	.strict();
 
 // Data-flow ledger: what each API response, tool call or event touched.
-// Validated-only: nothing reads it yet.
+// Validated-only by decision (2026-11-21): no debug view. Every entry restates a tool call, MCP server or
+// response the transcript already renders (tool_use_id and response_id point back at them), so a view would
+// duplicate the session page without adding facts; revisit if entries start carrying data the transcript lacks.
 const DataFlowEntrySchema = z
 	.object(
 		{

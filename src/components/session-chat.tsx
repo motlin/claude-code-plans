@@ -89,7 +89,7 @@ import {ChevronIcon, TerminalOutput} from "./tool-renderers/shared";
 import {SystemBanner, type CompactMetadata} from "./system-banner";
 import {compactBoundaryLabel, localCommandOutput} from "./system-banner-text";
 import {ArtifactLinkBanner, ArtifactWatchBanner} from "./artifact-banner";
-import {ContinuedInBanner} from "./continued-in-banner";
+import {ContinuedInBanner, DerivedFromBanner} from "./continued-in-banner";
 import {BackgroundLaunchBanner} from "./background-launch-banner";
 import {mcpCallNotReadOnlyTitle, permissionDecisionLabel, permissionDecisionTitle} from "../lib/permission-decision";
 import {DebugLink} from "./debug-link";
@@ -2800,6 +2800,7 @@ const BANNER_LINE_TYPES = new Set([
 	"artifact-link",
 	"artifact-watch",
 	"continued-in",
+	"derived-from",
 	"background-launch",
 	"attachment",
 	"system",
@@ -5640,6 +5641,8 @@ function renderSessionMessage({
 			return <ArtifactWatchBanner line={line} />;
 		case "continued-in":
 			return <ContinuedInBanner line={line} />;
+		case "derived-from":
+			return <DerivedFromBanner line={line} />;
 		case "background-launch":
 			return <BackgroundLaunchBanner line={line} />;
 		case "queued-task-notification":
@@ -7415,6 +7418,10 @@ function ApiErrorCardForLine({line, text}: {line: MessageSessionLine; text: stri
 			{...(line.apiErrorType !== undefined &&
 			{
 				errorType: line.apiErrorType,
+			})}
+			{...(line.apiErrorDetailCode !== undefined &&
+			{
+				errorCode: line.apiErrorDetailCode,
 			})}
 			{...(line.stopReason !== undefined &&
 			{

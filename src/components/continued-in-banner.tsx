@@ -24,3 +24,39 @@ export function ContinuedInBanner({line}: {line: ContinuedInLine})
 		</Banner>
 	);
 }
+
+type DerivedFromLine = Extract<
+	ProcessedLine,
+	{
+		type: "derived-from";
+	}
+>;
+
+/** How a `derived-from` record's `via` reads as a link. */
+function derivedFromLabel(via: string): string
+{
+	if (via === "compact") return "Compacted from an earlier session";
+	if (via === "resume") return "Resumed from an earlier session";
+	return `Derived from an earlier session (${via})`;
+}
+
+/** A `derived-from` record: links to the sessions this one was compacted or resumed from. */
+export function DerivedFromBanner({line}: {line: DerivedFromLine})
+{
+	return (
+		<Banner icon={<Icon name="ArrowCounterClockwise" customSize={14} />}>
+			<span className="flex flex-col">
+				{line.sessions.map((session) => (
+					<a
+						key={session.id}
+						href={`/session/${encodeURIComponent(session.id)}`}
+						title={session.id}
+						className="text-accent-100 hover:underline"
+					>
+						{derivedFromLabel(session.via)}
+					</a>
+				))}
+			</span>
+		</Banner>
+	);
+}

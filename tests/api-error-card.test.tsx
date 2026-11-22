@@ -467,7 +467,7 @@ describe("ApiErrorCard", () =>
 		);
 	});
 
-	it("unwraps a JSON error body to its message and shows the prefix's status", () =>
+	it("unwraps a JSON error body to its message and shows the prefix's status, the API's error type and its error code", () =>
 	{
 		const container = renderRecords([
 			{
@@ -483,6 +483,8 @@ describe("ApiErrorCard", () =>
 					],
 				},
 				isApiErrorMessage: true,
+				apiErrorType: "invalid_request_error",
+				apiErrorCode: "model_not_available",
 			},
 		]);
 		const card = container.querySelector("[data-api-error-card]");
@@ -497,7 +499,7 @@ describe("ApiErrorCard", () =>
 		).toStrictEqual(
 			{
 				body: "Bad thing",
-				facts: ["Status: 400"],
+				facts: ["Status: 400", "Error type: invalid_request_error", "Error code: model_not_available"],
 			},
 		);
 	});

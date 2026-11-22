@@ -1274,6 +1274,7 @@ const renderedLineVariants =
 	"artifact-link": true,
 	"artifact-watch": true,
 	"continued-in": true,
+	"derived-from": true,
 	"background-launch": true,
 	"queued-task-notification": true,
 	"queued-prompt": true,

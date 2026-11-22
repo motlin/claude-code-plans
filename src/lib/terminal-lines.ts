@@ -418,6 +418,7 @@ export function buildTerminalLines(
 			case "artifact-link":
 			case "artifact-watch":
 			case "continued-in":
+			case "derived-from":
 			case "background-launch":
 			case "queued-prompt":
 			case "queued-task-notification":

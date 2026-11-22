@@ -40,6 +40,8 @@ export interface ApiErrorCardProps
 	code?: string;
 	/** The record's `apiErrorType`, the API's own error type. */
 	errorType?: string;
+	/** The record's `apiErrorCode`, the API's own error code, e.g. `oauth_not_allowed_for_organization`. */
+	errorCode?: string;
 	/** The assistant message's `stop_reason`; `refusal` is a safeguards flag. */
 	stopReason?: string;
 	/** The live session's recovery handlers; only the transcript's last entry gets them. */
@@ -123,13 +125,15 @@ export function ErrorDetails({
 	actions?: ReactNode;
 })
 {
-	const {body, raw, status, requestId, messageId} = details ?? {};
+	const {body, raw, status, errorType, errorCode, requestId, messageId} = details ?? {};
 	const [open, setOpen] = useState(false);
 	const facts =
 		status === undefined && requestId === undefined
 			? []
 			: [
 					...(status === undefined ? [] : [`Status: ${status}`]),
+					...(errorType === undefined ? [] : [`Error type: ${errorType}`]),
+					...(errorCode === undefined ? [] : [`Error code: ${errorCode}`]),
 					...(requestId === undefined ? [] : [`Request ID: ${requestId}`]),
 					...(messageId === undefined ? [] : [`Message ID: ${messageId}`]),
 				];
@@ -187,6 +191,10 @@ export interface ErrorDetailsContent
 	/** The unparsed error text, which Copy details copies. */
 	raw?: string;
 	status?: number | string;
+	/** The record's `apiErrorType`; beyond upstream, shown beside the status. */
+	errorType?: string;
+	/** The record's `apiErrorCode`; beyond upstream, shown beside the status. */
+	errorCode?: string;
 	requestId?: string;
 	messageId?: string;
 }
@@ -220,6 +228,7 @@ function resolveApiError({
 	messageId,
 	code,
 	errorType,
+	errorCode,
 	stopReason,
 	hint: hintContext =
 	{
@@ -288,6 +297,14 @@ function resolveApiError({
 				...(detailsStatus !== undefined &&
 				{
 					status: detailsStatus,
+				}),
+				...(errorType !== undefined &&
+				{
+					errorType,
+				}),
+				...(errorCode !== undefined &&
+				{
+					errorCode,
 				}),
 				...(requestId !== undefined &&
 				{

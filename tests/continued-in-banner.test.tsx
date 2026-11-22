@@ -1,6 +1,6 @@
 import {describe, expect, it} from "vite-plus/test";
 import {renderToStaticMarkup} from "react-dom/server";
-import {ContinuedInBanner} from "../src/components/continued-in-banner";
+import {ContinuedInBanner, DerivedFromBanner} from "../src/components/continued-in-banner";
 
 describe("ContinuedInBanner", () =>
 {
@@ -22,5 +22,36 @@ describe("ContinuedInBanner", () =>
 			text,
 		]);
 		expect(links).toStrictEqual([["/session/session-alice-200", "Continued in a new session"]]);
+	});
+
+	it("links to each session this one was derived from, naming how", () =>
+	{
+		const html = renderToStaticMarkup(
+			<DerivedFromBanner
+				line={
+				{
+					type: "derived-from",
+					sessions: [
+						{
+							id: "session-alice-050",
+							via: "compact",
+						},
+						{
+							id: "session-alice-060",
+							via: "resume",
+						},
+					],
+					lineIndex: 0,
+				}}
+			/>,
+		);
+		const links = Array.from(html.matchAll(/<a href="([^"]*)"[^>]*>([^<]*)<\/a>/g), ([, href, text]) => [
+			href,
+			text,
+		]);
+		expect(links).toStrictEqual([
+			["/session/session-alice-050", "Compacted from an earlier session"],
+			["/session/session-alice-060", "Resumed from an earlier session"],
+		]);
 	});
 });
