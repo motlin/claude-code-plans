@@ -125,6 +125,7 @@ export function Tooltip({
 	trackCursor,
 	suppressAfterPopup = false,
 	portal: portalProp,
+	placeOver,
 	delay = OPEN_DELAY_MS,
 	sideOffset = 4,
 	maxWidth,
@@ -191,6 +192,11 @@ export function Tooltip({
 	 * TooltipPortalContext, which the transcript scroller sets.
 	 */
 	portal?: boolean;
+	/**
+	 * The element the tip is placed against instead of the anchor, e.g. a row's Card for a `display: contents`
+	 * anchor that has no box of its own. Implies `portal`; pass a stable function, since it re-places the tip.
+	 */
+	placeOver?: ((anchor: HTMLElement) => Element | null) | undefined;
 	/** The hover open delay; upstream's @ mention rows use 200ms. */
 	delay?: number;
 	/** The gap from the anchor; 8 for upstream's @ mention row tip. */
@@ -218,7 +224,7 @@ export function Tooltip({
 	{
 		hideRef.current();
 	});
-	const portal = portalProp ?? inheritedPortal;
+	const portal = placeOver !== undefined || (portalProp ?? inheritedPortal);
 	const id = useId();
 	const [hovered, setHovered] = useState(false);
 	const open = hovered || forceOpen;
@@ -278,7 +284,7 @@ export function Tooltip({
 		if (size.width === 0 && size.height === 0) return;
 		setPlacement(
 			placeTooltip(
-				anchor.getBoundingClientRect(),
+				(placeOver?.(anchor) ?? anchor).getBoundingClientRect(),
 				size,
 				{
 					width: document.documentElement.clientWidth,
@@ -288,7 +294,7 @@ export function Tooltip({
 				align,
 			),
 		);
-	}, [open, side, align, content, description, secondaryKey]);
+	}, [open, side, align, content, description, secondaryKey, placeOver]);
 
 	useLayoutEffect(() =>
 	{
@@ -355,7 +361,7 @@ export function Tooltip({
 			if (anchor !== null && popupOpen(anchor)) return;
 			if (portal && anchor !== null)
 			{
-				const {left, top, width, height} = anchor.getBoundingClientRect();
+				const {left, top, width, height} = (placeOver?.(anchor) ?? anchor).getBoundingClientRect();
 				setAnchorBox(
 					{
 						left,

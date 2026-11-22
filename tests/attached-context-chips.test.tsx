@@ -2,7 +2,7 @@
 
 import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {readFileSync} from "node:fs";
-import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
+import {afterEach, beforeEach, describe, expect, it, onTestFinished, vi} from "vite-plus/test";
 import {AttachedContextChips} from "../src/components/attached-context-chips";
 import {ToastProvider} from "../src/components/toast";
 import
@@ -2577,6 +2577,46 @@ describe("AttachedContextChips quote rows", () =>
 				hint: "First line of a long comment that also …",
 				hidden: true,
 				tooltip: "First line of a long comment that also …",
+			},
+		);
+	});
+
+	it("opens an overflowing quote's tooltip above the row's Card, its text in a break-words span", () =>
+	{
+		onTestFinished(() =>
+		{
+			vi.restoreAllMocks();
+		});
+		vi.spyOn(HTMLElement.prototype, "scrollWidth", "get").mockImplementation(function (this: HTMLElement)
+		{
+			return this.matches("blockquote span[dir=auto]") ? 900 : 0;
+		});
+		vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockImplementation(function (this: HTMLElement)
+		{
+			return this.matches("blockquote span[dir=auto]") ? 600 : 0;
+		});
+		const {container} = renderChips([REPLY]);
+		const card = container.querySelector<HTMLElement>("[data-cds=Card]");
+		const link = container.querySelector<HTMLElement>("[data-cds=CardLink]");
+		if (card === null || link === null) throw new Error("no reply Card");
+		vi.spyOn(card, "getBoundingClientRect").mockReturnValue(new DOMRect(404, 511, 722, 40));
+		fireEvent.focus(link);
+		const tip = screen.getByRole("tooltip");
+		const box = tip.parentElement;
+		expect(
+			{
+				side: tip.getAttribute("data-side"),
+				box: box === null ? null : [classes(box), box.style.cssText],
+				content: tip.querySelector(":scope > span.min-w-0.break-words > bdi")?.textContent,
+			},
+		).toStrictEqual(
+			{
+				side: "top",
+				box: [
+					["fixed", "pointer-events-none", "z-[140]"],
+					"left: 404px; top: 511px; width: 722px; height: 40px;",
+				],
+				content: "The build step runs vitest first and then the typecheck.",
 			},
 		);
 	});

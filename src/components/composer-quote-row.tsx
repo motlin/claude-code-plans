@@ -16,6 +16,12 @@ const ROW_FILL_CLASS =
 const ROW_REMOVE_CLASS =
 	"inline-flex shrink-0 cursor-pointer items-center justify-center aspect-square w-control h-control px-0 rounded-[var(--cds-radius--xs)] text-ink-muted hover:text-primary focus-visible:text-primary hover:bg-fill-ghost-hover outline-none focus-visible:shadow-focus";
 
+/** The row's Card, which the truncated-quote tooltip sits above since its `display: contents` anchor has no box. */
+function rowCard(anchor: HTMLElement): Element | null
+{
+	return anchor.closest("[data-cds=Card]");
+}
+
 /**
  * Upstream's `MessageAttachments.Quote` row variant (`asRow`), as the composer's ChatComposerQuotes column draws
  * a staged reply or plain excerpt: a Reply glyph, the text in curly quotes on one truncated line, an optional
@@ -51,7 +57,14 @@ export function QuoteRow({
 	const hintId = useId();
 	const badged = badge !== undefined && hint !== undefined;
 	const [quoteSpan, setQuoteSpan] = useState<HTMLSpanElement | null>(null);
-	const content = useMemo(() => <bdi>{text}</bdi>, [text]);
+	const content = useMemo(
+		() => (
+			<span className="min-w-0 break-words">
+				<bdi>{text}</bdi>
+			</span>
+		),
+		[text],
+	);
 	return (
 		<div
 			tabIndex={-1}
@@ -75,6 +88,7 @@ export function QuoteRow({
 							content={content}
 							side="top"
 							className="contents"
+							placeOver={rowCard}
 							openWhen={() => quoteSpan !== null && quoteSpan.scrollWidth > quoteSpan.clientWidth}
 						>
 							<span
