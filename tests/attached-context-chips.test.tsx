@@ -2553,6 +2553,8 @@ describe("AttachedContextChips quote rows", () =>
 				classes: [
 					"align-middle",
 					"bg-neutral",
+					"border",
+					"border-transparent",
 					"focus-visible:shadow-focus",
 					"font-medium",
 					"font-sans",
@@ -2567,7 +2569,7 @@ describe("AttachedContextChips quote rows", () =>
 					"pointer-coarse:pointer-events-none",
 					"pointer-events-auto",
 					"px-sm",
-					"rounded-chip",
+					"rounded-badge-outline",
 					"text-caption",
 					"text-secondary",
 					"whitespace-nowrap",

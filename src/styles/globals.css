@@ -440,6 +440,8 @@ html[data-interface-font="dyslexic"]
 	--radius-chip: 4.5px;
 	/* Upstream cds xs Card (the composer attachment tile): 9px inside the 10px tile */
 	--radius-card-xs: 9px;
+	/* Upstream stacks (fizzy colour) outline Badge, e.g. the composer Quote row's xs With reply badge: 9px */
+	--radius-badge-outline: 9px;
 	/* Upstream claude.ai/code — size sm Button (hover card option chips) */
 	--radius-control-sm: 7px;
 	/* Upstream claude.ai/code — Customize Discover card */

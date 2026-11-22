@@ -63,9 +63,12 @@ export function ExcerptQuote({
 const HINT_BADGE_CLASS =
 	"pointer-events-auto outline-none focus-visible:shadow-focus pointer-coarse:pointer-events-none";
 
-/** Upstream's xs Badge in a composer Quote row: the nested control height, chip corner and neutral fill. */
+/**
+ * Upstream's xs Badge in a composer Quote row: the nested control height, neutral fill and the fizzy outline-badge
+ * paint (9px radius, 1px transparent border); its pad-sm inline padding already computes upstream's 6px.
+ */
 const ROW_BADGE_CLASS =
-	"inline-flex items-center gap-1 align-middle h-control-nested whitespace-nowrap rounded-chip px-sm font-sans text-caption font-medium leading-[round(1.25em,1px)] min-w-0 max-w-full bg-neutral text-secondary";
+	"inline-flex items-center gap-1 align-middle h-control-nested whitespace-nowrap rounded-badge-outline border border-transparent px-sm font-sans text-caption font-medium leading-[round(1.25em,1px)] min-w-0 max-w-full bg-neutral text-secondary";
 
 /**
  * Upstream `Ig`: a badge whose hint shows in a top tooltip on hover or keyboard focus, and describes it.
