@@ -1005,7 +1005,7 @@ describe("Composer", () =>
 						padding: pick(textarea, ["py-1", "pl-1"]),
 						minHeight: textarea.style.minHeight,
 					},
-					chin: pick(chin, ["mt-2", "min-h-6", "text-body", "text-secondary"]),
+					chin: pick(chin, ["mt-2", "min-h-6", "text-footnote", "text-secondary"]),
 					mode: pick(document.querySelector("[data-chin-mode]"), ["h-6", "px-1.5", "text-secondary-control"]),
 					model:
 					{
@@ -1034,7 +1034,7 @@ describe("Composer", () =>
 						padding: ["py-1", "pl-1"],
 						minHeight: "28px",
 					},
-					chin: ["mt-2", "min-h-6", "text-body", "text-secondary"],
+					chin: ["mt-2", "min-h-6", "text-footnote", "text-secondary"],
 					mode: ["h-6", "px-1.5", "text-secondary-control"],
 					model:
 					{

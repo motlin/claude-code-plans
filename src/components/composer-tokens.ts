@@ -35,7 +35,7 @@ export const COMPOSER_CHIN_SLIDE_CLASS =
  * [data-size="xs"]) sets the body and caption type on the xs scale, so the 13px/20px body sits on the trailing wrapper.
  */
 export const COMPOSER_CHIN_ROW_CLASS =
-	"flex min-h-6 items-center gap-0 mt-2 ps-[calc(var(--cmp-chin-start)_-_var(--cmp-chin-touch-grow,0px))] pe-[calc(var(--cmp-chin-end)_-_var(--cmp-chin-touch-grow,0px))] [--cmp-chin-start:8px] [--cmp-chin-end:10px] [--cmp-chin-row-h:1.5rem] text-body text-secondary @max-[25rem]:text-caption";
+	"flex min-h-6 items-center gap-0 mt-2 ps-[calc(var(--cmp-chin-start)_-_var(--cmp-chin-touch-grow,0px))] pe-[calc(var(--cmp-chin-end)_-_var(--cmp-chin-touch-grow,0px))] [--cmp-chin-start:8px] [--cmp-chin-end:10px] [--cmp-chin-row-h:1.5rem] text-footnote text-secondary @max-[25rem]:text-caption";
 
 /** The chin's leading slot wrapper. */
 export const COMPOSER_CHIN_LEADING_CLASS = "flex items-center self-start";
