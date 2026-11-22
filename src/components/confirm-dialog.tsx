@@ -1,5 +1,5 @@
 import {AlertDialog} from "@base-ui/react/alert-dialog";
-import {memo, type ReactNode, useRef} from "react";
+import {memo, type ReactNode, useEffect, useRef} from "react";
 import {AlertDialogPopup} from "./ui/dialog-popup";
 import {useFizzyLake} from "../lib/fizzy-lake";
 import {DensityScope} from "./ui/density";
@@ -67,6 +67,7 @@ export const ConfirmDialog = memo(function ConfirmDialog({
 	confirmDisabled = false,
 	bodyLive = false,
 	initialFocus = "cancel",
+	confirmArmDelayMs = 0,
 	onConfirm,
 	onCancel,
 }: {
@@ -88,6 +89,11 @@ export const ConfirmDialog = memo(function ConfirmDialog({
 	bodyLive?: boolean;
 	/** Upstream ConfirmationDialog `initialFocus`: which button takes focus on open. */
 	initialFocus?: "cancel" | "confirm";
+	/**
+	 * Upstream's consent dialog: a confirm click this soon after opening does nothing and keeps the dialog open, so a
+	 * double click on the item that opened it can't confirm.
+	 */
+	confirmArmDelayMs?: number;
 	onConfirm: () => void;
 	/** Runs only when the cancel button itself is clicked, not on Escape or a backdrop click. */
 	onCancel?: () => void;
@@ -95,6 +101,20 @@ export const ConfirmDialog = memo(function ConfirmDialog({
 {
 	const cancelRef = useRef<HTMLButtonElement>(null);
 	const confirmRef = useRef<HTMLButtonElement>(null);
+	const armedRef = useRef(confirmArmDelayMs === 0);
+	useEffect(() =>
+	{
+		if (!open || confirmArmDelayMs === 0) return undefined;
+		armedRef.current = false;
+		const timer = setTimeout(() =>
+		{
+			armedRef.current = true;
+		}, confirmArmDelayMs);
+		return () =>
+		{
+			clearTimeout(timer);
+		};
+	}, [open, confirmArmDelayMs]);
 	const panels = useFizzyLake("panels");
 	const popupClass = `${POPUP_BASE_CLASS} ${SIZE_CLASS[size]}`;
 	const description = bodyLive ? <span role="status">{body}</span> : body;
@@ -118,6 +138,7 @@ export const ConfirmDialog = memo(function ConfirmDialog({
 					disabled={confirmDisabled}
 					onClick={() =>
 					{
+						if (!armedRef.current) return;
 						onConfirm();
 						onOpenChange(false);
 					}}

@@ -32,6 +32,9 @@ const BOX_CLASS =
 const PATH_CLASS =
 	"scroll-fade-y focus-visible:outline-hidden font-mono-ui text-code text-primary break-all max-h-24 scroll-my-3 overflow-y-auto focus-visible:shadow-none focus-visible:scroll-fade-hide-top focus-visible:scroll-fade-hide-bottom";
 
+/** Upstream cbf7370a7: confirm clicks are ignored this long after opening, so a double click on Mode can't confirm. */
+const CONFIRM_ARM_DELAY_MS = 600;
+
 export interface PendingConsent
 {
 	mode: ConsentMode;
@@ -193,6 +196,7 @@ export function PermissionModeConsentDialog({
 			body={copy.description}
 			confirmLabel={copy.confirmLabel}
 			variant="primary"
+			confirmArmDelayMs={CONFIRM_ARM_DELAY_MS}
 			onConfirm={() =>
 			{
 				confirmedRef.current = true;

@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
-import {cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
-import {afterEach, describe, expect, it, vi} from "vite-plus/test";
+import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
+import {afterEach, describe, expect, it, onTestFinished, vi} from "vite-plus/test";
 
 import {type AllowAndSwitchToAutoInput, useAllowAndSwitchToAuto} from "../src/components/use-allow-and-switch-to-auto";
 import type {PermissionModeConsent} from "../src/lib/api/permission-mode-consent";
@@ -238,6 +238,17 @@ describe("useAllowAndSwitchToAuto", () =>
 
 	it("asks for consent first, then switches on Enable auto mode", async () =>
 	{
+		// Real time still runs so queries settle; the jump below clears the dialog's 600ms confirm guard.
+		vi.useFakeTimers(
+			{
+				toFake: ["setTimeout", "clearTimeout"],
+				shouldAdvanceTime: true,
+			},
+		);
+		onTestFinished(() =>
+		{
+			vi.useRealTimers();
+		});
 		const {input, outcome, posts} = setup(
 			{
 				consent: NOT_CONSENTED,
@@ -254,6 +265,10 @@ describe("useAllowAndSwitchToAuto", () =>
 		const dialog = await screen.findByRole("alertdialog");
 		const title = within(dialog).getByRole("heading").textContent;
 		const before = calls(input);
+		await act(async () =>
+		{
+			await vi.advanceTimersByTimeAsync(600);
+		});
 		fireEvent.click(
 			within(dialog).getByRole(
 				"button",

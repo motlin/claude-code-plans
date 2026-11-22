@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import {cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
+import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import {PermissionModeConsentDialog} from "../src/components/permission-mode-consent-dialog";
 import type {ConsentMode} from "../src/lib/permission-mode-consent";
@@ -240,18 +240,95 @@ describe("PermissionModeConsentDialog", () =>
 		);
 	});
 
-	it("confirms on the confirm button and declines on Cancel or Escape", async () =>
+	it("ignores a confirm in the first 600ms after each open, confirms after it, and declines on Cancel or Escape", async () =>
 	{
-		const confirmed = renderDialog("auto", "/w");
-		fireEvent.click(
-			within(await screen.findByRole("alertdialog")).getByRole(
-				"button",
+		vi.useFakeTimers(
+			{
+				toFake: ["setTimeout", "clearTimeout"],
+			},
+		);
+		restores.push(() =>
+		{
+			vi.useRealTimers();
+		});
+		const onConfirm = vi.fn<() => void>();
+		const onCancel = vi.fn<() => void>();
+		const pending = (mode: ConsentMode) => (
+		{
+			mode,
+			asksEveryTime: false,
+		});
+		const dialog = (props: {pending: ReturnType<typeof pending> | null}) => (
+			<PermissionModeConsentDialog
+				pending={props.pending}
+				workspace="/w"
+				onConfirm={onConfirm}
+				onCancel={onCancel}
+			/>
+		);
+		const {rerender} = render(
+			dialog(
 				{
-					name: "Enable auto mode",
+					pending: pending("auto"),
 				},
 			),
 		);
+		const confirmButton = (name: string) =>
+			within(screen.getByRole("alertdialog")).getByRole(
+				"button",
+				{
+					name,
+				},
+			);
+		fireEvent.click(confirmButton("Enable auto mode"));
+		const early = [onConfirm.mock.calls.length, screen.queryByRole("alertdialog") !== null];
+		await act(async () =>
+		{
+			await vi.advanceTimersByTimeAsync(600);
+		});
+		fireEvent.click(confirmButton("Enable auto mode"));
+		const armed = onConfirm.mock.calls.length;
+		rerender(
+			dialog(
+				{
+					pending: null,
+				},
+			),
+		);
+		rerender(
+			dialog(
+				{
+					pending: pending("bypassPermissions"),
+				},
+			),
+		);
+		fireEvent.click(confirmButton("Bypass permissions"));
+		const rearmedEarly = onConfirm.mock.calls.length;
+		await act(async () =>
+		{
+			await vi.advanceTimersByTimeAsync(600);
+		});
+		fireEvent.click(confirmButton("Bypass permissions"));
+		expect(
+			{
+				early,
+				armed,
+				rearmedEarly,
+				rearmed: onConfirm.mock.calls.length,
+				cancels: onCancel.mock.calls.length,
+			},
+		).toStrictEqual(
+			{
+				early: [0, true],
+				armed: 1,
+				rearmedEarly: 1,
+				rearmed: 2,
+				cancels: 0,
+			},
+		);
 		cleanup();
+		vi.useRealTimers();
+
 		const cancelled = renderDialog("auto", "/w");
 		fireEvent.click(
 			within(await screen.findByRole("alertdialog")).getByRole(
@@ -271,12 +348,11 @@ describe("PermissionModeConsentDialog", () =>
 		);
 
 		expect(
-			[confirmed, cancelled, escaped].map(({onConfirm, onCancel}) => [
+			[cancelled, escaped].map(({onConfirm, onCancel}) => [
 				onConfirm.mock.calls.length,
 				onCancel.mock.calls.length,
 			]),
 		).toStrictEqual([
-			[1, 0],
 			[0, 1],
 			[0, 1],
 		]);

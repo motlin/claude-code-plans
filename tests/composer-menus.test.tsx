@@ -448,6 +448,28 @@ const AUTO_DIALOG_TEXT =
 
 describe("Composer mode menu consent guard", () =>
 {
+	// The consent dialog ignores confirms for 600ms after opening; real time still runs so queries settle.
+	beforeEach(() =>
+	{
+		vi.useFakeTimers(
+			{
+				toFake: ["setTimeout", "clearTimeout"],
+				shouldAdvanceTime: true,
+			},
+		);
+	});
+	afterEach(() =>
+	{
+		vi.useRealTimers();
+	});
+
+	/** Past the dialog's 600ms confirm guard. */
+	const armConsent = async () =>
+		act(async () =>
+		{
+			await vi.advanceTimersByTimeAsync(600);
+		});
+
 	interface Consent
 	{
 		autoModeIsDefault: boolean;
@@ -564,6 +586,7 @@ describe("Composer mode menu consent guard", () =>
 		const dialog = await screen.findByRole("alertdialog");
 		const text = dialog.textContent;
 		const before = readout();
+		await armConsent();
 		fireEvent.click(
 			within(dialog).getByRole(
 				"button",
@@ -678,6 +701,7 @@ describe("Composer mode menu consent guard", () =>
 		await pickMode(/^Auto/);
 		const dialog = await screen.findByRole("alertdialog");
 		const text = dialog.textContent;
+		await armConsent();
 		fireEvent.click(
 			within(dialog).getByRole(
 				"button",
@@ -799,6 +823,7 @@ describe("Composer mode menu consent guard", () =>
 		await pickMode(/Bypass permissions/);
 		const dialog = await screen.findByRole("alertdialog");
 		const whileAsking = [...apply.mock.calls];
+		await armConsent();
 		fireEvent.click(
 			within(dialog).getByRole(
 				"button",
