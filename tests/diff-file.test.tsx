@@ -2174,18 +2174,18 @@ describe("DiffFileHeader notes and ink (upstream c44d00c7f Bs/Vs/xs/Ss/Js)", () 
 			{
 				both:
 					'<span class="ms-auto flex shrink-0 items-center gap-[4px]">' +
-					'<span dir="ltr" class="flex shrink-0 items-center gap-0.5 tabular-nums text-body">' +
+					'<span dir="ltr" class="flex shrink-0 items-center gap-0.5 tabular-nums [font-feature-settings:\'case\'] text-body">' +
 					'<span aria-hidden="true" class="text-diff-added">+3</span>' +
 					'<span aria-hidden="true" class="text-diff-removed">−1</span>' +
 					'<span class="sr-only">3 added, 1 removed</span></span></span>',
 				additionsOnly:
 					'<span class="ms-auto flex shrink-0 items-center gap-[4px]">' +
-					'<span dir="ltr" class="flex shrink-0 items-center gap-0.5 tabular-nums text-body">' +
+					'<span dir="ltr" class="flex shrink-0 items-center gap-0.5 tabular-nums [font-feature-settings:\'case\'] text-body">' +
 					'<span aria-hidden="true" class="text-diff-added">+5</span>' +
 					'<span class="sr-only">5 added, 0 removed</span></span></span>',
 				deletionsOnly:
 					'<span class="ms-auto flex shrink-0 items-center gap-[4px]">' +
-					'<span dir="ltr" class="flex shrink-0 items-center gap-0.5 tabular-nums text-body">' +
+					'<span dir="ltr" class="flex shrink-0 items-center gap-0.5 tabular-nums [font-feature-settings:\'case\'] text-body">' +
 					'<span aria-hidden="true" class="text-diff-removed">−2</span>' +
 					'<span class="sr-only">0 added, 2 removed</span></span></span>',
 			},

@@ -419,7 +419,10 @@ function DiffStats({additions, deletions}: {additions: number; deletions: number
 {
 	if (additions === 0 && deletions === 0) return null;
 	return (
-		<span dir="ltr" className="flex shrink-0 items-center gap-0.5 tabular-nums text-body">
+		<span
+			dir="ltr"
+			className="flex shrink-0 items-center gap-0.5 tabular-nums [font-feature-settings:'case'] text-body"
+		>
 			{additions > 0 && (
 				<span aria-hidden="true" className="text-diff-added">
 					+{additions}
