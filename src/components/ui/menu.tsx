@@ -1071,8 +1071,20 @@ export function MenuRadioItem({
 	const itemClass = useItemClass(description !== undefined);
 	const reasonId = useId();
 	const reason = activeDisabledReason(props.disabled, disabledReason);
-	const check = <BaseMenu.RadioItemIndicator className={CHECK_SLOT_CLASS}>{CHECK_ICON}</BaseMenu.RadioItemIndicator>;
-	let trailing: ReactNode = check;
+	const sizing = useMenuSizing();
+	/** Upstream keeps the empty slot in unchecked rows, so a radio row is the same width checked or not. */
+	const check = (
+		<BaseMenu.RadioItemIndicator
+			keepMounted
+			className={CHECK_SLOT_CLASS}
+			render={(slotProps, {checked}) => <span {...slotProps}>{checked && CHECK_ICON}</span>}
+		/>
+	);
+	let trailing: ReactNode = (
+		<span data-menu-item-trailing="" className={sizing.trailingGroup}>
+			{check}
+		</span>
+	);
 	if (accelerator !== undefined)
 		trailing = acceleratorInSlot ? (
 			<SlotDigitTrailing accelerator={accelerator} />

@@ -1535,6 +1535,13 @@ describe("Composer model menu", () =>
 		const ids = within(submenu)
 			.getAllByRole("menuitemradio")
 			.map((row) => row.getAttribute("data-model-id"));
+		const slots = within(submenu)
+			.getAllByRole("menuitemradio")
+			.map((row) =>
+			{
+				const slot = row.querySelector("[data-menu-item-trailing] > .size-icon");
+				return slot === null ? "missing" : slot.querySelector("svg") === null ? "empty" : "checked";
+			});
 		fireEvent.click(
 			within(submenu).getByRole(
 				"menuitemradio",
@@ -1553,6 +1560,7 @@ describe("Composer model menu", () =>
 			{
 				labels,
 				ids,
+				slots,
 				calls: onSend.mock.calls,
 			},
 		).toStrictEqual(
@@ -1579,6 +1587,12 @@ describe("Composer model menu", () =>
 					"claude-opus-4-6",
 					"claude-sonnet-4-6",
 				],
+				slots: Array.from(
+					{
+						length: 9,
+					},
+					() => "empty",
+				),
 				calls: [
 					[
 						"Continue Dave's test",

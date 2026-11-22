@@ -1058,6 +1058,59 @@ describe("Menu", () =>
 		);
 	});
 
+	it("reserves a plain radio row's empty check slot when unchecked, behind upstream's ms-md gap", async () =>
+	{
+		render(
+			<PanelsOff>
+				<Menu defaultOpen>
+					<MenuTrigger aria-label="Style">Style</MenuTrigger>
+					<MenuContent density="comfortable">
+						<MenuRadioGroup value="a">
+							<MenuRadioItem value="a">Normal</MenuRadioItem>
+							<MenuRadioItem value="b">Verbose</MenuRadioItem>
+						</MenuRadioGroup>
+					</MenuContent>
+				</Menu>
+			</PanelsOff>,
+		);
+		await flush();
+
+		const rows = screen.getAllByRole("menuitemradio").map((item) =>
+		{
+			const trailing = item.querySelector("[data-menu-item-trailing]");
+			return {
+				trailing: trailing?.className,
+				slots: Array.from(trailing?.children ?? []).map((slot) => (
+				{
+					className: slot.getAttribute("class"),
+					check: slot.querySelector("svg") !== null,
+				})),
+			};
+		});
+		const slot = "-mr-1 flex size-icon shrink-0 items-center justify-center";
+		const trailing = "ms-4 flex shrink-0 items-center gap-2";
+		expect(rows).toStrictEqual([
+			{
+				trailing,
+				slots: [
+					{
+						className: slot,
+						check: true,
+					},
+				],
+			},
+			{
+				trailing,
+				slots: [
+					{
+						className: slot,
+						check: false,
+					},
+				],
+			},
+		]);
+	});
+
 	it("puts a model row's digit inside its check slot, where the checked row's tick replaces it", async () =>
 	{
 		const onValueChange = vi.fn<(value: string) => void>();
