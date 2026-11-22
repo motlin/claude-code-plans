@@ -100,12 +100,21 @@ describe("ChangesFindingsBar (upstream c9bd7af9c zw)", () =>
 	{
 		const {container} = renderBar([finding("a")], vi.fn<() => void>(), vi.fn<() => void>());
 		const root = container.firstElementChild;
+		const toolbar = screen.getByRole(
+			"toolbar",
+			{
+				name: "Code review controls",
+			},
+		);
+		const wrap = toolbar.firstElementChild?.firstElementChild;
 
 		expect(
 			{
 				root: root?.className,
-				leading: root?.firstElementChild?.className,
-				trailing: root?.lastElementChild?.className,
+				toolbarParent: toolbar.parentElement === root,
+				wrap: wrap?.className,
+				leading: wrap?.firstElementChild?.className,
+				trailing: wrap?.lastElementChild?.className,
 				status: screen.getByRole("status").className,
 				text: screen.getByRole("status").textContent,
 				spark: root?.querySelector('svg[data-cds="Spark"]')?.getAttribute("width"),
@@ -115,7 +124,9 @@ describe("ChangesFindingsBar (upstream c9bd7af9c zw)", () =>
 			},
 		).toStrictEqual(
 			{
-				root: "epitaxy-panel-subheader flex items-center gap-[4px] shrink-0 bg-alpha-1 h-auto min-h-[calc(var(--cds-h-control)+2*var(--cds-toolbar-pad-block,0.5rem))] py-[var(--cds-toolbar-pad-block,0.5rem)] flex-wrap px-sm",
+				root: "epitaxy-panel-subheader shrink-0 bg-alpha-1",
+				toolbarParent: true,
+				wrap: "flex min-w-0 flex-1 items-center gap-[4px] min-h-control flex-wrap ps-[calc(0.25rem*var(--cds-rem-scale,1))]",
 				leading: "flex h-control items-center gap-1 self-start",
 				trailing: "flex min-w-min flex-1 flex-wrap-reverse items-center justify-end gap-1",
 				status: "text-body text-muted-as-secondary whitespace-nowrap tabular-nums",
@@ -198,6 +209,43 @@ describe("ChangesFindingsBar (upstream c9bd7af9c zw)", () =>
 						},
 					},
 				},
+			},
+		);
+	});
+
+	it("is one roving tab stop: Apply fixes holds it and ArrowRight walks the Previous reason wrapper to Next", () =>
+	{
+		renderBar(THREE, vi.fn<() => void>(), vi.fn<() => void>());
+		const apply = button("Apply fixes");
+		const previousWrapper = button("Previous finding").parentElement;
+		const tabIndexes = [apply, previousWrapper, button("Next finding"), button("Close findings bar")].map(
+			(element) => element?.getAttribute("tabindex"),
+		);
+		const arrowRight = () =>
+		{
+			const from = document.activeElement;
+			if (from !== null)
+				fireEvent.keyDown(
+					from,
+					{
+						key: "ArrowRight",
+					},
+				);
+			return document.activeElement;
+		};
+		apply.focus();
+
+		expect(
+			{
+				tabIndexes,
+				first: arrowRight() === previousWrapper,
+				second: arrowRight()?.getAttribute("aria-label"),
+			},
+		).toStrictEqual(
+			{
+				tabIndexes: ["0", "-1", "-1", "-1"],
+				first: true,
+				second: "Next finding",
 			},
 		);
 	});

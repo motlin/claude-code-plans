@@ -3,6 +3,7 @@ import {type RefObject, useEffect, useRef} from "react";
 import {scrollToFinding} from "../../lib/changes-review";
 import type {ReviewFinding} from "../../lib/review-diff";
 import {findingCursorIndex, setCurrentReviewFinding, useCurrentReviewFinding} from "../../lib/review-finding-cursor";
+import {TOOLBAR_ROVING_OPTIONS, useRovingToolbar} from "../../lib/use-roving-toolbar";
 import {ShimmerText} from "../shimmer-text";
 import {Spark} from "../spark";
 import {cdsButtonClass} from "../ui/cds-button";
@@ -10,9 +11,16 @@ import {CDS_BUTTON_DISABLED, CDS_ICON_ONLY_DISABLED} from "../ui/cds-button-disa
 import {DisabledReason} from "../ui/disabled-reason";
 import {Icon} from "../ui/icon";
 
-/** Upstream `g_` with `wrap`, outside the pane-header line (`G1` false). */
-const SUBHEADER_CLASS =
-	"epitaxy-panel-subheader flex items-center gap-[4px] shrink-0 bg-alpha-1 h-auto min-h-[calc(var(--cds-h-control)+2*var(--cds-toolbar-pad-block,0.5rem))] py-[var(--cds-toolbar-pad-block,0.5rem)] flex-wrap px-sm";
+/** Upstream `U`: the Changes pane subheader around the bar. */
+const SUBHEADER_CLASS = "epitaxy-panel-subheader shrink-0 bg-alpha-1";
+
+/** Upstream cds `Toolbar` (`vv`) with its root focus ring for when focus parks on it. */
+const TOOLBAR_CLASS =
+	"flex shrink-0 items-center gap-1 px-[var(--cds-toolbar-pad-inline,0px)] pt-[var(--cds-toolbar-pad-block,0.25rem)] pb-[var(--cds-toolbar-pad-block,0.25rem)] outline-none focus-visible:outline-hidden forced-colors:focus-visible:-outline-offset-2 focus-visible:[box-shadow:inset_0_0_0_var(--cds-ring-focus-width,1px)_var(--cds-fill-accent,Highlight)]";
+
+/** The cds Toolbar's `wrap` title row, holding the lead and trail. */
+const WRAP_CLASS =
+	"flex min-w-0 flex-1 items-center gap-[4px] min-h-control flex-wrap ps-[calc(0.25rem*var(--cds-rem-scale,1))]";
 
 /** Upstream `Rw` (a 5px radius: r4) on a secondary `size="sm"` cds Button. */
 const APPLY_CLASS = `${cdsButtonClass("secondary", "sm")} rounded-r4 text-footnote px-[6px] text-secondary`;
@@ -79,6 +87,7 @@ export function ChangesFindingsBar({
 	const applyRef = useRef<HTMLButtonElement>(null);
 	// Upstream `fK(..., {keyboardOnly: true})`: focus inside the bar arrived by keyboard.
 	const keyboardInside = useRef(false);
+	const roving = useRovingToolbar(TOOLBAR_ROVING_OPTIONS);
 	const currentId = useCurrentReviewFinding(sessionId);
 	const total = findings.length;
 	const shown = total > 0;
@@ -163,84 +172,99 @@ export function ChangesFindingsBar({
 			}}
 			className={SUBHEADER_CLASS}
 		>
-			<div className="flex h-control items-center gap-1 self-start">
-				<Spark size={16} />
-				<span
-					role="status"
-					aria-live="polite"
-					className="text-body text-muted-as-secondary whitespace-nowrap tabular-nums"
-				>
-					<ShimmerText active={false} variant="secondary" className="block">
-						{`Finding ${index + 1} of ${total}`}
-					</ShimmerText>
-				</span>
-			</div>
-			<div className="flex min-w-min flex-1 flex-wrap-reverse items-center justify-end gap-1">
-				{onApplyFixes !== undefined && (
-					<button
-						ref={applyRef}
-						type="button"
-						className={APPLY_CLASS}
-						onClick={() =>
-						{
-							// Upstream: a keyboard click hands focus on to `U`.
-							if (focusVisible(applyRef.current))
-							{
-								applyRef.current?.blur();
-								heir.current?.focus();
-							}
-							onApplyFixes();
-						}}
-					>
-						Apply fixes
-					</button>
-				)}
-				<div className="flex items-center gap-1">
-					{arrows && (
-						<>
-							<DisabledReason reason={previousDisabled ? "Previous finding" : null}>
+			{/* oxlint-disable-next-line jsx-a11y/interactive-supports-focus -- upstream's root has no tabindex; the roving hook keeps one item at 0 and adds 0 to the root only while focus parks on it */}
+			<div
+				ref={roving.ref}
+				role="toolbar"
+				aria-label="Code review controls"
+				data-cds="Toolbar"
+				onFocus={roving.onFocus}
+				onKeyDown={roving.onKeyDown}
+				className={TOOLBAR_CLASS}
+			>
+				<div className="flex min-w-0 flex-1 items-center gap-1 self-stretch">
+					<div className={WRAP_CLASS}>
+						<div className="flex h-control items-center gap-1 self-start">
+							<Spark size={16} />
+							<span
+								role="status"
+								aria-live="polite"
+								className="text-body text-muted-as-secondary whitespace-nowrap tabular-nums"
+							>
+								<ShimmerText active={false} variant="secondary" className="block">
+									{`Finding ${index + 1} of ${total}`}
+								</ShimmerText>
+							</span>
+						</div>
+						<div className="flex min-w-min flex-1 flex-wrap-reverse items-center justify-end gap-1">
+							{onApplyFixes !== undefined && (
 								<button
-									ref={previousRef}
+									ref={applyRef}
 									type="button"
-									aria-label="Previous finding"
-									disabled={previousDisabled}
-									className={ICON_BUTTON_CLASS}
+									className={APPLY_CLASS}
 									onClick={() =>
 									{
-										if (index - 1 === 0) handOffFocus(previousRef, nextRef);
-										step(index - 1);
+										// Upstream: a keyboard click hands focus on to `U`.
+										if (focusVisible(applyRef.current))
+										{
+											applyRef.current?.blur();
+											heir.current?.focus();
+										}
+										onApplyFixes();
 									}}
 								>
-									<Icon name="ArrowUp" size="auto" aria-hidden="true" />
+									Apply fixes
 								</button>
-							</DisabledReason>
-							<DisabledReason reason={nextDisabled ? "Next finding" : null}>
+							)}
+							<div className="flex items-center gap-1">
+								{arrows && (
+									<>
+										<DisabledReason reason={previousDisabled ? "Previous finding" : null}>
+											<button
+												ref={previousRef}
+												type="button"
+												aria-label="Previous finding"
+												disabled={previousDisabled}
+												className={ICON_BUTTON_CLASS}
+												onClick={() =>
+												{
+													if (index - 1 === 0) handOffFocus(previousRef, nextRef);
+													step(index - 1);
+												}}
+											>
+												<Icon name="ArrowUp" size="auto" aria-hidden="true" />
+											</button>
+										</DisabledReason>
+										<DisabledReason reason={nextDisabled ? "Next finding" : null}>
+											<button
+												ref={nextRef}
+												type="button"
+												aria-label="Next finding"
+												disabled={nextDisabled}
+												className={ICON_BUTTON_CLASS}
+												onClick={() =>
+												{
+													if (index + 1 === total - 1) handOffFocus(nextRef, previousRef);
+													step(index + 1);
+												}}
+											>
+												<Icon name="ArrowDown" size="auto" aria-hidden="true" />
+											</button>
+										</DisabledReason>
+									</>
+								)}
 								<button
-									ref={nextRef}
+									ref={closeRef}
 									type="button"
-									aria-label="Next finding"
-									disabled={nextDisabled}
+									aria-label="Close findings bar"
 									className={ICON_BUTTON_CLASS}
-									onClick={() =>
-									{
-										if (index + 1 === total - 1) handOffFocus(nextRef, previousRef);
-										step(index + 1);
-									}}
+									onClick={onClose}
 								>
-									<Icon name="ArrowDown" size="auto" aria-hidden="true" />
+									<Icon name="X" size="auto" aria-hidden="true" />
 								</button>
-							</DisabledReason>
-						</>
-					)}
-					<button
-						ref={closeRef}
-						type="button"
-						aria-label="Close findings bar"
-						className={ICON_BUTTON_CLASS}
-						onClick={onClose}
-					>
-						<Icon name="X" size="auto" aria-hidden="true" />
-					</button>
+							</div>
+						</div>
+					</div>
 				</div>
 			</div>
 		</div>
