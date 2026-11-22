@@ -6,6 +6,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {ChangesPane, ChangesPaneView} from "../src/components/changes/changes-pane";
+import {TurnUndoSendContext} from "../src/components/turn-undo-send-context";
 import {GoToFile} from "../src/components/changes/go-to-file";
 import {isLargeDiff, LARGE_DIFF_MAX_FILES, LARGE_DIFF_MAX_LINES} from "../src/components/changes/large-diff";
 import {SettingsProvider} from "../src/components/settings-provider";
@@ -37,6 +38,8 @@ import {parseReportFindings} from "../src/lib/report-findings";
 import
 {
 	clearReviewFindings,
+	reloadReviewFindingsStore,
+	REVIEW_FINDINGS_STORAGE_KEY,
 	reviewFindingsSnapshot,
 	setReviewFindings,
 	toStoreFindings,
@@ -3359,7 +3362,7 @@ describe("ChangesPane transcript review findings (upstream cc8941b7b setReviewFi
 {
 	const SESSION = "session-transcript-findings";
 
-	function seed(files: readonly string[])
+	function seed(files: readonly string[], level?: "high")
 	{
 		const parsed = parseReportFindings(
 			{
@@ -3379,6 +3382,7 @@ describe("ChangesPane transcript review findings (upstream cc8941b7b setReviewFi
 			toStoreFindings("tool-1", parsed, 1),
 			{
 				toolId: "tool-1",
+				level,
 			},
 		);
 	}
@@ -3391,7 +3395,7 @@ describe("ChangesPane transcript review findings (upstream cc8941b7b setReviewFi
 		reviewApi.replace.mockReset();
 	});
 
-	function renderPane()
+	function renderPane(send: ((text: string) => void) | null = null)
 	{
 		const queryClient = new QueryClient(
 			{
@@ -3420,15 +3424,17 @@ describe("ChangesPane transcript review findings (upstream cc8941b7b setReviewFi
 			<QueryClientProvider client={queryClient}>
 				<SettingsProvider>
 					<ToastProvider>
-						<ChangesPane
-							sessionId={SESSION}
-							cwd="/repo"
-							chrome={
-							{
-								moveHandle: null,
-								controls: null,
-							}}
-						/>
+						<TurnUndoSendContext.Provider value={send}>
+							<ChangesPane
+								sessionId={SESSION}
+								cwd="/repo"
+								chrome={
+								{
+									moveHandle: null,
+									controls: null,
+								}}
+							/>
+						</TurnUndoSendContext.Provider>
 					</ToastProvider>
 				</SettingsProvider>
 			</QueryClientProvider>,
@@ -3488,6 +3494,47 @@ describe("ChangesPane transcript review findings (upstream cc8941b7b setReviewFi
 		});
 
 		expect(unanchoredFindingIds(SESSION)).toStrictEqual(new Set(["finding-tool-1-1"]));
+	});
+
+	it("keeps the findings bar once every finding is settled, re-running the review at its level", async () =>
+	{
+		seed(["greet.ts", "src/greet.ts"], "high");
+		const saved = JSON.parse(localStorage.getItem(REVIEW_FINDINGS_STORAGE_KEY) ?? "{}");
+		saved.findingStatusBySession[SESSION] =
+		{
+			"finding-tool-1-0": "addressed",
+			"finding-tool-1-1": "addressed",
+		};
+		localStorage.setItem(REVIEW_FINDINGS_STORAGE_KEY, JSON.stringify(saved));
+		reloadReviewFindingsStore();
+		const send = vi.fn<(text: string) => void>();
+		renderPane(send);
+		const rerun = await screen.findByRole(
+			"button",
+			{
+				name: "Re-run review",
+			},
+		);
+		fireEvent.click(rerun);
+
+		expect(
+			{
+				label: screen
+					.getByRole(
+						"toolbar",
+						{
+							name: "Code review controls",
+						},
+					)
+					.querySelector("[role=status]")?.textContent,
+				sent: send.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				label: "Fixes applied",
+				sent: [["/code-review high"]],
+			},
+		);
 	});
 
 	it("drops the transcript findings when a working-copy review opens", () =>

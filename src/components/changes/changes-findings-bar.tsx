@@ -1,6 +1,7 @@
 import {type RefObject, useEffect, useRef} from "react";
 
 import {scrollToFinding} from "../../lib/changes-review";
+import type {ReviewFindingStatus} from "../../lib/report-findings";
 import type {ReviewFinding} from "../../lib/review-diff";
 import {findingCursorIndex, setCurrentReviewFinding, useCurrentReviewFinding} from "../../lib/review-finding-cursor";
 import {TOOLBAR_ROVING_OPTIONS, useRovingToolbar} from "../../lib/use-roving-toolbar";
@@ -61,21 +62,76 @@ function handOffFocus(from: RefObject<HTMLButtonElement | null>, to: RefObject<H
 	}, 0);
 }
 
+const NO_STATUSES: Readonly<Record<string, ReviewFindingStatus>> = {};
+
+interface FixCounts
+{
+	fixing: number;
+	/** Settled as "addressed" (Fixed). */
+	fixed: number;
+	/** Settled either way: "addressed" or "unchanged". */
+	settled: number;
+	open: number;
+}
+
+function countStatuses(
+	findings: readonly ReviewFinding[],
+	statuses: Readonly<Record<string, ReviewFindingStatus>>,
+): FixCounts
+{
+	let fixing = 0;
+	let fixed = 0;
+	let settled = 0;
+	for (const finding of findings)
+	{
+		const status = statuses[finding.id] ?? "open";
+		if (status === "fixing") fixing += 1;
+		else if (status === "addressed" || status === "unchanged")
+		{
+			settled += 1;
+			if (status === "addressed") fixed += 1;
+		}
+	}
+	return {
+		fixing,
+		fixed,
+		settled,
+		open: findings.length - fixing - settled,
+	};
+}
+
+/** Upstream `GT`: the bar's status text. */
+function barLabel(applying: boolean, allSettled: boolean, fixed: number, current: number, total: number): string
+{
+	if (applying) return "Applying fixes…";
+	if (allSettled) return fixed > 0 ? "Fixes applied" : "No change needed";
+	return `Finding ${current} of ${total}`;
+}
+
 /**
- * claude.ai/code's review findings bar (`zw`): the Changes pane subheader that counts the session's unresolved findings,
- * steps between them without wrapping, applies them all and closes. Local has no fix-outcome statuses, so its label is
- * always "Finding {current} of {total}" and its action always "Apply fixes".
+ * claude.ai/code's review findings bar (`KT`): the Changes pane subheader over the session's non-dismissed findings.
+ * It steps between them without wrapping and closes; its label and action follow the findings' fix statuses —
+ * "Applying fixes…" while every unsettled finding is fixing, "Fixes applied" / "No change needed" with Re-run review
+ * once all are settled, else "Finding {current} of {total}" with Apply fixes while any is open.
  */
 export function ChangesFindingsBar({
 	sessionId,
 	findings,
+	statuses = NO_STATUSES,
+	responding = false,
 	onApplyFixes,
+	onRerunReview,
 	onClose,
 }: {
 	sessionId: string;
-	/** The unresolved findings, in order. */
+	/** The non-dismissed findings, in order. */
 	findings: readonly ReviewFinding[];
+	/** Fix statuses by finding id; a missing one is "open". */
+	statuses?: Readonly<Record<string, ReviewFindingStatus>> | undefined;
+	/** The session is responding: shimmers "Applying fixes…" and disables Re-run review. */
+	responding?: boolean | undefined;
 	onApplyFixes?: (() => void) | undefined;
+	onRerunReview?: (() => void) | undefined;
 	onClose: () => void;
 })
 {
@@ -85,6 +141,9 @@ export function ChangesFindingsBar({
 	const nextRef = useRef<HTMLButtonElement>(null);
 	const closeRef = useRef<HTMLButtonElement>(null);
 	const applyRef = useRef<HTMLButtonElement>(null);
+	const rerunRef = useRef<HTMLButtonElement>(null);
+	// Upstream `K`: one Re-run per turn, released when the session stops responding.
+	const rerunning = useRef(false);
 	// Upstream `fK(..., {keyboardOnly: true})`: focus inside the bar arrived by keyboard.
 	const keyboardInside = useRef(false);
 	const roving = useRovingToolbar(TOOLBAR_ROVING_OPTIONS);
@@ -93,7 +152,11 @@ export function ChangesFindingsBar({
 	const shown = total > 0;
 	const index = findingCursorIndex(findings, currentId);
 	const arrows = total > 1;
-	const apply = onApplyFixes !== undefined;
+	const counts = countStatuses(findings, statuses);
+	const allSettled = shown && counts.settled === total;
+	const applying = counts.fixing > 0 && counts.open === 0;
+	const apply = onApplyFixes !== undefined && !allSettled && counts.open > 0;
+	const rerun = onRerunReview !== undefined && allSettled;
 	// Upstream `U`: where focus goes when a control vanishes.
 	const heir = arrows ? (index < total - 1 ? nextRef : previousRef) : closeRef;
 	const controls = useRef(
@@ -121,6 +184,11 @@ export function ChangesFindingsBar({
 				},
 			);
 	}, [arrows, apply, heir]);
+
+	useEffect(() =>
+	{
+		if (!responding) rerunning.current = false;
+	}, [responding]);
 
 	// Upstream `qa`: the bar unmounting after keyboard focus inside returns focus to the diff pane body.
 	useEffect(() =>
@@ -158,6 +226,14 @@ export function ChangesFindingsBar({
 	const previousDisabled = index <= 0;
 	const nextDisabled = index >= total - 1;
 
+	function handFocusOn(from: RefObject<HTMLButtonElement | null>): void
+	{
+		// Upstream: a keyboard click hands focus on to `U`.
+		if (!focusVisible(from.current)) return;
+		from.current?.blur();
+		heir.current?.focus();
+	}
+
 	return (
 		<div
 			ref={rootRef}
@@ -191,25 +267,37 @@ export function ChangesFindingsBar({
 								aria-live="polite"
 								className="text-body text-muted-as-secondary whitespace-nowrap tabular-nums"
 							>
-								<ShimmerText active={false} variant="secondary" className="block">
-									{`Finding ${index + 1} of ${total}`}
+								<ShimmerText active={applying && responding} variant="secondary" className="block">
+									{barLabel(applying, allSettled, counts.fixed, index + 1, total)}
 								</ShimmerText>
 							</span>
 						</div>
 						<div className="flex min-w-min flex-1 flex-wrap-reverse items-center justify-end gap-1">
-							{onApplyFixes !== undefined && (
+							{rerun && (
+								<button
+									ref={rerunRef}
+									type="button"
+									className={APPLY_CLASS}
+									disabled={responding}
+									onClick={() =>
+									{
+										if (rerunning.current) return;
+										rerunning.current = true;
+										handFocusOn(rerunRef);
+										onRerunReview();
+									}}
+								>
+									Re-run review
+								</button>
+							)}
+							{apply && (
 								<button
 									ref={applyRef}
 									type="button"
 									className={APPLY_CLASS}
 									onClick={() =>
 									{
-										// Upstream: a keyboard click hands focus on to `U`.
-										if (focusVisible(applyRef.current))
-										{
-											applyRef.current?.blur();
-											heir.current?.focus();
-										}
+										handFocusOn(applyRef);
 										onApplyFixes();
 									}}
 								>

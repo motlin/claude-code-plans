@@ -8,6 +8,7 @@ import
 	type ReactNode,
 	type RefObject,
 	useCallback,
+	useContext,
 	useEffect,
 	useLayoutEffect,
 	useMemo,
@@ -66,6 +67,7 @@ import
 } from "../../lib/diff-file-marks";
 import {asRecord} from "../../lib/narrow";
 import {loadChangesScope, saveChangesScope} from "../../lib/pane-layout";
+import type {ReviewFindingStatus} from "../../lib/report-findings";
 import type {ReviewFinding} from "../../lib/review-diff";
 import
 {
@@ -110,6 +112,8 @@ import {useToast} from "../toast-context";
 import {Icon} from "../ui/icon";
 import {Tooltip} from "../ui/tooltip";
 import {ChangedFilesSidebar} from "./changes-file-tree";
+import {SessionRespondingContext} from "../session-responding-context";
+import {TurnUndoSendContext} from "../turn-undo-send-context";
 import {ChangesFindingsBar} from "./changes-findings-bar";
 import
 {
@@ -171,6 +175,13 @@ type SessionDiffCommit = Extract<
 const BRANCH_SCOPE = "branch";
 const UNCOMMITTED_SCOPE = "uncommitted";
 const NO_FINDINGS: readonly ReviewFinding[] = [];
+const NO_STATUSES: Readonly<Record<string, ReviewFindingStatus>> = {};
+
+/** A fix outcome settled the finding: it stays on the findings bar though no longer open. */
+function isSettledStatus(status: ReviewFindingStatus | undefined): boolean
+{
+	return status === "addressed" || status === "unchanged";
+}
 const NO_FILES: readonly SessionDiffFile[] = [];
 const noop = (): void =>
 {
@@ -1279,8 +1290,14 @@ export interface ChangesPaneViewProps
 	findings?: readonly ReviewFinding[];
 	onFixFinding?: (finding: ReviewFinding) => void;
 	onDismissFinding?: (finding: ReviewFinding) => void;
+	/** Fix statuses of transcript findings by id; a settled finding stays on the findings bar though resolved. */
+	findingStatuses?: Readonly<Record<string, ReviewFindingStatus>>;
+	/** The session is responding: the findings bar shimmers "Applying fixes…" and disables Re-run review. */
+	responding?: boolean;
 	/** The findings bar's Apply fixes; without it the bar has no primary action. */
 	onApplyFixes?: (() => void) | undefined;
+	/** The findings bar's Re-run review, offered once every finding is settled. */
+	onRerunReview?: (() => void) | undefined;
 	/** The findings bar's Close: hide the findings without resolving them. */
 	onCloseFindings?: () => void;
 	/** Enables line comments and the right-click menu, which feed this session's composer. */
@@ -1317,7 +1334,10 @@ export function ChangesPaneView({
 	findings = NO_FINDINGS,
 	onFixFinding = noop,
 	onDismissFinding = noop,
+	findingStatuses = NO_STATUSES,
+	responding = false,
 	onApplyFixes,
+	onRerunReview,
 	onCloseFindings = noop,
 	sessionId,
 	cwd,
@@ -1327,7 +1347,11 @@ export function ChangesPaneView({
 {
 	const comments = useDiffComments(sessionId);
 	const {activeId: activeCommentId} = useDiffCommentEditing(sessionId);
-	const openFindings = useMemo(() => findings.filter((finding) => !finding.resolved), [findings]);
+	// Upstream `KT` counts every non-dismissed finding: settled transcript findings stay on the bar.
+	const barFindings = useMemo(
+		() => findings.filter((finding) => !finding.resolved || isSettledStatus(findingStatuses[finding.id])),
+		[findings, findingStatuses],
+	);
 	const iconSet = useActiveFileTypeIconSet();
 	const files = diff?.files ?? NO_FILES;
 	const hasFiles = files.length > 0;
@@ -2167,8 +2191,11 @@ export function ChangesPaneView({
 			{sessionId !== undefined && (
 				<ChangesFindingsBar
 					sessionId={sessionId}
-					findings={openFindings}
+					findings={barFindings}
+					statuses={findingStatuses}
+					responding={responding}
 					onApplyFixes={onApplyFixes}
+					onRerunReview={onRerunReview}
 					onClose={onCloseFindings}
 				/>
 			)}
@@ -2259,8 +2286,6 @@ function usePersistedReview(sessionId: string): string | null
 	return entry.sessionId === sessionId ? entry.reviewId : null;
 }
 
-const NO_STATUSES = {};
-
 /**
  * The findings a transcript "Code review" card seeded (upstream's `diff-annotations` store), shown on every scope in
  * place of the working-copy review; each scope's file list resolves which findings it can anchor.
@@ -2281,7 +2306,11 @@ function useTranscriptFindings(sessionId: string, diff: SessionDiffResponse | un
 		() => (seeded === undefined ? null : transcriptReviewFindings(seeded, statuses, paths)),
 		[seeded, statuses, paths],
 	);
-	return findings;
+	return {
+		findings,
+		statuses,
+		level: store.reviewLevelBySession[sessionId],
+	};
 }
 
 /**
@@ -2291,7 +2320,8 @@ function useTranscriptFindings(sessionId: string, diff: SessionDiffResponse | un
  */
 function useReviewFindings(sessionId: string, scope: string, diff: SessionDiffResponse | undefined)
 {
-	const transcript = useTranscriptFindings(sessionId, diff);
+	const {findings: transcript, statuses, level} = useTranscriptFindings(sessionId, diff);
+	const send = useContext(TurnUndoSendContext);
 	const reviewId = usePersistedReview(sessionId);
 	const active = transcript === null && reviewId !== null && scope === UNCOMMITTED_SCOPE;
 	const queryClient = useQueryClient();
@@ -2378,10 +2408,21 @@ function useReviewFindings(sessionId: string, scope: string, diff: SessionDiffRe
 			insert(formatFixFindingPrompt(finding));
 		},
 		dismiss: (finding: ReviewFinding) => void dismiss(finding),
+		statuses: transcript === null ? NO_STATUSES : statuses,
 		applyFixes: () =>
 		{
 			insert(formatApplyFindingsPrompt(findings.filter((finding) => !finding.resolved)));
 		},
+		// Upstream `KT` Re-run review: `/code-review {level}` through the live terminal, else into the composer.
+		rerunReview:
+			transcript === null
+				? undefined
+				: () =>
+					{
+						const command = level === undefined ? "/code-review" : `/code-review ${level}`;
+						if (send === null) insert(command);
+						else send(command);
+					},
 		close: () =>
 		{
 			if (transcript !== null) clearReviewFindings(sessionId, true);
@@ -2417,6 +2458,7 @@ export function ChangesPane({
 	const toast = useToast();
 	const queryClient = useQueryClient();
 	const review = useReviewFindings(sessionId, scope, diffQuery.data);
+	const responding = useContext(SessionRespondingContext);
 	const failure =
 		diffQuery.data === undefined && (diffQuery.isError || diffQuery.failureCount > 0)
 			?
@@ -2501,7 +2543,10 @@ export function ChangesPane({
 			findings={review.findings}
 			onFixFinding={review.fix}
 			onDismissFinding={review.dismiss}
+			findingStatuses={review.statuses}
+			responding={responding}
 			onApplyFixes={review.applyFixes}
+			onRerunReview={review.rerunReview}
 			onCloseFindings={review.close}
 			sessionId={sessionId}
 			cwd={cwd}

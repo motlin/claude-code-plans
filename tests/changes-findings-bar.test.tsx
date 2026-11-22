@@ -6,6 +6,7 @@ import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import {ChangesFindingsBar} from "../src/components/changes/changes-findings-bar";
 import {cdsButtonClass} from "../src/components/ui/cds-button";
 import {clearDiffScrollTarget, diffScrollTarget} from "../src/lib/diff-scroll-target";
+import type {ReviewFindingStatus} from "../src/lib/report-findings";
 import type {ReviewFinding} from "../src/lib/review-diff";
 import {clearReviewFindingCursor, currentReviewFinding} from "../src/lib/review-finding-cursor";
 
@@ -269,6 +270,124 @@ describe("ChangesFindingsBar (upstream c9bd7af9c zw)", () =>
 		await flushTimers();
 
 		expect(document.activeElement?.getAttribute("aria-label")).toBe("Previous finding");
+	});
+
+	it("labels the bar by the findings' fix statuses and swaps Apply fixes for Re-run review once all are settled", () =>
+	{
+		const TWO = [finding("a"), finding("b")];
+		const cases: [Readonly<Record<string, ReviewFindingStatus>>, boolean][] = [
+			[
+				{
+					a: "addressed",
+					b: "unchanged",
+				},
+				false,
+			],
+			[
+				{
+					a: "unchanged",
+					b: "unchanged",
+				},
+				false,
+			],
+			[
+				{
+					a: "fixing",
+					b: "fixing",
+				},
+				true,
+			],
+			[
+				{
+					a: "open",
+					b: "addressed",
+				},
+				false,
+			],
+		];
+		const seen = cases.map(([statuses, responding]) =>
+		{
+			const {container, unmount} = render(
+				<ChangesFindingsBar
+					sessionId={SESSION}
+					findings={TWO}
+					statuses={statuses}
+					responding={responding}
+					onApplyFixes={vi.fn<() => void>()}
+					onRerunReview={vi.fn<() => void>()}
+					onClose={vi.fn<() => void>()}
+				/>,
+			);
+			const status = screen.getByRole("status");
+			const result =
+			{
+				label: status.textContent,
+				shimmering: status.querySelector("[data-shimmering]")?.getAttribute("data-shimmering"),
+				primary: [...container.querySelectorAll("button")]
+					.map((element) => element.textContent)
+					.filter((text) => text !== ""),
+			};
+			unmount();
+			return result;
+		});
+
+		expect(seen).toStrictEqual([
+			{
+				label: "Fixes applied",
+				shimmering: "false",
+				primary: ["Re-run review"],
+			},
+			{
+				label: "No change needed",
+				shimmering: "false",
+				primary: ["Re-run review"],
+			},
+			{
+				label: "Applying fixes…",
+				shimmering: "true",
+				primary: [],
+			},
+			{
+				label: "Finding 1 of 2",
+				shimmering: "false",
+				primary: ["Apply fixes"],
+			},
+		]);
+	});
+
+	it("re-runs the review once per turn and disables Re-run review while the session responds", () =>
+	{
+		const onRerunReview = vi.fn<() => void>();
+		const props =
+		{
+			sessionId: SESSION,
+			findings: [finding("a")],
+			statuses:
+			{
+				a: "addressed",
+			} as const,
+			onRerunReview,
+			onClose: vi.fn<() => void>(),
+		};
+		const {rerender} = render(<ChangesFindingsBar {...props} responding={false} />);
+		fireEvent.click(button("Re-run review"));
+		fireEvent.click(button("Re-run review"));
+		rerender(<ChangesFindingsBar {...props} responding />);
+		const disabledWhileResponding = button("Re-run review").disabled;
+		rerender(<ChangesFindingsBar {...props} responding={false} />);
+		fireEvent.click(button("Re-run review"));
+
+		expect(
+			{
+				calls: onRerunReview.mock.calls.length,
+				disabledWhileResponding,
+			},
+		).toStrictEqual(
+			{
+				calls: 2,
+				disabledWhileResponding: true,
+			},
+		);
 	});
 
 	it("closes through onClose and applies through onApplyFixes", () =>
