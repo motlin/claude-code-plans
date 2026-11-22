@@ -2454,7 +2454,7 @@ describe("AttachedContextChips quote rows", () =>
 					"px-0",
 					"rounded-[var(--cds-radius--xs)]",
 					"shrink-0",
-					"text-ink-muted",
+					"text-secondary",
 					"w-control",
 				],
 			},

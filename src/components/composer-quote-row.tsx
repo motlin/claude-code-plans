@@ -14,7 +14,7 @@ const ROW_FILL_CLASS =
 
 /** Upstream's ghost icon-only xs cds Button, muted until hovered or focused, always visible on a row. */
 const ROW_REMOVE_CLASS =
-	"inline-flex shrink-0 cursor-pointer items-center justify-center aspect-square w-control h-control px-0 rounded-[var(--cds-radius--xs)] text-ink-muted hover:text-primary focus-visible:text-primary hover:bg-fill-ghost-hover outline-none focus-visible:shadow-focus";
+	"inline-flex shrink-0 cursor-pointer items-center justify-center aspect-square w-control h-control px-0 rounded-[var(--cds-radius--xs)] text-secondary hover:text-primary focus-visible:text-primary hover:bg-fill-ghost-hover outline-none focus-visible:shadow-focus";
 
 /** The row's Card, which the truncated-quote tooltip sits above since its `display: contents` anchor has no box. */
 function rowCard(anchor: HTMLElement): Element | null
