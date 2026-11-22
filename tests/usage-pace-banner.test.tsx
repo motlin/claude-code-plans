@@ -825,7 +825,7 @@ describe("usage band as a notice card", () =>
 					iconSlot: "flex min-h-[1lh] shrink-0 items-center ms-[4px] -me-[4px] text-secondary",
 					icon: "lucide lucide-gauge size-4",
 					gauge: "usage-limit-card-gauge",
-					body: "flex min-w-0 flex-wrap items-start gap-y-sm gap-x-md flex-1 ms-[6px] compact:ms-[6px] comfortable:ms-[4px]",
+					body: "flex min-w-0 flex-wrap items-start gap-y-sm gap-x-md flex-1 ms-[4px]",
 					content: "max-w-full min-w-0 flex-auto",
 					words:
 					{

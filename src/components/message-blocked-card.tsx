@@ -1,7 +1,6 @@
 import {Collapsible as BaseCollapsible} from "@base-ui/react/collapsible";
 import {type ReactNode, useState} from "react";
 
-import {useFizzyLake} from "../lib/fizzy-lake";
 import {formatModelName} from "../lib/model-name";
 import {ApprovalActionButton} from "./approval-action-button";
 import {type HardBlockHost, hardBlockOpenMemory} from "./hard-block-host";
@@ -44,7 +43,6 @@ export function MessageBlockedCard({
 	fallback: ReactNode;
 }): ReactNode
 {
-	const color = useFizzyLake("color");
 	const newest = host.latest?.uuid === uuid;
 	const live = newest && !host.held;
 	const block = newest ? host.latest : host.blockAt(uuid);
@@ -70,9 +68,9 @@ export function MessageBlockedCard({
 				data-action-align="first-line"
 				data-testid="hard-block-card"
 				role="none"
-				className={`${ROOT_CLASS} ${color ? NOTICE_SURFACE_CLASS.fizzy : NOTICE_SURFACE_CLASS.base}`}
+				className={`${ROOT_CLASS} ${NOTICE_SURFACE_CLASS}`}
 			>
-				<span className={`flex min-h-[1lh] shrink-0 items-center${color ? " text-secondary" : ""}`}>
+				<span className={`flex min-h-[1lh] shrink-0 items-center text-secondary`}>
 					<Icon name="Warning" size="auto" className="text-warning" />
 				</span>
 				<div className="flex min-w-0 flex-1 flex-col">

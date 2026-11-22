@@ -2,7 +2,6 @@ import {Collapsible as BaseCollapsible} from "@base-ui/react/collapsible";
 import {type ReactNode, useContext, useState} from "react";
 
 import {useRefusalOptOut} from "../hooks/use-refusal-opt-out";
-import {useFizzyLake} from "../lib/fizzy-lake";
 import {formatModelName} from "../lib/model-name";
 import {ApprovalActionButton} from "./approval-action-button";
 import {ExternalTextLink} from "./external-text-link";
@@ -94,7 +93,6 @@ export function ModelSwitchedCard({
 	settings: RefusalSettingsLink;
 }): ReactNode
 {
-	const color = useFizzyLake("color");
 	const arrived = host.live?.uuid === record.uuid;
 	const [choice, setChoice] = useState(() => modelSwitchedOpenMemory.get(record.uuid));
 	const open = choice ?? arrived;
@@ -115,7 +113,7 @@ export function ModelSwitchedCard({
 				data-action-align="first-line"
 				data-testid="code-model-switched-card"
 				role="none"
-				className={`${ROOT_CLASS} ${color ? NOTICE_SURFACE_CLASS.fizzy : NOTICE_SURFACE_CLASS.base}`}
+				className={`${ROOT_CLASS} ${NOTICE_SURFACE_CLASS}`}
 			>
 				<div className="flex min-w-0 flex-1 flex-col">
 					<Collapsible.Root open={open} onOpenChange={toggle} className="contents">

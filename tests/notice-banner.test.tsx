@@ -53,108 +53,79 @@ function metrics(wrap: (banner: ReactNode) => ReactNode, keyline?: "glyph" | "te
 const LEAD = "flex items-start gap-xs";
 const TYPE = "font-sans text-body font-normal break-words px-md rounded-composer";
 const FIZZY_SURFACE = "bg-page shadow-card-ring text-primary [--card-ring-color:var(--banner-line)] @container";
-const ICON_SLOT = "flex min-h-[1lh] shrink-0 items-center ms-[4px] -me-[4px]";
+const ICON_SLOT = "flex min-h-[1lh] shrink-0 items-center ms-[4px] -me-[4px] text-secondary";
 const BODY = "flex min-w-0 flex-wrap items-start gap-y-sm gap-x-md flex-1";
-const GLYPH_BODY = `${BODY} ms-[6px] compact:ms-[6px] comfortable:ms-[4px]`;
-const PANELS =
+const GLYPH_BODY = `${BODY} ms-[4px]`;
+const CARD =
 {
 	keyline: "glyph",
 	root: `${LEAD} py-[calc(var(--cds-pad-md)+2px)] ${TYPE} ${FIZZY_SURFACE}`,
-	iconSlot: `${ICON_SLOT} text-secondary`,
+	iconSlot: ICON_SLOT,
 	body: GLYPH_BODY,
 	dismissSlot: "-me-[2px] flex h-[1lh] shrink-0 items-center",
-};
-const BASE =
-{
-	keyline: "glyph",
-	root: `${LEAD} py-md ${TYPE} ${FIZZY_SURFACE}`,
-	iconSlot: `${ICON_SLOT} text-secondary`,
-	body: GLYPH_BODY,
-	dismissSlot: "-me-[4px] flex h-[1lh] shrink-0 items-center",
 };
 
 describe("NoticeBanner composer keyline", () =>
 {
-	// Upstream's dock cards always pass composerCalibration (`rB()`), so `ah` takes its keyline branch:
-	// px-md, rounded-composer, the icon and body offsets and the keyline Dismiss margins.
-	it("takes upstream's panels keyline Banner under comfortable density: pad-md+2px block padding and the -2px Dismiss margin", () =>
+	// Upstream's dock cards always pass composerCalibration (`rB()`), so `ah` takes its keyline branch.
+	// The current `ah` reads neither fizzy-lake panels, colour nor density: one card in every scope.
+	it("draws upstream's one keyline card whatever the panels, colour and density", () =>
 	{
-		expect(metrics((banner): ReactNode => banner)).toStrictEqual(
-			{
-				...PANELS,
-				scope: null,
-			},
-		);
-	});
-
-	it("keeps py-md and the glyph -4px Dismiss margin in the compact column with panels off", () =>
-	{
-		expect(metrics((banner) => <CompactScope>{banner}</CompactScope>)).toStrictEqual(
-			{
-				...BASE,
-				scope: "compact",
-			},
-		);
-	});
-
-	it("keeps py-md and the glyph -4px Dismiss margin in a comfortable scope with panels off", () =>
-	{
-		expect(
-			metrics((banner) => (
+		const wraps: Record<string, (banner: ReactNode) => ReactNode> =
+		{
+			default: (banner): ReactNode => banner,
+			compactPanelsOff: (banner) => <CompactScope>{banner}</CompactScope>,
+			comfortablePanelsOff: (banner) => (
 				<PanelsOff>
 					<DensityScope density="comfortable">{banner}</DensityScope>
 				</PanelsOff>
-			)),
-		).toStrictEqual(
-			{
-				...BASE,
-				scope: "comfortable",
-			},
-		);
-	});
-
-	it("takes the panels block padding at compact tokens when an override forces compact", () =>
-	{
-		expect(
-			metrics((banner) => (
+			),
+			compactOverride: (banner) => (
 				<DensityOverride density="compact">
 					<DensityScope>{banner}</DensityScope>
 				</DensityOverride>
-			)),
-		).toStrictEqual(
+			),
+			colorOff: (banner) => <FizzyLakeContext.Provider value={WITHOUT_COLOR}>{banner}</FizzyLakeContext.Provider>,
+		};
+		expect(Object.fromEntries(Object.entries(wraps).map(([name, wrap]) => [name, metrics(wrap)]))).toStrictEqual(
 			{
-				...PANELS,
-				scope: "compact",
+				default:
+				{
+					...CARD,
+					scope: null,
+				},
+				compactPanelsOff:
+				{
+					...CARD,
+					scope: "compact",
+				},
+				comfortablePanelsOff:
+				{
+					...CARD,
+					scope: "comfortable",
+				},
+				compactOverride:
+				{
+					...CARD,
+					scope: "compact",
+				},
+				colorOff:
+				{
+					...CARD,
+					scope: null,
+				},
 			},
 		);
 	});
 
-	it("uses the text keyline's body offset and Dismiss margin for a composer with no leading item", () =>
+	it("uses the text keyline's body offset for a composer with no leading item, panels off", () =>
 	{
 		expect(metrics((banner) => <CompactScope>{banner}</CompactScope>, "text")).toStrictEqual(
 			{
-				...BASE,
+				...CARD,
 				keyline: "text",
-				body: `${BODY} ms-[4px] compact:ms-[4px] comfortable:ms-[2px]`,
-				dismissSlot: "-me-[2px] compact:-me-[2px] comfortable:-me-[4px] flex h-[1lh] shrink-0 items-center",
+				body: `${BODY} ms-[2px]`,
 				scope: "compact",
-			},
-		);
-	});
-});
-
-describe("NoticeBanner neutral surface", () =>
-{
-	it("layers upstream's alpha-1 neutral tint over surface-1 and leaves the icon untinted with fizzy-lake color off", () =>
-	{
-		expect(
-			metrics((banner) => <FizzyLakeContext.Provider value={WITHOUT_COLOR}>{banner}</FizzyLakeContext.Provider>),
-		).toStrictEqual(
-			{
-				...PANELS,
-				root: `${LEAD} py-[calc(var(--cds-pad-md)+2px)] ${TYPE} bg-surface-1 bg-[linear-gradient(var(--color-alpha-1)_0_0)] shadow-card-ring text-primary @container`,
-				iconSlot: ICON_SLOT,
-				scope: null,
 			},
 		);
 	});
@@ -174,8 +145,6 @@ describe("NoticeBanner neutral surface", () =>
 
 const ACTION_BASE =
 	"flex shrink-0 items-center gap-xs min-h-[var(--cds-h-control)] my-[calc((1lh-var(--cds-h-control))/2)] -ms-[2px]";
-const IQ_GLYPH =
-	"me-[calc(8px-var(--cds-pad-md))] compact:me-[calc(8px-var(--cds-pad-md))] comfortable:me-[calc(4px-var(--cds-pad-md))]";
 
 function actionMetrics(banner: ReactNode)
 {
@@ -218,15 +187,15 @@ describe("NoticeBanner action slot", () =>
 				role: "none",
 				keyline: "glyph",
 				ctaLayout: "inline",
-				root: BASE.root,
-				iconSlot: BASE.iconSlot,
+				root: CARD.root,
+				iconSlot: CARD.iconSlot,
 				body: GLYPH_BODY,
 				bodyChildren: [textDiv, `span.${ACTION_BASE}`],
 			},
 		);
 	});
 
-	it("gives a keyline action with no Dismiss upstream's Iq end margin, and -2px under panels", () =>
+	it("gives a keyline action with no Dismiss the -2px end margin, panels on or off", () =>
 	{
 		const withoutDismiss = (wrap: (banner: ReactNode) => ReactNode) =>
 			actionMetrics(
@@ -236,13 +205,11 @@ describe("NoticeBanner action slot", () =>
 					</NoticeBanner>,
 				),
 			).bodyChildren[1];
-		expect(withoutDismiss((banner) => <CompactScope>{banner}</CompactScope>)).toBe(
-			`span.${ACTION_BASE} ${IQ_GLYPH}`,
-		);
+		expect(withoutDismiss((banner) => <CompactScope>{banner}</CompactScope>)).toBe(`span.${ACTION_BASE} -me-[2px]`);
 		expect(withoutDismiss((banner): ReactNode => banner)).toBe(`span.${ACTION_BASE} -me-[2px]`);
 	});
 
-	it("draws the uncalibrated Banner (px-lg, rounded-card, P9 action margin) with a role override", () =>
+	it("draws the uncalibrated Banner (px-lg, rounded-card, !py-lg, b9 action margin) with a role override, panels off", () =>
 	{
 		expect(
 			actionMetrics(
@@ -262,30 +229,10 @@ describe("NoticeBanner action slot", () =>
 				role: "status",
 				keyline: null,
 				ctaLayout: "inline",
-				root: `${LEAD} py-md font-sans text-body font-normal break-words px-lg rounded-card ${FIZZY_SURFACE}`,
+				root: `${LEAD} !py-lg font-sans text-body font-normal break-words px-lg rounded-card ${FIZZY_SURFACE}`,
 				iconSlot: "flex min-h-[1lh] shrink-0 items-center text-secondary",
 				body: BODY,
-				bodyChildren: [textDiv, `span.${ACTION_BASE} -me-[calc(var(--cds-pad-md)-2px)]`],
-			},
-		);
-	});
-
-	it("takes upstream's panels !py-lg and b9 action margin on the uncalibrated Banner", () =>
-	{
-		const metrics = actionMetrics(
-			<NoticeBanner icon={<Gauge />} keyline={null} action={<button type="button">Try again</button>}>
-				x
-			</NoticeBanner>,
-		);
-		expect(
-			{
-				root: metrics.root,
-				action: metrics.bodyChildren[1],
-			},
-		).toStrictEqual(
-			{
-				root: `${LEAD} !py-lg font-sans text-body font-normal break-words px-lg rounded-card ${FIZZY_SURFACE}`,
-				action: `span.${ACTION_BASE} -me-[calc(var(--cds-pad-md)-6px)]`,
+				bodyChildren: [textDiv, `span.${ACTION_BASE} -me-[calc(var(--cds-pad-md)-6px)]`],
 			},
 		);
 	});
@@ -385,7 +332,7 @@ describe("NoticeBanner CTA wrap measurement", () =>
 		).toStrictEqual(
 			{
 				ctaLayout: "wrapped",
-				root: `${LEAD} py-md font-sans text-body font-normal break-words px-lg pb-lg rounded-card ${FIZZY_SURFACE}`,
+				root: `${LEAD} !py-lg font-sans text-body font-normal break-words px-lg pb-lg rounded-card ${FIZZY_SURFACE}`,
 				action: "span.flex shrink-0 items-center gap-xs max-w-full flex-wrap",
 			},
 		);
@@ -437,10 +384,10 @@ describe("NoticeBanner CTA wrap measurement", () =>
 		const stacked =
 		{
 			ctaLayout: "stacked",
-			root: BASE.root,
+			root: CARD.root,
 			first: "DIV",
-			body: "flex min-w-0 flex-wrap items-start gap-y-xs gap-x-md flex-1 ms-[6px] compact:ms-[6px] comfortable:ms-[4px]",
-			action: "flex shrink-0 items-center gap-xs max-w-full flex-wrap basis-full -ms-[6px] compact:-ms-[6px] comfortable:-ms-[4px]",
+			body: "flex min-w-0 flex-wrap items-start gap-y-xs gap-x-md flex-1 ms-[4px]",
+			action: "flex shrink-0 items-center gap-xs max-w-full flex-wrap basis-full",
 		};
 		expect(read()).toStrictEqual(stacked);
 		resize(
@@ -459,7 +406,7 @@ describe("NoticeBanner CTA wrap measurement", () =>
 		expect(read()).toStrictEqual(
 			{
 				ctaLayout: "inline",
-				root: BASE.root,
+				root: CARD.root,
 				first: "SPAN",
 				body: GLYPH_BODY,
 				action: ACTION_BASE,
@@ -485,7 +432,7 @@ describe("NoticeBanner CTA wrap measurement", () =>
 		).toStrictEqual(
 			{
 				root: `${LEAD} py-[calc(var(--cds-pad-md)+2px)] font-sans text-body font-normal break-words px-md pt-[calc(var(--cds-pad-md)-2px)] rounded-composer ${FIZZY_SURFACE}`,
-				body: "flex min-w-0 flex-wrap items-start gap-y-xs gap-x-md flex-1 me-[2px] ms-[6px] compact:ms-[6px] comfortable:ms-[4px]",
+				body: "flex min-w-0 flex-wrap items-start gap-y-xs gap-x-md flex-1 me-[2px] ms-[4px]",
 				action: "span.flex shrink-0 items-center gap-xs max-w-full flex-wrap basis-full -me-[2px]",
 			},
 		);
