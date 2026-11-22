@@ -573,6 +573,7 @@ export function ModelMenu({
 						})}
 				sheetSize="base"
 				cds="ModelSelector"
+				maxWidthClass="max-w-[min(26rem,var(--available-width))]"
 				{...(surface === "bar"
 					?
 						{

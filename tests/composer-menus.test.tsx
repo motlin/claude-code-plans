@@ -1028,6 +1028,18 @@ describe("Composer home bar model menu", () =>
 				insideScroller: false,
 			},
 		);
+		const popupClasses = menu.className.split(" ");
+		expect(
+			{
+				upstreamCap: popupClasses.includes("max-w-[min(26rem,var(--available-width))]"),
+				sharedCap: popupClasses.includes("max-w-[320px]"),
+			},
+		).toStrictEqual(
+			{
+				upstreamCap: true,
+				sharedCap: false,
+			},
+		);
 	});
 
 	it("has no header in a session chin", async () =>

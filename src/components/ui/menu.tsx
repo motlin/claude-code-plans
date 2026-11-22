@@ -101,7 +101,10 @@ function NestedSheet(
  * radio/checkbox items, and single-key accelerators that fire while open.
  */
 
-const POPUP_CLASS = `relative flex max-h-[var(--available-height)] min-w-[128px] max-w-[320px] flex-col bg-[var(--menu-bg)] shadow-[var(--menu-shadow)] ${FORCED_COLORS_BORDER_CLASS} font-normal text-primary outline-none select-none`;
+/** The shared popup width cap; a menu such as upstream's ModelSelector replaces it through `maxWidthClass`. */
+const DEFAULT_MAX_WIDTH_CLASS = "max-w-[320px]";
+
+const POPUP_CLASS = `relative flex max-h-[var(--available-height)] min-w-[128px] flex-col bg-[var(--menu-bg)] shadow-[var(--menu-shadow)] ${FORCED_COLORS_BORDER_CLASS} font-normal text-primary outline-none select-none`;
 
 /**
  * Upstream's scroller owns the gutter (`p-[var(--cds-menu-gutter)]`) and the `scroll-fade-y` edge fade, and carries a
@@ -345,6 +348,8 @@ export interface MenuContentProps
 	/** Defaults to falling back along the cross axis for side-opening popups, as Base UI submenus do. */
 	collisionAvoidance?: CollisionAvoidance;
 	className?: string;
+	/** Replaces the anchored popup's default `max-w-[320px]` cap. */
+	maxWidthClass?: string;
 	/** Where focus goes when the menu closes; `false` leaves it where an action put it. */
 	finalFocus?: ComponentProps<typeof BaseMenu.Popup>["finalFocus"];
 	anchor?: ComponentProps<typeof BaseMenu.Positioner>["anchor"];
@@ -385,6 +390,7 @@ export function MenuContent({
 	alignOffset: alignOffsetProp,
 	collisionAvoidance,
 	className,
+	maxWidthClass = DEFAULT_MAX_WIDTH_CLASS,
 	finalFocus,
 	anchor,
 	header,
@@ -429,7 +435,7 @@ export function MenuContent({
 	/* A sheet's portal forces comfortable (`density: MG`) at every account density. */
 	const resolvedDensity = sheet ? "comfortable" : scopeDensity;
 	const sizing = sheet ? SHEET_SIZING : DENSITY_CLASSES[resolvedDensity];
-	const popupClass = `${POPUP_CLASS} ${sizing.popup} ${sizing.text}`;
+	const popupClass = `${POPUP_CLASS} ${maxWidthClass} ${sizing.popup} ${sizing.text}`;
 	return (
 		<DensityProvider density={resolvedDensity}>
 			<MenuLgContext.Provider value={sheet}>
