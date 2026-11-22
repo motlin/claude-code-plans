@@ -155,6 +155,9 @@ describe("fullScan and the event loop", () =>
 			() => undefined,
 			(err: unknown) => err,
 		);
+		// The scan has settled, so the rest of the hold proves nothing: a scan that waited for the lock would already
+		// have stalled past the budget.
+		child.kill();
 		await exited(child);
 		// Let the monitor observe the last slice before stopping it.
 		await new Promise((resolve) =>

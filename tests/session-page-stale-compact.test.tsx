@@ -455,14 +455,15 @@ describe("session page stale-compact line", () =>
 	])("shows nothing when %s", async (_name, seed) =>
 	{
 		await renderSession(seed);
-		await screen
-			.findByRole(
-				"textbox",
-				{
-					name: "Prompt",
-				},
-			)
-			.catch(async () => screen.findByRole("note"));
+		// An archived session shows its note where the Prompt box would be.
+		await (seed.detail?.archived === true
+			? screen.findByRole("note")
+			: screen.findByRole(
+					"textbox",
+					{
+						name: "Prompt",
+					},
+				));
 		act(() =>
 		{
 			window.dispatchEvent(new Event("focus"));

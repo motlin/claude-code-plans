@@ -5,6 +5,7 @@ import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing
 import type {useNavigate} from "@tanstack/react-router";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {Composer} from "../src/components/composer";
+import {OPEN_DELAY_MS} from "../src/components/ui/tooltip-classes";
 import {CompactScope} from "./fizzy-lake-off";
 import {MentionMenu} from "../src/components/mention-menu";
 import {fileMentionOption} from "../src/lib/mention-options";
@@ -1417,12 +1418,24 @@ describe("Composer model menu", () =>
 			expect(screen.getAllByRole("menu")).toHaveLength(2);
 		});
 		const submenu = screen.getAllByRole("menu")[1]!;
-		async function hover(id: string)
+		// A row without a tip is given three hover delays to prove none opens, not the full find timeout.
+		async function hover(id: string, wait?: number)
 		{
 			const anchor = submenu.querySelector(`[data-model-id="${id}"]`)?.parentElement;
 			if (anchor === null || anchor === undefined) throw new Error(`${id} row has no parent`);
 			fireEvent.pointerEnter(anchor);
-			const tooltip = await screen.findByRole("tooltip").catch(() => null);
+			const tooltip = await screen
+				.findByRole(
+					"tooltip",
+					{},
+					wait === undefined
+						? {}
+						:
+							{
+								timeout: wait,
+							},
+				)
+				.catch(() => null);
 			const result =
 			{
 				text: tooltip?.textContent ?? null,
@@ -1437,7 +1450,7 @@ describe("Composer model menu", () =>
 		}
 		const fable51 = await hover("claude-fable-5-1");
 		const fable5 = await hover("claude-fable-5");
-		const opus48 = await hover("claude-opus-4-8");
+		const opus48 = await hover("claude-opus-4-8", OPEN_DELAY_MS * 3);
 		const notice =
 		{
 			text: "Fable is the most capable model and draws down usage much faster than Opus",

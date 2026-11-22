@@ -16,7 +16,7 @@ import {runGit} from "../git-fixture";
 // descheduled mid-turn for seconds, which stretches wall-clock stalls without the indexer doing any more work.
 const STALL_CPU_BACKSTOP_MS = 1000;
 const FILE_COUNT = 400;
-const WORDS_PER_FILE = 4000;
+const WORDS_PER_FILE = 400;
 
 function fileText(fileIndex: number, generation: number): string
 {

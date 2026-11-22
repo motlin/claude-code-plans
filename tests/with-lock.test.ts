@@ -118,7 +118,7 @@ describe("scripts/with-lock.sh", () =>
 {
 	it("runs overlapping commands one after another", async () =>
 	{
-		const exits = await Promise.all([runLocked("a", 1), runLocked("b", 1)]);
+		const exits = await Promise.all([runLocked("a", 0.5), runLocked("b", 0.5)]);
 		const lines = readFileSync(logFile, "utf8").trim().split("\n");
 		const first = lines[0]?.split(" ")[0] ?? "";
 		const second = first === "a" ? "b" : "a";
