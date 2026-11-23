@@ -308,7 +308,7 @@ html[data-interface-font="dyslexic"]
 	--color-fill-ghost-selected: var(--upstream-fill-ghost-selected);
 	/* The ⌘K palette's selected row: ghost hover until fizzy-lake color, then upstream's measured ghost-selected. */
 	--color-palette-selected: var(--palette-selected);
-	/* Upstream's placeholder ink: --cds-text-muted until fizzy-lake color swaps in --cds-fizzy-lake-color-placeholder. */
+	/* Upstream's placeholder ink: --cds-text-muted (the base and fizzy blocks set --upstream-placeholder). */
 	--color-placeholder: var(--upstream-placeholder);
 	/* Upstream --cds-fill-field (bg-fill-field): the ⌘K Compose field and question-card input. */
 	--color-fill-field: var(--upstream-fill-field);
@@ -1361,8 +1361,9 @@ html[data-interface-font="dyslexic"]
 	   inside menus and the settings dialog (#0009 / #ffffff91). The dark-scoped tooltip keeps its own ink. */
 	--menu-muted: var(--upstream-text-secondary);
 	--settings-muted: var(--upstream-text-secondary);
-	/* Upstream `--cds-fizzy-lake-color-placeholder`, the same in both modes. */
-	--upstream-placeholder: #878787;
+	/* Upstream removed `--cds-fizzy-lake-color-placeholder` (2026-11-21): placeholders read text-muted
+	   (#0007 / #fff6), resolved here so dark inherits its own muted ink. */
+	--upstream-placeholder: var(--upstream-text-muted);
 	/* Upstream `data-page-bg=surface-1`: the page is surface-1 (#fff / #191919). */
 	--upstream-page: var(--upstream-surface-1);
 	/* Upstream `--cds-fizzy-lake-color-sidebar` and the sidebar's `--cds-fizzy-lake-color-seam` end border. */
@@ -1631,7 +1632,7 @@ html[data-interface-font="dyslexic"]
 	}
 }
 
-/* Upstream `.placeholder\:text-muted::placeholder { color: var(--cds-fizzy-lake-color-placeholder) }`. */
+/* Upstream `.placeholder\:text-muted` placeholders, which read --cds-text-muted under fizzy color. */
 :root[data-cds-fizzy-lake~="color"] .placeholder\:text-ink-muted::placeholder
 {
 	color: var(--upstream-placeholder);

@@ -156,7 +156,7 @@ describe("fizzy-lake rollout: component remaps under color", () =>
 		);
 	});
 
-	it("T4: placeholders read upstream's fizzy placeholder ink, #878787", () =>
+	it("T4: placeholders read text-muted under fizzy color", () =>
 	{
 		expect(
 			{
@@ -181,7 +181,7 @@ describe("fizzy-lake rollout: component remaps under color", () =>
 				},
 				light:
 				{
-					"--upstream-placeholder": "#878787",
+					"--upstream-placeholder": "var(--upstream-text-muted)",
 				},
 				dark:
 				{
