@@ -355,16 +355,13 @@ export function GroupSection({
 	const rowKeys = useMemo(() => rows.map((row) => row.sessionId), [rows]);
 	const openKeys = useMemo(() => (activeItemId === null ? [] : [activeItemId]), [activeItemId]);
 	const {extraRevealed, pageSize, sorted, headOf} = group;
-	const selectedIds = useSidebarSelection()?.selectedIds;
-	// Upstream `R = rz(L ∪ keptInView, heldBy)`: open and (while expanded) selected rows, plus their family heads.
-	const revealOpenKeys = useMemo(
-		() => withHeads([...openKeys, ...(expanded ? (selectedIds ?? []) : [])], headOf),
-		[openKeys, expanded, selectedIds, headOf],
-	);
+	// Upstream `R = rz(L, heldBy)`: open rows plus their family heads. The code sidebar's multi-selection
+	// is not part of upstream's keptInView, so Show less hides selected rows past the cap.
+	const revealOpenKeys = useMemo(() => withHeads(openKeys, headOf), [openKeys, headOf]);
 	const sortedKeys = useMemo(() => sorted.map((row) => row.sessionId), [sorted]);
 	const revealRequest = useRevealRow();
 	const revealKey = revealRequest === null ? null : (headOf.get(revealRequest.id) ?? revealRequest.id);
-	// Upstream `AE`, grow-only: reveal through the last open, selected or moved row hidden past the page.
+	// Upstream `AE`, grow-only: reveal through the last open or moved row hidden past the page.
 	const grownTo = revealThrough(
 		{
 			keys: sortedKeys,

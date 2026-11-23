@@ -1630,7 +1630,7 @@ describe("sidebar SessionGroups", () =>
 		);
 	});
 
-	it("keeps a ⌘-selected row past the first page in view when Show less folds back", async () =>
+	it("hides a ⌘-selected row past the cap when Show less folds back, like upstream", async () =>
 	{
 		const {container} = await renderGroups(doneSessions(47));
 		fireEvent.click(
@@ -1676,11 +1676,13 @@ describe("sidebar SessionGroups", () =>
 						},
 					)
 					.getAttribute("aria-label"),
+				selectedRowRendered: container.querySelector('[data-row-key="d25"]') !== null,
 			},
 		).toStrictEqual(
 			{
-				shown: 26,
-				showMore: "Show 21 more in Idle",
+				shown: 20,
+				showMore: "Show 20 more in Idle",
+				selectedRowRendered: false,
 			},
 		);
 	});
