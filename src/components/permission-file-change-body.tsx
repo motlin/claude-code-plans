@@ -1,6 +1,6 @@
 import {type ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState} from "react";
 
-import {useCodeThemeBackground, useCodeThemeVars} from "../hooks/use-code-theme-background";
+import {CODE_CARD_BG_FALLBACK, useCodeThemeBackground, useCodeThemeVars} from "../hooks/use-code-theme-background";
 import {fileContentUrl, FileViewerResponse} from "../lib/api/file";
 import {resolveUrl} from "../lib/api/client";
 import {buildMultiEditHunk, buildPatchFromHunks, buildUnifiedHunk} from "../lib/diff-utils";
@@ -345,7 +345,7 @@ function fileChangeView(name: string, input: Record<string, unknown>, read: File
  */
 function FileChangeBody({path, view}: {path: string; view: FileChangeView})
 {
-	const background = useCodeThemeBackground();
+	const background = useCodeThemeBackground(CODE_CARD_BG_FALLBACK);
 	const themeVars = useCodeThemeVars();
 	const hostStyle = useMemo(
 		() => (

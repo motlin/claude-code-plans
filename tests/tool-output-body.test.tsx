@@ -3,7 +3,6 @@
 import {cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import {ToolOutputBody} from "../src/components/tool-renderers/tool-output-body";
-import {CODE_THEME_BG_FALLBACK} from "../src/hooks/use-code-theme-background";
 import {classifyToolBody} from "../src/lib/tool-body-kind";
 
 vi.mock("../src/hooks/use-shiki", () => (
@@ -105,7 +104,8 @@ describe("ToolOutputBody (upstream aS / oS)", () =>
 				wrapDir: null,
 				tile: "epitaxy-diff epitaxy-code-card rounded-lg flex overflow-clip px-md py-xs text-code",
 				tileDir: "ltr",
-				background: `var(--code-fence-bg, ${CODE_THEME_BG_FALLBACK})`,
+				background:
+					"var(--code-fence-bg, light-dark(var(--code-theme-light-bg, var(--upstream-alpha-1)), var(--code-theme-dark-bg, var(--upstream-alpha-1))))",
 				children: 1,
 				inner: "min-w-0 flex-1",
 				fileInInner: true,

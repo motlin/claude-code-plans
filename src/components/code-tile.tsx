@@ -1,5 +1,5 @@
 import {lazy, type ReactNode, Suspense} from "react";
-import {useCodeThemeBackground, useCodeThemeVars} from "../hooks/use-code-theme-background";
+import {CODE_CARD_BG_FALLBACK, useCodeThemeBackground, useCodeThemeVars} from "../hooks/use-code-theme-background";
 import {normalizeTileCode} from "../lib/code-tile";
 
 const CodeTileFile = lazy(async () =>
@@ -31,7 +31,7 @@ export function CodeTile({
 	prose?: boolean;
 })
 {
-	const background = useCodeThemeBackground();
+	const background = useCodeThemeBackground(CODE_CARD_BG_FALLBACK);
 	const themeVars = useCodeThemeVars();
 	const held = <span className="whitespace-pre-wrap break-words">{normalizeTileCode(code)}</span>;
 	const file = (

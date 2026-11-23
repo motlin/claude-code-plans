@@ -33,6 +33,7 @@ vi.mock("../src/components/settings-context", () => (
 /** The settings stub carries no code themes, so the code tile keeps its fallback background. */
 vi.mock("../src/hooks/use-code-theme-background", () => (
 {
+	CODE_CARD_BG_FALLBACK: undefined,
 	useCodeThemeBackground: () => undefined,
 	useCodeThemeVars: () => undefined,
 }));

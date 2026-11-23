@@ -3,9 +3,16 @@ import {type CodeThemeId, loadCodeTheme} from "../lib/code-themes";
 import {codeThemeVars, selectionMatchColor} from "../lib/code-theme-vars";
 import {useCodeThemes} from "./use-code-themes";
 
-/** Upstream c6e73333a `S` before both code themes have loaded. */
-export const CODE_THEME_BG_FALLBACK =
-	"light-dark(var(--code-theme-light-bg, var(--upstream-surface-2)), var(--code-theme-dark-bg, var(--upstream-surface-2)))";
+function codeThemeBgFallback(ground: string): string
+{
+	return `light-dark(var(--code-theme-light-bg, var(${ground})), var(--code-theme-dark-bg, var(${ground})))`;
+}
+
+/** Upstream c6e73333a `S` before both code themes have loaded: a code-surface pane falls back to surface-2. */
+export const CODE_THEME_BG_FALLBACK = codeThemeBgFallback("--upstream-surface-2");
+
+/** The same before-load background on a code card (CodeTile, the file-change scroller): upstream's --cds-alpha-1. */
+export const CODE_CARD_BG_FALLBACK = codeThemeBgFallback("--upstream-alpha-1");
 
 interface LoadedTheme
 {
@@ -72,13 +79,14 @@ function useLoadedCodeThemePair():
  * The Changes pane's diff background (upstream c6e73333a `S`): `light-dark()` of the chosen code themes'
  * editor backgrounds once both have loaded. Upstream's injected `Ea` replaces pierre's theme background with
  * the host's `--cds-filediff-bg`, so the Changes pane must hand the theme background back explicitly.
+ * `fallback` is the background until both themes load.
  */
-export function useCodeThemeBackground(): string
+export function useCodeThemeBackground(fallback = CODE_THEME_BG_FALLBACK): string
 {
 	const pair = useLoadedCodeThemePair();
 	const light = pair?.light.bg;
 	const dark = pair?.dark.bg;
-	return light === undefined || dark === undefined ? CODE_THEME_BG_FALLBACK : `light-dark(${light}, ${dark})`;
+	return light === undefined || dark === undefined ? fallback : `light-dark(${light}, ${dark})`;
 }
 
 /**

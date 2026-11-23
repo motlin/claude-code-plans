@@ -164,6 +164,19 @@ describe("PermissionFileChangePreview, input only", () =>
 				new_string: "a\nc",
 			},
 		);
+		// Before the code themes load, the scroller falls back to upstream's --cds-alpha-1 (a code card's ground).
+		expect(
+			(
+				await screen.findByRole(
+					"group",
+					{
+						name: "Code",
+					},
+				)
+			).style.background,
+		).toBe(
+			"var(--code-fence-bg, light-dark(var(--code-theme-light-bg, var(--upstream-alpha-1)), var(--code-theme-dark-bg, var(--upstream-alpha-1))))",
+		);
 		expect(await diffMarkup(container)).toStrictEqual(
 			{
 				rows: ["context:a", "change-deletion:b", "change-addition:c"],
