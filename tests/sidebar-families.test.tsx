@@ -577,11 +577,20 @@ describe("sidebar session families", () =>
 		const c1Selected = () =>
 			container.querySelector('[data-row-key="c1"] a[data-row-main-button][data-selected="focused"]') !== null;
 		const listed = () => rowTitles(family(container, "h1"));
+		const kept = family(container, "h1").querySelector("[data-family-child]");
+		const stubRow = foldedStub(container, "h1").parentElement;
 		const open =
 		{
 			listed: listed(),
 			selected: c1Selected(),
 			stub: foldedStub(container, "h1").textContent,
+			// Upstream `v0`: kept rows render as ordinary nested rows, then the stub as the family's last child.
+			keptBeforeStub:
+				kept !== null &&
+				stubRow !== null &&
+				(kept.compareDocumentPosition(stubRow) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
+			stubLast: family(container, "h1").lastElementChild === stubRow,
+			keptWrapper: kept?.matches('div[data-family-child][data-row-key="c1"].df-drag-shiftable.relative.pl-5'),
 		};
 
 		await router.navigate(
@@ -614,6 +623,9 @@ describe("sidebar session families", () =>
 					listed: ["Child one"],
 					selected: true,
 					stub: "1 more nested·1 unread",
+					keptBeforeStub: true,
+					stubLast: true,
+					keptWrapper: true,
 				},
 				afterNavigate: ["Child one"],
 				afterFoldChange: [],
