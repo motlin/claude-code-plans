@@ -17,7 +17,8 @@ export type ApprovalActionSize = CdsButtonSize;
  * An approval card action. `busy` is upstream's busy cds Button: it stays focusable
  * (`aria-busy` + `aria-disabled`, not `disabled`), ignores clicks, hides its label and
  * centres a 12px spinner over it. `busyLabel` (upstream's "Sending…") names it while busy. Like upstream's cds
- * Button, it swallows a held (repeat) Enter or Space.
+ * Button, it swallows a held (repeat) Enter or Space. `data-cds="Button"` is upstream's, so `cds-child-Button:` and
+ * other `[data-cds=Button]` selectors reach it.
  */
 export function ApprovalActionButton({
 	variant,
@@ -54,6 +55,7 @@ export function ApprovalActionButton({
 				}
 				onKeyDown?.(event);
 			}}
+			data-cds="Button"
 			data-approval-variant={variant}
 			{...(size === "sm"
 				?

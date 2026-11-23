@@ -3050,10 +3050,12 @@ describe("PermissionCard", () =>
 				allowShortcut: "Control+Enter",
 				denyData:
 				{
+					cds: "Button",
 					approvalVariant: "secondary",
 				},
 				allowData:
 				{
+					cds: "Button",
 					approvalVariant: "primary",
 					approvalPrimary: "",
 				},
@@ -4881,11 +4883,13 @@ describe("PermissionCard", () =>
 			buttons: ["Deny", "Allow once"],
 			denyData:
 			{
+				cds: "Button",
 				approvalVariant: "primary",
 				approvalPrimary: "",
 			},
 			allowData:
 			{
+				cds: "Button",
 				approvalVariant: "secondary",
 			},
 			denyShortcut: null,

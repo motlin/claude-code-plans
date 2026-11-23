@@ -1,10 +1,12 @@
 // @vitest-environment jsdom
 
+import {readFileSync} from "node:fs";
 import {act, cleanup, render} from "@testing-library/react";
 import {Gauge} from "lucide-react";
 import type {ReactNode} from "react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
+import {ApprovalActionButton} from "../src/components/approval-action-button";
 import {NoticeBanner} from "../src/components/notice-banner";
 import {DensityOverride, DensityScope} from "../src/components/ui/density";
 import {FizzyLakeContext, type FizzyLakePart} from "../src/lib/fizzy-lake";
@@ -468,6 +470,37 @@ describe("NoticeBanner CTA wrap measurement", () =>
 				root: `${LEAD} py-[calc(var(--cds-pad-md)+2px)] font-sans text-body font-normal break-words px-md pt-[calc(var(--cds-pad-md)-2px)] rounded-composer ${FIZZY_SURFACE}`,
 				body: "flex min-w-0 flex-wrap items-start gap-y-xs gap-x-md flex-1 me-[2px] ms-[4px]",
 				action: `span.flex shrink-0 items-center gap-xs flex-wrap max-w-full ${ACTION_CHILD_BUTTONS} basis-full -me-[2px]`,
+			},
+		);
+	});
+
+	it("lets the stacked action's cds-child-Button classes reach a local cds Button", () =>
+	{
+		const {layout} = stubLayout();
+		layout.actionDrop = 30;
+		const {container} = render(
+			<NoticeBanner action={<ApprovalActionButton variant="secondary">Resume</ApprovalActionButton>}>
+				Notice
+			</NoticeBanner>,
+		);
+		// globals.css: `@custom-variant cds-child-Button (& > [data-cds=Button]);`
+		const variant = /@custom-variant cds-child-Button \(& > (.+)\);/u.exec(
+			readFileSync("src/styles/globals.css", "utf8"),
+		)?.[1];
+		const action = container.querySelector("[data-cds-part=action]");
+		expect(
+			{
+				ctaLayout: container.querySelector("[data-cds=Banner]")?.getAttribute("data-cta-layout"),
+				variant,
+				children: [...(action?.querySelectorAll(`:scope > ${variant ?? ""}`) ?? [])].map(
+					(button) => button.textContent,
+				),
+			},
+		).toStrictEqual(
+			{
+				ctaLayout: "stacked",
+				variant: "[data-cds=Button]",
+				children: ["Resume"],
 			},
 		);
 	});
