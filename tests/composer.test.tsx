@@ -1289,7 +1289,7 @@ describe("Composer", () =>
 						text: meter.getAttribute("aria-valuetext"),
 						label: document.getElementById(meter.getAttribute("aria-labelledby") ?? "")?.textContent,
 						description: document.getElementById(meter.getAttribute("aria-describedby") ?? "")?.textContent,
-						track: meter.classList.contains("bg-alpha-2"),
+						track: meter.classList.contains("bg-upstream-accent-pressed"),
 						fill: (meter.firstElementChild as HTMLElement | null)?.style.transform,
 					})),
 					popup: [...dialog.classList].filter((name) => /^(?:w-|p-|text-\[|text-body$)/.test(name)),
@@ -1322,7 +1322,7 @@ describe("Composer", () =>
 							label: "Session limit",
 							description: "Resets in 4 hr 11 min",
 							track: true,
-							fill: "translateX(calc(var(--_meter-dir,-1) * (100% - min(100%, max(10%, 4px)))))",
+							fill: "translateX(calc(var(--_meter-dir, -1) * (100% - min(100%, max(10.0%, 4px)))))",
 						},
 						{
 							now: "65",
@@ -1330,7 +1330,7 @@ describe("Composer", () =>
 							label: "Weekly · all models",
 							description: "Resets in 14 hr 31 min",
 							track: true,
-							fill: "translateX(calc(var(--_meter-dir,-1) * (100% - min(100%, max(65%, 4px)))))",
+							fill: "translateX(calc(var(--_meter-dir, -1) * (100% - min(100%, max(65.0%, 4px)))))",
 						},
 					],
 					popup: ["w-[360px]", "p-0", "text-body"],
@@ -1365,7 +1365,7 @@ describe("Composer", () =>
 			expect(dialog.querySelector("[data-usage-popover-header] > span")?.textContent).toBe("Plan usage limits");
 		});
 
-		it("tints the usage popover's meter fills by severity over an alpha-2 track with the inset ring", async () =>
+		it("tints the usage popover's meter tracks and fills by severity with the inset ring", async () =>
 		{
 			const usage = CHIN.usage &&
 			{
@@ -1414,20 +1414,21 @@ describe("Composer", () =>
 					.map((meter) => (
 					{
 						variant: meter.getAttribute("data-variant"),
-						track: [...meter.classList].filter(
-							(name) => name.startsWith("bg-") || name.startsWith("shadow-"),
-						),
+						track: [...meter.classList].filter((name) => name.startsWith("bg-")),
+						ring: meter.style.boxShadow,
 						fill: [...(meter.firstElementChild?.classList ?? [])].filter((name) => name.startsWith("bg-")),
 					})),
 			).toStrictEqual([
 				{
 					variant: "warning",
-					track: ["bg-alpha-2", "shadow-[inset_0_0_0_1px_var(--color-alpha-1)]"],
+					track: ["bg-usage-track-warning"],
+					ring: "inset 0 0 0 1px var(--color-alpha-1)",
 					fill: ["bg-usage-warning"],
 				},
 				{
 					variant: "danger",
-					track: ["bg-alpha-2", "shadow-[inset_0_0_0_1px_var(--color-alpha-1)]"],
+					track: ["bg-usage-track-danger"],
+					ring: "inset 0 0 0 1px var(--color-alpha-1)",
 					fill: ["bg-usage-danger"],
 				},
 			]);

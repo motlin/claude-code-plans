@@ -7341,7 +7341,7 @@ html[data-reduce-motion="true"] [data-cds-composer-attachments] [data-cds-attach
 /*
  * Upstream's usage-bars crossfade (c37952aed, gate __gb__1500379757, on locally): inside a gated
  * `data-usage-bars` wrapper a severity change fades the fill, share overlay and track colours.
- * Local meters have no cds Meter wrapper, so upstream's `[data-cds=Meter]` rules apply to every fill.
+ * The Settings ▸ Usage meters have no cds Meter wrapper, so these rules key on the fill and meter, not `[data-cds=Meter]`.
  */
 @media (prefers-reduced-motion: no-preference)
 {

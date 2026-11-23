@@ -108,7 +108,7 @@ describe("SessionUsageCard plan section", () =>
 		const fiveHourReset = formatResetLabel(NOW_S + 7500, NOW.getTime());
 		const weekReset = formatResetLabel(NOW_S + 3 * 86_400, NOW.getTime());
 		const header = root.firstElementChild?.firstElementChild;
-		const row = meters[0]?.parentElement;
+		const row = meters[0]?.parentElement?.parentElement;
 
 		expect(
 			{
@@ -139,7 +139,8 @@ describe("SessionUsageCard plan section", () =>
 				},
 				percents: meters.map((meter) =>
 				{
-					const percent = meter.parentElement?.firstElementChild?.lastElementChild?.lastElementChild;
+					const percent =
+						meter.parentElement?.parentElement?.firstElementChild?.lastElementChild?.lastElementChild;
 					return {
 						text: percent?.textContent,
 						className: percent?.className,
@@ -151,6 +152,13 @@ describe("SessionUsageCard plan section", () =>
 					label: document.getElementById(meter.getAttribute("aria-labelledby") ?? "")?.textContent,
 					valueText: meter.getAttribute("aria-valuetext"),
 					variant: meter.dataset["variant"],
+					wrapper: [meter.parentElement?.className, meter.parentElement?.dataset["variant"]],
+					className: meter.className,
+					boxShadow: meter.style.boxShadow,
+					fill: [
+						meter.firstElementChild?.className,
+						(meter.firstElementChild as HTMLElement | null)?.style.transform,
+					],
 				})),
 			},
 		).toStrictEqual(
@@ -191,11 +199,24 @@ describe("SessionUsageCard plan section", () =>
 						label: "5-hour limit",
 						valueText: `80% · ${fiveHourReset}`,
 						variant: "warning",
+						wrapper: ["w-full", "warning"],
+						className:
+							"w-full overflow-hidden rounded-full forced-color-adjust-none forced-colors:bg-[color:Canvas] forced-colors:outline forced-colors:outline-[color:CanvasText] h-2 bg-usage-track-warning",
+						boxShadow: "inset 0 0 0 1px var(--color-alpha-1)",
+						fill: [
+							"h-full w-full rounded-full bg-usage-warning transition-transform duration-200 ease-[cubic-bezier(.165,.84,.44,1)] motion-reduce:transition-none rtl:[--_meter-dir:1]",
+							"translateX(calc(var(--_meter-dir, -1) * (100% - min(100%, max(80.0%, 8px)))))",
+						],
 					},
 					{
 						label: "Weekly · all models",
 						valueText: `0% · ${weekReset}`,
 						variant: "accent",
+						wrapper: ["w-full", "accent"],
+						className:
+							"w-full overflow-hidden rounded-full forced-color-adjust-none forced-colors:bg-[color:Canvas] forced-colors:outline forced-colors:outline-[color:CanvasText] h-2 bg-neutral",
+						boxShadow: "inset 0 0 0 1px var(--color-alpha-1)",
+						fill: [undefined, undefined],
 					},
 				],
 			},
@@ -219,9 +240,15 @@ describe("SessionUsageCard plan section", () =>
 			},
 		);
 		const meter = screen.getByRole("meter");
-		const percent = meter.parentElement?.firstElementChild?.lastElementChild?.lastElementChild as HTMLElement;
+		const percent = meter.parentElement?.parentElement?.firstElementChild?.lastElementChild
+			?.lastElementChild as HTMLElement;
 
-		expect([percent.style.color, meter.dataset["variant"]]).toStrictEqual(["var(--color-danger)", "danger"]);
+		expect([
+			percent.style.color,
+			meter.dataset["variant"],
+			meter.className.split(" ").at(-1),
+			meter.firstElementChild?.className.includes("bg-usage-danger"),
+		]).toStrictEqual(["var(--color-danger)", "danger", "bg-usage-track-danger", true]);
 	});
 
 	it("shows Loading usage… with no Copy button while the first fetch runs", () =>
@@ -720,7 +747,7 @@ describe("SessionUsageCard attribution", () =>
 		fireEvent.click(more);
 		const trigger = screen.getByText("github").closest("button");
 		const row = trigger?.parentElement?.parentElement;
-		const meter = row?.children[1];
+		const meter = row?.children[1]?.firstElementChild;
 
 		expect(
 			{
@@ -732,7 +759,13 @@ describe("SessionUsageCard attribution", () =>
 				{
 					className: row?.className,
 					trigger: trigger?.className,
-					meter: [meter?.getAttribute("data-size"), meter?.className.includes("w-20 shrink-0")],
+					meter: [
+						meter?.getAttribute("data-size"),
+						meter?.parentElement?.className,
+						meter?.className.split(" ").at(-1),
+						meter?.firstElementChild?.className.split(" ")[3],
+						(meter?.firstElementChild as HTMLElement | null | undefined)?.style.transform,
+					],
 					share: row?.lastElementChild?.className,
 				},
 			},
@@ -762,7 +795,13 @@ describe("SessionUsageCard attribution", () =>
 				{
 					className: "flex items-center gap-1.25 text-footnote",
 					trigger: "flex items-center gap-0.75 flex-1 min-w-0 cursor-help text-start",
-					meter: ["sm", true],
+					meter: [
+						"sm",
+						"w-20 shrink-0",
+						"bg-upstream-accent-pressed",
+						"bg-fill-accent",
+						"translateX(calc(var(--_meter-dir, -1) * (100% - min(100%, max(30.0%, 4px)))))",
+					],
 					share: "text-muted-as-secondary tabular-nums text-end w-9 shrink-0",
 				},
 			},
