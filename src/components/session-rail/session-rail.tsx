@@ -411,7 +411,9 @@ function RailSection({
 						</div>
 					</ContextMenuTrigger>
 					{open && (
-						<div data-rail-body="" className="flex flex-col px-1.5 pt-1">
+						// Upstream's body is `px-sm` (8px) with `[--rail-row-pad:--spacing(2)] [&_.px-xs]:px-[var(--rail-row-pad)]`:
+						// every px-xs row inside a rail card gets 8px, so row content sits 16px from the card edge.
+						<div data-rail-body="" className="flex flex-col px-2 pt-1 [&_.px-xs]:px-2">
 							{card.body}
 						</div>
 					)}

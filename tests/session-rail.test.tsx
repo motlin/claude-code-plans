@@ -2869,14 +2869,14 @@ describe("session rail lined layout", () =>
 				section: picked(section, ["epitaxy-rail-lined", "pt-2", "pb-2", "data-open:pb-1.5"]),
 				railtop: picked(railtop, ["min-h-6", "min-h-6.5", "gap-1.5", "px-1.5", "px-2"]),
 				button: picked(button, ["relative", "min-h-6", "min-h-6.5", "px-1", "px-2", "text-[12px]/[16px]"]),
-				body: picked(body, ["flex", "flex-col", "px-1.5", "px-2", "pt-1"]),
+				body: picked(body, ["flex", "flex-col", "px-1.5", "px-2", "pt-1", "[&_.px-xs]:px-2"]),
 			},
 		).toStrictEqual(
 			{
 				section: ["epitaxy-rail-lined", "pt-2", "pb-2", "data-open:pb-1.5"],
 				railtop: ["min-h-6", "gap-1.5", "px-1.5"],
 				button: ["relative", "min-h-6", "px-2", "text-[12px]/[16px]"],
-				body: ["flex", "flex-col", "px-1.5", "pt-1"],
+				body: ["flex", "flex-col", "px-2", "pt-1", "[&_.px-xs]:px-2"],
 			},
 		);
 	});

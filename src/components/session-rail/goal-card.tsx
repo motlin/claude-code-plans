@@ -191,7 +191,7 @@ export function GoalBody({sessionId, goal}: {sessionId: string; goal: SessionGoa
 	const clamp = showMore.expanded ? "" : " line-clamp-2";
 	return (
 		<>
-			<div className="flex items-start gap-xs px-xs py-1">
+			<div className="flex items-start gap-xs px-2 py-1">
 				<div dir="auto" className="flex min-w-0 flex-1 flex-col gap-0.5 text-body [overflow-wrap:anywhere]">
 					<bdi ref={lineRef(0)} className={`text-primary${clamp}`}>
 						{goal.condition}

@@ -1716,6 +1716,7 @@ describe("Goal card", () =>
 			};
 		});
 		const wrapper = goalSection().querySelector("[aria-label='Edit goal']")?.closest("div")?.className;
+		const row = goalSection().querySelector("[aria-label='Edit goal']")?.closest("div")?.parentElement?.className;
 		const {editText: _, ...noEditText} = GOAL;
 		rerender(
 			{
@@ -1730,6 +1731,7 @@ describe("Goal card", () =>
 				both,
 				icons,
 				wrapper,
+				row,
 				clearOnly: buttons(),
 			},
 		).toStrictEqual(
@@ -1750,6 +1752,7 @@ describe("Goal card", () =>
 				],
 				wrapper:
 					"flex shrink-0 opacity-0 empty:hidden group-hover/railcard:opacity-100 group-has-[:focus-visible]/railcard:opacity-100 touch:opacity-100",
+				row: "flex items-start gap-xs px-2 py-1",
 				clearOnly: ["Clear goal"],
 			},
 		);
