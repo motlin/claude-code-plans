@@ -64,7 +64,7 @@ describe("pierre metrics props", () =>
 			{
 				metrics:
 				{
-					hunkLineCount: 50,
+					hunkLineCount: 8,
 					lineHeight: 20,
 					diffHeaderHeight: 32,
 					spacing: 8,

@@ -208,17 +208,19 @@ export function diffLineHeightStyle(metrics: Partial<VirtualFileMetrics> | undef
 
 /**
  * Upstream c82eca2bd `c()` for the Changes pane: comfortable defaults whatever the scope density,
- * ×1.5 rows from Settings ▸ Code font size, and the 32px custom header (c44d00c7f).
+ * ×1.5 rows from Settings ▸ Code font size, the 32px custom header (c44d00c7f), and 8-line hunk windows.
  */
 export function changesDiffMetrics(size: CodeFontSize | null): VirtualFileMetrics
 {
 	return diffMetrics(
 		{
 			density: "comfortable",
+			// upstream c165e649d Changes CodeView: {diffHeaderHeight: 32, lineHeight, hunkLineCount: 8}
 			metrics:
 			{
 				lineHeight: codeRowLeadingPx(size),
 				diffHeaderHeight: 32,
+				hunkLineCount: 8,
 			},
 		},
 	);

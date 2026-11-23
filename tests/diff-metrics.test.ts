@@ -156,7 +156,7 @@ describe("diffMetrics (upstream ca7ba268c ga/ya/za)", () =>
 		);
 	});
 
-	it("builds the Changes pane metrics from comfortable defaults with a 32px header and ×1.5 rows (upstream c82eca2bd c())", () =>
+	it("builds the Changes pane metrics from comfortable defaults with a 32px header, ×1.5 rows, and 8-line hunk windows (upstream c82eca2bd c(), c165e649d)", () =>
 	{
 		expect(
 			{
@@ -177,7 +177,7 @@ describe("diffMetrics (upstream ca7ba268c ga/ya/za)", () =>
 			{
 				defaultSize:
 				{
-					hunkLineCount: 50,
+					hunkLineCount: 8,
 					lineHeight: 20,
 					diffHeaderHeight: 32,
 					spacing: 8,
@@ -191,7 +191,7 @@ describe("diffMetrics (upstream ca7ba268c ga/ya/za)", () =>
 				},
 				twenty:
 				{
-					hunkLineCount: 50,
+					hunkLineCount: 8,
 					lineHeight: 30,
 					diffHeaderHeight: 32,
 					spacing: 8,
