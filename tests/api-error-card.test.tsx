@@ -210,7 +210,7 @@ describe("ApiErrorCard", () =>
 					cds: "Collapsible",
 					className: "flex flex-col self-stretch",
 				},
-				detailsRow: "flex min-w-0 max-w-full flex-wrap items-center gap-x-3 gap-y-2 px-3 pb-3 pt-2",
+				detailsRow: "flex min-w-0 max-w-full flex-wrap items-center gap-x-lg gap-y-sm px-lg pb-lg pt-md",
 				trigger:
 				{
 					text: "View details",
@@ -272,8 +272,8 @@ describe("ApiErrorCard", () =>
 				controlsPanel: true,
 				animated: true,
 				contained: "contain-inline-size",
-				panel: "border-t px-3 py-3",
-				box: "relative flex min-h-[32px] flex-col gap-1.5 rounded-card bg-alpha-1 py-1.5 ps-2 pe-[34px] text-footnote text-secondary",
+				panel: "border-t px-lg py-lg",
+				box: "relative flex flex-col gap-xs rounded-card bg-alpha-1 py-sm ps-md text-footnote text-secondary min-h-[calc(var(--cds-h-control)+--spacing(2))] pe-[calc(var(--cds-h-control)+--spacing(1)+var(--cds-pad-sm))]",
 				facts:
 				{
 					className: "flex flex-col text-ink-muted break-all select-text",
@@ -771,9 +771,9 @@ describe("ApiErrorCard", () =>
 					text: "Service was busy",
 					className: "min-w-0 text-body text-secondary break-words",
 				},
-				detailsRow: "flex min-w-0 max-w-full flex-wrap items-center gap-x-3 gap-y-2",
+				detailsRow: "flex min-w-0 max-w-full flex-wrap items-center gap-x-lg gap-y-sm",
 				trigger: "View details",
-				panel: "pt-2",
+				panel: "pt-sm",
 				facts: "Status: 529Request ID: req_firstMessage ID: 69f6c760-e79e-4483-bdfe-5fb492ef4838",
 				cardHeadline: "Service is busy",
 			},
@@ -1096,7 +1096,7 @@ describe("ApiErrorCard recovery actions", () =>
 		).toStrictEqual(
 			{
 				hint: "Try again in a moment, or switch to a different model.",
-				rowClass: "flex min-w-0 max-w-full flex-wrap items-center gap-x-3 gap-y-2 px-3 pb-3 pt-2",
+				rowClass: "flex min-w-0 max-w-full flex-wrap items-center gap-x-lg gap-y-sm px-lg pb-lg pt-md",
 				rowFirst: "View details",
 				groupClass: "ms-auto flex min-w-0 max-w-full flex-wrap items-center justify-end gap-2",
 				buttons: [
@@ -1366,11 +1366,11 @@ describe("ApiErrorCard recovery actions", () =>
 					"max-w-full",
 					"flex-wrap",
 					"items-center",
-					"gap-x-3",
-					"gap-y-2",
-					"px-3",
-					"pb-3",
-					"pt-2",
+					"gap-x-lg",
+					"gap-y-sm",
+					"px-lg",
+					"pb-lg",
+					"pt-md",
 				],
 				group: [
 					"ms-auto",

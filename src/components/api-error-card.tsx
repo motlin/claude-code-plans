@@ -119,7 +119,7 @@ export function ErrorDetails({
 }: {
 	/** Undefined hides View details; the row still shows for the actions. */
 	details: ErrorDetailsContent | undefined;
-	/** In the card the row and panel carry the card's padding; the marker's sit flush with `pt-2`. */
+	/** In the card the row and panel carry the card's padding; the marker's sit flush with `pt-sm`. */
 	inCard: boolean;
 	/** Upstream's action group, pushed to the row's trailing edge. */
 	actions?: ReactNode;
@@ -141,7 +141,7 @@ export function ErrorDetails({
 	return (
 		<Collapsible.Root open={open} onOpenChange={setOpen} className="flex flex-col self-stretch">
 			<div
-				className={`flex min-w-0 max-w-full flex-wrap items-center gap-x-3 gap-y-2${inCard ? " px-3 pb-3 pt-2" : ""}`}
+				className={`flex min-w-0 max-w-full flex-wrap items-center gap-x-lg gap-y-sm${inCard ? " px-lg pb-lg pt-md" : ""}`}
 			>
 				{details !== undefined && (
 					<Collapsible.Trigger
@@ -162,8 +162,8 @@ export function ErrorDetails({
 			</div>
 			{details !== undefined && (
 				<Collapsible.Panel className="contain-inline-size">
-					<div data-api-error-details="" className={inCard ? "border-t px-3 py-3" : "pt-2"}>
-						<div className="relative flex min-h-[32px] flex-col gap-1.5 rounded-card bg-alpha-1 py-1.5 ps-2 pe-[34px] text-footnote text-secondary">
+					<div data-api-error-details="" className={inCard ? "border-t px-lg py-lg" : "pt-sm"}>
+						<div className="relative flex flex-col gap-xs rounded-card bg-alpha-1 py-sm ps-md text-footnote text-secondary min-h-[calc(var(--cds-h-control)+--spacing(2))] pe-[calc(var(--cds-h-control)+--spacing(1)+var(--cds-pad-sm))]">
 							{body !== undefined && (
 								<span className="whitespace-pre-wrap break-words select-text">{body}</span>
 							)}
