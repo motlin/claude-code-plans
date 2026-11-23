@@ -3329,6 +3329,8 @@ function SessionView({
 																				value={
 																					workingMarkerState.status ===
 																					"working"
+																						? workingMarkerState.turnStartedAt
+																						: null
 																				}
 																			>
 																				<TailActionsOutletContext.Provider

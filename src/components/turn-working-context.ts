@@ -1,4 +1,7 @@
 import {createContext} from "react";
 
-/** Whether the session's turn is working (upstream `turnLive`); false outside a live session page. */
-export const TurnWorkingContext = createContext(false);
+/**
+ * The working turn's start in epoch ms (upstream `turnLive`, and the turn clock its busy rows count from);
+ * null while the turn is not working or outside a live session page.
+ */
+export const TurnWorkingContext = createContext<number | null>(null);

@@ -7764,7 +7764,7 @@ function ToolCallSection({
 	const [lastRan, setLastRan] = useState(liveCall?.id);
 	if (liveCall !== undefined && liveCall.id !== lastRan) setLastRan(liveCall.id);
 	// Upstream `QS` never releases the held key while the turn is live and its last step is a tool (`V`).
-	const turnWorking = useContext(TurnWorkingContext);
+	const turnWorking = useContext(TurnWorkingContext) !== null;
 	const lastRow = useContext(TranscriptLastRowContext);
 	const turnStepLive = turnWorking && lastRow;
 	const turnHeldKey =
@@ -7986,7 +7986,6 @@ function isPendingToolCall(call: ClientToolCall): boolean
 	return call.resultUuid === undefined && call.result === undefined && call.isError !== true;
 }
 
-/** An in-flight row's live elapsed time, in the rest ink after its label. */
 /** A call's start as epoch ms for the working line's call clock, or null when unknown. */
 function callStartMs(startedAt: string | undefined): number | null
 {
@@ -7995,9 +7994,17 @@ function callStartMs(startedAt: string | undefined): number | null
 	return Number.isNaN(ms) ? null : ms;
 }
 
-function RunningElapsed({startedAt}: {startedAt: string | undefined})
+/**
+ * An in-flight row's live elapsed time, in the rest ink after its label. While the row carries the
+ * mark it counts the working turn's clock, as upstream `QS` passes `hnS` only to the marked row;
+ * otherwise, or with no turn start known, it counts from the call's start.
+ */
+function RunningElapsed({startedAt, marked}: {startedAt: string | undefined; marked: boolean})
 {
-	const seconds = useElapsedSeconds(startedAt);
+	const turnStartedAt = useContext(TurnWorkingContext);
+	const seconds = useElapsedSeconds(
+		marked && turnStartedAt !== null ? new Date(turnStartedAt).toISOString() : startedAt,
+	);
 	const restInk = useRestInk();
 	if (seconds === null || seconds < ELAPSED_MIN_SECONDS) return null;
 	return (
@@ -8765,7 +8772,7 @@ function ToolCallRow({
 						{rangeLabel}
 					</span>
 				))}
-			{runningRow && <RunningElapsed startedAt={call.startedAt} />}
+			{runningRow && <RunningElapsed startedAt={call.startedAt} marked={markedRow} />}
 			{heldBusy && (
 				<span id={`${statusId}-busy`} className="sr-only">
 					running
@@ -9429,7 +9436,7 @@ function ToolCallSummary({
 			)}
 			{held.state === "busy" ? (
 				<>
-					<RunningElapsed startedAt={held.pendingCall.startedAt} />
+					<RunningElapsed startedAt={held.pendingCall.startedAt} marked={marked} />
 					<span id={`${statusId}-busy`} className="sr-only">
 						running
 					</span>

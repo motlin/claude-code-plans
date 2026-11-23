@@ -80,13 +80,19 @@ interface Call
 }
 
 /** One assistant message making every call, then each call's result. */
-function turn(calls: Call[]): unknown[]
+function turn(calls: Call[], timestamp?: string): unknown[]
 {
 	return [
 		prompt,
 		{
 			type: "assistant",
 			uuid: "a1",
+			...(timestamp === undefined
+				? {}
+				:
+					{
+						timestamp,
+					}),
 			message:
 			{
 				id: "msg-1",
@@ -127,9 +133,9 @@ function turn(calls: Call[]): unknown[]
 	];
 }
 
-function chat(calls: Call[], permissionWaitToolUseId: string | null = null): React.ReactElement
+function chat(calls: Call[], permissionWaitToolUseId: string | null = null, timestamp?: string): React.ReactElement
 {
-	const {lines, toolResultMap} = processTranscript(turn(calls));
+	const {lines, toolResultMap} = processTranscript(turn(calls, timestamp));
 	return (
 		<SessionChat
 			sessionId="test-session"
@@ -435,6 +441,23 @@ describe("busy same-target run row (upstream mergeLiveLoneStep)", () =>
 		);
 	});
 
+	it("counts the busy row's elapsed from the turn start, not the pending call's, across members (upstream QS hnS)", () =>
+	{
+		const turnStartedAt = Date.now() - 9000;
+		const callStartedAt = new Date().toISOString();
+		const working = (calls: Call[]) => (
+			<TurnWorkingContext.Provider value={turnStartedAt}>
+				{chat(calls, null, callStartedAt)}
+			</TurnWorkingContext.Provider>
+		);
+		const elapsed = (container: HTMLElement) =>
+			container.querySelector("[data-tool-row] [data-running-elapsed]")?.textContent;
+		const {container, rerender} = render(working([pendingEdit("e1")]));
+		const first = elapsed(container);
+		rerender(working([edit("e1", "a", "b"), pendingEdit("e2")]));
+		expect([first, elapsed(container)]).toStrictEqual(["9s", "9s"]);
+	});
+
 	describe("holds the run's live words for 650ms (upstream LC + relabelStep, subjectOf)", () =>
 	{
 		beforeEach(() =>
@@ -475,17 +498,18 @@ describe("busy same-target run row (upstream mergeLiveLoneStep)", () =>
 
 		it("keeps a finished member's present tense while the turn works, then settles at once when it stops", () =>
 		{
-			const working = (calls: Call[], live: boolean) => (
-				<TurnWorkingContext.Provider value={live}>{chat(calls)}</TurnWorkingContext.Provider>
+			const turnStartedAt = Date.now();
+			const working = (calls: Call[], turnStart: number | null) => (
+				<TurnWorkingContext.Provider value={turnStart}>{chat(calls)}</TurnWorkingContext.Provider>
 			);
-			const {container, rerender} = render(working([edit("e1", "a", "b"), pendingEdit("e2")], true));
-			rerender(working([edit("e1", "a", "b"), edit("e2", "c", "d")], true));
+			const {container, rerender} = render(working([edit("e1", "a", "b"), pendingEdit("e2")], turnStartedAt));
+			rerender(working([edit("e1", "a", "b"), edit("e2", "c", "d")], turnStartedAt));
 			const finished = rowParts(container);
 			advance(649);
 			const held = rowParts(container);
 			advance(4351);
 			const gap = rowParts(container);
-			rerender(working([edit("e1", "a", "b"), edit("e2", "c", "d")], false));
+			rerender(working([edit("e1", "a", "b"), edit("e2", "c", "d")], null));
 			expect([finished, held, gap, rowParts(container)]).toStrictEqual([
 				["Editing", "a.ts"],
 				["Editing", "a.ts"],
