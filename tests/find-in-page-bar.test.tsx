@@ -4,6 +4,8 @@ import {act, cleanup, fireEvent, render} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {FindInPage} from "../src/components/find-in-page-bar";
+import {cdsButtonClass} from "../src/components/ui/cds-button";
+import {CDS_ICON_ONLY_DISABLED} from "../src/components/ui/cds-button-disabled";
 import {registerTruncatingLabel} from "../src/lib/find-in-page/label-shift";
 import {endFind, registerFindProvider} from "../src/lib/find-in-page/store";
 
@@ -14,8 +16,7 @@ const BAR_CLASS =
 const INPUT_CLASS =
 	"w-48 min-w-0 border-0 bg-transparent outline-none text-body text-primary placeholder:text-ink-muted hide-focus-ring";
 const STATUS_CLASS = "whitespace-nowrap text-footnote text-muted-as-secondary tabular-nums";
-const BUTTON_CLASS =
-	"inline-flex size-6 items-center justify-center rounded text-muted-as-secondary hover:bg-surface-0 hover:text-primary can-focus disabled:pointer-events-none disabled:opacity-40";
+const BUTTON_CLASS = `${cdsButtonClass("ghost")} aspect-square w-control !px-0 ${CDS_ICON_ONLY_DISABLED}`;
 
 /** A page with three "e"s outside the bar, and a provider so the bar is on offer. */
 function setup():
@@ -182,6 +183,12 @@ describe("FindInPage", () =>
 					atomic: document.querySelector('[role="status"]')?.getAttribute("aria-atomic"),
 				},
 				buttonClasses: [...document.querySelectorAll("[data-find-in-page-bar] button")].map((b) => b.className),
+				buttonCds: [...document.querySelectorAll("[data-find-in-page-bar] button")].map((b) => [
+					b.getAttribute("data-cds"),
+					b.getAttribute("data-cds-icon-only"),
+					b.getAttribute("data-cds-ghost"),
+					b.querySelector<SVGElement>("[data-cds=Icon]")?.style.fontSize,
+				]),
 				buttons: buttons(),
 			},
 		).toStrictEqual(
@@ -215,6 +222,11 @@ describe("FindInPage", () =>
 					atomic: "true",
 				},
 				buttonClasses: [BUTTON_CLASS, BUTTON_CLASS, BUTTON_CLASS],
+				buttonCds: [
+					["Button", "", "", "calc(1.25rem * var(--cds-rem-scale, 1))"],
+					["Button", "", "", "calc(1.25rem * var(--cds-rem-scale, 1))"],
+					["Button", "", "", "calc(1.25rem * var(--cds-rem-scale, 1))"],
+				],
 				buttons:
 				{
 					"Go to previous match": true,

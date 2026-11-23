@@ -20,6 +20,8 @@ import
 } from "../lib/find-in-page/store";
 import {isMacPlatform, matchBinding, platformBindings} from "../lib/shortcuts/match";
 import {getShortcut} from "../lib/shortcuts/registry";
+import {cdsButtonClass} from "./ui/cds-button";
+import {CDS_ICON_ONLY_DISABLED} from "./ui/cds-button-disabled";
 import {Icon} from "./ui/icon";
 
 /** Upstream `mk`: the search waits this long after the last keystroke. */
@@ -33,8 +35,8 @@ const BAR_CLASS =
 const INPUT_CLASS =
 	"w-48 min-w-0 border-0 bg-transparent outline-none text-body text-primary placeholder:text-ink-muted hide-focus-ring";
 const STATUS_CLASS = "whitespace-nowrap text-footnote text-muted-as-secondary tabular-nums";
-const BUTTON_CLASS =
-	"inline-flex size-6 items-center justify-center rounded text-muted-as-secondary hover:bg-surface-0 hover:text-primary can-focus disabled:pointer-events-none disabled:opacity-40";
+/** Upstream `tw({variant:"ghost",iconOnly:!0})`: a control-height square cds ghost Button. */
+const BUTTON_CLASS = `${cdsButtonClass("ghost")} aspect-square w-control !px-0 ${CDS_ICON_ONLY_DISABLED}`;
 
 /** Upstream `Qt`: the element sits under a modal's `aria-hidden` or `inert` blanket. */
 function isBlanketed(element: Element | null): boolean
@@ -424,7 +426,7 @@ function FindInPageBar({
 					if (!composingRef.current) step(false);
 				}}
 			>
-				<Icon name="CaretUp" size="sm" />
+				<Icon name="CaretUp" />
 			</FindBarButton>
 			<FindBarButton
 				label="Go to next match"
@@ -434,7 +436,7 @@ function FindInPageBar({
 					if (!composingRef.current) step(true);
 				}}
 			>
-				<Icon name="CaretDown" size="sm" />
+				<Icon name="CaretDown" />
 			</FindBarButton>
 			<FindBarButton
 				label="Close find bar"
@@ -443,7 +445,7 @@ function FindInPageBar({
 					close("button");
 				}}
 			>
-				<Icon name="X" size="sm" />
+				<Icon name="X" />
 			</FindBarButton>
 		</div>
 	);
@@ -463,7 +465,16 @@ function FindBarButton({
 })
 {
 	return (
-		<button type="button" aria-label={label} onClick={onClick} disabled={disabled} className={BUTTON_CLASS}>
+		<button
+			type="button"
+			data-cds="Button"
+			data-cds-icon-only=""
+			data-cds-ghost=""
+			aria-label={label}
+			onClick={onClick}
+			disabled={disabled}
+			className={BUTTON_CLASS}
+		>
 			{children}
 		</button>
 	);
