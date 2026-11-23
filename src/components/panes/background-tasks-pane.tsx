@@ -40,7 +40,7 @@ const NO_WORKFLOW_RUNS: readonly SessionWorkflowRun[] = [];
 /** Upstream `gap-xs` (6px, 8px comfortable): between a section's heading, rows and pieces. */
 const GAP_XS = "gap-g5 comfortable:gap-g6";
 /** Upstream `KL`'s heading. */
-const SECTION_HEADING = "flex min-h-5 items-center text-footnote text-muted-as-secondary";
+const SECTION_HEADING = "flex min-h-5 min-w-0 items-center text-footnote text-muted-as-secondary";
 /** Upstream `IC`: a task's rounded fill-card piece. */
 const PIECE = "relative flex min-w-0 flex-col rounded-t-[10px] rounded-b-[10px] bg-fill-card";
 /** Upstream `RC.first`: the 44px row around the 36px opener. */
@@ -752,6 +752,7 @@ export function BackgroundTasksList({
 	const stoppingIds = useStoppingTaskIds(sessionId ?? "");
 	const rowStop = sessionId === undefined ? null : stop;
 	const finished = groups.finished;
+	const failedCount = finished.filter((task) => task.status === "failed").length;
 	const subagentCount = subagents?.count ?? 0;
 	const {finishedExpanded, setFinished, openRows, setRowOpen} = usePaneViewState(sessionId);
 	// Upstream: the section's own state, else open when nothing runs or while it holds an open row.
@@ -800,11 +801,18 @@ export function BackgroundTasksList({
 								{
 									setFinished(!finishedOpen);
 								}}
-								className="-mx-1.5 flex min-h-5 cursor-pointer items-center gap-1 rounded px-1.5 hide-focus-ring hover:text-secondary-control focus-visible:shadow-focus focus-visible:outline-hidden"
+								className="-mx-1.5 flex min-h-5 min-w-0 cursor-pointer items-center gap-1 rounded px-1.5 hide-focus-ring hover:text-secondary-control focus-visible:shadow-focus focus-visible:outline-hidden"
 							>
 								<Caret open={finishedOpen} />
 								<span>Finished</span>
 								<span className="text-ink-muted">{finished.length}</span>
+								{failedCount > 0 && (
+									<span aria-hidden="false" className="relative flex min-w-0 gap-1">
+										<span className="sr-only">, </span>
+										<span aria-hidden="true">·</span>
+										<span className="truncate text-danger">{failedCount} failed</span>
+									</span>
+								)}
 							</button>
 						</h3>
 						{finishedOpen && (

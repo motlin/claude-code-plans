@@ -208,6 +208,62 @@ describe("BackgroundTasksList", () =>
 				meta: null,
 			},
 		);
+		expect(document.querySelector("h3 .text-danger")).toBeNull();
+	});
+
+	it("sums failed finished tasks after the Finished count, like upstream's '· 1 failed'", () =>
+	{
+		render(
+			<BackgroundTasksList
+				groups={
+				{
+					running: GROUPS.running,
+					finished: [
+						...GROUPS.finished,
+						task(
+							{
+								id: "bfab1lint",
+								description: "Lint the fabricated app",
+								status: "failed",
+							},
+						),
+					],
+				}}
+			/>,
+		);
+		const toggle = finishedToggle();
+		const summary = toggle.lastElementChild;
+
+		expect(
+			{
+				text: toggle.textContent,
+				toggle: toggle.className,
+				headings: screen.getAllByRole("heading").map((heading) => heading.className),
+				summary: summary?.className,
+				summaryHidden: summary?.getAttribute("aria-hidden"),
+				parts: [...(summary?.children ?? [])].map((part) => [
+					part.textContent,
+					part.className,
+					part.getAttribute("aria-hidden"),
+				]),
+			},
+		).toStrictEqual(
+			{
+				text: "Finished2, ·1 failed",
+				toggle: "-mx-1.5 flex min-h-5 min-w-0 cursor-pointer items-center gap-1 rounded px-1.5 hide-focus-ring hover:text-secondary-control focus-visible:shadow-focus focus-visible:outline-hidden",
+				headings: [
+					"flex min-h-5 min-w-0 items-center text-footnote text-muted-as-secondary",
+					"flex min-h-5 min-w-0 items-center text-footnote text-muted-as-secondary",
+				],
+				summary: "relative flex min-w-0 gap-1",
+				summaryHidden: "false",
+				parts: [
+					[", ", "sr-only", null],
+					["·", "", "true"],
+					["1 failed", "truncate text-danger", null],
+				],
+			},
+		);
 	});
 
 	it("expands the finished section on click", () =>
@@ -253,8 +309,8 @@ describe("BackgroundTasksList", () =>
 					["1", "text-ink-muted"],
 				],
 				className:
-					"-mx-1.5 flex min-h-5 cursor-pointer items-center gap-1 rounded px-1.5 hide-focus-ring hover:text-secondary-control focus-visible:shadow-focus focus-visible:outline-hidden",
-				heading: "flex min-h-5 items-center text-footnote text-muted-as-secondary",
+					"-mx-1.5 flex min-h-5 min-w-0 cursor-pointer items-center gap-1 rounded px-1.5 hide-focus-ring hover:text-secondary-control focus-visible:shadow-focus focus-visible:outline-hidden",
+				heading: "flex min-h-5 min-w-0 items-center text-footnote text-muted-as-secondary",
 			},
 		);
 	});
