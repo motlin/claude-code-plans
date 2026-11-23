@@ -217,6 +217,22 @@ describe("FindInPage", () =>
 	{
 		offs.push(setup().off);
 		pressFind();
+		fireEvent.compositionStart(input());
+		fireEvent.change(
+			input(),
+			{
+				target:
+				{
+					value: "o",
+				},
+			},
+		);
+		act(() =>
+		{
+			vi.advanceTimersByTime(300);
+		});
+		const composing = status();
+		fireEvent.compositionEnd(input());
 		fireEvent.change(
 			input(),
 			{
@@ -280,6 +296,7 @@ describe("FindInPage", () =>
 		type("zzqxq");
 		expect(
 			{
+				composing,
 				beforeDebounce,
 				found,
 				next,
@@ -294,7 +311,8 @@ describe("FindInPage", () =>
 		).toStrictEqual(
 			{
 				// "one" and "three" twice: "open" sits inside the opener button and counts too.
-				beforeDebounce: "0/0",
+				composing: "",
+				beforeDebounce: "",
 				found: "1/4",
 				next: "2/4",
 				wrapped: "4/4",

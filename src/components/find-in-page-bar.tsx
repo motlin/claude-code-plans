@@ -139,8 +139,8 @@ function FindInPageBar({
 {
 	const [query, setQuery] = useState("");
 	const [result, setResult] = useState<FindResult>(EMPTY);
-	/** Upstream `l`: a new query is waiting on the transcript paging in its earlier history. */
-	const [loading, setLoading] = useState(false);
+	/** Upstream `l`: starts true (`Zt(!0)`) so status stays "" until the first search resolves; later, a new query waiting on the transcript paging in its earlier history. */
+	const [loading, setLoading] = useState(true);
 	const loadTokenRef = useRef(0);
 	const barRef = useRef<HTMLDivElement>(null);
 	const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
