@@ -923,7 +923,7 @@ function OverflowRow({
 
 /** Upstream `Ri`'s iconless row recipe with `u3`'s inset and `Yn`'s group gap, for the list-level Load more row. */
 const LOAD_MORE_CLASS =
-	"hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--color-accent-100),0_0_6px_0_color-mix(in_srgb,var(--color-accent-100)_20%,transparent)] flex h-[var(--sb-row-h)] w-full shrink-0 items-center gap-[var(--sb-row-gap)] rounded-[var(--sb-radius)] text-start text-[length:var(--sb-row-font)] text-ink-muted hover:bg-[var(--sb-hover)] hover:text-secondary aria-disabled:pointer-events-none aria-disabled:opacity-70 pe-[var(--sb-row-px)] ps-[calc(var(--sb-row-px)+var(--sb-iconless-pad))] mt-[var(--sb-group-pt-token)]";
+	"hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--upstream-fill-accent),0_0_6px_0_color-mix(in_srgb,var(--upstream-fill-accent)_20%,transparent)] hit-row [--cds-hit-gap-y:7px] hit-row-main flex h-[var(--sb-row-h)] w-full shrink-0 items-center gap-[var(--sb-row-gap)] rounded-[var(--sb-radius)] text-start text-[length:var(--sb-row-font)] text-ink-muted hover:bg-[var(--sb-hover)] hover:text-secondary aria-disabled:pointer-events-none aria-disabled:opacity-70 pe-[var(--sb-row-px)] ps-[calc(var(--sb-row-px)+var(--sb-iconless-pad))] mt-[var(--sb-group-pt-token)]";
 
 /**
  * Upstream `Ks` (`p$` with `loadSessionsFace`): the list-level "Load more sessions" row after the last

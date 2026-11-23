@@ -3015,9 +3015,14 @@ describe("sidebar SessionGroups", () =>
 					?.getAttribute("data-row-key"),
 				recentsList: recents?.hasAttribute("data-recents-list"),
 				roving: button.hasAttribute("data-roving-item"),
-				classes: ["mt-[var(--sb-group-pt-token)]", "ps-[calc(var(--sb-row-px)+var(--sb-iconless-pad))]"].filter(
-					(token) => !button.classList.contains(token),
-				),
+				classes: [
+					"mt-[var(--sb-group-pt-token)]",
+					"ps-[calc(var(--sb-row-px)+var(--sb-iconless-pad))]",
+					"hit-row",
+					"[--cds-hit-gap-y:7px]",
+					"hit-row-main",
+					"focus-visible:shadow-[inset_0_0_0_1px_var(--upstream-fill-accent),0_0_6px_0_color-mix(in_srgb,var(--upstream-fill-accent)_20%,transparent)]",
+				].filter((token) => !button.classList.contains(token)),
 				status: wrapper?.querySelector('span.sr-only[role="status"]')?.textContent,
 				hiddenSpan: wrapper?.querySelector("span[hidden]") !== null,
 			},
