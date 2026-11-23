@@ -24,8 +24,11 @@ export const MERMAID_SECURE_KEYS =
 const MERMAID_FRAME_CSP = "default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src data:";
 
 /** Upstream `hH`: the style leading every diagram's shadow root. */
-export const MERMAID_SHADOW_STYLE =
-	":host > div > svg, [data-mermaid] > div > svg { display: block; max-width: 100%; margin-inline: auto; }";
+export const MERMAID_SHADOW_STYLE = [
+	":host > div > svg, [data-mermaid] > div > svg { display: block; max-width: 100%; height: auto; margin-inline: auto; }",
+	':host > div > svg[aria-roledescription="journey"], [data-mermaid] > div > svg[aria-roledescription="journey"] { overflow: visible; }',
+	'@media print { :host([data-mermaid="dark"]) > div > svg, [data-mermaid="dark"] > div > svg { filter: invert(1) hue-rotate(180deg); } }',
+].join("\n");
 
 const LABEL_SELECTORS = ["text > tspan", "text:not(:has(> tspan))"];
 const MEMBER_LABELS = ":is(.members-group, .methods-group) :is(text, tspan)";

@@ -142,7 +142,7 @@ describe("MermaidDiagram (upstream shared-41 x2)", () =>
 	{
 		drawsSvg((id) => `<svg id="${id}"><g class="node"></g></svg>`);
 		const statuses: string[] = [];
-		const {container} = render(
+		const {container, rerender} = render(
 			<MermaidDiagram code="graph TD; A-->B" mode="light" onStatusChange={(status) => statuses.push(status)} />,
 		);
 		const loading = container.firstElementChild;
@@ -160,7 +160,7 @@ describe("MermaidDiagram (upstream shared-41 x2)", () =>
 				tag: "div",
 				className: `${ROOT_CLASS} min-h-24 animate-pulse`,
 				dir: "ltr",
-				mermaid: "true",
+				mermaid: "",
 				role: "img",
 				label: "Mermaid diagram",
 			},
@@ -172,6 +172,7 @@ describe("MermaidDiagram (upstream shared-41 x2)", () =>
 		expect(
 			{
 				className: root?.className,
+				mermaid: root?.getAttribute("data-mermaid"),
 				style: shadow?.firstElementChild?.outerHTML,
 				drawn: shadow?.lastElementChild?.localName,
 				svg: shadow?.lastElementChild?.firstElementChild?.localName,
@@ -180,15 +181,24 @@ describe("MermaidDiagram (upstream shared-41 x2)", () =>
 		).toStrictEqual(
 			{
 				className: ROOT_CLASS,
+				mermaid: "light",
 				style: `<style>${MERMAID_SHADOW_STYLE}</style>`,
 				drawn: "div",
 				svg: "svg",
 				statuses: ["loading", "success"],
 			},
 		);
-		expect(MERMAID_SHADOW_STYLE).toBe(
-			":host > div > svg, [data-mermaid] > div > svg { display: block; max-width: 100%; margin-inline: auto; }",
+		expect(shadow?.firstElementChild?.textContent).toStrictEqual(
+			[
+				":host > div > svg, [data-mermaid] > div > svg { display: block; max-width: 100%; height: auto; margin-inline: auto; }",
+				':host > div > svg[aria-roledescription="journey"], [data-mermaid] > div > svg[aria-roledescription="journey"] { overflow: visible; }',
+				'@media print { :host([data-mermaid="dark"]) > div > svg, [data-mermaid="dark"] > div > svg { filter: invert(1) hue-rotate(180deg); } }',
+			].join("\n"),
 		);
+
+		rerender(<MermaidDiagram code="graph TD; A-->B" mode="dark" />);
+		await settle();
+		expect(container.firstElementChild?.getAttribute("data-mermaid")).toStrictEqual("dark");
 	});
 
 	it("shows the source in upstream's pre when mermaid throws", async () =>

@@ -32,6 +32,7 @@ type DiagramState =
 	  {
 			status: "success";
 			key: string;
+			mode: MermaidThemeMode;
 			svg: string;
 			scopeId: string;
 			width: number;
@@ -83,6 +84,7 @@ export function MermaidDiagram({
 				{
 					status: "success",
 					key,
+					mode,
 					...cached,
 				}
 			: refusal === undefined
@@ -97,6 +99,7 @@ export function MermaidDiagram({
 			{
 				status: "success",
 				key,
+				mode,
 				...cached,
 			},
 		);
@@ -108,12 +111,13 @@ export function MermaidDiagram({
 					{
 						status: "success",
 						key,
+						mode,
 						...cached,
 					}
 				: knownRefusal === undefined
 					? state
 					: REFUSED,
-		[cached, key, knownRefusal, state],
+		[cached, key, knownRefusal, mode, state],
 	);
 	const status = shown.status;
 	useEffect(() =>
@@ -185,6 +189,7 @@ export function MermaidDiagram({
 						status: "success",
 						svg: sanitizeMermaidSvg(result.svg, result.diagramId),
 						key,
+						mode,
 						scopeId: result.diagramId,
 						width: window.innerWidth,
 					},
@@ -255,7 +260,7 @@ export function MermaidDiagram({
 		<div
 			ref={host}
 			dir="ltr"
-			data-mermaid
+			data-mermaid={shown.status === "success" ? shown.mode : ""}
 			role="img"
 			aria-label="Mermaid diagram"
 			className={`relative [contain:paint] overflow-x-auto ${BLOCK_SHAPE} p-4${shown.status === "loading" ? " min-h-24 animate-pulse" : ""}`}
