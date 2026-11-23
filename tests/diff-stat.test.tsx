@@ -51,14 +51,14 @@ describe("DiffStat", () =>
 
 describe("PrDiffStat", () =>
 {
-	it("renders upstream's b7 subtle tone: raw digits, U+2212, zeros, no sr line or tabular-nums", () =>
+	it("renders upstream's Si subtle tone: case feature, raw digits, U+2212, zeros, no sr line or tabular-nums", () =>
 	{
 		expect([
 			renderToStaticMarkup(<PrDiffStat additions={12345} deletions={0} />),
 			renderToStaticMarkup(<PrDiffStat additions={10} deletions={2} />),
 		]).toStrictEqual([
-			'<span dir="ltr"><span class="text-git-added opacity-70">+12345</span><span class="ms-1 text-git-removed opacity-70">−0</span></span>',
-			'<span dir="ltr"><span class="text-git-added opacity-70">+10</span><span class="ms-1 text-git-removed opacity-70">−2</span></span>',
+			'<span dir="ltr" class="[font-feature-settings:&#x27;case&#x27;]"><span class="text-git-added opacity-70">+12345</span><span class="ms-1 text-git-removed opacity-70">−0</span></span>',
+			'<span dir="ltr" class="[font-feature-settings:&#x27;case&#x27;]"><span class="text-git-added opacity-70">+10</span><span class="ms-1 text-git-removed opacity-70">−2</span></span>',
 		]);
 	});
 });

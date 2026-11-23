@@ -101,14 +101,14 @@ export function AnimatedDiffStat({added, removed, className, hideZeroSide}: Diff
 }
 
 /**
- * Upstream's `b7` in its subtle tone (the "Pull requests" card entries): raw digits, U+2212, no sr line and no
- * tabular-nums (the caller's wrapper adds that). The bold tone (`font-medium text-git-added` / `ms-1
+ * Upstream's `Si` (formerly `b7`) in its subtle tone (the "Pull requests" card entries): the `case` feature on the
+ * root, raw digits, U+2212, no sr line and no tabular-nums (the caller's wrapper adds that). The bold tone (`font-medium text-git-added` / `ms-1
  * text-git-closed`) has only cloud Projects callers, so it is left out.
  */
 export function PrDiffStat({additions, deletions}: {additions: number; deletions: number})
 {
 	return (
-		<span dir="ltr">
+		<span dir="ltr" className="[font-feature-settings:'case']">
 			<span className="text-git-added opacity-70">{`+${additions}`}</span>
 			<span className="ms-1 text-git-removed opacity-70">{`−${deletions}`}</span>
 		</span>

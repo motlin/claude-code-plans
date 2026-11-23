@@ -192,7 +192,7 @@ describe("PrListCard", () =>
 					},
 					{
 						tag: "span",
-						className: null,
+						className: "[font-feature-settings:'case']",
 						text: null,
 					},
 					{
