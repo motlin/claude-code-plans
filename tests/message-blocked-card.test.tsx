@@ -68,6 +68,7 @@ describe("MessageBlockedCard", () =>
 			{
 				cds: root?.getAttribute("data-cds"),
 				role: root?.getAttribute("role"),
+				variant: root?.getAttribute("data-banner-variant"),
 				root: root?.className.split(" ").slice(0, 10).join(" "),
 				iconSlot: root?.children[0]?.className,
 				column: root?.children[1]?.className,
@@ -75,6 +76,7 @@ describe("MessageBlockedCard", () =>
 				header: toggle.parentElement?.className,
 				toggle: toggle.className,
 				expanded: toggle.getAttribute("aria-expanded"),
+				ariaDisabled: toggle.getAttribute("aria-disabled"),
 				title: toggle.children[0]?.outerHTML,
 				caret: caret
 					?.getAttribute("class")
@@ -91,18 +93,20 @@ describe("MessageBlockedCard", () =>
 		).toStrictEqual(
 			{
 				cds: "Banner",
-				role: "none",
-				root: "flex items-start gap-xs py-md font-sans text-body font-normal break-words px-lg rounded-card",
+				role: null,
+				variant: "neutral",
+				root: "flex items-start gap-xs !py-lg font-sans text-body font-normal break-words px-lg rounded-card",
 				iconSlot: "flex min-h-[1lh] shrink-0 items-center text-secondary",
 				column: "flex min-w-0 flex-1 flex-col",
 				collapsible: "Collapsible",
 				header: "flex min-w-0 flex-wrap items-start gap-y-sm gap-x-md",
 				toggle: "cds-reset flex min-w-0 grow select-none items-center gap-x-[2px] border-0 text-start outline-none focus-visible:shadow-focus focus-visible:outline-hidden rounded transition-shadow duration-fast",
 				expanded: "true",
+				ariaDisabled: "false",
 				title: '<div class="min-w-0">Message blocked</div>',
-				caret: "shrink-0 text-secondary transition-transform motion-reduce:transition-none rotate-0",
+				caret: "transition-transform duration-fast motion-reduce:transition-none text-secondary",
 				panelTail: "w-full text-secondary",
-				inner: "pt-[var(--cds-gap-sm)] stacks:pt-[var(--cds-gap-xs)]",
+				inner: "pt-[var(--cds-gap-xs)]",
 				details: "flex flex-col items-start gap-sm",
 				body: "Opus 4.5’s safeguards flagged this message. This sometimes happens with safe, normal conversations.",
 				actions: "flex flex-wrap items-center gap-sm",
@@ -209,12 +213,15 @@ describe("MessageBlockedCard", () =>
 		expect(
 			{
 				expanded: toggle.getAttribute("aria-expanded"),
-				rotated: caret.includes("-rotate-90 rtl:rotate-90"),
+				caret: caret
+					.split(" ")
+					.filter((c) => !c.startsWith("lucide"))
+					.join(" "),
 			},
 		).toStrictEqual(
 			{
 				expanded: "false",
-				rotated: true,
+				caret: "transition-transform duration-fast motion-reduce:transition-none -rotate-90 page-rtl:rotate-90 text-secondary",
 			},
 		);
 		first.unmount();

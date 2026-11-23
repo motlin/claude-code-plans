@@ -22,10 +22,11 @@ function flaggedCopy(model: string): string
 	return name === null ? `This model's ${FLAGGED_TAIL}` : `${name}’s ${FLAGGED_TAIL}`;
 }
 
-const ROOT_CLASS = "flex items-start gap-xs py-md font-sans text-body font-normal break-words px-lg rounded-card";
+const ROOT_CLASS = "flex items-start gap-xs !py-lg font-sans text-body font-normal break-words px-lg rounded-card";
 const TOGGLE_CLASS =
 	"cds-reset flex min-w-0 grow select-none items-center gap-x-[2px] border-0 text-start outline-none focus-visible:shadow-focus focus-visible:outline-hidden rounded transition-shadow duration-fast";
-const CARET_CLASS = "shrink-0 text-secondary transition-transform motion-reduce:transition-none";
+/** Upstream's caret: `duration-fast` motion, then `-rotate-90 page-rtl:rotate-90` while closed, ink last. */
+const CARET_MOTION = "transition-transform duration-fast motion-reduce:transition-none";
 
 /**
  * Upstream's hard-block card (c3fef5c6f `j_`): a neutral cds Banner with a Warning icon whose title
@@ -67,7 +68,7 @@ export function MessageBlockedCard({
 				data-cta-layout="inline"
 				data-action-align="first-line"
 				data-testid="hard-block-card"
-				role="none"
+				data-banner-variant="neutral"
 				className={`${ROOT_CLASS} ${NOTICE_SURFACE_CLASS}`}
 			>
 				<span className={`flex min-h-[1lh] shrink-0 items-center text-secondary`}>
@@ -76,17 +77,21 @@ export function MessageBlockedCard({
 				<div className="flex min-w-0 flex-1 flex-col">
 					<Collapsible.Root open={open} onOpenChange={toggle} className="contents">
 						<div className="flex min-w-0 flex-wrap items-start gap-y-sm gap-x-md">
-							<BaseCollapsible.Trigger className={TOGGLE_CLASS}>
+							<BaseCollapsible.Trigger className={TOGGLE_CLASS} aria-disabled={false}>
 								<div className="min-w-0">{MESSAGE_BLOCKED_TITLE}</div>
 								<Icon
 									name="CaretDownFilled"
 									size="sm"
-									className={`${CARET_CLASS} ${open ? "rotate-0" : "-rotate-90 rtl:rotate-90"}`}
+									className={
+										open
+											? `${CARET_MOTION} text-secondary`
+											: `${CARET_MOTION} -rotate-90 page-rtl:rotate-90 text-secondary`
+									}
 								/>
 							</BaseCollapsible.Trigger>
 						</div>
 						<Collapsible.Panel className="w-full text-secondary">
-							<div className="pt-[var(--cds-gap-sm)] stacks:pt-[var(--cds-gap-xs)]">
+							<div className="pt-[var(--cds-gap-xs)]">
 								<div className="flex flex-col items-start gap-sm">
 									<p>{flaggedCopy(model)}</p>
 									{canEditRetry && (
