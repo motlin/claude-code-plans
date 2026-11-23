@@ -123,26 +123,14 @@ function summary(container: HTMLElement):
 function Row({
 	swapKey,
 	text,
-	attrs,
 }: Readonly<
 {
 	swapKey: string;
 	text: string;
-	attrs?: Record<string, string>;
 }>)
 {
 	return (
-		<MorphSlot
-			swapKey={swapKey}
-			id="row-label"
-			className="min-w-0 max-w-full"
-			{...(attrs
-				?
-					{
-						attrs,
-					}
-				: {})}
-		>
+		<MorphSlot swapKey={swapKey} id="row-label" className="min-w-0 max-w-full">
 			<span>{text}</span>
 		</MorphSlot>
 	);
@@ -457,30 +445,11 @@ describe("MorphSlot", () =>
 		}
 	});
 
-	it("keeps the id across swaps and forwards attrs onto the container", () =>
+	it("keeps the id and slot class across swaps", () =>
 	{
-		const {container, rerender} = render(
-			<Row
-				swapKey="busy|Reading"
-				text="Reading"
-				attrs={
-				{
-					"data-cds-phrases-seat": "after-mark",
-				}}
-			/>,
-		);
-		expect(slotOf(container).getAttribute("data-cds-phrases-seat")).toBe("after-mark");
-		rerender(
-			<Row
-				swapKey="done|Read"
-				text="Read"
-				attrs={
-				{
-					"data-cds-phrases-seat": "",
-				}}
-			/>,
-		);
-		expect(slotOf(container).getAttribute("data-cds-phrases-seat")).toBe("");
+		const {container, rerender} = render(<Row swapKey="busy|Reading" text="Reading" />);
+		rerender(<Row swapKey="done|Read" text="Read" />);
+		expect(slotOf(container).id).toBe("row-label");
 		expect(slotOf(container).className.startsWith(SLOT_CLASS.replace(" min-w-0", ""))).toBe(true);
 	});
 });

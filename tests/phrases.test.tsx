@@ -6,8 +6,6 @@ import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
 import {Phrases} from "../src/components/ui/phrases";
 import {FizzyLakeContext, type FizzyLakePart} from "../src/lib/fizzy-lake";
 
-const TYPE_OFF: readonly FizzyLakePart[] = ["color", "panels"];
-
 class StubObserver
 {
 	static instances: StubObserver[] = [];
@@ -39,7 +37,7 @@ class StubObserver
 	}
 }
 
-describe("Phrases under fizzy-lake type (upstream shared-9 MG, cds-type-experiment-gate T3)", () =>
+describe("Phrases (upstream shared-9 MG, live 2026-11-21: no measuring path, no type gate)", () =>
 {
 	const original = globalThis.ResizeObserver;
 
@@ -57,15 +55,17 @@ describe("Phrases under fizzy-lake type (upstream shared-9 MG, cds-type-experime
 		globalThis.ResizeObserver = original;
 	});
 
-	it("renders one ellipsis bdi with no probe and no inline styles", () =>
+	it("renders one ellipsis bdi in a bare data-cds-phrases span under any fizzy-lake parts", () =>
 	{
-		const html = renderToString(<Phrases>{["Ran 2 commands", ", read a file"]}</Phrases>).replaceAll(
-			"<!-- -->",
-			"",
-		);
-		expect(html).toBe(
-			'<span data-cds-phrases="all" class="relative block min-w-0 max-w-full"><bdi class="block overflow-x-clip whitespace-nowrap text-ellipsis">Ran 2 commands, read a file</bdi></span>',
-		);
+		const markup = (parts: readonly FizzyLakePart[]) =>
+			renderToString(
+				<FizzyLakeContext.Provider value={parts}>
+					<Phrases>{["Ran 2 commands", ", read a file"]}</Phrases>
+				</FizzyLakeContext.Provider>,
+			).replaceAll("<!-- -->", "");
+		const expected =
+			'<span data-cds-phrases="" class="block min-w-0 max-w-full"><bdi class="block overflow-x-clip text-ellipsis whitespace-nowrap">Ran 2 commands, read a file</bdi></span>';
+		expect([markup(["color", "panels", "type"]), markup(["color", "panels"])]).toStrictEqual([expected, expected]);
 	});
 
 	it("keeps one text node per phrase and drops empty phrases", () =>
@@ -103,27 +103,5 @@ describe("Phrases under fizzy-lake type (upstream shared-9 MG, cds-type-experime
 			StubObserver.instances[0]!.fire([bdi]);
 		});
 		expect(bdi.getAttribute("data-cds-row-cut")).toBe("");
-	});
-
-	it("renders the measuring probe when type is off and there are several phrases", () =>
-	{
-		const {container} = render(
-			<FizzyLakeContext.Provider value={TYPE_OFF}>
-				<Phrases>{["Ran 2 commands", ", read a file"]}</Phrases>
-			</FizzyLakeContext.Provider>,
-		);
-		expect(
-			{
-				probe: container.querySelector("span.invisible.absolute.start-0.top-0")?.getAttribute("aria-hidden"),
-				bdiClass: container.querySelector("bdi")?.className,
-				observers: StubObserver.instances.length,
-			},
-		).toStrictEqual(
-			{
-				probe: "true",
-				bdiClass: "block overflow-x-clip whitespace-nowrap",
-				observers: 0,
-			},
-		);
 	});
 });

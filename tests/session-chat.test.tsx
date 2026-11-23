@@ -3929,11 +3929,34 @@ describe("SessionChat tool row hover treatment", () =>
 	{
 		expect(rowHeaderSpanClasses(renderTranscript(groupedToolCallRecords()))).toStrictEqual([
 			"inline-flex items-center gap-g3 min-w-0 text-secondary group-hover/tool:text-secondary group-focus-visible/tool:text-secondary group-has-[&gt;[data-cds-row-toggle]:focus-visible]/tool:text-secondary",
-			"block min-w-0 truncate text-body",
-			"text-body",
+			"min-w-0 overflow-x-clip text-ellipsis whitespace-nowrap py-[0.125em] -my-[0.125em] text-body",
+			// The Phrases span leads with data-cds-phrases, so the helper reads no class; the next test covers it.
 			"",
 			"shrink-0 text-secondary group-hover/tool:text-secondary group-focus-visible/tool:text-secondary group-has-[&gt;[data-cds-row-toggle]:focus-visible]/tool:text-secondary comfortable:[&amp;_svg]:size-4",
 		]);
+	});
+
+	it("draws the settled group label as upstream's bare Phrases (span[data-cds-phrases] > bdi), with no phrases seat", () =>
+	{
+		const root = document.createElement("div");
+		root.innerHTML = renderTranscript(groupedToolCallRecords());
+		const label = root.querySelector("[id$=-label]");
+		const bdi = label?.querySelector('[data-cds-phrases=""] > bdi');
+		expect(
+			{
+				seats: root.querySelectorAll("[data-cds-phrases-seat]").length,
+				phrasesClass: bdi?.parentElement?.className,
+				bdiClass: bdi?.className,
+				bdiText: bdi?.textContent,
+			},
+		).toStrictEqual(
+			{
+				seats: 0,
+				phrasesClass: "block min-w-0 max-w-full",
+				bdiClass: "block overflow-x-clip text-ellipsis whitespace-nowrap",
+				bdiText: "Searched code",
+			},
+		);
 	});
 });
 

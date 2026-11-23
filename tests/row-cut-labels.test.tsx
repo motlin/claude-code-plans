@@ -211,7 +211,7 @@ describe("transcript status labels fade under fizzy-lake type (cds-type-experime
 		overflowEverything();
 		expect(cutLabels(container)).toStrictEqual([
 			{
-				tag: "span",
+				tag: "bdi",
 				text: "Ran 2 commands",
 				inRow: true,
 			},
@@ -238,9 +238,10 @@ describe("transcript status labels fade under fizzy-lake type (cds-type-experime
 		);
 	});
 
-	it("leaves labels alone when type is off", () =>
+	// The group header's Phrases fades ungated, as upstream's retired gate left it (live 2026-11-21).
+	it("leaves a standalone tool row's labels alone when type is off", () =>
 	{
-		const {container} = renderChat(bashRun(["t1", "t2"]), ["color", "panels"]);
+		const {container} = renderChat(bashRun(["t1"]), ["color", "panels"]);
 		overflowEverything();
 		expect(cutLabels(container)).toStrictEqual([]);
 	});

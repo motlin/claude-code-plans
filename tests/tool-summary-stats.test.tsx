@@ -812,7 +812,7 @@ describe("ToolCallSummary stats and ink", () =>
 				names: null,
 				count: null,
 				text: "Ran 2 commands (1 failed)",
-				seat: "",
+				seat: null,
 			},
 		);
 	});
@@ -1099,7 +1099,7 @@ describe("ToolCallSummary stats and ink", () =>
 describe("group header file meta slot", () =>
 {
 	const META_CLASS =
-		"group-has-[[data-cds-phrases=cut]]/phrases:sr-only min-w-0 overflow-x-clip text-ellipsis whitespace-nowrap py-[0.125em] -my-[0.125em] text-secondary group-hover/tool:text-primary group-has-[:focus-visible]/tool:text-primary";
+		"min-w-0 overflow-x-clip text-ellipsis whitespace-nowrap py-[0.125em] -my-[0.125em] text-secondary group-hover/tool:text-primary group-has-[:focus-visible]/tool:text-primary";
 	const commandsThenRead = (readError = false): FakeCall[] => [
 		{
 			id: "t1",
@@ -1164,7 +1164,8 @@ describe("group header file meta slot", () =>
 				label: "Ran 2 commands, read",
 				labelClass:
 					"group/morph inline-grid items-center justify-items-start data-[gliding]:overflow-x-clip min-w-0 max-w-full shrink-0",
-				lineClass: "block min-w-0 truncate text-body shrink-0",
+				lineClass:
+					"min-w-0 overflow-x-clip text-ellipsis whitespace-nowrap py-[0.125em] -my-[0.125em] text-body shrink-0",
 				metaClass: META_CLASS,
 				metaTitle: "/r/input-debug.png",
 				metaText: "input-debug.png",

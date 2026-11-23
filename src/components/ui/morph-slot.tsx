@@ -322,8 +322,6 @@ export interface MorphSlotProps
 	/** Changing this key cross-fades the old face out and the new face in, gliding the slot's width. */
 	swapKey: string;
 	id?: string;
-	/** Spread onto the container first, like upstream's phrases-seat attribute. */
-	attrs?: Readonly<Record<string, string | undefined>> | undefined;
 	className?: string;
 	style?: CSSProperties;
 	children?: ReactNode;
@@ -334,7 +332,7 @@ export interface MorphSlotProps
  * fades up 3px and out (WAAPI, then removed), the new one rises in with `cds-morph-in`, and the slot
  * glides between their widths under `data-gliding`. Reduced motion swaps at once with a single face.
  */
-export function MorphSlot({swapKey, id, attrs, className, style, children}: Readonly<MorphSlotProps>)
+export function MorphSlot({swapKey, id, className, style, children}: Readonly<MorphSlotProps>)
 {
 	const reduced = useReducedMotion();
 	const ref = useRef<HTMLSpanElement>(null);
@@ -458,7 +456,7 @@ export function MorphSlot({swapKey, id, attrs, className, style, children}: Read
 
 	const faces = [...leavingKeys.filter((key) => key !== swapKey), swapKey];
 	return (
-		<span {...attrs} id={id} ref={ref} style={style} className={slotClass(className)}>
+		<span id={id} ref={ref} style={style} className={slotClass(className)}>
 			{faces.map((key) => (
 				<MorphFace
 					key={key}

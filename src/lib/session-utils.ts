@@ -979,7 +979,7 @@ export interface ToolCallSummaryStats
 }
 
 /** The group's phrases as text, without the trailing part. */
-export function summaryNamesText(segments: readonly SummarySegment[]): string
+function summaryNamesText(segments: readonly SummarySegment[]): string
 {
 	return segments.map((segment) => (segment.rest ? `${segment.verb} ${segment.rest}` : segment.verb)).join(", ");
 }

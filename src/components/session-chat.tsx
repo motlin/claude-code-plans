@@ -22,6 +22,7 @@ import {Bot, FileWarning, GitBranch, Lock, Palette, Plug, Zap} from "lucide-reac
 import {assertNever} from "../lib/assert-never";
 import {useFizzyLake, useRestInk} from "../lib/fizzy-lake";
 import {useTypeRowCut} from "../lib/use-row-cut";
+import {Phrases} from "./ui/phrases";
 import {formatModelName} from "../lib/model-name";
 import {useClientRows, type ClientRow} from "../lib/client-rows-store";
 import {contextRefreshReasonLabel, contextRefreshSubjectLabels} from "../lib/schema-choices";
@@ -165,7 +166,6 @@ import
 	hasDiffStats,
 	summarizeToolCallStats,
 	countedLabelText,
-	summaryNamesText,
 	splitTrailingFile,
 	diffStatsForCall,
 	isRequestInterrupted,
@@ -9022,39 +9022,22 @@ function ToolCallRow({
 	);
 }
 
-/**
- * Renders the structured summary as verb spans matching upstream claude.ai/code:
- *   <span class="text-body">{verb}</span>
- *   <span> {rest}</span>
- * with commas between segments; the color comes from the hover-aware wrapper.
- */
-function SummarySpans({segments}: {segments: SummarySegment[]})
+/** The summary's phrases for upstream's Phrases (`MG`): one per segment, separators leading. */
+function summaryPhrases(segments: readonly SummarySegment[]): string[]
 {
-	return (
-		<>
-			{segments.map((segment, i) => (
-				<React.Fragment key={i}>
-					{i > 0 && <span>, </span>}
-					<span className="text-body">{segment.verb}</span>
-					{segment.rest && <span> {segment.rest}</span>}
-				</React.Fragment>
-			))}
-		</>
-	);
+	return segments.map((segment, i) => `${i > 0 ? ", " : ""}${segment.verb}${segment.rest ? ` ${segment.rest}` : ""}`);
 }
 
-/**
- * Upstream's group label (c24951e9f `j`): the bare phrases, seated in the
- * label, until a trailing part exists -- ", 1 failed" or " and 2 more
- * actions" -- when the counted line (shared-80 `Tl`) clips the phrases in
- * their own span and draws the trailing part after them, unclipped.
- */
-/** Upstream's settled phrases seat (`Xz`), spread onto a group header's label slot. */
-const PHRASES_SEAT: Readonly<Record<string, string>> =
-{
-	"data-cds-phrases-seat": "",
-};
+/** Upstream's TurnStatus label span (`y_`); the ink comes from the hover-aware wrapper. */
+const COUNTED_LABEL_CLASS =
+	"min-w-0 overflow-x-clip text-ellipsis whitespace-nowrap py-[0.125em] -my-[0.125em] text-body";
 
+/**
+ * Upstream's group label (c24951e9f `j`): the bare phrases in the label span, until a
+ * trailing part exists -- ", 1 failed" or " and 2 more actions" -- when the counted line
+ * (shared-80 `Tl`) clips the phrases in their own span and draws the trailing part after
+ * them, unclipped.
+ */
 function CountedLine({
 	segments,
 	trailing,
@@ -9066,24 +9049,15 @@ function CountedLine({
 	beforeMeta?: boolean;
 })
 {
-	const rowCut = useTypeRowCut(summaryNamesText(segments));
+	const phrases = <Phrases>{summaryPhrases(segments)}</Phrases>;
 	if (trailing === null)
 	{
-		return (
-			<span
-				ref={rowCut}
-				className={
-					beforeMeta ? "block min-w-0 truncate text-body shrink-0" : "block min-w-0 truncate text-body"
-				}
-			>
-				<SummarySpans segments={segments} />
-			</span>
-		);
+		return <span className={beforeMeta ? `${COUNTED_LABEL_CLASS} shrink-0` : COUNTED_LABEL_CLASS}>{phrases}</span>;
 	}
 	return (
 		<span className="flex min-w-0 text-body">
-			<span ref={rowCut} className="min-w-0 truncate" data-testid="counted-line-names">
-				<SummarySpans segments={segments} />
+			<span className="min-w-0 truncate" data-testid="counted-line-names">
+				{phrases}
 			</span>
 			<bdi className="shrink-0 whitespace-pre" data-testid="counted-line-count">
 				{trailing}
@@ -9289,8 +9263,6 @@ function ToolCallSummary({
 						? turnStatusSwapKey("busy", held.runningText)
 						: turnStatusSwapKey("done", null)
 				}
-				// Upstream's phrases seat sits on the slot of a settled lone-phrases line.
-				attrs={!busy && summary.trailing === null ? PHRASES_SEAT : undefined}
 				className="min-w-0 max-w-full"
 			>
 				{held.state === "busy" ? (
@@ -9370,14 +9342,13 @@ function ToolCallSummary({
 					<MorphSlot
 						id={`${statusId}-label`}
 						swapKey={turnStatusSwapKey("done", null)}
-						attrs={PHRASES_SEAT}
 						className="min-w-0 max-w-full shrink-0"
 					>
 						<CountedLine segments={fileMeta.segments} trailing={null} beforeMeta />
 					</MorphSlot>
 					<span
 						id={`${statusId}-meta`}
-						className="group-has-[[data-cds-phrases=cut]]/phrases:sr-only min-w-0 overflow-x-clip text-ellipsis whitespace-nowrap py-[0.125em] -my-[0.125em] text-secondary group-hover/tool:text-primary group-has-[:focus-visible]/tool:text-primary"
+						className="min-w-0 overflow-x-clip text-ellipsis whitespace-nowrap py-[0.125em] -my-[0.125em] text-secondary group-hover/tool:text-primary group-has-[:focus-visible]/tool:text-primary"
 						title={fileMeta.file.path}
 					>
 						<FileRefTarget
