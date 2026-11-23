@@ -1681,12 +1681,14 @@ html[data-interface-font="dyslexic"]
 }
 
 /* Fizzy-lake `type`: upstream's `font-weight: var(--cds-font-weight-header)` on dialog headings and settings
-   group titles (rule 211), and the sidebar group labels (measured 520 live 2026-11-03). OpenDyslexic opts out. */
+   group titles (rule 211), the sidebar group labels (measured 520 live 2026-11-03) and the code review card's
+   file headers (measured 520 live 2026-11-21). OpenDyslexic opts out. */
 :root[data-cds-fizzy-lake~="type"]:not([data-interface-font="dyslexic"])
 	:is([role="dialog"], [role="alertdialog"])
 	:is(h1, h2).break-words.font-semibold,
 :root[data-cds-fizzy-lake~="type"]:not([data-interface-font="dyslexic"]) [data-settings-group-title],
-:root[data-cds-fizzy-lake~="type"]:not([data-interface-font="dyslexic"]) [data-sidebar-group-label]
+:root[data-cds-fizzy-lake~="type"]:not([data-interface-font="dyslexic"]) [data-sidebar-group-label],
+:root[data-cds-fizzy-lake~="type"]:not([data-interface-font="dyslexic"]) [data-review-file-header]
 {
 	font-weight: var(--font-weight-header);
 }

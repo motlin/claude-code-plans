@@ -191,7 +191,7 @@ function FindingRow({
 						<span className="flex min-w-0 text-footnote text-secondary" title={location}>
 							<span className="truncate">{finding.file}</span>
 							{finding.line !== undefined && (
-								<span className="shrink-0 font-medium text-primary">{`:${finding.line}`}</span>
+								<span className="shrink-0 font-control text-primary">{`:${finding.line}`}</span>
 							)}
 						</span>
 						{live && anchorState === "anchored" && (
@@ -571,6 +571,7 @@ export function ReportFindingsCard({
 								<div
 									id={`${call.id}-file-${groupIndex}`}
 									className={FILE_HEADER_CLASS}
+									data-review-file-header
 									title={group.file}
 								>
 									<span className="truncate">{group.label}</span>

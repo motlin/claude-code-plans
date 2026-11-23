@@ -509,7 +509,7 @@ describe("fizzy-lake rollout: type", () =>
 		);
 	});
 
-	it("T7: dialog headings, settings group titles and sidebar group labels take upstream's header weight", () =>
+	it("T7: dialog headings, settings group titles, sidebar group labels and review file headers take upstream's header weight", () =>
 	{
 		expect(
 			{
@@ -519,7 +519,8 @@ describe("fizzy-lake rollout: type", () =>
 						':root[data-cds-fizzy-lake~="type"]:not([data-interface-font="dyslexic"])',
 						'\t:is([role="dialog"], [role="alertdialog"])\n\t:is(h1, h2).break-words.font-semibold,',
 						':root[data-cds-fizzy-lake~="type"]:not([data-interface-font="dyslexic"]) [data-settings-group-title],',
-						':root[data-cds-fizzy-lake~="type"]:not([data-interface-font="dyslexic"]) [data-sidebar-group-label]',
+						':root[data-cds-fizzy-lake~="type"]:not([data-interface-font="dyslexic"]) [data-sidebar-group-label],',
+						':root[data-cds-fizzy-lake~="type"]:not([data-interface-font="dyslexic"]) [data-review-file-header]',
 					].join("\n"),
 				),
 			},

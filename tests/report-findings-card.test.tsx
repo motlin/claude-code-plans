@@ -161,6 +161,9 @@ describe("ReportFindingsCard (upstream c3fef5c6f iC/rC)", () =>
 				{
 					label: document.getElementById(list.getAttribute("aria-labelledby") ?? "")?.textContent,
 					title: document.getElementById(list.getAttribute("aria-labelledby") ?? "")?.getAttribute("title"),
+					header: document
+						.getElementById(list.getAttribute("aria-labelledby") ?? "")
+						?.hasAttribute("data-review-file-header"),
 					rows: list.querySelectorAll("li").length,
 				})),
 				rows: rows(container).map((row) => (
@@ -195,16 +198,19 @@ describe("ReportFindingsCard (upstream c3fef5c6f iC/rC)", () =>
 					{
 						label: "a/index.ts",
 						title: "src/a/index.ts",
+						header: true,
 						rows: 2,
 					},
 					{
 						label: "b/index.ts",
 						title: "src/b/index.ts",
+						header: true,
 						rows: 1,
 					},
 					{
 						label: "c.ts",
 						title: "src/c.ts",
+						header: true,
 						rows: 1,
 					},
 				],
@@ -263,6 +269,7 @@ describe("ReportFindingsCard (upstream c3fef5c6f iC/rC)", () =>
 			expanded: row.querySelector("button")?.getAttribute("aria-expanded"),
 			body: [...row.querySelectorAll(".whitespace-pre-wrap")].map((node) => node.textContent),
 			location: row.querySelector(".text-footnote.text-secondary")?.textContent,
+			lineClass: row.querySelector(".text-footnote.text-secondary > .shrink-0")?.className,
 			viewClass: view.className,
 		};
 		first.unmount();
@@ -279,6 +286,7 @@ describe("ReportFindingsCard (upstream c3fef5c6f iC/rC)", () =>
 				expanded: "true",
 				body: ["The first finding is real.", "Alice sees the first failure."],
 				location: "src/a/index.ts:12",
+				lineClass: "shrink-0 font-control text-primary",
 				viewClass: VIEW_IN_CHANGES_CLASS,
 				remounted: "true",
 				oldLabels: null,
