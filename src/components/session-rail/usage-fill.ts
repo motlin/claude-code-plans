@@ -3,7 +3,7 @@ import {usageRingSeverity, type UsageRingSeverity} from "../../lib/composer-stat
 const USAGE_FILLS: Record<UsageRingSeverity, string> =
 {
 	normal: "bg-fill-accent",
-	warning: "bg-usage-warning",
+	warning: "bg-usage-warning forced-colors:bg-[color:Highlight]",
 	critical: "bg-usage-danger",
 };
 
@@ -12,3 +12,7 @@ export function usageFillClass(percent: number): string
 {
 	return USAGE_FILLS[usageRingSeverity(percent)];
 }
+
+/** Upstream `le` bar root: a 4px track that stays visible in forced-colors mode. */
+export const CONTEXT_BAR_TRACK_CLASS =
+	"h-[4px] rounded-full overflow-hidden forced-color-adjust-none forced-colors:!bg-[color:Canvas] forced-colors:outline forced-colors:outline-[color:CanvasText]";

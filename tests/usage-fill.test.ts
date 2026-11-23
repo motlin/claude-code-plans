@@ -8,8 +8,8 @@ describe("usageFillClass", () =>
 		expect([0, 74, 75, 89, 90, 100].map(usageFillClass)).toStrictEqual([
 			"bg-fill-accent",
 			"bg-fill-accent",
-			"bg-usage-warning",
-			"bg-usage-warning",
+			"bg-usage-warning forced-colors:bg-[color:Highlight]",
+			"bg-usage-warning forced-colors:bg-[color:Highlight]",
 			"bg-usage-danger",
 			"bg-usage-danger",
 		]);

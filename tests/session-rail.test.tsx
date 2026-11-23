@@ -2318,7 +2318,7 @@ describe("session rail card summary", () =>
 					testId: "rail-meter",
 					track: "flex h-2.5 w-6 shrink-0 rounded-full bg-alpha-2 p-0.5",
 					trackHidden: "true",
-					fill: "h-full min-w-1.5 rounded-full bg-usage-warning",
+					fill: "h-full min-w-1.5 rounded-full bg-usage-warning forced-colors:bg-[color:Highlight]",
 					width: "80%",
 				},
 			},

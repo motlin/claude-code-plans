@@ -3193,7 +3193,7 @@ describe("Context card", () =>
 				usedClass: USED_CLASS,
 				summaryClass: SUMMARY_CLASS,
 				block: HEADLINE_BLOCK_CLASS,
-				bar: "h-[4px] rounded-full overflow-hidden",
+				bar: "h-[4px] rounded-full overflow-hidden forced-color-adjust-none forced-colors:!bg-[color:Canvas] forced-colors:outline forced-colors:outline-[color:CanvasText]",
 				track: "var(--chart-reference-tint)",
 				fill: "h-full bg-fill-accent transition-[width]",
 			},
@@ -3245,6 +3245,7 @@ describe("Context card", () =>
 				meter: rollup?.querySelector('[data-testid="rail-meter"]') ?? null,
 				valueNow: bar.getAttribute("aria-valuenow"),
 				valueText: bar.getAttribute("aria-valuetext"),
+				bar: bar.className,
 				fill: bar.firstElementChild,
 			},
 		).toStrictEqual(
@@ -3258,6 +3259,7 @@ describe("Context card", () =>
 				meter: null,
 				valueNow: null,
 				valueText: "250k",
+				bar: "h-[4px] rounded-full overflow-hidden forced-color-adjust-none forced-colors:!bg-[color:Canvas] forced-colors:outline forced-colors:outline-[color:CanvasText]",
 				fill: null,
 			},
 		);
@@ -3265,8 +3267,8 @@ describe("Context card", () =>
 
 	it.each([
 		[74.4, "bg-fill-accent"],
-		[74.5, "bg-usage-warning"],
-		[89, "bg-usage-warning"],
+		[74.5, "bg-usage-warning forced-colors:bg-[color:Highlight]"],
+		[89, "bg-usage-warning forced-colors:bg-[color:Highlight]"],
 		[89.5, "bg-usage-danger"],
 		[100, "bg-usage-danger"],
 	])(
@@ -3290,7 +3292,17 @@ describe("Context card", () =>
 					name: "Context window",
 				},
 			);
-			expect(bar.firstElementChild?.className).toBe(`h-full ${fill} transition-[width]`);
+			expect(
+				{
+					bar: bar.className,
+					fill: bar.firstElementChild?.className,
+				},
+			).toStrictEqual(
+				{
+					bar: "h-[4px] rounded-full overflow-hidden forced-color-adjust-none forced-colors:!bg-[color:Canvas] forced-colors:outline forced-colors:outline-[color:CanvasText]",
+					fill: `h-full ${fill} transition-[width]`,
+				},
+			);
 		},
 	);
 

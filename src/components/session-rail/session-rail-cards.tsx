@@ -89,7 +89,7 @@ import {useShowMore} from "./use-show-more";
 import {RemoteControlRow, RemoteControlRowPending, RemoteControlToggleRow} from "./remote-control-row";
 import {GoalBody} from "./goal-card";
 import {SessionRail, type RailCard} from "./session-rail";
-import {usageFillClass} from "./usage-fill";
+import {CONTEXT_BAR_TRACK_CLASS, usageFillClass} from "./usage-fill";
 
 /** What the session page knows that the rail's cards show. */
 export interface SessionRailInputs
@@ -485,7 +485,7 @@ function contextCard(inputs: SessionRailInputs, connectors: readonly McpServerSu
 				inputs,
 				<ContextHeadline pct={null} summary={summary} />,
 				<div
-					className="h-[4px] rounded-full overflow-hidden"
+					className={CONTEXT_BAR_TRACK_CLASS}
 					style={
 					{
 						backgroundColor: "var(--chart-reference-tint)",
@@ -507,7 +507,7 @@ function contextCard(inputs: SessionRailInputs, connectors: readonly McpServerSu
 			inputs,
 			<ContextHeadline pct={rounded} summary={formatContextSummary(usage)} />,
 			<div
-				className="h-[4px] rounded-full overflow-hidden"
+				className={CONTEXT_BAR_TRACK_CLASS}
 				style={
 				{
 					backgroundColor: "var(--chart-reference-tint)",

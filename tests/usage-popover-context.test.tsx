@@ -176,7 +176,7 @@ describe("usage popover context section", () =>
 				toggleClass:
 					"group flex items-center gap-2 px-lg py-xs min-h-[20px] text-start outline-none focus-visible:shadow-focus rounded",
 				body: "mt-pad-xs px-lg pb-xs",
-				bar: "h-[4px] rounded-full overflow-hidden",
+				bar: "h-[4px] rounded-full overflow-hidden forced-color-adjust-none forced-colors:!bg-[color:Canvas] forced-colors:outline forced-colors:outline-[color:CanvasText]",
 				track: "var(--chart-reference-tint)",
 				now: "66",
 				fill: "h-full bg-fill-accent transition-[width]",

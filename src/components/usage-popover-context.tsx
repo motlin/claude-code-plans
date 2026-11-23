@@ -11,7 +11,7 @@ import {type ContextBreakdown, contextRefreshHint} from "../lib/context-breakdow
 import {resolveStaleEngine} from "../lib/stale-engine";
 import {CompactActionRow} from "./session-rail/compact-action-row";
 import {ContextBreakdownCard, StaleEngineNotice} from "./session-rail/context-breakdown";
-import {usageFillClass} from "./session-rail/usage-fill";
+import {CONTEXT_BAR_TRACK_CLASS, usageFillClass} from "./session-rail/usage-fill";
 import {Icon} from "./ui/icon";
 import {Spinner} from "./ui/spinner";
 
@@ -46,7 +46,7 @@ function ContextBar({pct, summary}: {pct: number | null; summary: string})
 {
 	return (
 		<div
-			className="h-[4px] rounded-full overflow-hidden"
+			className={CONTEXT_BAR_TRACK_CLASS}
 			style={
 			{
 				backgroundColor: "var(--chart-reference-tint)",
