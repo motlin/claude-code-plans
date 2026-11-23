@@ -1308,11 +1308,11 @@ describe("ApiErrorCard recovery actions", () =>
 			),
 		]).toStrictEqual([
 			{
-				hint: "This chat is too long to continue, and compacting it automatically didn’t help. You can try compacting again, rewind to an earlier point, or start a new chat.",
+				hint: "Compacting automatically didn’t help. Compact again, rewind, or start a new session.",
 				labels: ["Compact session", "More recovery options"],
 			},
 			{
-				hint: "This chat is too long to continue, and compacting it automatically didn’t help. You can rewind to an earlier point or start a new chat.",
+				hint: "Compacting automatically didn’t help. Rewind, or start a new session.",
 				labels: ["Rewind"],
 			},
 		]);

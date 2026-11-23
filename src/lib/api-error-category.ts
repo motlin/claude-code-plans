@@ -281,6 +281,16 @@ export function refusalPassthrough(text: string): RefusalPassthrough | undefined
 /** Upstream's `er`: whether View details keeps, drops, or describes the raw body. */
 export type DetailsVerdict = "keep" | "drop" | "describe";
 
+type CompactHintKey =
+	| "hint"
+	| "hintCompactOnly"
+	| "hintRewindOnly"
+	| "hintNeither"
+	| "hintTried"
+	| "hintTriedCompactOnly"
+	| "hintTriedRewindOnly"
+	| "hintTriedNeither";
+
 interface CategoryCopy
 {
 	headline: string;
@@ -288,11 +298,8 @@ interface CategoryCopy
 	markerLabel?: string;
 	hint: string;
 	hintNoRewind?: string;
-	/** cd8db4979's context_length variants for a session that can rewind but isn't offered Compact, or whose automatic compaction failed. */
-	hintNoCompact?: string;
-	hintCompactTried?: string;
-	hintCompactTriedNoCompact?: string;
-	hintCompactTriedNoRewind?: string;
+	/** context_length's c70db48e3 `X` table, picked by {@link compactHintKey} instead of the hints above. */
+	compactHints?: Record<CompactHintKey, string>;
 	hintWithoutRetry?: string;
 	hintWithoutComposer?: string;
 	learnMoreUrl?: string;
@@ -367,15 +374,18 @@ const COPY: Readonly<Record<ApiErrorCategory, CategoryCopy>> =
 	{
 		headline: "Your context window is full",
 		markerLabel: "Context window was full",
-		hint: "This chat is too long to continue. Compact it to summarize earlier messages and keep going, rewind to an earlier point, or start a new chat.",
-		hintNoRewind: "This chat is too long to continue. Start a new chat.",
-		hintNoCompact: "This chat is too long to continue. Rewind to an earlier point or start a new chat.",
-		hintCompactTried:
-			"This chat is too long to continue, and compacting it automatically didn’t help. You can try compacting again, rewind to an earlier point, or start a new chat.",
-		hintCompactTriedNoCompact:
-			"This chat is too long to continue, and compacting it automatically didn’t help. You can rewind to an earlier point or start a new chat.",
-		hintCompactTriedNoRewind:
-			"This chat is too long to continue, and compacting it automatically didn’t help. Start a new chat.",
+		hint: "Compact this session to summarize earlier messages and keep working, or rewind.",
+		compactHints:
+		{
+			hint: "Compact this session to summarize earlier messages and keep working, or rewind.",
+			hintCompactOnly: "Compact this session to summarize earlier messages and keep working.",
+			hintRewindOnly: "Rewind to an earlier message, or start a new session.",
+			hintNeither: "Start a new session to keep working.",
+			hintTried: "Compacting automatically didn’t help. Compact again, rewind, or start a new session.",
+			hintTriedCompactOnly: "Compacting automatically didn’t help. Compact again, or start a new session.",
+			hintTriedRewindOnly: "Compacting automatically didn’t help. Rewind, or start a new session.",
+			hintTriedNeither: "Compacting automatically didn’t help. Start a new session.",
+		},
 		detailsVerdict: "drop",
 	},
 	usage_policy:
@@ -531,8 +541,8 @@ export function errorCopy(
 }
 
 /**
- * The hint before the retry/composer pick. cd8db4979's context_length order, first match wins:
- * rewind without Compact, then a failed automatic compaction, then the no-rewind hint.
+ * The hint before the retry/composer pick: context_length's {@link compactHintKey} cell when the
+ * category has one, else the no-rewind variant when the session can't rewind.
  */
 function baseHint(
 	copy: CategoryCopy,
@@ -541,17 +551,20 @@ function baseHint(
 	autoCompactTried: boolean,
 ): string
 {
-	if (canRewind && compactOffered === false)
+	if (copy.compactHints !== undefined)
 	{
-		const noCompact = autoCompactTried ? copy.hintCompactTriedNoCompact : copy.hintNoCompact;
-		if (noCompact !== undefined) return noCompact;
-	}
-	if (autoCompactTried)
-	{
-		const tried = canRewind ? copy.hintCompactTried : copy.hintCompactTriedNoRewind;
-		if (tried !== undefined) return tried;
+		return copy.compactHints[compactHintKey(compactOffered === true, canRewind, autoCompactTried)];
 	}
 	return !canRewind && copy.hintNoRewind !== undefined ? copy.hintNoRewind : copy.hint;
+}
+
+/** c3fef5c6f's `y_`: the context_length hint cell for {Compact offered} x {can rewind} x {automatic compaction tried}. */
+function compactHintKey(compactOffered: boolean, canRewind: boolean, tried: boolean): CompactHintKey
+{
+	if (compactOffered && canRewind) return tried ? "hintTried" : "hint";
+	if (compactOffered) return tried ? "hintTriedCompactOnly" : "hintCompactOnly";
+	if (canRewind) return tried ? "hintTriedRewindOnly" : "hintRewindOnly";
+	return tried ? "hintTriedNeither" : "hintNeither";
 }
 
 /**
