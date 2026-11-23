@@ -600,14 +600,18 @@ const TASK_STOP_RECORDS: unknown[] = [
 	},
 ];
 
-function renderSettled(extra: unknown[], workflowRuns: WorkflowRun[] = [])
+function renderSettled(
+	extra: unknown[],
+	workflowRuns: WorkflowRun[] = [],
+	open = vi.fn<(focus?: BackgroundTasksFocus) => void>(),
+)
 {
 	const {lines, toolResultMap} = processTranscript(settledRecords(extra));
 	return render(
 		<BackgroundTasksOpenerProvider
 			value={
 			{
-				open: vi.fn<(focus?: BackgroundTasksFocus) => void>(),
+				open,
 				running: new Map(),
 			}}
 		>
@@ -653,13 +657,11 @@ describe("settled Workflow row", () =>
 			{
 				text: row.textContent,
 				disclosures: row.querySelectorAll("[aria-expanded]").length,
-				name: [...row.querySelectorAll("span")].find((span) => span.textContent === NAME)?.className,
 			},
 		).toStrictEqual(
 			{
 				text: `Ran workflow${NAME}Ran workflow ${NAME}`,
 				disclosures: 0,
-				name: "truncate min-w-0 text-body text-secondary",
 			},
 		);
 	});
@@ -703,8 +705,9 @@ describe("settled Workflow row", () =>
 		);
 	});
 
-	it("draws the settled row in upstream's 3px-gap rounded-sm shell with no hover recolour", async () =>
+	it("draws the settled row as upstream's TurnStatusStep button that opens Background tasks at its task", async () =>
 	{
+		const open = vi.fn<(focus?: BackgroundTasksFocus) => void>();
 		const {container} = renderSettled(
 			[],
 			[
@@ -714,21 +717,50 @@ describe("settled Workflow row", () =>
 					},
 				),
 			],
+			open,
 		);
 		await screen.findByText("Ran workflow");
 		const row = launchRow(container);
+		const button = row.querySelector<HTMLButtonElement>("button");
+		if (button === null) throw new Error("no step button");
+		const subject = button.querySelector("[data-cds-row-subject]");
 
 		expect(
 			{
-				root: row.firstElementChild?.className,
-				label: row.querySelector('[id$="-label"] > [data-morph-key] > *')?.className,
+				step: button.closest("[data-cds=TurnStatusStep]")?.className,
+				type: button.type,
+				title: button.dataset["cdsRowTitle"],
+				titleWhenCut: button.dataset["cdsRowTitleWhenCut"],
+				buttonClass: button.className,
+				label: button.querySelector('[id$="-label"] > [data-morph-key] > *')?.className,
+				subject: subject?.className,
+				subjectText: subject?.querySelector("bdi")?.textContent,
+				buttons: row.querySelectorAll("button").length,
 			},
 		).toStrictEqual(
 			{
-				root: "relative flex self-start max-w-full items-center py-0 gap-0.75 text-start rounded-sm",
+				step: "flex w-full min-w-0 flex-col",
+				type: "button",
+				title: NAME,
+				titleWhenCut: "subject",
+				buttonClass:
+					"group/step flex min-w-0 w-stretch px-xs ms-[calc(var(--cds-assistant-message-text-inset,0px)_-_var(--cds-outset-x,0px)_-_var(--cds-turn-status-hang,0px))] me-[calc(var(--cds-assistant-message-text-stop,0px)_-_var(--cds-outset-x,0px))] py-[calc((var(--cds-h-control)_-_1lh)_/_2)] items-center gap-xs text-start font-sans text-body font-normal cursor-pointer select-none border-0 bg-transparent rounded outline-none hide-focus-ring focus-visible:outline-hidden focus-visible:outline-offset-[-2px] focus-visible:[box-shadow:inset_0_0_0_1px_var(--cds-fill-accent)] transition-shadow duration-fast",
 				label: "shrink-0 text-body text-secondary",
+				subject:
+					"min-w-0 truncate text-body text-primary py-[0.125em] -my-[0.125em] underline decoration-(--_text-link-line) underline-offset-[3px] transition-none [--_text-link-line:transparent] [@media(hover:none)]:[--_text-link-line:color-mix(in_srgb,currentColor,transparent_35%)] group-hover/step:[--_text-link-line:color-mix(in_srgb,currentColor_100%,transparent)] group-focus-visible/step:[--_text-link-line:color-mix(in_srgb,currentColor_100%,transparent)]",
+				subjectText: NAME,
+				buttons: 1,
 			},
 		);
+
+		fireEvent.click(button);
+		expect(open.mock.calls).toStrictEqual([
+			[
+				{
+					taskId: TASK_ID,
+				},
+			],
+		]);
 	});
 
 	it("draws a failed run's label in danger ink", async () =>
@@ -761,7 +793,18 @@ describe("settled Workflow row", () =>
 		]);
 		await screen.findByText("Ran workflow");
 
-		expect(launchRow(container).textContent).toBe(`Ran workflow${NAME}StoppedRan workflow ${NAME} Stopped`);
+		const row = launchRow(container);
+		expect(
+			{
+				text: row.textContent,
+				stopped: row.querySelector("button > span.shrink-0.text-secondary:last-child")?.textContent,
+			},
+		).toStrictEqual(
+			{
+				text: `Ran workflow${NAME}StoppedRan workflow ${NAME} Stopped`,
+				stopped: "Stopped",
+			},
+		);
 	});
 });
 

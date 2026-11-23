@@ -7877,6 +7877,9 @@ function RunningElapsed({startedAt}: {startedAt: string | undefined})
 const AGENT_META_UNDERLINE =
 	"py-[0.125em] -my-[0.125em] underline decoration-(--_text-link-line) underline-offset-[3px] transition-none [--_text-link-line:transparent] [@media(hover:none)]:[--_text-link-line:color-mix(in_srgb,currentColor,transparent_35%)] group-hover/tool:[--_text-link-line:color-mix(in_srgb,currentColor_100%,transparent)] group-focus-visible/tool:[--_text-link-line:color-mix(in_srgb,currentColor_100%,transparent)]";
 
+/** The same underline keyed to a `group/step` row, as upstream's TurnStatusStep subject draws it. */
+const STEP_META_UNDERLINE = AGENT_META_UNDERLINE.replaceAll("/tool:", "/step:");
+
 function InkedLabel({
 	className,
 	ink,
@@ -8289,6 +8292,9 @@ function ToolCallRow({
 			: undefined;
 	// Upstream's `Rw` row: a lone launched workflow sits in a 3px-gap rounded-sm shell with no hover recolour.
 	const settledWorkflowRow = isWorkflow && call.isError !== true && !nested && !verbose;
+	// Upstream's settled `TurnStatusStep`: where Background tasks can open, the row is a button that opens it at the run.
+	const workflowRun = useContext(WorkflowRunsContext).get(call.id);
+	const workflowStep = settledWorkflowRow && backgroundTasks !== null;
 	// A settled workflow reads in secondary ink, or danger once it failed, as upstream's `S1` draws it.
 	const workflowInk = isWorkflow && !call.isError ? (status === "Failed" ? "text-danger" : "text-secondary") : null;
 	// A null ink marks an in-flight label, which upstream draws as ShimmerText.
@@ -8472,7 +8478,11 @@ function ToolCallRow({
 	const rowCut = useTypeRowCut(`${label}\n${displayParam}`);
 	// Upstream `$W`: a settled bodiless row whose label or meta clips grows a text toggle that unclips them in place.
 	const unclipMeasured =
-		!expandable && !busy && paneAgentId === undefined && !(members.length === 1 && isArtifactCard(call));
+		!expandable &&
+		!busy &&
+		!workflowStep &&
+		paneAgentId === undefined &&
+		!(members.length === 1 && isArtifactCard(call));
 	const unclip = useLabelUnclip(
 		{
 			measured: unclipMeasured,
@@ -8571,7 +8581,16 @@ function ToolCallRow({
 							</MorphSlot>
 						)}
 						{displayParam &&
-							(isFileParam ? (
+							(workflowStep ? (
+								<span
+									ref={metaCut}
+									id={`${statusId}-meta`}
+									data-cds-row-subject=""
+									className={`min-w-0 truncate text-body text-primary ${STEP_META_UNDERLINE}`}
+								>
+									<bdi>{displayParam}</bdi>
+								</span>
+							) : isFileParam ? (
 								<span
 									ref={metaCut}
 									id={`${statusId}-meta`}
@@ -8843,6 +8862,38 @@ function ToolCallRow({
 				<Suspense fallback={null}>
 					<Renderer toolCall={call} nested={nested} />
 				</Suspense>
+			</div>,
+		);
+	}
+
+	if (workflowStep)
+	{
+		return withHoistedImages(
+			<div data-tool-row="" data-tool-anchor={toolAnchor} data-find-omitted="" className="flex flex-col w-full">
+				<div data-cds="TurnStatusStep" className="flex w-full min-w-0 flex-col">
+					<button
+						type="button"
+						data-cds-row=""
+						data-cds-row-title={displayParam}
+						data-cds-row-title-when-cut="subject"
+						onClick={() =>
+						{
+							backgroundTasks.open(
+								workflowRun === undefined
+									? undefined
+									:
+										{
+											taskId: workflowRun.taskId,
+										},
+							);
+						}}
+						className={`group/step flex ${TURN_STATUS_ROW_LAYOUT} items-center gap-xs text-start font-sans text-body font-normal cursor-pointer select-none border-0 bg-transparent ${TURN_STATUS_ROW_FOCUS}`}
+						style={TURN_STATUS_ROW_STYLE}
+					>
+						{rowLabel}
+					</button>
+				</div>
+				{announcer}
 			</div>,
 		);
 	}
