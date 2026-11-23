@@ -5,6 +5,7 @@ import {resetBackgroundTaskViews} from "../src/lib/background-task-focus";
 import {resetThumbStore} from "../src/lib/palette-thumb-store";
 import {resetDefaultJourneyTracker} from "../src/lib/perf/journey";
 import {resetQuestionCardStore} from "../src/lib/question-card-store";
+import {resetRequestHold} from "../src/lib/server-shutdown";
 import {resetSessionUndo} from "../src/lib/session-undo";
 import {resetTerminalCommandsMarked} from "../src/lib/terminal-marked-store";
 import {__unreadStoreTesting} from "../src/lib/unread-store";
@@ -59,8 +60,9 @@ if (typeof navigator !== "undefined" && typeof navigator.sendBeacon !== "functio
 }
 
 // The answer stores keep holds, marks and drafts at module level, as do the Background tasks pane's view state, the ⌘K
-// thumbs that loaded, the terminal-marked flag, the unread marks and the perf tracker's queue, and a shared pool runs
-// every file in one module graph, so a test that answers a card would leak into the next file. Reset them after every
+// thumbs that loaded, the terminal-marked flag, the unread marks, the perf tracker's queue and the server's request hold
+// (on globalThis), and a shared pool runs every file in one module graph, so a test that answers a card would leak into
+// the next file (a leaked request hold makes a later expectRequestHold() a no-op). Reset them after every
 // test, after Testing Library's unmount below (after-hooks run in reverse registration order), as a fresh page would.
 afterEach(() =>
 {
@@ -73,6 +75,7 @@ afterEach(() =>
 	resetTerminalCommandsMarked();
 	__unreadStoreTesting.reset();
 	resetDefaultJourneyTracker();
+	resetRequestHold();
 });
 
 declare global

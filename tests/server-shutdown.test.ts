@@ -12,10 +12,6 @@ import
 afterEach(async () =>
 {
 	await runServerShutdownHooks();
-	// The shared project runs files in one worker without isolation: a hold left in the global slot would turn a later
-	// file's expectRequestHold() into a no-op.
-	Reflect.deleteProperty(globalThis, Symbol.for("claude-code-browser.request-hold"));
-	Reflect.deleteProperty(globalThis, Symbol.for("claude-code-browser.request-hold-release"));
 });
 
 describe("server shutdown hooks", () =>

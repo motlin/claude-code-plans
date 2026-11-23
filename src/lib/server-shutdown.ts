@@ -283,6 +283,16 @@ export function expectRequestHold(): void
 }
 
 /**
+ * Forgets any hold and placeholder, as a fresh worker starts. Tests share a worker's globals across files, so a hold one
+ * file leaves would turn a later file's {@link expectRequestHold} into a no-op.
+ */
+export function resetRequestHold(): void
+{
+	Reflect.deleteProperty(globalThis, REQUEST_HOLD);
+	Reflect.deleteProperty(globalThis, REQUEST_HOLD_RELEASE);
+}
+
+/**
  * Resolves once requests held by {@link holdRequestsUntil} may proceed, at
  * once when nothing holds them. Routes outside the SSR entry's fetch (the
  * WebSocket upgrades) await it before touching the databases.
