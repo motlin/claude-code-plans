@@ -627,8 +627,20 @@ describe("getArtifacts", () =>
 			{},
 			ladderMtime,
 			new Map([
-				["17b8a2c1-4c41-46bf-b064-a272240be709", 1_780_000_000_000],
-				["7Hq2vXbN4pLmKcR9sTwYzA", 1_780_000_000_000],
+				[
+					"17b8a2c1-4c41-46bf-b064-a272240be709",
+					{
+						version: 1_780_000_000_000,
+						capture: 1,
+					},
+				],
+				[
+					"7Hq2vXbN4pLmKcR9sTwYzA",
+					{
+						version: 1_780_000_000_000,
+						capture: 2,
+					},
+				],
 			]),
 		);
 
@@ -650,7 +662,7 @@ describe("getArtifacts", () =>
 				kind: "html",
 				sourceExists: true,
 				sourceModifiedAt: LADDER_MTIME,
-				thumbnailUrl: `/api/artifacts/546d3910-4e9a-4730-9e91-62742a47c7c6/thumbnail?v=${LADDER_MTIME}`,
+				thumbnailUrl: `/api/artifacts/546d3910-4e9a-4730-9e91-62742a47c7c6/thumbnail?v=${LADDER_MTIME}&c=2`,
 				sessionId: "session-ladder",
 			},
 			{
@@ -659,7 +671,7 @@ describe("getArtifacts", () =>
 				kind: "html",
 				sourceExists: false,
 				sourceModifiedAt: null,
-				thumbnailUrl: "/api/artifacts/17b8a2c1-4c41-46bf-b064-a272240be709/thumbnail?v=1780000000000",
+				thumbnailUrl: "/api/artifacts/17b8a2c1-4c41-46bf-b064-a272240be709/thumbnail?v=1780000000000&c=1",
 				sessionId: "session-chart",
 			},
 			{

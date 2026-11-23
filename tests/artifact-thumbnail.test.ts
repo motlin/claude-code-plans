@@ -7,6 +7,7 @@ import
 {
 	cachedThumbnailVersions,
 	handleArtifactThumbnailRequest,
+	THUMBNAIL_VIEWPORT,
 	thumbnailCachePath,
 	type ThumbnailCapturer,
 } from "../src/lib/artifact-thumbnail";
@@ -54,9 +55,9 @@ function writeSource(): string
 	return sourcePath;
 }
 
-function seedCache(version: number): void
+function seedCache(version: number, capture?: number): void
 {
-	const path = thumbnailCachePath(cacheDir, ARTIFACT_ID, version);
+	const path = thumbnailCachePath(cacheDir, ARTIFACT_ID, version, "light", capture);
 	mkdirSync(
 		join(cacheDir, "artifact-thumbs"),
 		{
@@ -107,28 +108,53 @@ afterEach(() =>
 
 describe("thumbnailCachePath", () =>
 {
-	it("names a PNG under artifact-thumbs by id, source version and scheme", () =>
+	it("captures at upstream's 1200x630 thumbnail size", () =>
+	{
+		expect(THUMBNAIL_VIEWPORT).toStrictEqual(
+			{
+				width: 1200,
+				height: 630,
+			},
+		);
+	});
+
+	it("names a PNG under artifact-thumbs by id, source version, scheme and capture", () =>
 	{
 		expect([
 			thumbnailCachePath("/cache", ARTIFACT_ID, 1_790_000_000_000),
 			thumbnailCachePath("/cache", ARTIFACT_ID, 1_790_000_000_000, "dark"),
+			thumbnailCachePath("/cache", ARTIFACT_ID, 1_790_000_000_000, "light", 1),
 		]).toStrictEqual([
+			`/cache/artifact-thumbs/${ARTIFACT_ID}-1790000000000-light.c2.png`,
+			`/cache/artifact-thumbs/${ARTIFACT_ID}-1790000000000-dark.c2.png`,
 			`/cache/artifact-thumbs/${ARTIFACT_ID}-1790000000000-light.png`,
-			`/cache/artifact-thumbs/${ARTIFACT_ID}-1790000000000-dark.png`,
 		]);
 	});
 
-	it("lists the newest cached light version per id", () =>
+	it("lists the newest cached light version per id, newest capture first within a version", () =>
 	{
 		seedCache(1);
+		seedCache(3, 1);
 		seedCache(3);
-		writeFileSync(thumbnailCachePath(cacheDir, "other-id", 2), PNG);
+		writeFileSync(thumbnailCachePath(cacheDir, "other-id", 2, "light", 1), PNG);
 		writeFileSync(thumbnailCachePath(cacheDir, "other-id", 9, "dark"), PNG);
 
 		expect(cachedThumbnailVersions(cacheDir)).toStrictEqual(
 			new Map([
-				[ARTIFACT_ID, 3],
-				["other-id", 2],
+				[
+					ARTIFACT_ID,
+					{
+						version: 3,
+						capture: 2,
+					},
+				],
+				[
+					"other-id",
+					{
+						version: 2,
+						capture: 1,
+					},
+				],
 			]),
 		);
 		expect(cachedThumbnailVersions(join(fixtureDirectory, "missing"))).toStrictEqual(new Map());
@@ -164,10 +190,10 @@ describe("GET /api/artifacts/:id/thumbnail", () =>
 		);
 	});
 
-	it("serves the cached PNG of a source that is gone, immutably", async () =>
+	it("serves the cached PNG of a source that is gone, immutably, even from an older capture", async () =>
 	{
 		seedArtifact(join(fixtureDirectory, "gone.html"));
-		seedCache(1_790_000_000_000);
+		seedCache(1_790_000_000_000, 1);
 		const capture = vi.fn<ThumbnailCapturer>();
 
 		expect(
@@ -185,12 +211,13 @@ describe("GET /api/artifacts/:id/thumbnail", () =>
 		expect(capture.mock.calls.length).toBe(0);
 	});
 
-	it("captures an existing source once at a 1005x630 light viewport, then drops older versions", async () =>
+	it("captures an existing source once in light, then drops older versions and older captures", async () =>
 	{
 		const sourcePath = writeSource();
 		seedArtifact(sourcePath);
 		seedCache(1);
 		const version = Math.trunc(statSync(sourcePath).mtimeMs);
+		seedCache(version, 1);
 		const capture = vi.fn<ThumbnailCapturer>(async ({out}) =>
 		{
 			await writeFile(out, PNG);
@@ -234,7 +261,7 @@ describe("GET /api/artifacts/:id/thumbnail", () =>
 						},
 					],
 				],
-				cached: [`${ARTIFACT_ID}-${version}-light.png`],
+				cached: [`${ARTIFACT_ID}-${version}-light.c2.png`],
 			},
 		);
 	});

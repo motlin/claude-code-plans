@@ -17,17 +17,55 @@ export type ThumbnailScheme = "light" | "dark";
  */
 const THUMBS_DIR = "artifact-thumbs";
 
-const THUMB_FILE_PATTERN = /^(?<id>[A-Za-z0-9-]+)-(?<version>\d+)-(?<scheme>light|dark)\.png$/;
+/**
+ * Bumped whenever the capture itself changes (viewport, scale), so cached PNGs from an older capture are retaken.
+ * Capture 1 (1005x630) predates the segment, so its files carry none.
+ */
+export const THUMBNAIL_CAPTURE_VERSION = 2;
 
-/** The cached screenshot of one artifact source version, `<cacheDir>/artifact-thumbs/<id>-<version>-<scheme>.png`. */
+const THUMB_FILE_PATTERN = /^(?<id>[A-Za-z0-9-]+)-(?<version>\d+)-(?<scheme>light|dark)(?:\.c(?<capture>\d+))?\.png$/;
+
+/** Which cached screenshot: the source version it shows and the capture that took it. */
+export interface ThumbnailKey
+{
+	version: number;
+	capture: number;
+}
+
+function compareKeys(a: ThumbnailKey, b: ThumbnailKey): number
+{
+	return a.version - b.version || a.capture - b.capture;
+}
+
+interface ThumbFile extends ThumbnailKey
+{
+	id: string;
+	scheme: string;
+}
+
+function parseThumbFile(name: string): ThumbFile | null
+{
+	const groups = THUMB_FILE_PATTERN.exec(name)?.groups;
+	if (groups === undefined) return null;
+	return {
+		id: groups["id"] ?? "",
+		scheme: groups["scheme"] ?? "",
+		version: Number(groups["version"]),
+		capture: groups["capture"] === undefined ? 1 : Number(groups["capture"]),
+	};
+}
+
+/** The cached screenshot of one artifact source version, `<cacheDir>/artifact-thumbs/<id>-<version>-<scheme>.c<capture>.png`. */
 export function thumbnailCachePath(
 	cacheDir: string,
 	id: string,
 	version: number,
 	scheme: ThumbnailScheme = "light",
+	capture: number = THUMBNAIL_CAPTURE_VERSION,
 ): string
 {
-	return join(cacheDir, THUMBS_DIR, `${id}-${version}-${scheme}.png`);
+	const captureSegment = capture === 1 ? "" : `.c${capture}`;
+	return join(cacheDir, THUMBS_DIR, `${id}-${version}-${scheme}${captureSegment}.png`);
 }
 
 /** A source's thumbnail version: its mtime in whole ms. */
@@ -36,10 +74,10 @@ export function thumbnailVersion(mtimeMs: number): number
 	return Math.trunc(mtimeMs);
 }
 
-/** The newest cached light thumbnail version of every artifact that has one. */
-export function cachedThumbnailVersions(cacheDir: string): Map<string, number>
+/** The newest cached light thumbnail of every artifact that has one, by source version then capture. */
+export function cachedThumbnailVersions(cacheDir: string): Map<string, ThumbnailKey>
 {
-	const versions = new Map<string, number>();
+	const keys = new Map<string, ThumbnailKey>();
 	let names: string[];
 	try
 	{
@@ -47,26 +85,32 @@ export function cachedThumbnailVersions(cacheDir: string): Map<string, number>
 	}
 	catch
 	{
-		return versions;
+		return keys;
 	}
 	for (const name of names)
 	{
-		const groups = THUMB_FILE_PATTERN.exec(name)?.groups;
-		if (groups?.["scheme"] !== "light") continue;
-		const id = groups["id"] ?? "";
-		const version = Number(groups["version"]);
-		if (version > (versions.get(id) ?? -1)) versions.set(id, version);
+		const file = parseThumbFile(name);
+		if (file?.scheme !== "light") continue;
+		const newest = keys.get(file.id);
+		if (newest === undefined || compareKeys(file, newest) > 0)
+			keys.set(
+				file.id,
+				{
+					version: file.version,
+					capture: file.capture,
+				},
+			);
 	}
-	return versions;
+	return keys;
 }
 
 /** Writes a PNG screenshot of `sourcePath` to `out`; false when no capture could be made. */
 export type ThumbnailCapturer = (input: {sourcePath: string; out: string; scheme: ThumbnailScheme}) => Promise<boolean>;
 
-/** Upstream's Docs covers crop a 1005/630 screenshot, the shape of its server-made thumbnails. */
-const VIEWPORT =
+/** Upstream's server-made thumbnails are 1200x630; its Docs covers crop that to 1005/630. */
+export const THUMBNAIL_VIEWPORT =
 {
-	width: 1005,
+	width: 1200,
 	height: 630,
 } as const;
 const CAPTURE_TIMEOUT_MS = 10_000;
@@ -132,7 +176,7 @@ async function screenshotSource({sourcePath, out, scheme}: Parameters<ThumbnailC
 	{
 		const context = await browser.newContext(
 			{
-				viewport: VIEWPORT,
+				viewport: THUMBNAIL_VIEWPORT,
 				deviceScaleFactor: 1,
 				colorScheme: scheme,
 				javaScriptEnabled: true,
@@ -188,7 +232,7 @@ export const captureArtifactThumbnail: ThumbnailCapturer = async (input) =>
 	return capture;
 };
 
-async function dropOlderVersions(cacheDir: string, id: string, version: number): Promise<void>
+async function dropOlderThumbnails(cacheDir: string, id: string, current: ThumbnailKey): Promise<void>
 {
 	let names: string[];
 	try
@@ -203,8 +247,8 @@ async function dropOlderVersions(cacheDir: string, id: string, version: number):
 		names
 			.filter((name) =>
 			{
-				const groups = THUMB_FILE_PATTERN.exec(name)?.groups;
-				return groups?.["id"] === id && Number(groups["version"]) < version;
+				const file = parseThumbFile(name);
+				return file?.id === id && compareKeys(file, current) < 0;
 			})
 			.map(async (name) =>
 				rm(
@@ -274,7 +318,14 @@ export async function ensureArtifactThumbnail(
 			},
 		)
 	)
-		await dropOlderVersions(cacheDir, id, version);
+		await dropOlderThumbnails(
+			cacheDir,
+			id,
+			{
+				version,
+				capture: THUMBNAIL_CAPTURE_VERSION,
+			},
+		);
 }
 
 function notFound(): Response
@@ -318,12 +369,12 @@ export async function handleArtifactThumbnailRequest(
 			capture,
 		},
 	);
-	const version = cachedThumbnailVersions(cacheDir).get(id);
-	if (version === undefined) return notFound();
+	const key = cachedThumbnailVersions(cacheDir).get(id);
+	if (key === undefined) return notFound();
 	let png: Buffer;
 	try
 	{
-		png = await readFile(thumbnailCachePath(cacheDir, id, version));
+		png = await readFile(thumbnailCachePath(cacheDir, id, key.version, "light", key.capture));
 	}
 	catch
 	{

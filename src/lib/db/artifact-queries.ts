@@ -6,7 +6,13 @@ import type {ArtifactSummary, SessionArtifact} from "../api/artifacts";
 import {artifactMatchesSearch} from "../artifact-gallery";
 import {ARTIFACT_TYPE_KINDS} from "../artifact-mark";
 import {artifactThumbnailUrl, isPreviewableSourcePath, isThumbnailSourcePath} from "../artifact-source-paths";
-import {cachedThumbnailVersions, thumbnailVersion} from "../artifact-thumbnail";
+import
+{
+	cachedThumbnailVersions,
+	THUMBNAIL_CAPTURE_VERSION,
+	thumbnailVersion,
+	type ThumbnailKey,
+} from "../artifact-thumbnail";
 import {getCacheDir} from "./connection";
 import * as schema from "./schema";
 
@@ -52,7 +58,7 @@ export function getArtifacts(
 		q?: string;
 	},
 	sourceMtime: (path: string) => number | null = statSourceMtime,
-	cachedThumbnails: ReadonlyMap<string, number> = cachedThumbnailVersions(getCacheDir()),
+	cachedThumbnails: ReadonlyMap<string, ThumbnailKey> = cachedThumbnailVersions(getCacheDir()),
 ): ArtifactSummary[]
 {
 	const rows = db
@@ -70,11 +76,15 @@ export function getArtifacts(
 			const sourceModifiedAt =
 				row.sourcePath !== null && isPreviewableSourcePath(row.sourcePath) ? sourceMtime(row.sourcePath) : null;
 			const kind = artifactKind(row.typeUrl);
-			const thumbVersion =
+			const thumbKey: ThumbnailKey | undefined =
 				kind === "html" && row.sourcePath !== null && isThumbnailSourcePath(row.sourcePath)
 					? sourceModifiedAt === null
 						? cachedThumbnails.get(row.id)
-						: thumbnailVersion(sourceModifiedAt)
+						:
+							{
+								version: thumbnailVersion(sourceModifiedAt),
+								capture: THUMBNAIL_CAPTURE_VERSION,
+							}
 					: undefined;
 			return {
 				url: row.url,
@@ -86,7 +96,7 @@ export function getArtifacts(
 				sourcePath: row.sourcePath,
 				sourceExists: sourceModifiedAt !== null,
 				sourceModifiedAt,
-				thumbnailUrl: thumbVersion === undefined ? null : artifactThumbnailUrl(row.id, thumbVersion),
+				thumbnailUrl: thumbKey === undefined ? null : artifactThumbnailUrl(row.id, thumbKey),
 				audience: row.audience,
 				firstSeenAt: row.firstSeenAt,
 				lastPublishedAt: row.lastPublishedAt,

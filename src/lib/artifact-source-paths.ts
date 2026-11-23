@@ -1,3 +1,5 @@
+import type {ThumbnailKey} from "./artifact-thumbnail";
+
 /** Extensions the sandboxed local preview will serve; anything else stays on claude.ai. */
 const PREVIEWABLE_SOURCE_PATTERN = /\.(?:html?|md)$/i;
 
@@ -27,8 +29,11 @@ export function isThumbnailSourcePath(path: string): boolean
 	return path.startsWith("/") && THUMBNAIL_SOURCE_PATTERN.test(path);
 }
 
-/** The cover thumbnail of an artifact's source at one version (its truncated mtime), so the URL can be cached forever. */
-export function artifactThumbnailUrl(id: string, version: number): string
+/**
+ * The cover thumbnail of an artifact's source at one version (its truncated mtime) taken by one capture, so the URL
+ * can be cached forever.
+ */
+export function artifactThumbnailUrl(id: string, {version, capture}: ThumbnailKey): string
 {
-	return `/api/artifacts/${encodeURIComponent(id)}/thumbnail?v=${version}`;
+	return `/api/artifacts/${encodeURIComponent(id)}/thumbnail?v=${version}&c=${capture}`;
 }
