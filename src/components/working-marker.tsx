@@ -421,7 +421,9 @@ export function WorkingMarker({
 				</span>
 			) : (
 				// Upstream's done line holds one control-height placeholder and drops its status; the empty line holds none.
-				!empty && <div className="flex items-center h-6 comfortable:h-8" />
+				!empty && (
+					<div className="flex items-center h-control ps-[var(--cds-assistant-message-text-inset,0px)]" />
+				)
 			)}
 		</div>
 	);

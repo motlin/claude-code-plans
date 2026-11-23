@@ -1231,7 +1231,7 @@ describe("WorkingMarker", () =>
 			},
 		);
 	});
-	it("keeps a 24px code-working-line mounted when idle, holding upstream's h-control placeholder and no status", () =>
+	it("keeps a control-tall code-working-line mounted when idle, holding upstream's inset h-control placeholder and no status", () =>
 	{
 		stubReducedMotion(false);
 		const {container} = render(
@@ -1260,7 +1260,7 @@ describe("WorkingMarker", () =>
 			},
 		).toStrictEqual(
 			{
-				children: [["DIV", "flex items-center h-6 comfortable:h-8", ""]],
+				children: [["DIV", "flex items-center h-control ps-[var(--cds-assistant-message-text-inset,0px)]", ""]],
 				status: null,
 				row: true,
 				turnWorking: "false",
