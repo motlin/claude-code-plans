@@ -47,9 +47,9 @@ describe("permissionAnnouncement, as upstream's Jy/qy/Yy", () =>
 		).toBe("Permission requested: run this command. ls -la. Keeps running in the background.. List files");
 	});
 
-	it("reads a file tool's path and then its name", () =>
+	it("reads a file tool's path and then its name, then whether a previewed change may alter line endings", () =>
 	{
-		expect(
+		const fileCard = (toolInput?: Record<string, unknown>) =>
 			permissionAnnouncement(
 				{
 					title:
@@ -58,9 +58,35 @@ describe("permissionAnnouncement, as upstream's Jy/qy/Yy", () =>
 						meta: "a.ts",
 					},
 					detail: "/r/a.ts",
+					...(toolInput === undefined
+						? {}
+						:
+							{
+								fileChange: "preview" as const,
+								toolName: "Write",
+								toolInput,
+							}),
+				},
+			);
+		expect([
+			fileCard(),
+			fileCard(
+				{
+					file_path: "/r/a.ts",
+					content: "a\r\nb\r\n",
 				},
 			),
-		).toBe("Permission requested: edit. /r/a.ts, a.ts");
+			fileCard(
+				{
+					file_path: "/r/a.ts",
+					content: "a\nb\n",
+				},
+			),
+		]).toStrictEqual([
+			"Permission requested: edit. /r/a.ts, a.ts",
+			"Permission requested: edit. /r/a.ts, a.ts. May also change line endings.",
+			"Permission requested: edit. /r/a.ts, a.ts",
+		]);
 	});
 
 	it("reads the meta alone when there is no detail", () =>

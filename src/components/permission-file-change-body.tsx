@@ -11,6 +11,7 @@ import
 	type FileChangeRead,
 	plainFileChangeParts,
 	shownFileChangeNote,
+	unreadFileChange,
 } from "../lib/permission-file-change";
 import {BidiLines} from "./bidi-lines";
 import {InlinePatchDiff} from "./tool-renderers/inline-diff";
@@ -44,20 +45,11 @@ async function readFileChange(name: string, input: Record<string, unknown>, path
 				credentials: "same-origin",
 			},
 		);
-		if (response.status === 403)
-			return {
-				kind: "unreadable",
-			};
-		if (!response.ok)
-			return {
-				kind: "none",
-			};
+		if (response.status === 403) return unreadFileChange("unreadable", name, input);
+		if (!response.ok) return unreadFileChange("none", name, input);
 		const {content} = FileViewerResponse.parse(await response.json());
 		return content.includes("\0")
-			?
-				{
-					kind: "none",
-				}
+			? unreadFileChange("none", name, input)
 			:
 				{
 					kind: "read",
@@ -66,9 +58,7 @@ async function readFileChange(name: string, input: Record<string, unknown>, path
 	}
 	catch
 	{
-		return {
-			kind: "none",
-		};
+		return unreadFileChange("none", name, input);
 	}
 }
 
@@ -78,22 +68,13 @@ function useFileChangeRead(name: string, input: Record<string, unknown>): FileCh
 	const path = stringField(input, "file_path");
 	const reads = path !== undefined && (name === "Write" || name === "Edit");
 	const [read, setRead] = useState<FileChangeRead | null>(() =>
-		reads
-			? (settledReads.get(input) ?? null)
-			:
-				{
-					kind: "none",
-				},
+		reads ? (settledReads.get(input) ?? null) : unreadFileChange("none", name, input),
 	);
 	useEffect(() =>
 	{
 		if (!reads)
 		{
-			setRead(
-				{
-					kind: "none",
-				},
-			);
+			setRead(unreadFileChange("none", name, input));
 			return undefined;
 		}
 		const settled = settledReads.get(input);
@@ -150,7 +131,9 @@ export function PermissionFileChangePreview({
 	const diffShown = read !== null && !keepsPlain;
 	return (
 		<>
-			{drawDetail(read === null ? copyNote : shownFileChangeNote(read, copyNote, diffShown))}
+			{drawDetail(
+				shownFileChangeNote(read ?? unreadFileChange("none", toolName, toolInput), copyNote, diffShown),
+			)}
 			<div className="grid [&>*]:[grid-area:1/1] [&>*]:min-w-0">
 				{diffShown ? (
 					<FileChangeBody toolName={toolName} toolInput={toolInput} read={read} />

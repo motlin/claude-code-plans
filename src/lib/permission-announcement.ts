@@ -4,6 +4,7 @@
  */
 
 import type {PendingPermission, PermissionFold} from "./permission-card";
+import {LINE_ENDINGS_MAY_CHANGE_NOTE, lineEndingsMayChange} from "./permission-file-change";
 import type {PermissionRow} from "./permission-rows";
 
 /** Upstream's `Cb`: the most code points a capped part reads before it is cut. */
@@ -35,7 +36,16 @@ export type PermissionAnnouncementInput = Pick<PendingPermission, "title" | "det
 	Partial<
 		Pick<
 			PendingPermission,
-			"detailNote" | "description" | "tokenWarning" | "rows" | "rowsTrail" | "rowsUnvoiced" | "folds"
+			| "detailNote"
+			| "description"
+			| "tokenWarning"
+			| "rows"
+			| "rowsTrail"
+			| "rowsUnvoiced"
+			| "folds"
+			| "fileChange"
+			| "toolName"
+			| "toolInput"
 		>
 	>;
 
@@ -130,6 +140,17 @@ function rowsVoice(rows: readonly PermissionRow[], unvoiced: boolean): string | 
 	return read.join(". ");
 }
 
+/** Upstream's `mS` closing part: a previewed change without its file may change line endings. */
+function fileChangeVoice(p: PermissionAnnouncementInput): string | undefined
+{
+	return p.fileChange === "preview" &&
+		p.toolName !== undefined &&
+		p.toolInput !== undefined &&
+		lineEndingsMayChange(p.toolName, p.toolInput)
+		? LINE_ENDINGS_MAY_CHANGE_NOTE
+		: undefined;
+}
+
 /** Upstream's `Jy`: the lead sentence, then each non-blank part as "{announcement}. {extra}" in upstream's order. */
 export function permissionAnnouncement(p: PermissionAnnouncementInput): string
 {
@@ -152,6 +173,10 @@ export function permissionAnnouncement(p: PermissionAnnouncementInput): string
 		{
 			text: p.description,
 			capped: true,
+		},
+		{
+			text: fileChangeVoice(p),
+			capped: false,
 		},
 		{
 			text: trail ? undefined : rows,

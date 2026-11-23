@@ -1,5 +1,11 @@
 import {describe, expect, it} from "vite-plus/test";
-import {analyzeFileChange, fileChangeNote, shownFileChangeNote} from "../src/lib/permission-file-change";
+import
+{
+	analyzeFileChange,
+	fileChangeNote,
+	shownFileChangeNote,
+	unreadFileChange,
+} from "../src/lib/permission-file-change";
 
 describe("analyzeFileChange (upstream's zu)", () =>
 {
@@ -398,5 +404,71 @@ describe("shownFileChangeNote (upstream's cx)", () =>
 				true,
 			),
 		]).toStrictEqual(["Replaces all 3 matches in the file.", "Replaces every match in the file.", null]);
+	});
+
+	it("adds upstream's line-endings caution when the file was not read and the new text has a carriage return", () =>
+	{
+		const crlfWrite =
+		{
+			file_path: "/etc/ccb-none.txt",
+			content: "a\r\nb\r\n",
+		};
+		expect([
+			shownFileChangeNote(unreadFileChange("unreadable", "Write", crlfWrite), null, false),
+			shownFileChangeNote(unreadFileChange("none", "Write", crlfWrite), null, false),
+			shownFileChangeNote(
+				unreadFileChange(
+					"none",
+					"Edit",
+					{
+						file_path: "/r/a.ts",
+						old_string: "x",
+						new_string: "x\r\ny",
+						replace_all: true,
+					},
+				),
+				"Replaces every match in the file.",
+				false,
+			),
+			shownFileChangeNote(
+				unreadFileChange(
+					"none",
+					"MultiEdit",
+					{
+						file_path: "/r/a.ts",
+						edits: [
+							{
+								old_string: "x",
+								new_string: "y",
+							},
+							{
+								old_string: "p",
+								new_string: "q\r",
+							},
+						],
+					},
+				),
+				null,
+				false,
+			),
+			shownFileChangeNote(
+				unreadFileChange(
+					"none",
+					"Write",
+					{
+						file_path: "/r/a.ts",
+						content: "a\nb\n",
+					},
+				),
+				null,
+				false,
+			),
+		]).toStrictEqual([
+			"Couldn’t check this file, so this shows only what Claude sent. May also change line endings.",
+			"May also change line endings.",
+			"Replaces every match in the file. May also change line endings.",
+			"May also change line endings.",
+			null,
+		]);
 	});
 });

@@ -262,15 +262,15 @@ export function fileChangeNote(analysis: FileChangeAnalysis, diffShown: boolean)
 	return parts.length > 0 ? parts.join(" ") : null;
 }
 
-/** The file read behind a preview: not read (or nothing to compare), unreadable, or read and measured. */
+/**
+ * The file read behind a preview: not read (or nothing to compare), unreadable, or read and measured. Unmeasured
+ * reads carry upstream's `lineEndingsMayChange`.
+ */
 export type FileChangeRead =
 	|
 	  {
-			kind: "none";
-	  }
-	|
-	  {
-			kind: "unreadable";
+			kind: "none" | "unreadable";
+			lineEndingsMayChange?: true;
 	  }
 	|
 	  {
@@ -281,11 +281,62 @@ export type FileChangeRead =
 /** Upstream's `Tu`/`mh.unreadable` copy. */
 const UNREADABLE_FILE_NOTE = "Couldn’t check this file, so this shows only what Claude sent.";
 
-/** Upstream's `cx` note: unreadable says so (unless the copy has a note); else the disk note over the copy's. */
+/** Upstream's `gw.lineEndingsMayChange` (z6czbH). */
+export const LINE_ENDINGS_MAY_CHANGE_NOTE = "May also change line endings.";
+
+/** Upstream's `Jv`: a carriage return ending a line, or the text. */
+const CARRIAGE_RETURN_LINE_END = /\r(?:\n|$)/;
+
+/** Upstream's `Zv`: without the file, a carriage return in the new text may change its line endings. */
+export function lineEndingsMayChange(name: string, input: Record<string, unknown>): boolean
+{
+	const content = stringField(input, "content");
+	if (name === "Write" && content !== undefined && CARRIAGE_RETURN_LINE_END.test(content)) return true;
+	const listed: unknown[] = Array.isArray(input["edits"]) ? input["edits"] : [];
+	return [input, ...listed].some((edit) =>
+	{
+		const record = asRecord(edit);
+		if (record === undefined) return false;
+		const newString = stringField(record, "new_string");
+		return (
+			stringField(record, "old_string") !== undefined &&
+			newString !== undefined &&
+			CARRIAGE_RETURN_LINE_END.test(newString)
+		);
+	});
+}
+
+/** Upstream's `Zv` (and `{...Zv, unreadable}`): a preview whose file was not read, or could not be. */
+export function unreadFileChange(
+	kind: "none" | "unreadable",
+	name: string,
+	input: Record<string, unknown>,
+): FileChangeRead
+{
+	return lineEndingsMayChange(name, input)
+		?
+			{
+				kind,
+				lineEndingsMayChange: true,
+			}
+		:
+			{
+				kind,
+			};
+}
+
+/**
+ * Upstream's `Gk` note: unread, the copy's note (or the unreadable sentence) then the line-endings caution; read,
+ * the disk note over the copy's.
+ */
 export function shownFileChangeNote(read: FileChangeRead, copyNote: string | null, diffShown: boolean): string | null
 {
-	if (read.kind === "unreadable") return copyNote ?? UNREADABLE_FILE_NOTE;
-	return (read.kind === "read" ? fileChangeNote(read.analysis, diffShown) : null) ?? copyNote;
+	if (read.kind === "read") return fileChangeNote(read.analysis, diffShown) ?? copyNote;
+	const parts = [
+		copyNote ?? (read.kind === "unreadable" ? UNREADABLE_FILE_NOTE : null),
+		read.lineEndingsMayChange === true ? LINE_ENDINGS_MAY_CHANGE_NOTE : null,
+	].filter((part) => part !== null);
+	return parts.length > 0 ? parts.join(" ") : null;
 }
 
 export interface PlainFileChangePart
