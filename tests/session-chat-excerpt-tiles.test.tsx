@@ -268,6 +268,8 @@ function tileSummary(tile: Element)
 			label: badge?.getAttribute("aria-label") ?? null,
 			tabIndex: badge?.getAttribute("tabindex") ?? null,
 			text: badge?.textContent,
+			className: badge?.className,
+			textClass: badge?.firstElementChild?.className ?? null,
 		},
 		hint:
 			hint === null
@@ -279,6 +281,12 @@ function tileSummary(tile: Element)
 					},
 	};
 }
+
+/** Upstream's xs Badge in an xs Card, with its outline-badge paint: 9px radius, 1px transparent border, 6px pad, 14px leading. */
+const TILE_BADGE_CLASS =
+	"inline-flex h-control-nested min-w-0 max-w-full shrink-0 items-center gap-1 self-start whitespace-nowrap rounded-badge-outline border border-solid border-transparent bg-neutral px-sm align-middle font-sans text-caption font-medium leading-[round(1.25em,1px)] text-secondary";
+const HINTED_TILE_BADGE_CLASS = `${TILE_BADGE_CLASS} pointer-events-auto outline-none focus-visible:shadow-focus pointer-coarse:pointer-events-none`;
+const BADGE_TEXT_CLASS = "min-w-0 overflow-x-clip text-ellipsis whitespace-nowrap";
 
 const QUOTE_CLASS =
 	"min-w-0 flex-1 break-words [overflow-wrap:anywhere] text-caption font-normal leading-tight text-secondary line-clamp-5";
@@ -302,6 +310,8 @@ describe("SessionChat user row diff comment tiles", () =>
 				label: "Comment",
 				tabIndex: "0",
 				text: "Comment",
+				className: HINTED_TILE_BADGE_CLASS,
+				textClass: BADGE_TEXT_CLASS,
 			},
 			hint:
 			{
@@ -427,6 +437,8 @@ describe("SessionChat excerpt quote tile shell", () =>
 					label: null,
 					tabIndex: null,
 					text: "Excerpt",
+					className: TILE_BADGE_CLASS,
+					textClass: null,
 				},
 				hint: null,
 			},
@@ -451,6 +463,8 @@ describe("SessionChat excerpt quote tile shell", () =>
 					label: "Excerpt",
 					tabIndex: "0",
 					text: "Excerpt",
+					className: HINTED_TILE_BADGE_CLASS,
+					textClass: BADGE_TEXT_CLASS,
 				},
 				hint:
 				{

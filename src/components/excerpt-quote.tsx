@@ -120,7 +120,7 @@ export function HintBadge({
 					aria-describedby={describedBy}
 					className={`${row ? ROW_BADGE_CLASS : BADGE_CLASS} ${HINT_BADGE_CLASS}`}
 				>
-					<span className="pb-[0.05em] min-w-0 overflow-x-clip text-ellipsis whitespace-nowrap">
+					<span className="min-w-0 overflow-x-clip text-ellipsis whitespace-nowrap">
 						<bdi>{badge}</bdi>
 					</span>
 				</span>
