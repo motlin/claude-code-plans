@@ -24,7 +24,8 @@ const COPIED_MS = 1200;
 
 /**
  * Upstream's ghost icon-only cds Button: step 2 (24px, `size:"base"`) or step 1 (20px, `size:"sm"`) in the
- * transcript's compact scope, both 28px when comfortable (`ma()`). Mouse down keeps focus where it was (`Zd`).
+ * transcript's compact scope, both 28px when comfortable (`ma()`). Its radius follows `--cds-radius`: 6px compact,
+ * 8px comfortable. Mouse down keeps focus where it was (`Zd`).
  */
 export function GhostCopyButton({
 	size,
@@ -40,13 +41,14 @@ export function GhostCopyButton({
 {
 	const comfortable = useDensity() === "comfortable";
 	const box = comfortable ? "size-7" : size === "base" ? "size-6" : "size-5";
+	const radius = comfortable ? "rounded-r6" : "rounded-r5";
 	const shown = copied ? "Copied" : label;
 	return (
 		<Tooltip content={shown} closeOnClick={false}>
 			<button
 				type="button"
 				aria-label={shown}
-				className={`inline-flex ${box} shrink-0 cursor-pointer items-center justify-center rounded-r5 text-ink-muted transition-colors hover:bg-fill-ghost-hover hover:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus`}
+				className={`inline-flex ${box} shrink-0 cursor-pointer items-center justify-center ${radius} text-ink-muted transition-colors hover:bg-fill-ghost-hover hover:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus`}
 				onMouseDown={(event) =>
 				{
 					event.preventDefault();
@@ -141,7 +143,8 @@ function StatusCardRow({
 
 /**
  * Upstream's `/status` "Session info" card (c44e562e8 `EU`): a header with Copy session info, then
- * each group's rows. With no groups yet it shows "Loading session info…" and no Copy button.
+ * each group's rows. With no groups yet it shows "Loading session info…" and no Copy button. A screen-reader
+ * live region announces "Copied" while either copy button shows its check.
  */
 export function SessionStatusCard({
 	groups,
@@ -173,7 +176,7 @@ export function SessionStatusCard({
 	};
 	return (
 		<div
-			className="flex flex-col gap-md p-lg rounded-lg w-[360px] max-w-full card-ring"
+			className="flex flex-col gap-md p-lg rounded-lg w-[520px] max-w-full card-ring forced-colors:not-focus-visible:outline-1 forced-colors:not-focus-visible:outline-solid forced-colors:not-focus-visible:outline-[CanvasText]"
 			data-testid="epitaxy-status-card"
 		>
 			<span className="flex items-center justify-between text-footnote text-primary pb-xs min-h-[24px]">
@@ -204,6 +207,9 @@ export function SessionStatusCard({
 			) : (
 				<span className="text-footnote text-muted-as-secondary">Loading session info…</span>
 			)}
+			<span role="status" className="sr-only">
+				{reportCopied || rowCopied ? "Copied" : ""}
+			</span>
 		</div>
 	);
 }

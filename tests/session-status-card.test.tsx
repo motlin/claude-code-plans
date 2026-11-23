@@ -122,7 +122,7 @@ describe("SessionStatusCard", () =>
 			},
 		).toStrictEqual(
 			{
-				root: "flex flex-col gap-md p-lg rounded-lg w-[360px] max-w-full card-ring",
+				root: "flex flex-col gap-md p-lg rounded-lg w-[520px] max-w-full card-ring forced-colors:not-focus-visible:outline-1 forced-colors:not-focus-visible:outline-solid forced-colors:not-focus-visible:outline-[CanvasText]",
 				header: [
 					"SPAN",
 					"flex items-center justify-between text-footnote text-primary pb-xs min-h-[24px]",
@@ -383,6 +383,12 @@ describe("SessionStatusCard", () =>
 				name: "Copy session ID",
 			},
 		);
+		const status = () =>
+		{
+			const el = card().querySelector("span[role=status]");
+			return [el?.className, el?.textContent];
+		};
+		const initialStatus = status();
 		const mouseDown = fireEvent.mouseDown(header);
 
 		await act(async () =>
@@ -390,12 +396,12 @@ describe("SessionStatusCard", () =>
 			fireEvent.click(row);
 			await Promise.resolve();
 		});
-		const afterRow = [header.getAttribute("aria-label"), row.getAttribute("aria-label")];
+		const afterRow = [header.getAttribute("aria-label"), row.getAttribute("aria-label"), status()];
 		act(() =>
 		{
 			vi.advanceTimersByTime(1200);
 		});
-		const afterTimeout = [header.getAttribute("aria-label"), row.getAttribute("aria-label")];
+		const afterTimeout = [header.getAttribute("aria-label"), row.getAttribute("aria-label"), status()];
 		await act(async () =>
 		{
 			fireEvent.click(header);
@@ -407,15 +413,17 @@ describe("SessionStatusCard", () =>
 				mouseDownKept: mouseDown,
 				afterRow,
 				afterTimeout,
-				afterHeader: [header.getAttribute("aria-label"), row.getAttribute("aria-label")],
+				initialStatus,
+				afterHeader: [header.getAttribute("aria-label"), row.getAttribute("aria-label"), status()],
 				copied: writeText.mock.calls,
 			},
 		).toStrictEqual(
 			{
 				mouseDownKept: false,
-				afterRow: ["Copy session info", "Copied"],
-				afterTimeout: ["Copy session info", "Copy session ID"],
-				afterHeader: ["Copied", "Copy session ID"],
+				afterRow: ["Copy session info", "Copied", ["sr-only", "Copied"]],
+				afterTimeout: ["Copy session info", "Copy session ID", ["sr-only", ""]],
+				initialStatus: ["sr-only", ""],
+				afterHeader: ["Copied", "Copy session ID", ["sr-only", "Copied"]],
 				copied: [
 					[SESSION_ID],
 					[
@@ -436,11 +444,11 @@ describe("SessionStatusCard", () =>
 		);
 	});
 
-	it("sizes the ghost buttons 24px and 20px when compact and 28px when comfortable", () =>
+	it("sizes the ghost buttons 24px and 20px with a 6px radius when compact and 28px with 8px when comfortable", () =>
 	{
 		const sizes = () =>
 			[...card().querySelectorAll("button")].map((button) =>
-				button.className.split(" ").find((c) => c.startsWith("size-")),
+				button.className.split(" ").filter((c) => c.startsWith("size-") || c.startsWith("rounded-")),
 			);
 		const {rerender} = render(
 			<DensityContext.Provider value="compact">
@@ -461,8 +469,14 @@ describe("SessionStatusCard", () =>
 			},
 		).toStrictEqual(
 			{
-				compact: ["size-6", "size-5"],
-				comfortable: ["size-7", "size-7"],
+				compact: [
+					["size-6", "rounded-r5"],
+					["size-5", "rounded-r5"],
+				],
+				comfortable: [
+					["size-7", "rounded-r6"],
+					["size-7", "rounded-r6"],
+				],
 			},
 		);
 	});
