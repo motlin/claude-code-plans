@@ -469,6 +469,7 @@ describe("UserRecordSchema", () =>
 			promptSource: "system",
 			queuePriority: "later",
 			userFeedback: "Please preserve the current behavior.",
+			holdsPersonsWords: true,
 		};
 
 		expect(UserRecordSchema.parse(record)).toStrictEqual(record);

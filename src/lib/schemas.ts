@@ -635,6 +635,8 @@ export const UserRecordSchema = z
 			interruptedByShutdown: z.boolean().optional(),
 			interruptedBySendNow: z.boolean().optional(),
 			userFeedback: z.string().optional(),
+			// Marks a tool result whose text carries the person's own words (e.g. a rejection with feedback).
+			holdsPersonsWords: z.boolean().optional(),
 			// Stacked slash commands (e.g. "/a /b"): the first record keeps the raw input,
 			// later records mark themselves as expansions of it.
 			stackedOriginalInput: z.string().optional(),
