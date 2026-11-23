@@ -911,7 +911,7 @@ describe("Menu", () =>
 		);
 	});
 
-	it("draws radio and checkbox checks as upstream's bold sm Check Icon in fill-accent ink", async () =>
+	it("draws radio and checkbox checks as upstream's regular-weight sm Check Icon in fill-accent ink", async () =>
 	{
 		renderDropdown();
 		await openDropdown();
@@ -957,7 +957,7 @@ describe("Menu", () =>
 			];
 		});
 
-		const check = [true, "Icon", "2.34375", "calc(1rem * var(--cds-rem-scale, 1))"];
+		const check = [true, "Icon", "1.875", "calc(1rem * var(--cds-rem-scale, 1))"];
 		expect(checks).toStrictEqual([check, check]);
 	});
 

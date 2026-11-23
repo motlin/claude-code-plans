@@ -131,8 +131,8 @@ const TRAILING_CLASS = "ml-auto flex shrink-0 items-center gap-1";
 const FIRST_LINE_TRAILING_CLASS = `${TRAILING_CLASS} h-[1lh] self-start`;
 const DIGIT_CHECK_SLOT_CLASS = "flex size-4 shrink-0 items-center justify-center pointer-coarse:-me-1";
 const CHECK_SLOT_CLASS = "-mr-1 flex size-icon shrink-0 items-center justify-center";
-/** Upstream's checked tick: a bold `size-icon` Check Icon (16px compact, 20px comfortable) in fill-accent ink. */
-const CHECK_ICON = <Icon name="Check" size="auto" bold className="text-fill-accent" />;
+/** Upstream's checked tick: a regular-weight `size-icon` Check Icon (16px compact, 20px comfortable) in fill-accent ink. */
+const CHECK_ICON = <Icon name="Check" size="auto" className="text-fill-accent" />;
 /** Hover dwell before a submenu opens. */
 const SUBMENU_HOVER_DELAY_MS = 100;
 /** Upstream's `size-icon` leading slot; a two-line row pins it to the first line. */
