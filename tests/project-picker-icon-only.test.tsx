@@ -83,15 +83,20 @@ describe("ProjectPicker in a collapsed environment bar", () =>
 	it("shows the full path, broken after each separator, as its hover tooltip", () =>
 	{
 		hover(renderPicker(true));
-		const content = screen.getByRole("tooltip").firstElementChild!;
+		const tooltip = screen.getByRole("tooltip");
+		const content = tooltip.firstElementChild!;
 
 		expect(
 			{
+				side: tooltip.getAttribute("data-side"),
+				align: tooltip.getAttribute("data-align"),
 				dir: content.getAttribute("dir"),
 				pieces: [...content.children].map((piece) => [piece.className, piece.textContent]),
 			},
 		).toStrictEqual(
 			{
+				side: "top",
+				align: "center",
 				dir: "ltr",
 				pieces: [
 					["inline-block max-w-full whitespace-pre-wrap", "/"],

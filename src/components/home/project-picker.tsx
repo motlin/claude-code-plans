@@ -270,8 +270,6 @@ export function ProjectPicker({projects, selected, onSelect, variant = "chip", t
 				<Tooltip
 					content={placeTooltip}
 					openWhen={() => iconOnly}
-					side="bottom"
-					align="start"
 					maxWidth={PLACE_TOOLTIP_MAX_WIDTH}
 					className="flex min-w-0"
 				>
