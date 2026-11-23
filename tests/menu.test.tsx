@@ -911,7 +911,7 @@ describe("Menu", () =>
 		);
 	});
 
-	it("draws radio and checkbox checks as upstream's regular-weight sm Check Icon in fill-accent ink", async () =>
+	it("draws radio and checkbox checks as upstream's regular-weight sm Check Icon in fill-accent ink, and the submenu caret as a mirrored sm CaretRight Icon", async () =>
 	{
 		renderDropdown();
 		await openDropdown();
@@ -958,7 +958,24 @@ describe("Menu", () =>
 		});
 
 		const check = [true, "Icon", "1.875", "calc(1rem * var(--cds-rem-scale, 1))"];
-		expect(checks).toStrictEqual([check, check]);
+		const caretSvgs = [...trigger.querySelectorAll("svg")];
+		const caret = caretSvgs.map((svg) => [
+			svg.getAttribute("data-cds"),
+			svg.getAttribute("data-cds-mirror"),
+			svg.getAttribute("stroke-width"),
+			svg.style.fontSize,
+		]);
+		expect(
+			{
+				checks,
+				caret,
+			},
+		).toStrictEqual(
+			{
+				checks: [check, check],
+				caret: [["Icon", "", "1.875", "calc(1rem * var(--cds-rem-scale, 1))"]],
+			},
+		);
 	});
 
 	it("puts a radio row's check slot before its digit, both in one first-line trailing wrapper", async () =>

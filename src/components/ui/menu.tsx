@@ -1,6 +1,6 @@
 import {ContextMenu as BaseContextMenu} from "@base-ui/react/context-menu";
 import {Menu as BaseMenu} from "@base-ui/react/menu";
-import {Check, ChevronRight} from "lucide-react";
+import {Check} from "lucide-react";
 import
 {
 	type ComponentProps,
@@ -1228,7 +1228,7 @@ export function MenuSubTrigger({children, icon, value, valueAccent, trailing, ..
 						{value}
 					</span>
 				)}
-				<ChevronRight aria-hidden="true" className="-mr-1 size-4 shrink-0 text-[var(--menu-muted)]" />
+				<Icon name="CaretRight" size="sm" className="-mr-1 text-[var(--menu-muted)]" />
 			</span>
 		</BaseMenu.SubmenuTrigger>
 	);
