@@ -215,8 +215,12 @@ function sectionNewSessionButton(
 	return undefined;
 }
 
-/** Collapsed-header badge precedence, most urgent first: needs input (or its error), unread, running. */
-const BADGE_KIND_RANK: readonly SessionStateKind[] = ["error", "awaiting", "ready", "running"];
+/**
+ * Collapsed-header badge precedence, most urgent first: needs input, its error, unread, running.
+ * Mirrors upstream's sU priorities (awaiting 0, error 1, ready 2, running 3), so an error only wins when no
+ * hidden row is awaiting.
+ */
+const BADGE_KIND_RANK: readonly SessionStateKind[] = ["awaiting", "error", "ready", "running"];
 
 /**
  * The most urgent status among a collapsed section's hidden rows (nested family members included,

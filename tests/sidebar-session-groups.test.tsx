@@ -2602,6 +2602,35 @@ describe("sidebar SessionGroups", () =>
 		);
 	});
 
+	it("badges a collapsed Needs input holding a failed row and an awaiting row as awaiting, as upstream's sU priorities rank awaiting above error", async () =>
+	{
+		const failed = session("f1", "Failed one", "done", 3);
+		const {container} = await renderGroups([
+			{
+				...failed,
+				state: "ended",
+				failedAt: new Date(Date.parse(failed.mtime) - MINUTE).toISOString(),
+			},
+			session("b1", "Blocked one", "blocked", 1),
+		]);
+		const label = container.querySelector('[data-group-key="state-blocked"] > [data-sidebar-group-label]');
+		if (!(label instanceof HTMLElement)) throw new Error("no Needs input header");
+		fireEvent.click(
+			within(label).getByRole(
+				"button",
+				{
+					name: /^Needs input/,
+				},
+			),
+		);
+
+		expect(
+			[...label.querySelectorAll("[data-group-toggle] > [data-group-badge] [role=img]")].map((mark) =>
+				mark.getAttribute("aria-label"),
+			),
+		).toStrictEqual(["Awaiting input"]);
+	});
+
 	it("draws an unseen error as upstream's warning TriangleAlert in the trailing slot instead of the awaiting dot", async () =>
 	{
 		const rows = [
