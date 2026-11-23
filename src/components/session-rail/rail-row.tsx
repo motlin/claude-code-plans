@@ -1,5 +1,6 @@
 import type {ReactNode} from "react";
 
+import {Tooltip} from "../ui/tooltip";
 import type {ShowMoreState} from "./use-show-more";
 
 /* Upstream's session rail card and row primitives, kept apart from the rail so pages reuse them without its dnd-kit chunk. */
@@ -34,6 +35,16 @@ export function RailGlyph({glyph, children}: {glyph: string; children: ReactNode
 	);
 }
 
+/** Upstream's OverflowTooltip text classes on the clipped label. */
+const RAIL_ROW_LABEL_CLIP_CLASS = "block min-w-0 overflow-x-clip text-ellipsis whitespace-nowrap flex-1";
+
+/** Whether a row's label is clipped, the only case its full-label tooltip opens (upstream's lazy OverflowTooltip). */
+function labelOverflows(anchor: HTMLElement): boolean
+{
+	const label = anchor.querySelector("[data-rail-row-label]");
+	return label !== null && label.scrollWidth > label.clientWidth;
+}
+
 /** A row's slots: a 20px icon in text-secondary, the label, and a muted 12px trailing hint. */
 export function RailRowContent({
 	glyph,
@@ -57,8 +68,12 @@ export function RailRowContent({
 	return (
 		<>
 			<RailGlyph glyph={glyph}>{icon}</RailGlyph>
-			<span data-rail-row-label="" className="min-w-0 flex-1 truncate text-primary">
-				{label}
+			<span className="flex min-w-0 flex-1 text-start text-primary">
+				<Tooltip portal content={label} openWhen={labelOverflows} className="min-w-0 flex-1">
+					<span data-rail-row-label="" className={RAIL_ROW_LABEL_CLIP_CLASS}>
+						{label}
+					</span>
+				</Tooltip>
 			</span>
 			{hint !== undefined && (
 				<span

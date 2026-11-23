@@ -4838,8 +4838,7 @@ describe("Servers card", () =>
 				links: within(card)
 					.queryAllByRole("link")
 					.map((link) => link.getAttribute("aria-label")),
-				deadTag: within(card).getByText("localhost:9000").closest("[data-rail-row-label]")?.parentElement
-					?.tagName,
+				deadTag: within(card).getByText("localhost:9000").closest("a, button, div")?.tagName,
 			},
 		).toStrictEqual(
 			{
@@ -5134,6 +5133,62 @@ describe("Connectors card", () =>
 		);
 
 		expect(document.activeElement?.querySelector("[data-rail-row-label]")?.textContent).toBe("Github");
+	});
+
+	it("clips each row label in upstream's OverflowTooltip slot, whose full-label tooltip opens only when the label is clipped", async () =>
+	{
+		vi.useFakeTimers(
+			{
+				toFake: ["setTimeout", "clearTimeout"],
+			},
+		);
+		vi.spyOn(HTMLElement.prototype, "scrollWidth", "get").mockImplementation(function (this: HTMLElement)
+		{
+			return this.hasAttribute("data-rail-row-label") && this.textContent === "Linear" ? 200 : 0;
+		});
+		try
+		{
+			await renderCards(FULL, withConnectors(FIVE));
+			openConnectors();
+			const label = (name: string) =>
+				within(card()).getByText(
+					name,
+					{
+						selector: "[data-rail-row-label]",
+					},
+				);
+			const hover = (name: string) =>
+			{
+				fireEvent.pointerEnter(label(name).parentElement!);
+				act(() =>
+				{
+					vi.advanceTimersByTime(300);
+				});
+				const tips = [...document.querySelectorAll('[role="tooltip"]')].map((tip) => tip.textContent);
+				fireEvent.pointerLeave(label(name).parentElement!);
+				return tips;
+			};
+
+			expect(
+				{
+					slot: label("Linear").parentElement?.parentElement?.className,
+					label: label("Linear").className,
+					clipped: hover("Linear"),
+					fits: hover("Zeta"),
+				},
+			).toStrictEqual(
+				{
+					slot: "flex min-w-0 flex-1 text-start text-primary",
+					label: "block min-w-0 overflow-x-clip text-ellipsis whitespace-nowrap flex-1",
+					clipped: ["Linear"],
+					fits: [],
+				},
+			);
+		}
+		finally
+		{
+			vi.useRealTimers();
+		}
 	});
 
 	it("wraps the rows in upstream's presentation div that swallows a held Enter, and the Show more button in a plain div", async () =>
