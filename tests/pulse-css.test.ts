@@ -142,14 +142,14 @@ describe("Pulse / indicator slot CSS", () =>
 	it("notches the icon only when the indicator holds a Pulse, outside forced colors", async () =>
 	{
 		const rule = await compile(
-			"not-forced-colors:has-[~[data-cds-part=indicator]>[data-cds=Pulse]]:[mask-image:radial-gradient(circle_at_var(--btn-dot-x)_calc(var(--btn-dot-r)_-_1px),transparent_calc(var(--btn-dot-r)_+_2px),black_calc(var(--btn-dot-r)_+_2.5px))]",
+			"not-forced-colors:has-[~[data-cds-part=indicator]>[data-cds=Pulse]]:[mask-image:radial-gradient(circle_at_var(--btn-dot-x)_calc(var(--btn-dot-r)_-_1px),transparent_calc(var(--btn-dot-r)_+_1px),black_calc(var(--btn-dot-r)_+_1.5px))]",
 		);
 		expect(
 			{
 				media: rule.includes("@media not (forced-colors: active)"),
 				has: rule.includes(":has( ~ [data-cds-part=indicator] > [data-cds=Pulse])"),
 				mask: rule.includes(
-					"mask-image: radial-gradient(circle at var(--btn-dot-x) calc(var(--btn-dot-r) - 1px),transparent calc(var(--btn-dot-r) + 2px),black calc(var(--btn-dot-r) + 2.5px))",
+					"mask-image: radial-gradient(circle at var(--btn-dot-x) calc(var(--btn-dot-r) - 1px),transparent calc(var(--btn-dot-r) + 1px),black calc(var(--btn-dot-r) + 1.5px))",
 				),
 			},
 		).toStrictEqual(

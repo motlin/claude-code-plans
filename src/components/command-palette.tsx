@@ -4538,7 +4538,7 @@ function PaletteSessionIcon({mark}: {mark: PaletteMark | undefined})
 	}
 	return (
 		<div className="relative shrink-0 [--cds-page-bg:transparent]">
-			<span className="block [--dot-r:calc(0.1875rem*var(--cds-rem-scale,1))] [mask-image:radial-gradient(circle_at_calc(100%_-_var(--dot-r)_+_1px)_calc(var(--dot-r)_-_1px),transparent_calc(var(--dot-r)_+_2px),black_calc(var(--dot-r)_+_2.5px))] [&:where(:root[dir=rtl]_:dir(rtl))]:not-forced-colors:[mask-image:radial-gradient(circle_at_calc(var(--dot-r)_-_1px)_calc(var(--dot-r)_-_1px),transparent_calc(var(--dot-r)_+_2px),black_calc(var(--dot-r)_+_2.5px))] forced-colors:[mask-image:none]">
+			<span className="block [--dot-r:calc(0.1875rem*var(--cds-rem-scale,1))] [mask-image:radial-gradient(circle_at_calc(100%_-_var(--dot-r)_+_1px)_calc(var(--dot-r)_-_1px),transparent_calc(var(--dot-r)_+_1px),black_calc(var(--dot-r)_+_1.5px))] [&:where(:root[dir=rtl]_:dir(rtl))]:[mask-image:radial-gradient(circle_at_calc(var(--dot-r)_-_1px)_calc(var(--dot-r)_-_1px),transparent_calc(var(--dot-r)_+_1px),black_calc(var(--dot-r)_+_1.5px))]">
 				<CodeXml />
 			</span>
 			<Pulse
