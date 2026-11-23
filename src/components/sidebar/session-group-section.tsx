@@ -1176,9 +1176,10 @@ function SessionFamily({
 }
 
 /**
- * A folded family's stub row (upstream `nU`): the hidden count as a fading label, then
- * "· {n} needs input" (warning ink), "· {n} failed", "· {n} unread" (accent ink) and "· {n} working"
- * segments, and a trailing glyph for the first of waiting (awaiting icon) or failed (error icon).
+ * A folded family's stub row (upstream `nU`): the hidden count as a fading label, then only the first
+ * news segment of "· {n} needs input" (warning ink), "· {n} failed", "· {n} unread" (accent ink) and
+ * "· {n} working" (the aria label keeps them all), and a trailing glyph for the first of waiting
+ * (awaiting icon) or failed (error icon).
  */
 function FamilyStub({
 	tally,
@@ -1191,7 +1192,7 @@ function FamilyStub({
 	onExpand: (focusNext: boolean) => void;
 })
 {
-	const {label, segments, ariaLabel} = familyStubLabel(tally, someListed);
+	const {label, shown, ariaLabel} = familyStubLabel(tally, someListed);
 	const separator = (
 		<span aria-hidden="true" className="px-1.5 text-ink-muted">
 			·
@@ -1223,28 +1224,16 @@ function FamilyStub({
 				<span data-row-label="" className="min-w-0">
 					<FadeLabel text={label} />
 				</span>
-				{segments.waiting !== undefined && (
+				{shown !== undefined && (
 					<span className="flex shrink-0 items-center">
 						{separator}
-						<span className="text-warning">{segments.waiting}</span>
-					</span>
-				)}
-				{segments.failed !== undefined && (
-					<span className="flex shrink-0 items-center">
-						{separator}
-						{segments.failed}
-					</span>
-				)}
-				{segments.unread !== undefined && (
-					<span className="flex shrink-0 items-center">
-						{separator}
-						<span className="flex items-center gap-1.5 text-upstream-accent">{segments.unread}</span>
-					</span>
-				)}
-				{segments.working !== undefined && (
-					<span className="flex shrink-0 items-center">
-						{separator}
-						{segments.working}
+						{shown.kind === "waiting" ? (
+							<span className="text-warning">{shown.text}</span>
+						) : shown.kind === "unread" ? (
+							<span className="flex items-center gap-1.5 text-upstream-accent">{shown.text}</span>
+						) : (
+							shown.text
+						)}
 					</span>
 				)}
 			</span>

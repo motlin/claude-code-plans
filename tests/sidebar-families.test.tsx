@@ -402,10 +402,10 @@ describe("sidebar session families", () =>
 		).toStrictEqual(
 			{
 				aria: "Show 2 nested sessions, 1 unread, 1 working",
-				text: "2 nested·1 unread·1 working",
+				text: "2 nested·1 unread",
 				label: "2 nested",
-				segments: ["·1 unread", "·1 working"],
-				separators: [true, true],
+				segments: ["·1 unread"],
+				separators: [true],
 				unreadInk: "1 unread",
 				dot: null,
 				decoration: null,
@@ -424,22 +424,50 @@ describe("sidebar session families", () =>
 
 	it("singularizes the stub and counts a failed child once, with a trailing error decoration", async () =>
 	{
+		const failedChild = session(
+			"c1",
+			"Child one",
+			"blocked",
+			1,
+			{
+				forkedFromSessionId: "h1",
+				unseen: true,
+				unseenError: true,
+			},
+		);
+		const single = await renderGroups([session("h1", "Head one", "done", 10), failedChild]);
+
+		fireEvent.click(caret(single.container, "h1"));
+
+		const singleStub = family(single.container, "h1").querySelector("button.df-family-stub");
+		expect(singleStub?.getAttribute("aria-label")).toBe("Show 1 nested session, 1 failed");
+		single.unmount();
+
+		// Upstream shows only the first news segment (waiting, failed, unread, working); the aria keeps all.
 		const {container} = await renderGroups([
 			session("h1", "Head one", "done", 10),
+			failedChild,
 			session(
-				"c1",
-				"Child one",
-				"blocked",
-				1,
+				"c2",
+				"Child two",
+				"review",
+				2,
 				{
 					forkedFromSessionId: "h1",
 					unseen: true,
-					unseenError: true,
+				},
+			),
+			session(
+				"c3",
+				"Child three",
+				"working",
+				3,
+				{
+					forkedFromSessionId: "h1",
 				},
 			),
 		]);
-
-		fireEvent.click(caret(container, "h1"));
+		// The fold persisted from the single-child render.
 
 		const stub = family(container, "h1").querySelector("button.df-family-stub");
 		if (!(stub instanceof HTMLElement)) throw new Error("no stub");
@@ -459,7 +487,7 @@ describe("sidebar session families", () =>
 		).toStrictEqual(
 			{
 				titles: [],
-				aria: "Show 1 nested session, 1 failed",
+				aria: "Show 3 nested sessions, 1 failed, 1 unread, 1 working",
 				segments: ["·1 failed"],
 				decoration: "Something went wrong",
 			},
@@ -731,7 +759,7 @@ describe("sidebar session families", () =>
 			{
 				collapsed: ["code:h1"],
 				titles: [],
-				stub: "2 nested·1 unread·1 working",
+				stub: "2 nested·1 unread",
 			},
 		);
 

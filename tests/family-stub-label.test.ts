@@ -66,7 +66,7 @@ describe("family stub label", () =>
 		);
 	});
 
-	it("words the count, its segments and the Show aria label", () =>
+	it("words the count, its first shown segment and the Show aria label", () =>
 	{
 		expect([
 			familyStubLabel(
@@ -118,29 +118,21 @@ describe("family stub label", () =>
 					working: 0,
 				},
 				false,
-			).segments.waiting,
+			).shown?.text,
 		]).toStrictEqual([
 			{
 				label: "1 nested",
 				sessions: "1 nested session",
-				segments:
-				{
-					waiting: undefined,
-					failed: undefined,
-					unread: undefined,
-					working: undefined,
-				},
+				shown: undefined,
 				ariaLabel: "Show 1 nested session",
 			},
 			{
 				label: "3 more nested",
 				sessions: "3 more nested sessions",
-				segments:
+				shown:
 				{
-					waiting: undefined,
-					failed: "1 failed",
-					unread: "2 unread",
-					working: "1 working",
+					kind: "failed",
+					text: "1 failed",
 				},
 				ariaLabel: "Show 3 more nested sessions, 1 failed, 2 unread, 1 working",
 			},
@@ -148,12 +140,10 @@ describe("family stub label", () =>
 			{
 				label: "3 nested",
 				sessions: "3 nested sessions",
-				segments:
+				shown:
 				{
-					waiting: "1 needs input",
-					failed: "1 failed",
-					unread: undefined,
-					working: undefined,
+					kind: "waiting",
+					text: "1 needs input",
 				},
 				ariaLabel: "Show 3 nested sessions, 1 needs input, 1 failed",
 			},

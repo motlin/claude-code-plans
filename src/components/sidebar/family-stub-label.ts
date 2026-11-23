@@ -43,19 +43,25 @@ export function familyStubTally(rows: readonly TallyRow[]): FamilyStubTally
 	return tally;
 }
 
+export type FamilyStubNews = "waiting" | "failed" | "unread" | "working";
+
+/** Upstream `hN`: news segment order. */
+const NEWS_ORDER: readonly FamilyStubNews[] = ["waiting", "failed", "unread", "working"];
+
 export interface FamilyStubLabel
 {
 	/** Upstream `hiddenCountShort` / `hiddenMoreCountShort`: the visible count. */
 	label: string;
 	/** Upstream `aP` long count words, kept for the aria label. */
 	sessions: string;
-	segments:
-	{
-		waiting: string | undefined;
-		failed: string | undefined;
-		unread: string | undefined;
-		working: string | undefined;
-	};
+	/** Upstream `hN.find(...)`: the one news segment the stub shows, the first present in `hN` order. */
+	shown:
+		|
+		  {
+				kind: FamilyStubNews;
+				text: string;
+		  }
+		| undefined;
 	ariaLabel: string;
 }
 
@@ -76,20 +82,32 @@ export function familyStubLabel(tally: FamilyStubTally, someListed: boolean): Fa
 {
 	const label = `${tally.count} ${someListed ? "more " : ""}nested`;
 	const sessions = `${tally.count} ${someListed ? "more " : ""}nested session${tally.count === 1 ? "" : "s"}`;
-	const segments =
+	const segments: Record<FamilyStubNews, string | undefined> =
 	{
 		waiting: segment(tally.waiting, tally.waiting === 1 ? "needs input" : "need input"),
 		failed: segment(tally.failed, "failed"),
 		unread: segment(tally.unread, "unread"),
 		working: segment(tally.working, "working"),
 	};
-	const news = [segments.waiting, segments.failed, segments.unread, segments.working].filter(
-		(text) => text !== undefined,
-	);
+	const news = NEWS_ORDER.flatMap((kind) =>
+	{
+		const text = segments[kind];
+		return text === undefined
+			? []
+			: [
+					{
+						kind,
+						text,
+					},
+				];
+	});
 	return {
 		label,
 		sessions,
-		segments,
-		ariaLabel: news.length === 0 ? `Show ${sessions}` : `Show ${sessions}, ${NEWS_FORMAT.format(news)}`,
+		shown: news[0],
+		ariaLabel:
+			news.length === 0
+				? `Show ${sessions}`
+				: `Show ${sessions}, ${NEWS_FORMAT.format(news.map(({text}) => text))}`,
 	};
 }
