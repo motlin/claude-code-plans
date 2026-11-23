@@ -317,7 +317,7 @@ async function renderGroups(
 	};
 }
 
-/** A session row's title markup: upstream's two title spans and, on a working row, its strong ShimmerText. */
+/** A session row's title markup: upstream's two title spans and any ShimmerText inside them (upstream draws none). */
 function describeRowTitle(link: HTMLElement)
 {
 	const outer = link.querySelector("[data-row-label] .dframe-fade-label")?.firstElementChild;
@@ -349,25 +349,6 @@ function rowLink(container: HTMLElement, title: string): HTMLElement
 	);
 	if (link === undefined) throw new Error(`no row ${title}`);
 	return link;
-}
-
-/** jsdom has no matchMedia; this one matches only `matching`. */
-function stubMediaQueries(matching: readonly string[]): void
-{
-	vi.stubGlobal(
-		"matchMedia",
-		vi.fn((query: string) => (
-		{
-			matches: matching.includes(query),
-			media: query,
-			addEventListener: () =>
-			{
-			},
-			removeEventListener: () =>
-			{
-			},
-		})),
-	);
 }
 
 function groupNames(container: HTMLElement): string[]
@@ -1797,14 +1778,8 @@ describe("sidebar SessionGroups", () =>
 						outer: "inline-block whitespace-nowrap align-top",
 						outerChildren: 1,
 						inner: "relative",
-						attention: "working",
-						shimmer:
-						{
-							variant: "strong",
-							shimmering: "true",
-							className: "inline-block align-top",
-							text: "Working one",
-						},
+						attention: null,
+						shimmer: null,
 					},
 					wrappers: ["true flex items-center"],
 					mark: ["img", "Running", "flex items-center", "true"],
@@ -1853,7 +1828,7 @@ describe("sidebar SessionGroups", () =>
 		);
 	});
 
-	it("gates the title's attention look as upstream: the open pane's working title stops sweeping and its own row is never unread, archived rows carry none, and reduced motion or forced colors drop only working", async () =>
+	it("gates the title's attention look as upstream: a working title has none, the open pane's own row is never unread, and archived rows carry none", async () =>
 	{
 		const look = async (
 			sessions: unknown[],
@@ -1902,7 +1877,6 @@ describe("sidebar SessionGroups", () =>
 				}),
 			);
 			cleanup();
-			vi.unstubAllGlobals();
 			return result;
 		};
 		const titles = ["Blocked one", "Working one", "Review one"];
@@ -1940,10 +1914,6 @@ describe("sidebar SessionGroups", () =>
 				prefs: allRows,
 			},
 		);
-		stubMediaQueries(["(prefers-reduced-motion: reduce)"]);
-		const reduced = await look(FIXTURE, titles);
-		stubMediaQueries(["(forced-colors: active)"]);
-		const forced = await look(FIXTURE, titles);
 
 		const blocked =
 		{
@@ -1959,7 +1929,7 @@ describe("sidebar SessionGroups", () =>
 			clone: false,
 			mark: "Unread response",
 		};
-		const stillWorking =
+		const working =
 		{
 			attention: null,
 			shimmering: null,
@@ -1971,33 +1941,19 @@ describe("sidebar SessionGroups", () =>
 				workingOpen,
 				reviewOpen,
 				archived,
-				reduced,
-				forced,
 			},
 		).toStrictEqual(
 			{
 				workingOpen:
 				{
 					"Blocked one": blocked,
-					"Working one":
-					{
-						attention: "working",
-						shimmering: "false",
-						clone: false,
-						mark: "Running",
-					},
+					"Working one": working,
 					"Review one": unread,
 				},
 				reviewOpen:
 				{
 					"Blocked one": blocked,
-					"Working one":
-					{
-						attention: "working",
-						shimmering: "true",
-						clone: false,
-						mark: "Running",
-					},
+					"Working one": working,
 					"Review one":
 					{
 						attention: null,
@@ -2013,24 +1969,12 @@ describe("sidebar SessionGroups", () =>
 						...blocked,
 						attention: null,
 					},
-					"Working one": stillWorking,
+					"Working one": working,
 					"Review one":
 					{
 						...unread,
 						attention: null,
 					},
-				},
-				reduced:
-				{
-					"Blocked one": blocked,
-					"Working one": stillWorking,
-					"Review one": unread,
-				},
-				forced:
-				{
-					"Blocked one": blocked,
-					"Working one": stillWorking,
-					"Review one": unread,
 				},
 			},
 		);

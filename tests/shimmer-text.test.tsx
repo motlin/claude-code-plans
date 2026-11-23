@@ -1,11 +1,9 @@
 // @vitest-environment jsdom
 
-import {act, cleanup, render, screen} from "@testing-library/react";
-import {useRef} from "react";
+import {cleanup, render, screen} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {ShimmerText} from "../src/components/shimmer-text";
-import {SHIMMER_PERIOD_MS, useTimelineShimmerDelay} from "../src/lib/shimmer";
 
 const COMPOSITED_QUERY = "(-webkit-mask-clip: text) and (-webkit-app-region: drag)";
 
@@ -269,77 +267,5 @@ describe("ShimmerText inactive", () =>
 		expect(container.innerHTML).toBe(
 			'<span data-cds="ShimmerText" data-shimmering="false" data-variant="muted" class="shrink-0 text-secondary">Starting workflow</span>',
 		);
-	});
-});
-
-describe("useTimelineShimmerDelay", () =>
-{
-	it("locks the delay to the running infinite animation's startTime once it is ready", async () =>
-	{
-		function Probe()
-		{
-			const ref = useRef<HTMLSpanElement>(null);
-			const delay = useTimelineShimmerDelay(ref);
-			return (
-				<span ref={ref} data-delay={delay}>
-					x
-				</span>
-			);
-		}
-		const animation =
-		{
-			startTime: 7250,
-			ready: Promise.resolve(),
-			effect:
-			{
-				getComputedTiming: () => (
-				{
-					iterations: Infinity,
-				}),
-			},
-		};
-		const getAnimations = vi.fn<(options: GetAnimationsOptions) => (typeof animation)[]>(() => [animation]);
-		Object.defineProperty(
-			HTMLElement.prototype,
-			"getAnimations",
-			{
-				value: getAnimations,
-				configurable: true,
-			},
-		);
-		try
-		{
-			const {container} = render(<Probe />);
-			await act(async () =>
-			{
-				await animation.ready;
-			});
-			expect(
-				{
-					delay: container.firstElementChild?.getAttribute("data-delay"),
-					calls: getAnimations.mock.calls,
-				},
-			).toStrictEqual(
-				{
-					delay: "-1250",
-					calls: [
-						[
-							{
-								subtree: true,
-							},
-						],
-					],
-				},
-			);
-		}
-		finally
-		{
-			Reflect.deleteProperty(HTMLElement.prototype, "getAnimations");
-		}
-	});
-
-	it("sweeps on upstream's 3s period", () =>
-	{
-		expect(SHIMMER_PERIOD_MS).toBe(3000);
 	});
 });

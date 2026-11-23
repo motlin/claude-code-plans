@@ -5,38 +5,22 @@ import {rowAttention} from "../src/components/use-row-icon-kind";
 
 describe("rowAttention", () =>
 {
-	it("follows upstream vW: waiting/unread always, working only while moving, nothing on archived rows", () =>
+	it("follows upstream vW: waiting/unread on live rows, nothing on running or archived rows", () =>
 	{
 		const table = Object.fromEntries(
 			SessionStateKindSchema.options.map((kind) => [
 				kind,
 				{
-					moving: rowAttention(
+					live: rowAttention(
 						{
 							kind,
 							archived: false,
-							motion: "moving",
 						},
 					),
-					still: rowAttention(
-						{
-							kind,
-							archived: false,
-							motion: "still",
-						},
-					),
-					archivedMoving: rowAttention(
+					archived: rowAttention(
 						{
 							kind,
 							archived: true,
-							motion: "moving",
-						},
-					),
-					archivedStill: rowAttention(
-						{
-							kind,
-							archived: true,
-							motion: "still",
 						},
 					),
 				},
@@ -46,38 +30,28 @@ describe("rowAttention", () =>
 			{
 				awaiting:
 				{
-					moving: "waiting",
-					still: "waiting",
-					archivedMoving: undefined,
-					archivedStill: undefined,
+					live: "waiting",
+					archived: undefined,
 				},
 				running:
 				{
-					moving: "working",
-					still: undefined,
-					archivedMoving: undefined,
-					archivedStill: undefined,
+					live: undefined,
+					archived: undefined,
 				},
 				ready:
 				{
-					moving: "unread",
-					still: "unread",
-					archivedMoving: undefined,
-					archivedStill: undefined,
+					live: "unread",
+					archived: undefined,
 				},
 				error:
 				{
-					moving: undefined,
-					still: undefined,
-					archivedMoving: undefined,
-					archivedStill: undefined,
+					live: undefined,
+					archived: undefined,
 				},
 				idle:
 				{
-					moving: undefined,
-					still: undefined,
-					archivedMoving: undefined,
-					archivedStill: undefined,
+					live: undefined,
+					archived: undefined,
 				},
 			},
 		);

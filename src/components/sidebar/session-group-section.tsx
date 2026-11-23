@@ -61,8 +61,6 @@ import {TOUCH_QUERY} from "../../lib/touch-reveal";
 import {useMediaQuery} from "../../lib/use-phone-sheet";
 import {QUICK_REPLY_HINT} from "../session-hover-card-classes";
 import {SidebarRowDecoration, SidebarRowSrText} from "../session-unread-control";
-import {ShimmerText} from "../shimmer-text";
-import {useTimelineShimmerDelay} from "../../lib/shimmer";
 import {type RowAttention, useRowAttention} from "../use-row-icon-kind";
 import {useSettings} from "../settings-context";
 import {PrTailGlyph, SessionStateIcon} from "../status-dot";
@@ -1324,7 +1322,7 @@ function SessionRowLink({
 	const rowTitleLabel = (
 		<SessionRowTitle
 			render={(title) => (
-				<FadeLabel text={title} attention={attention} still={selected || multiSelected} reveal={revealTitle}>
+				<FadeLabel text={title} attention={attention} reveal={revealTitle}>
 					{/* Upstream's o_: archived rows get a sr-only " Archived" right after the title, no pill */}
 					{row.archived && <span className="sr-only"> Archived</span>}
 					<SidebarRowSrText session={row.session} paneSelected={selected} />
@@ -1511,36 +1509,18 @@ function PendingLaunchRow({
 }
 
 /**
- * Upstream `ZP`: a working row's title in the strong ShimmerText, phase-locked to the other running
- * shimmers. The selected row's title (`still`) keeps the span but does not sweep.
- */
-function WorkingTitle({text, still}: {text: string; still: boolean})
-{
-	const ref = useRef<HTMLSpanElement>(null);
-	const delay = useTimelineShimmerDelay(ref);
-	return (
-		<ShimmerText ref={ref} variant="strong" className="inline-block align-top" active={!still} delay={delay}>
-			{text}
-		</ShimmerText>
-	);
-}
-
-/**
  * Marks itself `data-overflowing` when the title is clipped, so CSS fades its end. A session row
- * passes upstream's `data-attention` look for its title's `span.relative`, and `still` when it is
- * the selected row, whose working title holds still.
+ * passes upstream's `data-attention` look for its title's `span.relative`.
  */
 export function FadeLabel({
 	text,
 	attention,
-	still = false,
 	reveal = false,
 	skeleton = false,
 	children,
 }: {
 	text: string;
 	attention?: RowAttention | undefined;
-	still?: boolean;
 	/** Draw the title through upstream's grapheme reveal (`CR`), first text included: a just-launched row's title. */
 	reveal?: boolean;
 	/** The title is still unknown: upstream's `RM` skeleton stands in for the text. */
@@ -1606,15 +1586,7 @@ export function FadeLabel({
 		>
 			<span ref={textRef} className="inline-block whitespace-nowrap align-top">
 				<span className="relative" data-attention={attention}>
-					{skeleton ? (
-						<SessionTitleSkeleton />
-					) : reveal ? (
-						<RevealText text={text} />
-					) : attention === "working" ? (
-						<WorkingTitle text={text} still={still} />
-					) : (
-						<span>{text}</span>
-					)}
+					{skeleton ? <SessionTitleSkeleton /> : reveal ? <RevealText text={text} /> : <span>{text}</span>}
 					{children}
 				</span>
 			</span>

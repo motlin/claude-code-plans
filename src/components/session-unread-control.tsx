@@ -176,7 +176,7 @@ export function SidebarRowDecoration({
 				))
 			) : (
 				<span aria-hidden="true" className="flex items-center">
-					{attention !== "waiting" && attention !== "unread" ? (
+					{attention === undefined ? (
 						mark
 					) : (
 						// Upstream `Oc`: a waiting or unread attention look wraps the mark once more.
