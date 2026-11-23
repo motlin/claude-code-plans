@@ -72,6 +72,7 @@
 		"@storybook/addon-docs": "^10.6.7",
 		"@storybook/react-vite": "^10.6.7",
 		"@tailwindcss/node": "^4.3.5",
+		"@tailwindcss/oxide": "^4.3.5",
 		"@tailwindcss/vite": "^4.3.5",
 		"@testing-library/react": "^16.3.3",
 		"@types/better-sqlite3": "^9.6.0",

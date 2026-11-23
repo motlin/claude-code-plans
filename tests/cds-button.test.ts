@@ -1,3 +1,6 @@
+import {readFileSync} from "node:fs";
+
+import {Scanner} from "@tailwindcss/oxide";
 import {describe, expect, it} from "vite-plus/test";
 
 import {CDS_GHOST_HOVER, cdsButtonClass} from "../src/components/ui/cds-button";
@@ -17,6 +20,27 @@ async function ruleOrder(candidates: readonly string[]): Promise<string[]>
 
 describe("cdsButtonClass fizzy paints (upstream sT, Ct)", () =>
 {
+	it("spells every class literally, so Tailwind's source scanner finds it without help from the tests", () =>
+	{
+		const scanner = new Scanner({});
+		const scanned = new Set(
+			["cds-button.ts", "cds-button-disabled.ts"].flatMap((name) =>
+				scanner.scanFiles([
+					{
+						content: readFileSync(`src/components/ui/${name}`, "utf8"),
+						extension: "ts",
+					},
+				]),
+			),
+		);
+		const unscanned = (["secondary", "ghost", "primary"] as const).flatMap((variant) =>
+			cdsButtonClass(variant)
+				.split(" ")
+				.filter((name) => !scanned.has(name)),
+		);
+		expect(unscanned).toStrictEqual([]);
+	});
+
 	it("hovers a fizzy ghost at the button ghost hover, emitted after the pre-fizzy ghost hover", async () =>
 	{
 		expect(CDS_GHOST_HOVER).toBe("hover:bg-fill-ghost-hover stacks:hover:bg-fill-button-ghost-hover");

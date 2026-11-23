@@ -3,13 +3,6 @@ import {CDS_BUTTON_DISABLED, CDS_BUTTON_DISABLED_FILL, CDS_BUTTON_DISABLED_OPEN_
 /* Upstream's cds Button base (`kl`): a self-painting local copy with the shared disabled look. */
 const CDS_BUTTON_BASE = `relative inline-flex shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-[var(--upstream-radius)] whitespace-nowrap select-none hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus ${CDS_BUTTON_DISABLED}`;
 
-/** Upstream's `stacks:shadow-none`: the secondary's drop shadow and inset ring only paint outside fizzy colour. */
-const PRE_FIZZY = "[:root:not([data-cds-fizzy-lake~=color])_&]";
-
-/** Upstream's open-menu state (`[aria-haspopup][aria-expanded=true]`) and non-busy disabled state, on the button itself. */
-const OPEN = "[&[aria-haspopup][aria-expanded=true]]";
-const DISABLED = "[&:disabled:not([aria-busy])]";
-
 /**
  * A cds ghost Button's hover: the 5% ghost hover, or under fizzy colour (upstream `CL`) the stronger button ghost
  * hover. For hand-copied ghost buttons that paint themselves.
@@ -19,14 +12,20 @@ export const CDS_GHOST_HOVER = "hover:bg-fill-ghost-hover stacks:hover:bg-fill-b
 /*
  * Each variant keeps its pre-fizzy hover and adds upstream's fizzy-colour paints (`sT` hover/open, `Ct` press), moved
  * from the paint span's `group-…/btn:` onto the self-painted button.
+ *
+ * Selectors are spelled literally (never interpolated) so Tailwind's source scanner sees every class:
+ * - `[:root:not([data-cds-fizzy-lake~=color])_&]` is upstream's `stacks:shadow-none`: the secondary's drop shadow and
+ *   inset ring only paint outside fizzy colour.
+ * - `[&[aria-haspopup][aria-expanded=true]]` is upstream's open-menu state, on the button itself.
+ * - `[&:disabled:not([aria-busy])]` is upstream's non-busy disabled state.
  */
 const CDS_BUTTON_VARIANTS =
 {
-	secondary: `bg-fill-secondary font-control-regular ${PRE_FIZZY}:shadow-field-drop after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] ${PRE_FIZZY}:after:shadow-[inset_0_0_0_1px_var(--color-fill-secondary-ring)] text-primary aria-pressed:text-upstream-accent hover:bg-fill-secondary-hover stacks:hover:bg-fill-secondary stacks:${OPEN}:bg-fill-secondary stacks:hover:layers-1-fill-button-layer stacks:${OPEN}:layers-2-fill-button-layer stacks:hover:${OPEN}:layers-3-fill-button-layer stacks:active:layers-2-fill-button-layer ${CDS_BUTTON_DISABLED_FILL} ${CDS_BUTTON_DISABLED_OPEN_FILL}`,
-	ghost: `font-control-regular text-primary aria-pressed:text-upstream-accent ${CDS_GHOST_HOVER} stacks:${OPEN}:bg-fill-button-ghost-hover stacks:hover:${OPEN}:layers-1-fill-button-layer stacks:active:bg-fill-button-ghost-hover stacks:active:layers-1-fill-button-layer stacks:${DISABLED}:bg-transparent stacks:${DISABLED}:${OPEN}:bg-transparent`,
+	secondary: `bg-fill-secondary font-control-regular [:root:not([data-cds-fizzy-lake~=color])_&]:shadow-field-drop after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] [:root:not([data-cds-fizzy-lake~=color])_&]:after:shadow-[inset_0_0_0_1px_var(--color-fill-secondary-ring)] text-primary aria-pressed:text-upstream-accent hover:bg-fill-secondary-hover stacks:hover:bg-fill-secondary stacks:[&[aria-haspopup][aria-expanded=true]]:bg-fill-secondary stacks:hover:layers-1-fill-button-layer stacks:[&[aria-haspopup][aria-expanded=true]]:layers-2-fill-button-layer stacks:hover:[&[aria-haspopup][aria-expanded=true]]:layers-3-fill-button-layer stacks:active:layers-2-fill-button-layer ${CDS_BUTTON_DISABLED_FILL} ${CDS_BUTTON_DISABLED_OPEN_FILL}`,
+	ghost: `font-control-regular text-primary aria-pressed:text-upstream-accent ${CDS_GHOST_HOVER} stacks:[&[aria-haspopup][aria-expanded=true]]:bg-fill-button-ghost-hover stacks:hover:[&[aria-haspopup][aria-expanded=true]]:layers-1-fill-button-layer stacks:active:bg-fill-button-ghost-hover stacks:active:layers-1-fill-button-layer stacks:[&:disabled:not([aria-busy])]:bg-transparent stacks:[&:disabled:not([aria-busy])]:[&[aria-haspopup][aria-expanded=true]]:bg-transparent`,
 	/** The local destructive confirm: the danger menu fill on the primary's geometry and weight. */
 	danger: `bg-[var(--menu-danger-fill)] font-control text-[var(--menu-on-danger)] [--shortcut-cap-ink:currentColor] hover:opacity-90 ${CDS_BUTTON_DISABLED_FILL}`,
-	primary: `bg-primary font-control text-surface-1 [--shortcut-cap-ink:currentColor] hover:bg-primary/80 stacks:active:bg-fill-primary-hover stacks:active:layers-1-fill-primary-layer stacks:${OPEN}:bg-none ${CDS_BUTTON_DISABLED_FILL}`,
+	primary: `bg-primary font-control text-surface-1 [--shortcut-cap-ink:currentColor] hover:bg-primary/80 stacks:active:bg-fill-primary-hover stacks:active:layers-1-fill-primary-layer stacks:[&[aria-haspopup][aria-expanded=true]]:bg-none ${CDS_BUTTON_DISABLED_FILL}`,
 } as const;
 
 /** Upstream's cds Button inline pad: pad-md, capped by --cds-button-pad-max (9px under fizzy panels). */
