@@ -8,10 +8,9 @@ import type {FileSides} from "../src/components/changes/diff-file-lines";
 import {DiffFileMenuItems} from "../src/components/changes/diff-file-menu";
 import {diffFileMenuButtonShown, isSyntheticDiffRow} from "../src/components/changes/diff-file-menu-gate";
 import {ToastProvider} from "../src/components/toast";
-import {CA, EA, SA, TA, WA} from "../src/components/changes/diffs-config";
+import {CA, EA, SA, WA} from "../src/components/changes/diffs-config";
 import {DIFF_RAILS_CSS} from "../src/components/changes/diff-rails";
 import {OCCURRENCE_HIGHLIGHT, useDiffOccurrenceHighlight} from "../src/components/changes/diff-occurrence-highlight";
-import {PanelsOff} from "./fizzy-lake-off";
 import {DEFAULTS, SettingsContext} from "../src/components/settings-context";
 import {preloadFileTypeIcons} from "../src/components/file-type-icons-loader";
 
@@ -327,48 +326,41 @@ describe("DiffFile", () =>
 		});
 	});
 
-	it("injects upstream's za() list into the shadow root's unsafe layer, Ta only while panels is on and Ca only with the gutter +", async () =>
+	it("injects upstream's _a() list into the shadow root's unsafe layer, Ca only with the gutter +", async () =>
 	{
-		const panels = render(<DiffFile patch={PATCH} />);
+		const plain = render(<DiffFile patch={PATCH} />);
 		await waitFor(() =>
 		{
-			expect(contentRowTypes(shadowRootOf(panels.container))).toHaveLength(6);
+			expect(contentRowTypes(shadowRootOf(plain.container))).toHaveLength(6);
 		});
-		const on = unsafeLayer(panels.container);
-		expect(
-			{
-				wa: on.includes(WA + TA + EA),
-				sa: on.includes(SA),
-				ca: on.includes(CA),
-			},
-		).toStrictEqual(
-			{
-				wa: true,
-				sa: false,
-				ca: false,
-			},
-		);
+		const plainCss = unsafeLayer(plain.container);
 		cleanup();
 
-		const off = render(
-			<PanelsOff>
-				<DiffFile patch={PATCH} onRequestChanges={() => undefined} />
-			</PanelsOff>,
-		);
+		const commenting = render(<DiffFile patch={PATCH} onRequestChanges={() => undefined} />);
 		await waitFor(() =>
 		{
-			expect(contentRowTypes(shadowRootOf(off.container))).toHaveLength(6);
+			expect(contentRowTypes(shadowRootOf(commenting.container))).toHaveLength(6);
 		});
-		const gutter = unsafeLayer(off.container);
+		const gutterCss = unsafeLayer(commenting.container);
 		expect(
 			{
-				ca: gutter.includes(CA + WA + EA),
-				ta: gutter.includes(TA),
+				plain:
+				{
+					wa: plainCss.includes(WA + EA),
+					sa: plainCss.includes(SA),
+					ca: plainCss.includes(CA),
+				},
+				gutter: gutterCss.includes(CA + WA + EA),
 			},
 		).toStrictEqual(
 			{
-				ca: true,
-				ta: false,
+				plain:
+				{
+					wa: true,
+					sa: false,
+					ca: false,
+				},
+				gutter: true,
 			},
 		);
 	});

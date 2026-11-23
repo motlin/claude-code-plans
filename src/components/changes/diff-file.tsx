@@ -19,7 +19,6 @@ import
 import {useCodeThemeBackground} from "../../hooks/use-code-theme-background";
 import {useCodeThemes} from "../../hooks/use-code-themes";
 import {LazyFileTypeIcon} from "../lazy-file-type-icon";
-import {useFizzyLake} from "../../lib/fizzy-lake";
 import
 {
 	DIFFS_HOST_CLASS,
@@ -734,7 +733,6 @@ export function DiffFile({
 	const resolvedTheme = useResolvedTheme();
 	const codeThemes = useCodeThemes();
 	const codeThemeBg = useCodeThemeBackground();
-	const panels = useFizzyLake("panels");
 	const {codeFontSize} = useSettings().settings;
 	const metrics = useMemo(() => changesDiffMetrics(codeFontSize), [codeFontSize]);
 
@@ -823,7 +821,6 @@ export function DiffFile({
 				{
 					disableFileHeader: false,
 					gutterUtility: commenting,
-					panels,
 				},
 			),
 		};
@@ -838,7 +835,6 @@ export function DiffFile({
 		commenting,
 		opensAtLine,
 		gutterGuard,
-		panels,
 		expandUnchanged,
 		loadDiffFiles,
 	]);

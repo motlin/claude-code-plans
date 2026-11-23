@@ -66,12 +66,9 @@ export const SA =
 /** `Ca`: the gutter utility slot sits at the number column's left edge. */
 export const CA =
 	":is([data-diff],[data-file]):not([data-disable-line-numbers]) [data-gutter-utility-slot]{right:unset;left:5px;justify-content:flex-start}:is([data-diff],[data-file]):not([data-disable-line-numbers]) [data-column-number]{padding-left:calc(2ch + 5px)}";
-/** `wa`: the compact hunk separator (16px expand buttons, hover ink). */
+/** `wa`: the compact hunk separator (16px expand buttons, density padding, hover ink); upstream _a() folded the old panels-only `Ta` into it. */
 export const WA =
-	"[data-separator-wrapper]{padding-left:8px;grid-template-columns:16px auto;column-gap:4px}[data-separator-wrapper][data-separator-multi-button]{grid-template-columns:16px 16px auto}[data-expand-button]{min-width:16px;border-right:0}[data-separator-content]{grid-column-start:-2;padding:0}[data-separator-wrapper]:has([data-expand-button]):hover :is([data-expand-button],[data-separator-content]){color:var(--cds-text-secondary)}";
-/** `Ta`: the panels separator padding. */
-export const TA =
-	"[data-separator-wrapper]{padding-left:var(--cds-pad-md)}@media (pointer:fine){[data-separator-wrapper][data-separator-multi-button]{grid-template-columns:16px calc(24px - var(--cds-pad-md)) auto}}";
+	"[data-separator-wrapper]{padding-left:var(--cds-pad-md,8px);grid-template-columns:16px auto;column-gap:4px}[data-separator-wrapper][data-separator-multi-button]{grid-template-columns:16px 16px auto}@media (pointer:fine){[data-separator-wrapper][data-separator-multi-button]{grid-template-columns:16px calc(24px - var(--cds-pad-md,8px)) auto}}[data-expand-button]{min-width:16px;border-right:0}[data-separator-content]{grid-column-start:-2;padding:0}[data-separator-wrapper]:has([data-expand-button]):hover :is([data-expand-button],[data-separator-content]){color:var(--cds-text-secondary)}";
 /** `Ea`: the diff background comes from the host's `--cds-filediff-bg`. */
 export const EA = ":host{--diffs-bg:var(--cds-filediff-bg,var(--cds-surface-1))}";
 /** `Da`: selected line numbers mix from the selection override, not modified-yellow. */
@@ -100,33 +97,19 @@ export const FA =
 /** Upstream's cds FileDiff wrapper classes (ca7ba268c `Va`). */
 export const DIFFS_HOST_CLASS = "text-code text-primary font-normal";
 
-/** Upstream za()'s `injectedCSS`: `[xa,Sa,Ca,wa,Ta,Ea,Da,Oa,ka,Aa,ja,Ma,Na,Pa,Fa].filter(defined).join("")`. */
+/**
+ * Upstream _a()'s `injectedCSS`: `[xa,j,Sa,Ca,wa,Ea,Da,Oa,ka,Aa,ja,Ma,Na,Pa,Fa].filter(defined).join("")`.
+ * `j` (upstream's conditional plain-diff `:host` override) is not ported.
+ */
 export function diffsInjectedCss({
 	disableFileHeader,
 	gutterUtility,
-	panels,
 }: {
 	disableFileHeader: boolean;
 	gutterUtility: boolean;
-	panels: boolean;
 }): string
 {
-	return [
-		disableFileHeader ? SA : "",
-		gutterUtility ? CA : "",
-		WA,
-		panels ? TA : "",
-		EA,
-		DA,
-		OA,
-		KA,
-		AA,
-		JA,
-		MA,
-		NA,
-		PA,
-		FA,
-	].join("");
+	return [disableFileHeader ? SA : "", gutterUtility ? CA : "", WA, EA, DA, OA, KA, AA, JA, MA, NA, PA, FA].join("");
 }
 
 const NAMED_SURFACES = new Set([

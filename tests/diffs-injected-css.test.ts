@@ -21,7 +21,6 @@ import
 	OA,
 	PA,
 	SA,
-	TA,
 	WA,
 	diffsInjectedCss,
 	filediffBg,
@@ -33,13 +32,12 @@ import {CODE_THEME_BG_FALLBACK, useCodeThemeBackground} from "../src/hooks/use-c
 const OVERRIDES = DIFFS_STYLE_OVERRIDES as Record<string, string>;
 const GLOBALS_CSS = resolve(__dirname, "..", "src", "styles", "globals.css");
 
-// Verbatim from upstream ca7ba268c (dumps/diff-codeview-injected-css-bundle-2026-11-03.txt).
+// Verbatim from upstream ca7ba268c (dumps/diff-codeview-injected-css-bundle-2026-11-03.txt; WA re-synced from bundle-2026-11-22-dlnrs, where _a() merged the old wa + panels-only Ta into one always-on string).
 const UPSTREAM =
 {
 	SA: "[data-diffs-header]{display:none}:is([data-diffs-header]~[data-diff],[data-diffs-header]~[data-file]) [data-code],[data-diff-type=split][data-overflow=wrap]:is([data-diffs-header]~[data-diff]){padding-top:var(--diffs-gap-block,var(--diffs-gap-fallback))}",
 	CA: ":is([data-diff],[data-file]):not([data-disable-line-numbers]) [data-gutter-utility-slot]{right:unset;left:5px;justify-content:flex-start}:is([data-diff],[data-file]):not([data-disable-line-numbers]) [data-column-number]{padding-left:calc(2ch + 5px)}",
-	WA: "[data-separator-wrapper]{padding-left:8px;grid-template-columns:16px auto;column-gap:4px}[data-separator-wrapper][data-separator-multi-button]{grid-template-columns:16px 16px auto}[data-expand-button]{min-width:16px;border-right:0}[data-separator-content]{grid-column-start:-2;padding:0}[data-separator-wrapper]:has([data-expand-button]):hover :is([data-expand-button],[data-separator-content]){color:var(--cds-text-secondary)}",
-	TA: "[data-separator-wrapper]{padding-left:var(--cds-pad-md)}@media (pointer:fine){[data-separator-wrapper][data-separator-multi-button]{grid-template-columns:16px calc(24px - var(--cds-pad-md)) auto}}",
+	WA: "[data-separator-wrapper]{padding-left:var(--cds-pad-md,8px);grid-template-columns:16px auto;column-gap:4px}[data-separator-wrapper][data-separator-multi-button]{grid-template-columns:16px 16px auto}@media (pointer:fine){[data-separator-wrapper][data-separator-multi-button]{grid-template-columns:16px calc(24px - var(--cds-pad-md,8px)) auto}}[data-expand-button]{min-width:16px;border-right:0}[data-separator-content]{grid-column-start:-2;padding:0}[data-separator-wrapper]:has([data-expand-button]):hover :is([data-expand-button],[data-separator-content]){color:var(--cds-text-secondary)}",
 	EA: ":host{--diffs-bg:var(--cds-filediff-bg,var(--cds-surface-1))}",
 	DA: ":host{--diffs-selection-base:var(--diffs-selection-color-override,var(--diffs-modified-base))}",
 	OA: "[data-overflow=wrap] [data-line]{min-height:1lh}",
@@ -63,7 +61,6 @@ describe("diffsInjectedCss (upstream ca7ba268c za() injectedCSS)", () =>
 				SA,
 				CA,
 				WA,
-				TA,
 				EA,
 				DA,
 				OA,
@@ -78,31 +75,26 @@ describe("diffsInjectedCss (upstream ca7ba268c za() injectedCSS)", () =>
 		).toStrictEqual(UPSTREAM);
 	});
 
-	it("joins the list in upstream's order [Sa,Ca,wa,Ta,Ea..Fa], each conditional string only when asked for", () =>
+	it("joins the list in upstream's order [Sa,Ca,wa,Ea..Fa], each conditional string only when asked for", () =>
 	{
-		const css = (disableFileHeader: boolean, gutterUtility: boolean, panels: boolean) =>
+		const css = (disableFileHeader: boolean, gutterUtility: boolean) =>
 			diffsInjectedCss(
 				{
 					disableFileHeader,
 					gutterUtility,
-					panels,
 				},
 			);
 		expect(
 			{
-				none: css(false, false, false),
-				header: css(true, false, false),
-				gutter: css(true, true, false),
-				panels: css(false, false, true),
-				all: css(true, true, true),
+				none: css(false, false),
+				header: css(true, false),
+				gutter: css(true, true),
 			},
 		).toStrictEqual(
 			{
 				none: WA + ALWAYS,
 				header: SA + WA + ALWAYS,
 				gutter: SA + CA + WA + ALWAYS,
-				panels: WA + TA + ALWAYS,
-				all: SA + CA + WA + TA + ALWAYS,
 			},
 		);
 	});

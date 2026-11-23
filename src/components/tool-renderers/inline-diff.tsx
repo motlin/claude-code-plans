@@ -7,7 +7,6 @@ import type {CodeThemeId} from "../../lib/code-themes";
 import {buildPatchFromHunks, buildUnifiedHunk, type PatchHunk} from "../../lib/diff-utils";
 import {railsPostRender} from "../changes/diff-rails";
 import {DIFFS_HOST_CLASS, INLINE_DIFFS_STYLE_OVERRIDES, diffsInjectedCss} from "../changes/diffs-config";
-import {useFizzyLake} from "../../lib/fizzy-lake";
 import {useResolvedTheme} from "../theme-context";
 import {type PureSide, TintedPureSideFile} from "./pure-side-diff";
 
@@ -168,7 +167,6 @@ function InlineFileDiff({
 	const resolvedTheme = useResolvedTheme();
 	const settingsThemes = useCodeThemes();
 	const codeThemes = theme ?? settingsThemes;
-	const panels = useFizzyLake("panels");
 
 	const options = useMemo<FileDiffOptions<undefined, undefined>>(
 		() => (
@@ -187,11 +185,10 @@ function InlineFileDiff({
 				{
 					disableFileHeader: true,
 					gutterUtility: false,
-					panels,
 				},
 			),
 		}),
-		[codeThemes, resolvedTheme, panels, disableLineNumbers],
+		[codeThemes, resolvedTheme, disableLineNumbers],
 	);
 	const style = useMemo(
 		() =>
