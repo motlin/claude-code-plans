@@ -32,6 +32,8 @@ function token(source: string, name: string): string | null
 const TYPE_TOKENS = [
 	"--upstream-text-body",
 	"--upstream-leading-body",
+	"--density-text-body",
+	"--density-leading-body",
 	"--upstream-text-footnote",
 	"--upstream-leading-footnote",
 	"--upstream-text-code",
@@ -73,6 +75,8 @@ describe("density type tokens", () =>
 				{
 					"--upstream-text-body": "14px",
 					"--upstream-leading-body": "20px",
+					"--density-text-body": "14px",
+					"--density-leading-body": "20px",
 					"--upstream-text-footnote": "13px",
 					"--upstream-leading-footnote": "17px",
 					"--upstream-text-code": "13px",
@@ -88,6 +92,8 @@ describe("density type tokens", () =>
 				{
 					"--upstream-text-body": "14px",
 					"--upstream-leading-body": "20px",
+					"--density-text-body": "14px",
+					"--density-leading-body": "20px",
 					"--upstream-text-footnote": "13px",
 					"--upstream-leading-footnote": "17px",
 					"--upstream-text-code": "13px",
@@ -99,11 +105,13 @@ describe("density type tokens", () =>
 					"--upstream-text-heading": "15px",
 					"--upstream-leading-heading": "20px",
 				},
-				comfortableDeclarations: 57,
+				comfortableDeclarations: 59,
 				compact:
 				{
 					"--upstream-text-body": "13px",
 					"--upstream-leading-body": "19px",
+					"--density-text-body": "13px",
+					"--density-leading-body": "19px",
 					"--upstream-text-footnote": "12px",
 					"--upstream-leading-footnote": "15px",
 					"--upstream-text-code": "12px",
@@ -115,7 +123,7 @@ describe("density type tokens", () =>
 					"--upstream-text-heading": "14px",
 					"--upstream-leading-heading": "18px",
 				},
-				compactDeclarations: 57,
+				compactDeclarations: 59,
 				caption: "var(--upstream-text-caption)",
 				captionLeading: "var(--upstream-leading-caption)",
 			},

@@ -78,3 +78,15 @@ describe("reply-type tool rows follow the prose size (cds-type-experiment-gate T
 		).toStrictEqual([]);
 	});
 });
+
+describe("transcript text size spares controls (permission-card-variants live check, 2026-11-21)", () =>
+{
+	it("keeps text-body buttons, inputs, textareas, toolbar text and cds-reset links at the density size", () =>
+	{
+		expect(
+			missing(globals, [
+				'.transcript-text :is(.text-body, .text-body-medium, .text-body-semibold):is(button, input, textarea, [role~="toolbar"] *, a.cds-reset) { font-size: var(--density-text-body); line-height: var(--tw-leading, var(--density-leading-body)); }',
+			]),
+		).toStrictEqual([]);
+	});
+});

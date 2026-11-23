@@ -754,6 +754,8 @@ html[data-interface-font="dyslexic"]
 	/* Upstream claude.ai/code — typography */
 	--upstream-text-body: 14px;
 	--upstream-leading-body: 20px;
+	--density-text-body: 14px;
+	--density-leading-body: 20px;
 	/* Upstream text-prose (user paragraphs) and text-heading (the user bubble) at comfortable density. */
 	--upstream-text-prose: 16px;
 	--upstream-leading-prose: 24px;
@@ -4685,6 +4687,8 @@ html[data-reduce-motion="true"] [data-cds="ShimmerText"][data-shimmer-mode="fall
 	--upstream-radius-composer: 0.875rem;
 	--upstream-text-body: 14px;
 	--upstream-leading-body: 20px;
+	--density-text-body: 14px;
+	--density-leading-body: 20px;
 	--upstream-text-prose: 16px;
 	--upstream-leading-prose: 24px;
 	--upstream-text-heading: 15px;
@@ -4746,6 +4750,8 @@ html[data-reduce-motion="true"] [data-cds="ShimmerText"][data-shimmer-mode="fall
 	--upstream-radius-composer: 0.75rem;
 	--upstream-text-body: 13px;
 	--upstream-leading-body: 19px;
+	--density-text-body: 13px;
+	--density-leading-body: 19px;
 	--upstream-text-prose: 14px;
 	--upstream-leading-prose: 20px;
 	--upstream-text-heading: 14px;
@@ -4987,6 +4993,23 @@ html[data-reduce-motion="true"] [data-cds="ShimmerText"][data-shimmer-mode="fall
 		--upstream-text-prose: var(--transcript-comfortable-text-size, 1rem);
 		--upstream-leading-prose: var(--transcript-comfortable-leading, 1.5rem);
 	}
+}
+
+/* Upstream `.epitaxy-transcript-typography :where(.text-body):not(button, input, textarea):not(:where([role~="toolbar"]
+   .text-body)):not(:where(a.cds-reset))`: only non-control text follows the transcript size. A text-body button, input,
+   textarea, toolbar text or cds-reset link keeps the density size (13px/19px compact, 14px/20px comfortable), read back
+   from the --density-* copies the [data-density] blocks set beside --upstream-text-body. */
+.transcript-text
+	:is(.text-body, .text-body-medium, .text-body-semibold):is(
+		button,
+		input,
+		textarea,
+		[role~="toolbar"] *,
+		a.cds-reset
+	)
+{
+	font-size: var(--density-text-body);
+	line-height: var(--tw-leading, var(--density-leading-body));
 }
 
 /* A standalone tool row followed by prose shares the assistant span: upstream leaves the turn gap less
