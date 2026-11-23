@@ -1656,7 +1656,8 @@ html[data-interface-font="dyslexic"]
  * Upstream shared-styles (CPcGcRau, 2026-11-06) fizzy color surface remaps;
  * dumps/fizzy-surface-hover-gradient-layers-rules-CPcGcRau-2026-11-06.css.txt. The 11-03
  * `[&>button]:bg-fill-secondary>button` exclusion and the `.bg-surface-3.hover:bg-surface-1` gradient layer were
- * removed upstream on 11-04/05; do not restore them.
+ * removed upstream on 11-04/05, and the focus-visible/focus-within ghost-selected remap by shared-styles-Bf7rmMdl on
+ * 11-21 (dumps/fizzy-surface-hover-gradient-layers-rules-Bf7rmMdl-2026-11-21.css.txt); do not restore them.
  *
  * Floating surface-3 (dialogs, the ⌘K palette, the composer card, fixed popovers) takes the popover surface (dark
  * #303030; light is #fff either way). Upstream's `:not(#_)` bump and its legacy bg-000 twin are not needed here. Both
@@ -1681,26 +1682,6 @@ html[data-interface-font="dyslexic"]
 {
 	--upstream-surface-3: var(--upstream-surface-popover);
 	--color-surface-3: var(--upstream-surface-popover);
-}
-
-/* Focus-visible surfaces paint ghost-selected; upstream c71860c77 rows (`hover:bg-fill-ghost-hover
-   focus-visible:bg-surface-1`) rely on it. */
-:root[data-cds-fizzy-lake~="color"]
-	.focus-visible\:bg-surface-0:focus-visible:not(
-		:disabled,
-		.bg-surface-1,
-		.bg-surface-2,
-		.bg-surface-3,
-		.bg-neutral-30
-	),
-:root[data-cds-fizzy-lake~="color"]
-	:where(.focus-visible\:bg-surface-1):is(
-		.focus-visible\:bg-surface-1:focus-visible,
-		label.focus-within\:bg-surface-1:focus-within
-	):not([class^="bg-"], [class*=" bg-"]),
-:root[data-cds-fizzy-lake~="color"] label.focus-within\:bg-surface-1:focus-within:not([class^="bg-"], [class*=" bg-"])
-{
-	background-color: var(--upstream-fill-ghost-selected);
 }
 
 /* Surface hovers paint a translucent ghost-hover wash instead of an opaque surface fill. */

@@ -55,12 +55,6 @@ const HOVER_SELECTOR = [
 	`${FZ} .enabled\\:hover\\:bg-surface-1:enabled:hover${SURFACE_N_NOT}`,
 ].join(", ");
 
-const FOCUS_SELECTOR = [
-	`${FZ} .focus-visible\\:bg-surface-0:focus-visible:not(:disabled, .bg-surface-1, .bg-surface-2, .bg-surface-3, .bg-neutral-30)`,
-	`${FZ} :where(.focus-visible\\:bg-surface-1):is(.focus-visible\\:bg-surface-1:focus-visible, label.focus-within\\:bg-surface-1:focus-within):not([class^="bg-"], [class*=" bg-"])`,
-	`${FZ} label.focus-within\\:bg-surface-1:focus-within:not([class^="bg-"], [class*=" bg-"])`,
-].join(", ");
-
 const FLOATING_SELECTOR = `${FZ} .bg-surface-3:is(.fixed, .shadow-lg, .shadow-xl, .shadow-2xl, .shadow-panel, .shadow-panel-sm, .shadow-panel-lg, .shadow-popover, .shadow-composer, .shadow-composer-hover, .shadow-composer-focus, .rounded-composer, .rounded-\\[20px\\])`;
 
 describe("fizzy surface hover remaps (upstream shared-styles CPcGcRau)", () =>
@@ -85,19 +79,15 @@ describe("fizzy surface hover remaps (upstream shared-styles CPcGcRau)", () =>
 		expect(styles.includes("linear-gradient(var(--upstream-fill-ghost-hover) 0 0)")).toBe(false);
 	});
 
-	it("T2: focus-visible surfaces paint ghost-selected, unlayered and ungated", () =>
+	/* Removed upstream by shared-styles-Bf7rmMdl, 2026-11-21: focus-visible surfaces no longer paint ghost-selected. */
+	it("T2: focus-visible surfaces do not paint ghost-selected", () =>
 	{
 		expect(
-			{
-				missing: missing([`${FOCUS_SELECTOR} { background-color: var(--upstream-fill-ghost-selected); }`]),
-				atRules: enclosingAtRules(FOCUS_SELECTOR),
-			},
-		).toStrictEqual(
-			{
-				missing: [],
-				atRules: [],
-			},
-		);
+			[
+				".focus-visible\\:bg-surface-0:focus-visible:not(",
+				"label.focus-within\\:bg-surface-1:focus-within:not(",
+			].filter((selector) => styles.includes(selector)),
+		).toStrictEqual([]);
 	});
 
 	it("T4: floating surface-3 takes the popover surface, unlayered", () =>
