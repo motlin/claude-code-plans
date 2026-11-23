@@ -15,6 +15,7 @@ import {ToastProvider} from "../src/components/toast";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {SettingsProvider} from "../src/components/settings-provider";
+import {freezeAnchor, type FrozenAnchor} from "../src/components/sidebar/frozen-anchor";
 import {SidebarSessionGroups} from "../src/components/sidebar/session-filter-menu";
 import {SidebarHiddenContext} from "../src/components/sidebar/sidebar-hidden";
 import {RecentSessionsResponse, recentSessionsInfiniteQueryOptions} from "../src/lib/api/sessions";
@@ -1434,6 +1435,72 @@ describe("sidebar Group and sort shared menu (held re-anchor)", () =>
 			"Reset to defaults",
 			"View all",
 		]);
+		// Upstream `h$`: the popup opens beside the sidebar (inline-end, start, 4px), shifting rather than flipping.
+		const positioner = screen.getByRole("menu").closest("[data-side-offset]");
+		expect(
+			{
+				side: positioner?.getAttribute("data-side"),
+				align: positioner?.getAttribute("data-align"),
+				sideOffset: positioner?.getAttribute("data-side-offset"),
+				collisionFallback: positioner?.getAttribute("data-collision-fallback"),
+			},
+		).toStrictEqual(
+			{
+				side: "right",
+				align: "start",
+				sideOffset: "4",
+				collisionFallback: "none",
+			},
+		);
+	});
+
+	it("freezes the trigger rect stretched to the sidebar body's inline-end edge, like upstream's LZ", () =>
+	{
+		function element(rect: DOMRect): HTMLElement
+		{
+			const node = document.createElement("div");
+			node.getBoundingClientRect = () => rect;
+			return node;
+		}
+		const body = element(new DOMRect(0, 41, 287, 700));
+		body.setAttribute("data-sidebar-body", "");
+		const inside = element(new DOMRect(248, 275, 24, 24));
+		body.append(inside);
+		const outside = element(new DOMRect(248, 275, 24, 24));
+		const rectOf = (anchor: FrozenAnchor) =>
+		{
+			const {x, y, width, height} = anchor.getBoundingClientRect();
+			return {
+				x,
+				y,
+				width,
+				height,
+			};
+		};
+
+		expect(
+			{
+				inside: rectOf(freezeAnchor(inside)),
+				outside: rectOf(freezeAnchor(outside)),
+			},
+		).toStrictEqual(
+			{
+				inside:
+				{
+					x: 248,
+					y: 275,
+					width: 39,
+					height: 24,
+				},
+				outside:
+				{
+					x: 248,
+					y: 275,
+					width: 24,
+					height: 24,
+				},
+			},
+		);
 	});
 
 	it("keeps the menu open on a regroup, holding it on the nearest surviving trigger and refocusing the picked item", async () =>

@@ -4,23 +4,8 @@ import {setSidebarMenuOpen} from "../../lib/sidebar-menu-open";
 import {Menu} from "../ui/menu";
 import {createMenuHandle, type MenuHandle} from "../ui/menu-handle";
 import {GroupSortTrigger} from "./section-view-menu";
+import {freezeAnchor, type FrozenAnchor} from "./frozen-anchor";
 import {SidebarHiddenContext} from "./sidebar-hidden";
-
-/** Upstream `IC`: the trigger's rect measured once at open, so the popup stays put while the list regroups under it. */
-export interface FrozenAnchor
-{
-	contextElement: Element;
-	getBoundingClientRect: () => DOMRect;
-}
-
-function freezeAnchor(trigger: Element): FrozenAnchor
-{
-	const rect = trigger.getBoundingClientRect();
-	return {
-		contextElement: trigger,
-		getBoundingClientRect: () => rect,
-	};
-}
 
 /** Upstream `LJ`. */
 interface HostState

@@ -12,8 +12,10 @@ import
 } from "../../lib/session-groups";
 import {useSettings} from "../settings-context";
 import {MenuCheckboxItem, MenuContent, MenuSeparator, MenuSub, MenuSubContent, MenuSubTrigger} from "../ui/menu";
+import {inlineEndSide} from "../ui/menu-anchor";
 import {ChoiceGroup, GroupBySubmenu, GroupSortFooter, NewSectionDialog, SortBySubmenu} from "./section-view-menu";
-import {type FrozenAnchor, GroupSortMenuHost, GroupSortTriggerSlot} from "./group-sort-menu-host";
+import type {FrozenAnchor} from "./frozen-anchor";
+import {GroupSortMenuHost, GroupSortTriggerSlot} from "./group-sort-menu-host";
 import {SessionGroups} from "./session-groups";
 
 /**
@@ -30,6 +32,14 @@ const GROUP_BY_ORDER = ["date", "state", "project"] as const satisfies readonly 
  * name, blocked reason from the pending approval); the local Status and Last activity filters and
  * the PR status toggle follow, the PR toggle only once some row has PR data.
  */
+/** Upstream `YP`: beside the sidebar, shifting along both axes rather than flipping below. */
+const GROUP_SORT_COLLISION_AVOIDANCE =
+{
+	side: "shift",
+	align: "shift",
+	fallbackAxisSide: "none",
+} as const;
+
 function SessionFilterMenuContent({
 	prefs,
 	onChange,
@@ -52,7 +62,10 @@ function SessionFilterMenuContent({
 		prefs.sortDirection === DEFAULT_SESSION_LIST_PREFS.sortDirection;
 	return (
 		<MenuContent
-			align="end"
+			side={inlineEndSide()}
+			align="start"
+			sideOffset={4}
+			collisionAvoidance={GROUP_SORT_COLLISION_AVOIDANCE}
 			density="comfortable"
 			className="!min-w-[200px]"
 			{...(anchor === undefined
