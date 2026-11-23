@@ -302,7 +302,7 @@ export function KeyboardShortcutsDialog()
 				aria-label="Shortcuts"
 				// oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- a scrollable region needs focus for keyboard scrolling
 				tabIndex={count === 0 ? undefined : 0}
-				className="-mx-4 -mb-4 min-h-0 flex-1 overflow-y-auto rounded-b-[inherit] [scroll-timeline:--sc-dialog-scroll_block] px-4 pb-4 hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--color-accent-100),inset_0_0_6px_1px_color-mix(in_srgb,var(--color-accent-100)_20%,transparent)] scroll-fade-y focus-visible:scroll-fade-hide-top focus-visible:scroll-fade-hide-bottom"
+				className="-mx-4 -mb-4 min-h-0 flex-1 overflow-y-auto rounded-b-[inherit] px-4 pb-4 hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--color-accent-100),inset_0_0_6px_1px_color-mix(in_srgb,var(--color-accent-100)_20%,transparent)] scroll-fade-y focus-visible:scroll-fade-hide-top focus-visible:scroll-fade-hide-bottom"
 			>
 				<div role="status">
 					{matcher !== null && (
