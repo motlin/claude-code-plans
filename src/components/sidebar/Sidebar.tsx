@@ -811,13 +811,10 @@ function CollapsedSidebar({
 				data-focus-region="navigation"
 				aria-hidden={hovering ? undefined : true}
 				inert={!hovering}
-				className={`pointer-events-none fixed inset-y-0 left-0 flex h-dvh w-[288px] -translate-x-1 flex-col overflow-hidden rounded-none border-r-[0.5px] border-border bg-surface-popover ${panels ? "pt-[45px] touch:pt-[52px]" : "pt-12"} pb-1.5 opacity-0 shadow-[0_0_0_.5px_rgba(0,0,0,.06),0_4px_12px_rgba(0,0,0,.06),0_16px_40px_rgba(0,0,0,.08)] sidebar-peek-motion group-data-[hovering]/peek:pointer-events-auto group-data-[hovering]/peek:translate-x-0 group-data-[hovering]/peek:opacity-100`}
+				className={`pointer-events-none fixed inset-y-0 left-0 flex h-dvh w-[288px] -translate-x-1 flex-col overflow-hidden rounded-none border-r-[0.5px] border-border bg-surface-popover ${panels ? "pt-[45px] touch:pt-12" : "pt-12"} pb-1.5 opacity-0 shadow-[0_0_0_.5px_rgba(0,0,0,.06),0_4px_12px_rgba(0,0,0,.06),0_16px_40px_rgba(0,0,0,.08)] sidebar-peek-motion group-data-[hovering]/peek:pointer-events-auto group-data-[hovering]/peek:translate-x-0 group-data-[hovering]/peek:opacity-100`}
 			>
 				{/* The header row: the trigger stays put over the empty 32px slot, the wordmark sits beside it. */}
-				<div
-					data-testid="sidebar-peek-header"
-					className="absolute inset-x-0 top-0 flex h-11 touch:h-12 items-center px-2"
-				>
+				<div data-testid="sidebar-peek-header" className="absolute inset-x-0 top-0 flex h-11 items-center px-2">
 					<div className="w-8 shrink-0" />
 					<SidebarWordmark className="ml-1.5" />
 				</div>
