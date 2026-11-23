@@ -29,6 +29,7 @@ import {BackgroundTaskStopButton, STOPPING_LABEL} from "../background-task-stop-
 import {CommandTokens} from "../tool-renderers/bash-renderer";
 import {AnsiText} from "../tool-renderers/shared";
 import {Icon} from "../ui/icon";
+import {OverflowTooltip} from "../ui/overflow-tooltip";
 import {nonEmpty} from "../../lib/non-empty";
 import {type ArtifactWordLink, plainSegmentsText, taskDescriptionSegments} from "../../lib/task-description-segments";
 import {TaskDescriptionLinks, TEXT_LINK} from "../task-event-run-row";
@@ -327,7 +328,7 @@ function BackgroundTaskRow({
 		>
 			{expandable && <Caret open={expanded} />}
 			<span id={titleId} data-task-title="" className="flex min-w-0">
-				<span className="min-w-0 truncate">{title}</span>
+				<OverflowTooltip className="min-w-0">{title}</OverflowTooltip>
 			</span>
 			{!expandable && task.kind === "agent" && sessionId !== undefined && (
 				<ViewTranscriptButton task={task} title={title} sessionId={sessionId} />

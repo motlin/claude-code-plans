@@ -5236,7 +5236,7 @@ describe("Connectors card", () =>
 			).toStrictEqual(
 				{
 					slot: "flex min-w-0 flex-1 text-start text-primary",
-					label: "block min-w-0 overflow-x-clip text-ellipsis whitespace-nowrap flex-1",
+					label: "block overflow-x-clip text-ellipsis whitespace-nowrap min-w-0 flex-1",
 					clipped: ["Linear"],
 					fits: [],
 				},

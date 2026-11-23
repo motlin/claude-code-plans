@@ -109,7 +109,7 @@ function opener(title: string): HTMLElement
 		.getByText(
 			title,
 			{
-				selector: "[data-task-title] > span",
+				selector: "[data-task-title] span",
 			},
 		)
 		.closest<HTMLElement>("button[data-task-opener]");
@@ -342,6 +342,74 @@ describe("BackgroundTasksList", () =>
 
 		expect(document.querySelector("[data-task-opener]")?.firstElementChild?.className).toBe(
 			"flex min-w-0 flex-1 items-center gap-1 text-start text-body text-primary",
+		);
+	});
+
+	it("clips each title in upstream's OverflowTooltip, whose full-description tooltip opens only when the title is clipped", () =>
+	{
+		vi.useFakeTimers(
+			{
+				toFake: ["setTimeout", "clearTimeout"],
+			},
+		);
+		const long = "Serve the fabricated app on a port far too long for the pane";
+		vi.spyOn(HTMLElement.prototype, "scrollWidth", "get").mockImplementation(function (this: HTMLElement)
+		{
+			return this.textContent === long && this.parentElement?.closest("[data-task-title]") ? 200 : 0;
+		});
+		render(
+			<BackgroundTasksList
+				groups={
+				{
+					running: [
+						task(
+							{
+								id: "bfab1long",
+								description: long,
+							},
+						),
+						task(
+							{
+								id: "bfab1short",
+								description: "Lint",
+							},
+						),
+					],
+					finished: [],
+				}}
+			/>,
+		);
+		const text = (title: string) =>
+			screen.getByText(
+				title,
+				{
+					selector: "[data-task-title] span",
+				},
+			);
+		const hover = (title: string) =>
+		{
+			fireEvent.pointerEnter(text(title).parentElement!);
+			act(() =>
+			{
+				vi.advanceTimersByTime(300);
+			});
+			const tips = [...document.querySelectorAll('[role="tooltip"]')].map((tip) => tip.textContent);
+			fireEvent.pointerLeave(text(title).parentElement!);
+			return tips;
+		};
+
+		expect(
+			{
+				text: text(long).className,
+				clipped: hover(long),
+				fits: hover("Lint"),
+			},
+		).toStrictEqual(
+			{
+				text: "block overflow-x-clip text-ellipsis whitespace-nowrap min-w-0",
+				clipped: [long],
+				fits: [],
+			},
 		);
 	});
 
