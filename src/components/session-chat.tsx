@@ -2344,11 +2344,19 @@ function BackgroundNoticeRow({
 	const links = stepDescriptionSegments(description, taskType);
 	const navigates = opener !== null && links === undefined;
 	const underline = navigates ? ` ${AGENT_META_UNDERLINE}` : "";
+	const label = `${clause} · ${summary}`;
+	// Upstream's row title stands in for a native tooltip: the subject when the meta is cut, else the whole label.
+	const rowTitle =
+	{
+		"data-cds-row-title": summaryOnly ? label : detail,
+		"data-cds-row-title-when-cut": summaryOnly ? "label" : "subject",
+	};
+	const rowCut = useRowCut(true, summaryOnly ? label : detail);
 	const children = (
 		<>
 			{summaryOnly ? (
-				<span dir="auto" className={`min-w-0 truncate text-secondary${underline}`}>
-					{`${clause} · ${summary}`}
+				<span ref={rowCut} dir="auto" className={`min-w-0 truncate text-secondary${underline}`}>
+					{label}
 				</span>
 			) : (
 				<>
@@ -2357,8 +2365,9 @@ function BackgroundNoticeRow({
 					</span>
 					{description !== "" && (
 						<span
+							ref={rowCut}
+							data-cds-row-subject=""
 							className={`truncate min-w-0 text-primary${underline}`}
-							title={segments === undefined ? detail : undefined}
 						>
 							{links === undefined ? (
 								<bdi>{detail}</bdi>
@@ -2392,7 +2401,7 @@ function BackgroundNoticeRow({
 				data-background-notice=""
 				data-transcript-step-navigates=""
 				data-state={status === "completed" ? "done" : status}
-				title={summaryOnly ? undefined : detail}
+				{...rowTitle}
 				className={`group/tool flex min-w-0 items-center gap-1.5 text-body text-start cursor-pointer ${TURN_STATUS_ROW_FOCUS}`}
 				onClick={() =>
 				{
@@ -2418,6 +2427,7 @@ function BackgroundNoticeRow({
 		<div
 			data-record-index={notice.lineIndex}
 			data-background-notice=""
+			{...rowTitle}
 			className="flex min-w-0 items-center gap-1.5 text-body"
 		>
 			{children}

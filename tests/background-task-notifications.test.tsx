@@ -935,6 +935,9 @@ describe("task notifications in the transcript", () =>
 			{
 				children: noticeChildren(container),
 				title: notice?.children[1]?.getAttribute("title"),
+				subject: notice?.children[1]?.getAttribute("data-cds-row-subject"),
+				rowTitle: notice?.getAttribute("data-cds-row-title"),
+				whenCut: notice?.getAttribute("data-cds-row-title-when-cut"),
 				bdi: notice?.children[1]?.firstElementChild?.tagName,
 				dir: notice?.children[0]?.getAttribute("dir"),
 			},
@@ -954,7 +957,10 @@ describe("task notifications in the transcript", () =>
 						className: "shrink-0 text-danger-ink",
 					},
 				],
-				title: "Stream Worker logs to a scratch file: exit code 144",
+				title: null,
+				subject: "",
+				rowTitle: "Stream Worker logs to a scratch file: exit code 144",
+				whenCut: "subject",
 				bdi: "BDI",
 				dir: "auto",
 			},
@@ -972,16 +978,31 @@ describe("task notifications in the transcript", () =>
 			),
 		);
 		fireEvent.click(summaryButton(container, "Ran a command, finished a background task (1 stopped)"));
-		expect(noticeChildren(container)).toStrictEqual([
+		const notice = container.querySelector("[data-background-notice]");
+		expect(
 			{
-				text: "Background task · Serve production from the new worktree",
-				className: "min-w-0 truncate text-secondary",
+				children: noticeChildren(container),
+				rowTitle: notice?.getAttribute("data-cds-row-title"),
+				whenCut: notice?.getAttribute("data-cds-row-title-when-cut"),
+				subject: notice?.children[0]?.getAttribute("data-cds-row-subject"),
 			},
+		).toStrictEqual(
 			{
-				text: "Stopped",
-				className: "shrink-0 text-secondary",
+				children: [
+					{
+						text: "Background task · Serve production from the new worktree",
+						className: "min-w-0 truncate text-secondary",
+					},
+					{
+						text: "Stopped",
+						className: "shrink-0 text-secondary",
+					},
+				],
+				rowTitle: "Background task · Serve production from the new worktree",
+				whenCut: "label",
+				subject: null,
 			},
-		]);
+		);
 	});
 
 	it("draws upstream's stopped background-task step right after the TaskStop that ended an unnotified launch", () =>
@@ -1157,13 +1178,21 @@ describe("task notifications in the transcript", () =>
 			{
 				tag: notice?.tagName,
 				title: button?.getAttribute("title"),
+				rowTitle: button?.getAttribute("data-cds-row-title"),
+				whenCut: button?.getAttribute("data-cds-row-title-when-cut"),
+				subject: description?.getAttribute("data-cds-row-subject"),
+				descriptionTitle: description?.getAttribute("title"),
 				state: button?.getAttribute("data-state"),
 				underline: description?.className.split(" ").includes("[--_text-link-line:transparent]"),
 			},
 		).toStrictEqual(
 			{
 				tag: "BUTTON",
-				title: "Run the test suite",
+				title: null,
+				rowTitle: "Run the test suite",
+				whenCut: "subject",
+				subject: "",
+				descriptionTitle: null,
 				state: "done",
 				underline: true,
 			},
