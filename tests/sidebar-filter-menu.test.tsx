@@ -994,14 +994,13 @@ describe("sidebar Group and sort menu", () =>
 			{
 				badge: null,
 				titleChildren: [
-					"Archived one",
+					{
+						className: "",
+						text: "Archived one",
+					},
 					{
 						className: "sr-only",
 						text: " Archived",
-					},
-					{
-						className: "sr-only [[role=tooltip]_&]:hidden",
-						text: "",
 					},
 					{
 						className: "sr-only [[role=tooltip]_&]:hidden",
@@ -1101,8 +1100,8 @@ describe("sidebar Group and sort menu", () =>
 			]);
 			const box = container.querySelector<HTMLElement>('a[href="/session/l1"] .dframe-fade-label');
 			const text = box?.querySelector<HTMLElement>(":scope > span.inline-block");
-			// The title text sits in upstream's inner span.relative[data-attention].
-			const title = text?.querySelector(":scope > span.relative")?.firstChild;
+			// The title text sits in its own span inside upstream's span.relative[data-attention].
+			const title = text?.querySelector(":scope > span.relative > span")?.firstChild;
 			if (!box || !text || !title) throw new Error("no fade label");
 			box.getBoundingClientRect = () => new DOMRect(0, 0, 200, 20);
 			const range = document.createRange();

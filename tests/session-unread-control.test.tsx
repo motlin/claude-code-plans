@@ -3,7 +3,7 @@
 import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
 
-import {SessionRowStatusDot} from "../src/components/session-unread-control";
+import {SessionRowStatusDot, SidebarRowSrText} from "../src/components/session-unread-control";
 import type {SessionListItem} from "../src/lib/api/sessions";
 import type {SessionBucket} from "../src/lib/session-state";
 import {TOUCH_HIT} from "../src/lib/touch-reveal";
@@ -211,6 +211,78 @@ describe("SessionRowStatusDot", () =>
 			).className,
 		).toBe(
 			`flex cursor-pointer items-center justify-center rounded-full hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus ${TOUCH_HIT}`,
+		);
+	});
+});
+
+describe("SidebarRowSrText", () =>
+{
+	afterEach(() =>
+	{
+		cleanup();
+		document.getElementById("live-announcer")?.remove();
+	});
+
+	it("mounts upstream's role-less data-session-status span only while the row has a status, announcing each change politely", () =>
+	{
+		__testing.reset();
+		const shown = (container: HTMLElement) =>
+		{
+			const region = document.getElementById("live-announcer");
+			return {
+				spans: [...container.querySelectorAll("span")].map((span) => [
+					span.getAttribute("role"),
+					span.getAttribute("data-session-status"),
+					span.textContent,
+				]),
+				live:
+					region === null
+						? null
+						: [
+								region.getAttribute("aria-live"),
+								[...region.children].map((child) => [
+									child.getAttribute("data-announce-key"),
+									child.textContent,
+								]),
+							],
+			};
+		};
+		const {container, rerender} = render(<SidebarRowSrText session={listItem("blocked")} paneSelected={false} />);
+		const blocked = shown(container);
+		rerender(<SidebarRowSrText session={listItem("working")} paneSelected={false} />);
+		const working = shown(container);
+		rerender(<SidebarRowSrText session={listItem("done")} paneSelected={false} />);
+
+		expect(
+			{
+				blocked,
+				working,
+				done: shown(container),
+			},
+		).toStrictEqual(
+			{
+				blocked:
+				{
+					spans: [
+						[null, "", " Awaiting input"],
+						[null, null, " alpha · Connected"],
+					],
+					live: null,
+				},
+				working:
+				{
+					spans: [
+						[null, "", " Running"],
+						[null, null, " alpha · Connected"],
+					],
+					live: ["polite", [["session-status-session-test-100", " Running"]]],
+				},
+				done:
+				{
+					spans: [[null, null, " alpha · Connected"]],
+					live: ["polite", []],
+				},
+			},
 		);
 	});
 });

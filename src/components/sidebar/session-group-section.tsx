@@ -1612,7 +1612,7 @@ export function FadeLabel({
 					) : attention === "working" ? (
 						<WorkingTitle text={text} still={still} />
 					) : (
-						text
+						<span>{text}</span>
 					)}
 					{children}
 				</span>

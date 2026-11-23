@@ -205,8 +205,9 @@ describe("sidebar session list roving focus", () =>
 						name: "Click to mark as read",
 					},
 				).length,
-				unread: screen.getAllByRole("status").filter((status) => status.textContent === " Unread response")
-					.length,
+				unread: [...document.querySelectorAll("[data-session-status]")].filter(
+					(status) => status.textContent === " Unread response",
+				).length,
 			},
 		).toStrictEqual(
 			{

@@ -1,8 +1,10 @@
 import {Cpu, Laptop} from "lucide-react";
+import {useEffect, useRef} from "react";
 import type {SessionListItem} from "../lib/api/sessions";
 import {prGlyph} from "../lib/pr-status";
 import {sessionMenuReadState, type SessionMenuReadState} from "../lib/session-menu-items";
 import {sessionStateKindLabels} from "../lib/schema-choices";
+import {announce, clearAnnouncement} from "../lib/live-announcer";
 import {HEADLESS_HOST_LABEL} from "../lib/session-environment";
 import {isLiveSessionState, sessionRowIconKind} from "../lib/session-state";
 import {TOUCH_HIT} from "../lib/touch-reveal";
@@ -189,22 +191,66 @@ export function SidebarRowDecoration({
 }
 
 /**
+ * Upstream skips a row's status announcement while it sits in an inert or aria-hidden subtree, or is
+ * not visible (except below the fold, `[data-row-below]`).
+ */
+function rowAnnounceable(element: HTMLElement): boolean
+{
+	if (element.closest('[inert], [aria-hidden="true"]') !== null) return false;
+	if (element.closest("[data-row-below]") !== null) return true;
+	return (
+		typeof element.checkVisibility !== "function" ||
+		element.checkVisibility(
+			{
+				visibilityProperty: true,
+			},
+		)
+	);
+}
+
+/**
  * Upstream's `L_` screen-reader text, rendered inside the row title so it joins the link's
- * accessible name: a status region (" Awaiting input", " Error", " Running", " Unread response") and the
- * environment (" herdr · Connected", " claude-code-plans · Offline").
+ * accessible name: a status span (" Awaiting input", " Error", " Running", " Unread response"), unmounted
+ * when the row has none, and the environment (" herdr · Connected", " claude-code-plans · Offline").
+ * Status changes are read through the shared polite announcer, keyed per session.
  */
 export function SidebarRowSrText({session, paneSelected}: {session: SessionListItem; paneSelected: boolean})
 {
 	const {unseen, kind, showPrStatus} = useRowIconKind(session, paneSelected);
 	const srClass = "sr-only [[role=tooltip]_&]:hidden";
+	const status =
+		(kind === "error" ? SR_ROW_ERROR_LABEL : SR_ROW_STATUS_LABELS[sessionMenuReadState(session.bucket, unseen)]) ||
+		null;
+	const envRef = useRef<HTMLSpanElement>(null);
+	const announced = useRef(status);
+	const key = `session-status-${session.id}`;
+	useEffect(() =>
+	{
+		if (announced.current === status) return;
+		announced.current = status;
+		if (status === null)
+		{
+			clearAnnouncement(key);
+			return;
+		}
+		const element = envRef.current;
+		if (element !== null && rowAnnounceable(element)) announce(status, key);
+	}, [status, key]);
+	useEffect(
+		() => () =>
+		{
+			clearAnnouncement(key);
+		},
+		[key],
+	);
 	return (
 		<>
-			<span role="status" className={srClass} data-find-omitted="">
-				{kind === "error"
-					? SR_ROW_ERROR_LABEL
-					: SR_ROW_STATUS_LABELS[sessionMenuReadState(session.bucket, unseen)]}
-			</span>
-			<span className={srClass} data-find-omitted="">
+			{status !== null && (
+				<span className={srClass} data-find-omitted="" data-session-status="">
+					{status}
+				</span>
+			)}
+			<span ref={envRef} className={srClass} data-find-omitted="">
 				{rowEnvironmentText(session, showPrStatus)}
 			</span>
 		</>

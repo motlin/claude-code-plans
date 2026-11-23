@@ -550,8 +550,8 @@ describe("sidebar SessionGroups", () =>
 		expect(
 			{
 				href: blocked.getAttribute("href"),
-				blocked: within(blocked).getByRole("status").textContent,
-				working: within(rowOf(/^Working one/)).getByRole("status").textContent,
+				blocked: blocked.querySelector("[data-session-status]")?.textContent,
+				working: rowOf(/^Working one/).querySelector("[data-session-status]")?.textContent,
 				settled:
 				{
 					mark: within(rowOf(/^Completed older/)).queryByRole("img"),
@@ -2663,7 +2663,7 @@ describe("sidebar SessionGroups", () =>
 						label: mark?.getAttribute("aria-label") ?? null,
 						triangle: decoration?.querySelector("svg.lucide-triangle-alert") !== null,
 						dot: decoration?.querySelector(".status-dot")?.getAttribute("data-kind") ?? null,
-						srStatus: link.querySelector("[role=status]")?.textContent ?? null,
+						srStatus: link.querySelector("[data-session-status]")?.textContent ?? null,
 					},
 				];
 			}),
@@ -2834,11 +2834,21 @@ describe("sidebar SessionGroups", () =>
 			const link = screen.getAllByRole("link").find((node) => rowTitle(node) === title);
 			if (link === undefined) throw new Error(`no row ${title}`);
 			return [...link.querySelectorAll("[data-row-label] .relative > .sr-only[data-find-omitted]")].map(
-				(node) => [node.getAttribute("role"), node.textContent],
+				(node) => [node.getAttribute("role"), node.getAttribute("data-session-status"), node.textContent],
 			);
 		};
 		const environments = () =>
-			Object.fromEntries(FIXTURE.map((row) => [row.id, srOnlyOf(row.title)[1]?.[1] ?? null]));
+			Object.fromEntries(FIXTURE.map((row) => [row.id, srOnlyOf(row.title).at(-1)?.[2] ?? null]));
+		const titleSpanOf = (title: string) =>
+		{
+			const first = screen
+				.getAllByRole("link")
+				.find((node) => rowTitle(node) === title)
+				?.querySelector("[data-row-label] .relative")?.firstChild;
+			return first instanceof HTMLElement
+				? [first.tagName, first.attributes.length, first.childElementCount, first.textContent]
+				: null;
+		};
 		const terminalHosts: Record<string, string> =
 		{
 			b1: "herdr",
@@ -2898,19 +2908,19 @@ describe("sidebar SessionGroups", () =>
 					.getAttribute("href"),
 				awaiting: srOnlyOf("Blocked one"),
 				idle: srOnlyOf("Completed older"),
+				titleSpan: titleSpanOf("Blocked one"),
 				env: environments(),
 			},
 		).toStrictEqual(
 			{
 				href: "/session/b1",
 				awaiting: [
-					["status", " Awaiting input"],
-					[null, " herdr · Connected"],
+					[null, "", " Awaiting input"],
+					[null, null, " herdr · Connected"],
 				],
-				idle: [
-					["status", ""],
-					[null, " Remote Control · Connected"],
-				],
+				// Upstream unmounts the status span once the row has no status.
+				idle: [[null, null, " Remote Control · Connected"]],
+				titleSpan: ["SPAN", 0, 0, "Blocked one"],
 				env:
 				{
 					d1: " project-d1 · Offline",
@@ -3876,9 +3886,9 @@ describe("SessionGroups pending launch row", () =>
 			tag: main.tagName,
 			selected: main.getAttribute("data-selected"),
 			skeletons: main.querySelectorAll("[data-row-label] [data-cds=Skeleton][aria-hidden=true]").length,
-			statuses: within(first!)
-				.getAllByRole("status")
-				.map((status) => status.textContent),
+			statuses: [...first!.querySelectorAll("[role=status], [data-session-status]")].map(
+				(status) => status.textContent,
+			),
 			mark: first!.querySelector("[data-row-decoration] [role=img]")?.getAttribute("aria-label"),
 			menus: first!.querySelectorAll("[data-session-actions] button[aria-haspopup]").length,
 		};
@@ -4028,7 +4038,7 @@ describe("SessionGroups pending launch row", () =>
 					{
 						revealing: label().querySelectorAll("[data-revealing]").length,
 						graphemes: label().querySelectorAll("[aria-hidden=true] > span").length,
-						text: label().firstChild?.nodeType === Node.TEXT_NODE ? label().firstChild?.textContent : null,
+						title: label().firstElementChild?.outerHTML,
 					},
 				},
 			).toStrictEqual(
@@ -4043,7 +4053,7 @@ describe("SessionGroups pending launch row", () =>
 					{
 						revealing: 0,
 						graphemes: 0,
-						text: "Fix the flaky test",
+						title: "<span>Fix the flaky test</span>",
 					},
 				},
 			);
