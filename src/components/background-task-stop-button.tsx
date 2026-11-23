@@ -13,26 +13,24 @@ export const STOPPING_LABEL = "Stopping…";
 
 /**
  * Upstream's per-task Stop: a cds Button, size xs, iconOnly with the StopFilled glyph at sm (16px), `shrink-0`, busy while
- * the stop is in flight. The pane draws it secondary, the rail ghost with its tooltip on the inline-start side.
+ * the stop is in flight. The pane draws it secondary, the rail ghost; both open its tooltip on the left.
  * A double-click stops once (`detail <= 1`), and the press never reaches the row around it.
  */
 export function BackgroundTaskStopButton({
 	variant,
 	busy,
 	describedBy,
-	tooltipSide = "top",
 	onStop,
 }: {
 	variant: "secondary" | "ghost";
 	busy: boolean;
 	/** The row title's id, which upstream's button points `aria-describedby` at. */
 	describedBy?: string;
-	tooltipSide?: "top" | "left";
 	onStop: () => void;
 })
 {
 	return (
-		<Tooltip content={busy ? STOPPING_LABEL : STOP_TASK_LABEL} side={tooltipSide}>
+		<Tooltip content={busy ? STOPPING_LABEL : STOP_TASK_LABEL} side="left">
 			<button
 				type="button"
 				data-size="xs"

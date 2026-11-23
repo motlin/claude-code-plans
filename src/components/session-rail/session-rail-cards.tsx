@@ -1082,7 +1082,6 @@ function BackgroundTasksBody({
 									<BackgroundTaskStopButton
 										variant="ghost"
 										busy={stopping}
-										tooltipSide="left"
 										onStop={() =>
 										{
 											stopTask(task);

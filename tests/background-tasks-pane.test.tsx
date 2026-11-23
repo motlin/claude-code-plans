@@ -1461,8 +1461,13 @@ describe("BackgroundTasksList per-row Stop", () =>
 		);
 	}
 
-	it("puts a Stop after each running row's opener, described by the row's title, and none on finished rows", () =>
+	it("puts a Stop after each running row's opener, described by the row's title, with its tooltip on the left, and none on finished rows", () =>
 	{
+		vi.useFakeTimers(
+			{
+				toFake: ["setTimeout", "clearTimeout"],
+			},
+		);
 		const stop = vi.fn<(task: BackgroundTask) => void>();
 		render(
 			<BackgroundTasksList
@@ -1501,6 +1506,17 @@ describe("BackgroundTasksList per-row Stop", () =>
 				glyph: iconFontSize(16),
 			},
 		]);
+		fireEvent.pointerEnter(stopButtons()[0]!.parentElement!);
+		act(() =>
+		{
+			vi.advanceTimersByTime(300);
+		});
+		expect(
+			[...document.querySelectorAll('[role="tooltip"]')].map((tip) => [
+				tip.textContent,
+				tip.getAttribute("data-side"),
+			]),
+		).toStrictEqual([["Stop this task", "left"]]);
 	});
 
 	it("clears the Stop with pe-9.5 on a running row's opener, and not on a finished one", () =>
