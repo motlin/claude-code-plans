@@ -152,16 +152,21 @@ export function AskUserQuestionRenderer({toolCall}: ToolRendererProps)
 
 	// Upstream draws a pending question as its card, inline where the call is; it answers along the session's route.
 	// Docked above the composer, the session draws it there instead (the row may scroll out of the virtual window).
+	// Upstream hosts the inline card in its question slot, which find-in-page skips until the answer drops it.
 	if (isPending && questions !== null)
 	{
 		if (docked) return null;
-		return pendingQuestionCard(
-			{
-				toolUseId: toolCall.id,
-				questions,
-				ctx,
-				sent: sentNow,
-			},
+		return (
+			<div data-question-card-slot="" data-find-omitted="">
+				{pendingQuestionCard(
+					{
+						toolUseId: toolCall.id,
+						questions,
+						ctx,
+						sent: sentNow,
+					},
+				)}
+			</div>
 		);
 	}
 
@@ -217,8 +222,16 @@ export function AskUserQuestionRenderer({toolCall}: ToolRendererProps)
 			answer: entry.answer ?? (entry.unanswered === undefined ? "" : OUTCOME_LABEL[entry.unanswered]),
 			notes: notes.get(entry.question) ?? null,
 		}));
-		// The card that sent the answer stays mounted to draw the result in its sent receipt's node.
-		if (sentHereRef.current) return <QuestionCard draftKey={toolCall.id} questions={questions} answered={rows} />;
+		// The card that sent the answer stays mounted to draw the result in its sent receipt's node; its host div
+		// stays too, only losing the slot's markers.
+		if (sentHereRef.current)
+		{
+			return (
+				<div>
+					<QuestionCard draftKey={toolCall.id} questions={questions} answered={rows} />
+				</div>
+			);
+		}
 		return (
 			<QuestionReceipt
 				enters={receiptEntersRef.current ?? false}

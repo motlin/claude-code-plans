@@ -8,7 +8,7 @@ import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import {AskUserQuestionProvider} from "../src/components/ask-user-question-context";
 import {ApprovalSlot} from "../src/components/approval-slot";
 import {ApprovalClusterHost} from "../src/components/approval-cluster-host";
-import {ApprovalDockContext} from "../src/components/approval-dock-context";
+import {ApprovalDockContext, type ApprovalDock} from "../src/components/approval-dock-context";
 import {sessionApprovalSlotCard} from "../src/lib/approval-slot-card";
 import {PermissionCard} from "../src/components/permission-card";
 import {clearApprovalAnswered, useApprovalAnswered} from "../src/lib/answered-approvals";
@@ -3357,6 +3357,89 @@ describe("AskUserQuestionRenderer pending", () =>
 							selected: [0],
 						},
 					],
+				},
+			},
+		);
+	});
+	it("hosts the inline card in upstream's find-omitted question slot, which the dock and the answer drop", () =>
+	{
+		const inRow: ApprovalDock =
+		{
+			presentation: "dock",
+			dockSlot: document.body,
+			transcriptQuestionId: null,
+		};
+		const inDock: ApprovalDock =
+		{
+			...inRow,
+			transcriptQuestionId: call.id,
+		};
+		const tree = (toolCall: ClientToolCall, dock: ApprovalDock) => (
+			<ApprovalDockContext.Provider value={dock}>
+				<AskUserQuestionProvider
+					value={
+					{
+						answerRoute: "live-pane",
+						sessionId: "s-slot",
+						submitAnswer: async () =>
+						{
+						},
+					}}
+				>
+					<AskUserQuestionRenderer toolCall={toolCall} />
+				</AskUserQuestionProvider>
+			</ApprovalDockContext.Provider>
+		);
+		const omittedHost = (container: HTMLElement) =>
+		{
+			const root = container.querySelector("[data-approval-card-root]");
+			const host = root?.closest("[data-find-omitted]");
+			return host === undefined || host === null
+				? null
+				:
+					{
+						tag: host.tagName,
+						slot: host.getAttribute("data-question-card-slot"),
+						omitted: host.getAttribute("data-find-omitted"),
+					};
+		};
+		const view = render(tree(call, inRow));
+		const inline = omittedHost(view.container);
+		view.rerender(tree(call, inDock));
+		const docked = view.container.childElementCount;
+		view.rerender(
+			tree(
+				{
+					...call,
+					result: 'User has answered your questions: "Which test runner?"="Vitest", "Which features?"="Coverage". You can now continue with the user\'s answers in mind.',
+				},
+				inRow,
+			),
+		);
+
+		expect(
+			{
+				inline,
+				docked,
+				answered:
+				{
+					slots: view.container.querySelectorAll("[data-question-card-slot], [data-find-omitted]").length,
+					receipt: view.container.querySelector("[data-question-receipt]") !== null,
+				},
+			},
+		).toStrictEqual(
+			{
+				inline:
+				{
+					tag: "DIV",
+					slot: "",
+					omitted: "",
+				},
+				docked: 0,
+				answered:
+				{
+					slots: 0,
+					receipt: true,
 				},
 			},
 		);
