@@ -184,8 +184,11 @@ describe("Changes scope menu", () =>
 						name: /^Commits/,
 					},
 				).textContent,
+				itemContextMenuPrevented: !fireEvent.contextMenu(screen.getAllByRole("menuitemradio")[0]!),
+				popupContextMenuPrevented: !fireEvent.contextMenu(screen.getByRole("menu")),
+				menuOpen: screen.queryByRole("menu") !== null,
 			},
-		).toEqual(
+		).toStrictEqual(
 			{
 				radios: [
 					["All changesvs main", "true"],
@@ -193,6 +196,9 @@ describe("Changes scope menu", () =>
 					["Session edits", "false"],
 				],
 				commits: "Commits2",
+				itemContextMenuPrevented: true,
+				popupContextMenuPrevented: true,
+				menuOpen: true,
 			},
 		);
 	});

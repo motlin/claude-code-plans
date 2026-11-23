@@ -66,6 +66,7 @@ import
 	subscribeMarkChanges,
 } from "../../lib/diff-file-marks";
 import {asRecord} from "../../lib/narrow";
+import {SUPPRESS_NATIVE_MENU_POPUP_PROPS} from "../../lib/native-context-menu";
 import {loadChangesScope, saveChangesScope} from "../../lib/pane-layout";
 import type {ReviewFindingStatus} from "../../lib/report-findings";
 import type {ReviewFinding} from "../../lib/review-diff";
@@ -386,7 +387,7 @@ function ScopeButton({
 					</span>
 				</Tooltip>
 			</MenuTrigger>
-			<MenuContent>
+			<MenuContent popupProps={SUPPRESS_NATIVE_MENU_POPUP_PROPS}>
 				<MenuRadioGroup
 					value={git === null ? "session" : radioValue}
 					onValueChange={(value: unknown) =>
