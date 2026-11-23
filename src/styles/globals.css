@@ -1268,8 +1268,8 @@ html[data-interface-font="dyslexic"]
 	--upstream-fill-button-ghost-hover: #0000001a;
 	/* Upstream `--cds-fill-button-layer`: the `layers-*-fill-button-layer` gradient over a button paint. */
 	--upstream-fill-button-layer: #0000000e;
-	/* Upstream `--cds-fill-primary-layer`: the `layers-1-fill-primary-layer` press gradient over a primary paint. */
-	--upstream-fill-primary-layer: #0000001a;
+	/* Upstream `--cds-fill-primary-layer`: the `layers-1-fill-primary-layer` press gradient, a white 15% layer that lightens the #3c3c3c primary. */
+	--upstream-fill-primary-layer: #ffffff26;
 	/* Upstream `--cds-fizzy-lake-color-plain-secondary`: the message toolbar's button ink. */
 	--upstream-plain-secondary: #0009;
 	/* Upstream `--cds-text-warning` (pre-rollout yellow-600 / yellow-300). */
@@ -1430,7 +1430,7 @@ html[data-interface-font="dyslexic"]
 	--upstream-bg-neutral-hover: #ffffff13;
 	--upstream-fill-button-ghost-hover: #ffffff13;
 	--upstream-fill-button-layer: #ffffff13;
-	--upstream-fill-primary-layer: #ffffff26;
+	--upstream-fill-primary-layer: #0000001a;
 	--upstream-plain-secondary: #ffffff91;
 	--upstream-warning: #e49c06;
 	--upstream-text-primary: #ffffffed;

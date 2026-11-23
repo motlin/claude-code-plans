@@ -110,4 +110,23 @@ describe("fizzy-lake type tokens (upstream data-cds-fizzy-lake~=type)", () =>
 			},
 		);
 	});
+
+	it("--color-fill-primary-layer is unset pre-rollout, and upstream's #ffffff26 / #0000001a under fizzy-lake color", () =>
+	{
+		expect(
+			{
+				theme: token(block("@theme inline"), "--color-fill-primary-layer"),
+				base: token(block(":root"), "--upstream-fill-primary-layer"),
+				color: token(block(':root[data-cds-fizzy-lake~="color"]'), "--upstream-fill-primary-layer"),
+				dark: token(block(':root.dark[data-cds-fizzy-lake~="color"]'), "--upstream-fill-primary-layer"),
+			},
+		).toStrictEqual(
+			{
+				theme: "var(--upstream-fill-primary-layer)",
+				base: "initial",
+				color: "#ffffff26",
+				dark: "#0000001a",
+			},
+		);
+	});
 });
