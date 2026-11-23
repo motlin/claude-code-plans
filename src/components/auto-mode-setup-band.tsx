@@ -4,9 +4,9 @@ import {autoModeSetupQueryOptions} from "../lib/api/auto-mode-setup";
 import {homeDismissalsQueryOptions, postHomeDismissal} from "../lib/api/home-dismissals";
 import {type AutoSetupBandInput, autoSetupBandEligible} from "../lib/auto-mode-setup-band";
 import {readTryAutoCoachSeenAt} from "../lib/try-auto-coach";
-import {cdsButtonClass} from "./ui/cds-button";
+import {ApprovalActionButton} from "./approval-action-button";
+import {NoticeBanner} from "./notice-banner";
 import {Icon} from "./ui/icon";
-import {BandShell} from "./usage-pace-banner";
 
 const SETUP_COMMAND = "/auto-mode-setup";
 
@@ -37,14 +37,13 @@ export function AutoModeSetupBand({
 	}, [phase, eligible, markSeen]);
 	if (phase === "closed" || (phase === "waiting" && !eligible)) return null;
 	return (
-		<BandShell
-			icon={<Icon name="Trust" size="sm" className="text-muted-as-secondary" />}
-			actions={
-				<span className="flex h-[1lh] shrink-0 items-center">
-					<button
-						type="button"
-						aria-label="Start"
-						className={`${cdsButtonClass("secondary")} shrink-0`}
+		// Upstream `ET` → `Sf` with kind "notice": the plain `yf` path, a neutral cds Banner card.
+		<div role="status" aria-live="polite" className="w-full band-enter">
+			<NoticeBanner
+				icon={<Icon name="Trust" size="auto" />}
+				action={
+					<ApprovalActionButton
+						variant="secondary"
 						onClick={() =>
 						{
 							setPhase("closed");
@@ -52,18 +51,20 @@ export function AutoModeSetupBand({
 						}}
 					>
 						Start
-					</button>
+					</ApprovalActionButton>
+				}
+				onDismiss={() =>
+				{
+					setPhase("closed");
+				}}
+			>
+				<span className="flex flex-wrap items-baseline gap-x-2.5 gap-y-0.75">
+					<span className="min-w-0">
+						Auto mode works better when it knows your environment. Takes about a minute.
+					</span>
 				</span>
-			}
-			onDismiss={() =>
-			{
-				setPhase("closed");
-			}}
-		>
-			<span className="min-w-0 text-primary">
-				Auto mode works better when it knows your environment. Takes about a minute.
-			</span>
-		</BandShell>
+			</NoticeBanner>
+		</div>
 	);
 }
 

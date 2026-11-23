@@ -108,7 +108,7 @@ const BAND_SHELL_CLASS =
  * wrapping body whose words share one baseline, an optional actions group that wraps under the words on a narrow
  * dock, and an optional Dismiss slot.
  */
-export function BandShell({
+function BandShell({
 	icon,
 	children,
 	actions,

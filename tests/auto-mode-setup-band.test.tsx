@@ -49,50 +49,47 @@ function renderBand(input: AutoSetupBandInput | null = ELIGIBLE)
 
 describe("AutoModeSetupBand", () =>
 {
-	it("draws upstream's notice band shell with a Start action and a Dismiss slot", () =>
+	it("draws upstream's neutral cds Banner card with the Trust icon, a secondary Start and a Dismiss", () =>
 	{
 		const {container} = renderBand();
 		const root = childAt(container, 0);
-		const [iconSlot, body, dismissSlot] = [childAt(root, 0), childAt(root, 1), childAt(root, 2)];
+		const card = childAt(root, 0);
+		const [iconSlot, body, dismissSlot] = [childAt(card, 0), childAt(card, 1), childAt(card, 2)];
 		const [words, actions] = [childAt(body, 0), childAt(body, 1)];
 		const wordsRow = childAt(words, 0);
-		const startSlot = childAt(actions, 0);
+		const start = childAt(actions, 0);
 		expect(
 			{
-				root: [root.getAttribute("role"), root.getAttribute("aria-live"), root.className],
-				iconSlot: [iconSlot.className, childAt(iconSlot, 0).getAttribute("class")],
-				body: body.className,
-				words: [words.className, wordsRow.className, childAt(wordsRow, 0).className, words.textContent],
-				actions: [
-					actions.className,
-					startSlot.className,
-					childAt(startSlot, 0).getAttribute("aria-label"),
-					actions.textContent,
+				root: [root.getAttribute("role"), root.getAttribute("aria-live"), root.className, root.children.length],
+				card: [
+					card.getAttribute("data-cds"),
+					card.getAttribute("data-banner-variant"),
+					card.getAttribute("data-composer-keyline"),
+					card.getAttribute("role"),
 				],
-				dismiss: [dismissSlot.className, childAt(dismissSlot, 0).getAttribute("aria-label")],
+				icon: [iconSlot.className, childAt(iconSlot, 0).getAttribute("class")],
+				words: [wordsRow.className, childAt(wordsRow, 0).className, words.textContent],
+				start: [
+					start.getAttribute("data-cds"),
+					start.getAttribute("aria-label"),
+					start.textContent,
+					actions.children.length,
+				],
+				dismiss: childAt(dismissSlot, 0).getAttribute("aria-label"),
+				oldShell: container.querySelectorAll(".bg-alpha-1").length,
 			},
 		).toStrictEqual(
 			{
-				root: [
-					"status",
-					"polite",
-					"flex gap-[5px] w-full min-h-[40px] p-[8px] rounded-r7 bg-alpha-1 items-start py-[calc((40px-1lh)/2)] text-body usage-band-enter",
+				root: ["status", "polite", "w-full band-enter", 1],
+				card: ["Banner", "neutral", "glyph", null],
+				icon: [
+					"flex min-h-[1lh] shrink-0 items-center ms-[4px] -me-[4px] text-secondary",
+					"lucide lucide-shield-check",
 				],
-				iconSlot: ["flex h-[1lh] shrink-0 items-center", "lucide lucide-shield-check text-muted-as-secondary"],
-				body: "flex min-w-0 flex-1 flex-wrap gap-x-[8px] gap-y-[8px] items-start",
-				words: [
-					"min-w-0 max-w-full flex-auto",
-					"flex flex-wrap items-baseline gap-x-2.5 gap-y-0.75",
-					"min-w-0 text-primary",
-					MESSAGE,
-				],
-				actions: [
-					"flex min-w-0 max-w-full shrink-0 flex-wrap items-start gap-x-[8px] gap-y-[8px]",
-					"flex h-[1lh] shrink-0 items-center",
-					"Start",
-					"Start",
-				],
-				dismiss: ["ms-1.25 flex h-[1lh] shrink-0 items-center", "Dismiss"],
+				words: ["flex flex-wrap items-baseline gap-x-2.5 gap-y-0.75", "min-w-0", MESSAGE],
+				start: ["Button", null, "Start", 1],
+				dismiss: "Dismiss",
+				oldShell: 0,
 			},
 		);
 	});
