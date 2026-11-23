@@ -30,7 +30,7 @@ const BAR_GAP = 8;
 const EDGE_INSET = 12;
 /** Upstream `Yl`: how far the selection may scroll before the bar gives up. */
 const HIDE_AFTER_SCROLL = 100;
-/** Upstream's side chat excerpt cap, shared by Reply. */
+/** Upstream's side chat excerpt cap, shared by Quote. */
 const EXCERPT_MAX_LENGTH = 1500;
 
 const HOST_CLASS =
@@ -209,7 +209,7 @@ function useAnyMenuOpen(active: boolean): boolean
 
 /**
  * Upstream's transcript selection bar (`ZS`/`Ql`/`Hs`): a floating
- * "Start a side chat · Reply" pair above a transcript selection.
+ * "Start a side chat · Quote" pair above a transcript selection.
  */
 export function TranscriptSelectionBar({
 	sessionId,
@@ -265,13 +265,13 @@ export function TranscriptSelectionBar({
 			inlineReply
 				?
 					{
-						label: "Reply",
+						label: "Quote",
 						shortcut: "enter",
 						run: openReply,
 					}
 				:
 					{
-						label: "Reply",
+						label: "Quote",
 						run: ({text}) =>
 							attachContext(
 								sessionId,

@@ -330,7 +330,7 @@ describe("⇧⌘L with a transcript selection", () =>
 
 describe("selection bar in the transcript", () =>
 {
-	it("shows Reply over a transcript selection", () =>
+	it("shows Quote over a transcript selection", () =>
 	{
 		vi.useFakeTimers();
 		const rect =
@@ -376,6 +376,6 @@ describe("selection bar in the transcript", () =>
 		Reflect.deleteProperty(Range.prototype, "getClientRects");
 		Reflect.deleteProperty(Range.prototype, "getBoundingClientRect");
 
-		expect(labels).toStrictEqual(["Reply"]);
+		expect(labels).toStrictEqual(["Quote"]);
 	});
 });

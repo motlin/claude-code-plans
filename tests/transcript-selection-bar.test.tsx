@@ -270,7 +270,7 @@ describe("transcript selection hook", () =>
 		).toStrictEqual(
 			{
 				before: null,
-				labels: ["Start a side chat", "Reply"],
+				labels: ["Start a side chat", "Quote"],
 			},
 		);
 	});
@@ -653,7 +653,7 @@ describe("transcript selection bar", () =>
 		select("Hermit crabs");
 		advance(250);
 
-		const prevented = !fireEvent.mouseDown(button("Reply"));
+		const prevented = !fireEvent.mouseDown(button("Quote"));
 
 		expect(prevented).toBe(true);
 	});
@@ -665,10 +665,10 @@ describe("transcript selection bar", () =>
 		select("Hermit crabs");
 		advance(250);
 
-		expect(labels()).toStrictEqual(["Send to side chat", "Reply"]);
+		expect(labels()).toStrictEqual(["Send to side chat", "Quote"]);
 	});
 
-	it("offers only Reply without a side chat", () =>
+	it("offers only Quote without a side chat", () =>
 	{
 		renderBar(false);
 		select("Hermit crabs");
@@ -681,7 +681,7 @@ describe("transcript selection bar", () =>
 			},
 		).toStrictEqual(
 			{
-				labels: ["Reply"],
+				labels: ["Quote"],
 				separator: null,
 			},
 		);
@@ -697,13 +697,13 @@ describe("transcript selection bar", () =>
 		expect(labels()).toStrictEqual(["Start a side chat"]);
 	});
 
-	it("with inline reply off, Reply attaches the trimmed selection as an Excerpt, focuses the composer and clears the selection", () =>
+	it("with inline reply off, Quote attaches the trimmed selection as an Excerpt, focuses the composer and clears the selection", () =>
 	{
 		renderBar(true, false);
 		select("Hermit crabs ");
 		advance(250);
 
-		fireEvent.click(button("Reply"));
+		fireEvent.click(button("Quote"));
 
 		expect(
 			{
@@ -727,14 +727,14 @@ describe("transcript selection bar", () =>
 		);
 	});
 
-	it("Reply truncates a long selection to 1500 characters", () =>
+	it("Quote truncates a long selection to 1500 characters", () =>
 	{
 		const long = "x".repeat(1600);
 		render(<HarnessWithText text={long} />);
 		select(long);
 		advance(250);
 
-		fireEvent.click(button("Reply"));
+		fireEvent.click(button("Quote"));
 		fireEvent.click(
 			screen.getByRole(
 				"button",
@@ -926,7 +926,7 @@ function openCard(text = "Hermit crabs"): void
 	renderBar();
 	select(text);
 	advance(250);
-	fireEvent.click(button("Reply"));
+	fireEvent.click(button("Quote"));
 }
 
 describe("transcript selection bar, inline reply (__gb__554343014)", () =>
@@ -941,7 +941,7 @@ describe("transcript selection bar, inline reply (__gb__554343014)", () =>
 		renderBar();
 		select("Hermit crabs");
 		advance(250);
-		const on = button("Reply").getAttribute("aria-keyshortcuts");
+		const on = button("Quote").getAttribute("aria-keyshortcuts");
 		cleanup();
 		renderBar(true, false);
 		select("Hermit crabs");
@@ -950,7 +950,7 @@ describe("transcript selection bar, inline reply (__gb__554343014)", () =>
 		expect(
 			{
 				on,
-				off: button("Reply").getAttribute("aria-keyshortcuts"),
+				off: button("Quote").getAttribute("aria-keyshortcuts"),
 			},
 		).toStrictEqual(
 			{
