@@ -758,7 +758,9 @@ export function PermissionCard({
 							disabled={!enabled && sent !== "deny"}
 							onClick={() => void decide("deny")}
 						>
-							<span data-approval-digit="1">Deny</span>
+							<span className="min-w-0 [unicode-bidi:plaintext] truncate" data-approval-digit="1">
+								Deny
+							</span>
 						</ApprovalActionButton>
 					</span>
 					<div data-approval-allow className="flex min-w-0 flex-wrap items-start gap-sm">
@@ -770,7 +772,9 @@ export function PermissionCard({
 								disabled={!enabled && sent !== "allow"}
 								onClick={allowed(() => void decide("allow"))}
 							>
-								<span data-approval-digit="2">Allow once</span>
+								<span className="min-w-0 [unicode-bidi:plaintext] truncate" data-approval-digit="2">
+									Allow once
+								</span>
 							</ApprovalActionButton>
 						) : menuItems.length === 0 ? (
 							withAllowReason(
@@ -783,7 +787,9 @@ export function PermissionCard({
 									disabled={(!enabled && sent !== "allow") || readHeld}
 									onClick={allowed(() => void decide("allow"))}
 								>
-									<span data-approval-digit="2">Allow once</span>
+									<span className="min-w-0 [unicode-bidi:plaintext] truncate" data-approval-digit="2">
+										Allow once
+									</span>
 									<Shortcut keys="cmd+enter" className={APPROVAL_ACTION_SHORTCUT_CLASS} />
 								</ApprovalActionButton>,
 							)

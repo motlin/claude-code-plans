@@ -2996,7 +2996,7 @@ describe("PermissionCard", () =>
 		);
 	});
 
-	it("counts upstream's live digits on the root (3 with a persistent option, either lead), and none on a deny-first or read-only card; the labels stay 1/2", () =>
+	it("counts upstream's live digits on the root (3 with a persistent option, either lead), and none on a deny-first or read-only card; the labels stay 1/2 and plain-button labels truncate like upstream", () =>
 	{
 		const facts = (setup: () => ReturnType<typeof renderCard>) =>
 		{
@@ -3008,6 +3008,7 @@ describe("PermissionCard", () =>
 				labels: [...root.querySelectorAll<HTMLElement>("[data-approval-digit]")].map((label) => [
 					label.dataset["approvalDigit"],
 					label.textContent,
+					label.className,
 				]),
 			};
 			unmount();
@@ -3022,9 +3023,10 @@ describe("PermissionCard", () =>
 				},
 			);
 		};
+		const truncates = "min-w-0 [unicode-bidi:plaintext] truncate";
 		const deniesFirst = [
-			["1", "Deny"],
-			["2", "Allow once"],
+			["1", "Deny", truncates],
+			["2", "Allow once", truncates],
 		];
 		expect(
 			{
@@ -3056,14 +3058,17 @@ describe("PermissionCard", () =>
 				leadsOnce:
 				{
 					root: "3",
-					labels: deniesFirst,
+					labels: [
+						["1", "Deny", truncates],
+						["2", "Allow once", ""],
+					],
 				},
 				leadsAlways:
 				{
 					root: "3",
 					labels: [
-						["1", "Deny"],
-						["2", "Always allow"],
+						["1", "Deny", truncates],
+						["2", "Always allow", ""],
 					],
 				},
 				denyFirst:
