@@ -236,7 +236,7 @@ describe("CodePageHeader sticky", () =>
 				title="Artifacts"
 				sticky={
 				{
-					box: "mx-auto w-full max-w-5xl px-2 md:px-8",
+					box: "mx-auto w-full px-md md:px-8 max-w-5xl",
 				}}
 			/>,
 		);
@@ -297,7 +297,7 @@ describe("CodePageHeader sticky", () =>
 				header: "@container flex flex-col sm:-mt-1",
 				// The sentinel (so the band) rises over RootTopRow's 36px (48px phone) spacer and pads it back, so the pinned band keeps
 				// upstream's whitespace above the title (its 64px title row) instead of pinning the title flush at the top.
-				box: "mx-auto w-full max-w-5xl px-2 md:px-8 pt-9 max-sm:pt-12 pb-6",
+				box: "mx-auto w-full px-md md:px-8 max-w-5xl pt-9 max-sm:pt-12 pb-6",
 				band: "sticky top-0",
 				bandZ: "20",
 				bandTop: "",
@@ -421,7 +421,7 @@ describe("CodePageHeader sticky", () =>
 					title="Artifacts"
 					sticky={
 					{
-						box: "mx-auto w-full max-w-5xl px-2 md:px-8",
+						box: "mx-auto w-full px-md md:px-8 max-w-5xl",
 					}}
 				/>
 			</PanelsOff>,
@@ -473,7 +473,7 @@ describe("CodePageHeader sticky", () =>
 				header: "@container flex flex-col sm:-mt-1",
 				// The sentinel (so the band) rises over RootTopRow's 36px (48px phone) spacer and pads it back, so the pinned band keeps
 				// upstream's whitespace above the title (its 64px title row) instead of pinning the title flush at the top.
-				box: "mx-auto w-full max-w-5xl px-2 md:px-8 pt-9 max-sm:pt-12 pb-6",
+				box: "mx-auto w-full px-md md:px-8 max-w-5xl pt-9 max-sm:pt-12 pb-6",
 				band: "sticky top-0 bg-page",
 				bandZ: "20",
 				sentinel: "h-0 -mt-9 max-sm:-mt-12",

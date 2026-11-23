@@ -606,7 +606,7 @@ describe("AppShellFallback", () =>
 				grid: true,
 				gridOffset: ["pt-7"],
 				gutter: "",
-				box: "mx-auto flex sm:-mt-1 w-full max-w-5xl flex-col px-2 md:px-8",
+				box: "mx-auto flex sm:-mt-1 w-full max-w-5xl flex-col px-md md:px-8",
 				composer: null,
 				sessionSkeleton: null,
 			},

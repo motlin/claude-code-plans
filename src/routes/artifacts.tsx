@@ -396,7 +396,7 @@ function ArtifactsEmptyState({view}: {view: ArtifactView})
 }
 
 /** Upstream's cds Page content box (`mx-auto w-full px-md md:px-8 max-w-5xl`), shared by the sticky header and the list. */
-const ARTIFACTS_BOX_CLASS = "mx-auto w-full max-w-5xl px-2 md:px-8";
+const ARTIFACTS_BOX_CLASS = "mx-auto w-full px-md md:px-8 max-w-5xl";
 
 /** Upstream's Owner/Type multi-pick summary: "Any" (or "Anyone"), the one label, or "{n} picked". */
 function pickedSummary<T extends string>(picked: readonly T[], labels: Record<T, string>, none: string): string

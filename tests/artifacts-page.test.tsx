@@ -988,9 +988,9 @@ describe("artifacts route", () =>
 					"pointer-events-none shrink-0",
 					"pointer-events-none max-w-full shrink-0",
 					"sticky top-0",
-					"mx-auto w-full max-w-5xl px-2 md:px-8 flex flex-col pb-12 pt-1",
+					"mx-auto w-full px-md md:px-8 max-w-5xl flex flex-col pb-12 pt-1",
 				],
-				headerBox: "mx-auto w-full max-w-5xl px-2 md:px-8 pt-9 max-sm:pt-12 md:pt-0 pb-6 md:pb-2",
+				headerBox: "mx-auto w-full px-md md:px-8 max-w-5xl pt-9 max-sm:pt-12 md:pt-0 pb-6 md:pb-2",
 			},
 		);
 	});
@@ -1047,8 +1047,8 @@ describe("artifacts route", () =>
 			).toStrictEqual(
 				{
 					top: "-80px",
-					headerBox: "mx-auto w-full max-w-5xl px-2 md:px-8 pt-9 max-sm:pt-12 md:pt-0 pb-6 md:pb-2",
-					content: "mx-auto w-full max-w-5xl px-2 md:px-8 flex flex-col pb-12 pt-5",
+					headerBox: "mx-auto w-full px-md md:px-8 max-w-5xl pt-9 max-sm:pt-12 md:pt-0 pb-6 md:pb-2",
+					content: "mx-auto w-full px-md md:px-8 max-w-5xl flex flex-col pb-12 pt-5",
 				},
 			);
 		}
