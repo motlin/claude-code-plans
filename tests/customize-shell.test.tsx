@@ -4038,6 +4038,7 @@ describe("customize first-run card in the dialog", () =>
 			text: notice.textContent,
 			button: within(notice).getByRole("button").textContent,
 			skeleton: screen.queryByTestId("customize-section-skeleton"),
+			ring: notice.className.split(" ").filter((name) => name.startsWith("shadow-")),
 		};
 		fireEvent.click(
 			within(notice).getByRole(
@@ -4062,6 +4063,7 @@ describe("customize first-run card in the dialog", () =>
 					text: "Couldn\u2019t load your plugins.Try again",
 					button: "Try again",
 					skeleton: null,
+					ring: ["shadow-[inset_0_0_0_1px_var(--upstream-border-warning)]"],
 				},
 				pluginReads: 2,
 				alert: null,

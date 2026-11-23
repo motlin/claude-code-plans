@@ -621,6 +621,8 @@ html[data-interface-font="dyslexic"]
 	--upstream-fill-danger-hover: #e34948;
 	/* Upstream --cds-role-warning-100 (--cds-yellow-100) / --cds-role-danger-100 (--cds-red-100). */
 	--upstream-bg-warning: #f9dca4;
+	/* Upstream `--cds-border-warning`; no local yellow ramp, so the fizzy-lake value. */
+	--upstream-border-warning: #fbb3154a;
 	--upstream-bg-danger: #fad6d6;
 	/* Upstream's share overlay on a warning meter: palette yellow-150 (dark: yellow-100). */
 	--upstream-usage-share-warning: rgb(249 201 103);
@@ -1110,6 +1112,7 @@ html[data-interface-font="dyslexic"]
 	--accent-900: hsl(210 55.9% 24.6%);
 	/* Upstream dark --cds-role-warning-800 (--cds-yellow-800) / --cds-role-danger-800 (--cds-red-800). */
 	--upstream-bg-warning: #311a00;
+	--upstream-border-warning: #fbb31527;
 	--upstream-bg-danger: #3c0e0e;
 	--upstream-usage-share-warning: rgb(249 220 164);
 
@@ -1406,6 +1409,8 @@ html[data-interface-font="dyslexic"]
 	--menu-danger-fill: #dc3c3d;
 	/* Upstream `--cds-bg-warning` / `--cds-bg-danger` (usage meter tracks) and `--cds-bg-tint-yellow`. */
 	--upstream-bg-warning: #fbb31529;
+	/* Upstream `--cds-border-warning` (the warning Notice ring, shadow-ring-warning). */
+	--upstream-border-warning: #fbb3154a;
 	--upstream-bg-danger: #dc3c3d1f;
 	--warning-tint: #fbb31529;
 	/* Upstream `--cds-bg-tint-violet` / `--cds-bg-pro`, the same in both modes. */
@@ -1470,6 +1475,7 @@ html[data-interface-font="dyslexic"]
 	--upstream-fill-secondary-hover: #ffffff37;
 	--upstream-fill-secondary-ring: transparent;
 	--upstream-bg-warning: #fbb31514;
+	--upstream-border-warning: #fbb31527;
 	--warning-tint: #fbb31514;
 	/* Upstream dark shadow-panel: its inset ring is --cds-ring-color = --cds-border. */
 	--menu-shadow: inset 0 0 0 1px #ffffff0a, 0 8px 24px rgba(0, 0, 0, 0.32), 0 2px 6px rgba(0, 0, 0, 0.2);
