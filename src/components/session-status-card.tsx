@@ -265,6 +265,7 @@ export function LiveSessionStatusCard({sessionId}: {sessionId: string})
 						homePath: info.data?.homePath ?? null,
 						additionalDirectories: info.data?.additionalDirectories ?? [],
 						mcpStatuses: info.data?.mcpStatuses ?? null,
+						dataFlowIncompleteCodes: info.data?.dataFlowIncompleteCodes ?? null,
 						email: account?.email ?? null,
 						planDetail: account?.planDetail ?? null,
 						organizationName: account?.organizationName ?? null,

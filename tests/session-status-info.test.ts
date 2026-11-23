@@ -92,6 +92,22 @@ describe("readSessionStatusInfo", () =>
 				"{not json",
 				JSON.stringify(
 					{
+						type: "data-flow-incomplete",
+						v: 1,
+						sessionId: "s-1",
+						codes: [1],
+					},
+				),
+				JSON.stringify(
+					{
+						type: "data-flow-incomplete",
+						v: 1,
+						sessionId: "s-1",
+						codes: [9, 4],
+					},
+				),
+				JSON.stringify(
+					{
 						type: "attachment",
 						uuid: "d-1",
 						attachment:
@@ -164,6 +180,7 @@ describe("readSessionStatusInfo", () =>
 					["sentry", "connected"],
 					["imcp", "failed"],
 				],
+				dataFlowIncompleteCodes: [9, 4],
 			},
 		);
 	});
@@ -188,6 +205,7 @@ describe("readSessionStatusInfo", () =>
 				homePath: home,
 				additionalDirectories: [],
 				mcpStatuses: null,
+				dataFlowIncompleteCodes: null,
 			},
 		);
 	});

@@ -19,6 +19,7 @@ export type StatusRowId =
 	| "folder"
 	| "extraFolders"
 	| "mcp"
+	| "dataFlow"
 	| "account"
 	| "organization";
 
@@ -60,6 +61,8 @@ export interface StatusSources
 	additionalDirectories: readonly string[];
 	/** The session's MCP servers as `[name, status]`; null when unknown, which drops the row. */
 	mcpStatuses: ReadonlyArray<readonly [string, string]> | null;
+	/** The newest data-flow-incomplete record's codes; null drops the row. Local-only: upstream has no such row. */
+	dataFlowIncompleteCodes: readonly number[] | null;
 	email: string | null;
 	planDetail: string | null;
 	organizationName: string | null;
@@ -164,7 +167,13 @@ function sessionRows(sources: StatusSources): StatusRow[]
 	return rows.filter((row) => row !== null);
 }
 
-function environmentRows({cwd, homePath, additionalDirectories, mcpStatuses}: StatusSources): StatusRow[]
+function environmentRows({
+	cwd,
+	homePath,
+	additionalDirectories,
+	mcpStatuses,
+	dataFlowIncompleteCodes,
+}: StatusSources): StatusRow[]
 {
 	const rows: StatusRow[] = [];
 	if (cwd)
@@ -192,6 +201,17 @@ function environmentRows({cwd, homePath, additionalDirectories, mcpStatuses}: St
 				label: "MCP servers",
 				value: mcpStatusSummary(mcpStatuses),
 				fullValue: mcpStatusSummary(mcpStatuses, Infinity),
+			},
+		);
+	if (dataFlowIncompleteCodes !== null)
+		rows.push(
+			{
+				id: "dataFlow",
+				label: "Data-flow ledger",
+				value:
+					dataFlowIncompleteCodes.length > 0
+						? `Incomplete (codes ${dataFlowIncompleteCodes.join(", ")})`
+						: "Incomplete",
 			},
 		);
 	return rows;

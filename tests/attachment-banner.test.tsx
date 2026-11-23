@@ -1153,7 +1153,7 @@ describe("AttachmentBanner", () =>
 			).toStrictEqual([["Surfaced tools (2)", "mcp__docs__guide: Docs guides.\nmcp__docs__write"]]);
 		});
 
-		it("lists the deferred tools available again, able to run again, and removed by a block", () =>
+		it("lists the deferred tools available again, able to run again, with replaced definitions, and removed by a block", () =>
 		{
 			expect(
 				detailSections(
@@ -1163,11 +1163,13 @@ describe("AttachmentBanner", () =>
 						removedByBlock: ["mcp__docs__batch", "mcp__docs__guide"],
 						readdedNames: ["FetchInboxMessage", "SendUserFile"],
 						runsAgainNames: ["ReadNotifications"],
+						replacedNames: ["mcp__docs__update"],
 					},
 				),
 			).toStrictEqual([
 				["Available again (2)", "FetchInboxMessage\nSendUserFile"],
 				["Can run again (1)", "ReadNotifications"],
+				["Definitions replaced (1)", "mcp__docs__update"],
 				["Removed by block (2)", "mcp__docs__batch\nmcp__docs__guide"],
 			]);
 		});

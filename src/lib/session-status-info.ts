@@ -39,6 +39,7 @@ interface TranscriptFacts
 	forked: boolean;
 	cwd: string | null;
 	mcpStatuses: Array<[string, McpServerStatus]> | null;
+	dataFlowIncompleteCodes: number[] | null;
 }
 
 /** The fields of a deferred-tools delta the MCP status fold reads. Lenient: other keys are stripped. */
@@ -67,6 +68,20 @@ const McpStatusDeltaRecord = z.object(
 	},
 );
 
+/** A `data-flow-incomplete` marker; a record without codes reads as no codes. Lenient: other keys are stripped. */
+const DataFlowIncompleteRecord = z.object(
+	{
+		type: z.literal("data-flow-incomplete"),
+		codes: z.array(z.number()).optional(),
+	},
+);
+
+function dataFlowIncompleteCodes(line: string): number[] | null
+{
+	const parsed = DataFlowIncompleteRecord.safeParse(parseRecord(line));
+	return parsed.success ? (parsed.data.codes ?? []) : null;
+}
+
 function mcpStatusDelta(line: string): McpStatusDelta | null
 {
 	const parsed = McpStatusDeltaRecord.safeParse(parseRecord(line));
@@ -75,7 +90,8 @@ function mcpStatusDelta(line: string): McpStatusDelta | null
 
 /**
  * One pass over the transcript, parsing only the lines that can matter: up to the first record
- * with a timestamp, any that mention `forkedFrom`, and the last that mentions `version`.
+ * with a timestamp, any that mention `forkedFrom`, deferred-tools deltas, data-flow-incomplete
+ * markers (the newest wins), and the last that mentions `version`.
  */
 async function readTranscriptFacts(transcriptPath: string): Promise<TranscriptFacts>
 {
@@ -83,6 +99,7 @@ async function readTranscriptFacts(transcriptPath: string): Promise<TranscriptFa
 	let forked = false;
 	const versionLines: string[] = [];
 	const deltas: McpStatusDelta[] = [];
+	let incompleteCodes: number[] | null = null;
 	try
 	{
 		await forEachTranscriptLine(transcriptPath, (line) =>
@@ -101,6 +118,10 @@ async function readTranscriptFacts(transcriptPath: string): Promise<TranscriptFa
 			{
 				const delta = mcpStatusDelta(line);
 				if (delta !== null) deltas.push(delta);
+			}
+			if (line.includes('"data-flow-incomplete"'))
+			{
+				incompleteCodes = dataFlowIncompleteCodes(line) ?? incompleteCodes;
 			}
 			if (line.includes('"version"')) versionLines.push(line);
 			// Only the newest few candidates are ever parsed.
@@ -124,6 +145,7 @@ async function readTranscriptFacts(transcriptPath: string): Promise<TranscriptFa
 		forked,
 		cwd: stringField(first, "cwd"),
 		mcpStatuses: deltas.length > 0 ? sessionMcpStatuses(deltas) : null,
+		dataFlowIncompleteCodes: incompleteCodes,
 	};
 }
 
@@ -146,8 +168,8 @@ async function readAdditionalDirectories(path: string): Promise<string[]>
 }
 
 /**
- * The `/status` card's server-side inputs: the transcript's CLI version, start, fork, folder and MCP
- * server statuses, and the additional folders the user, project and local settings grant, de-duplicated in that order.
+ * The `/status` card's server-side inputs: the transcript's CLI version, start, fork, folder, MCP
+ * server statuses and data-flow-incomplete codes, and the additional folders the user, project and local settings grant, de-duplicated in that order.
  */
 export async function readSessionStatusInfo(
 	transcriptPath: string,

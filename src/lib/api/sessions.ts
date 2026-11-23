@@ -462,6 +462,8 @@ export const SessionStatusInfoResponse = z.strictObject(
 		mcpStatuses: z
 			.array(z.tuple([z.string(), z.enum(["connected", "needs-auth", "pending", "failed"])]))
 			.nullable(),
+		/** The codes on the newest `data-flow-incomplete` record; null when the ledger was never marked incomplete. */
+		dataFlowIncompleteCodes: z.array(z.number()).nullable(),
 	},
 );
 export type SessionStatusInfo = z.infer<typeof SessionStatusInfoResponse>;

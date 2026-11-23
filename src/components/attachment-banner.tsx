@@ -336,6 +336,7 @@ function attachmentDetailSections(
 		const surfaced = attachment.surfacedDefinitions ?? [];
 		const readded = attachment.readdedNames ?? [];
 		const runsAgain = attachment.runsAgainNames ?? [];
+		const replaced = attachment.replacedNames ?? [];
 		const removedByBlock = attachment.removedByBlock ?? [];
 		const failed = attachment.failedMcpServers ?? [];
 		const needsAuth = attachment.needsAuthMcpServers ?? [];
@@ -356,6 +357,8 @@ function attachmentDetailSections(
 				readded,
 			),
 			...linesSection(`Can run again (${runsAgain.length})`, runsAgain),
+			// Still present: the CLI swapped these tools' definitions mid-session.
+			...linesSection(`Definitions replaced (${replaced.length})`, replaced),
 			...linesSection(`Removed by block (${removedByBlock.length})`, removedByBlock),
 			...linesSection(`Failed MCP servers (${failed.length})`, failed.map(failedServerLine)),
 			...linesSection(`Needs sign-in (${needsAuth.length})`, needsAuth),
