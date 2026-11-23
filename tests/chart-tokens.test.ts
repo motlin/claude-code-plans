@@ -62,8 +62,8 @@ describe("chart tokens", () =>
 	{
 		expect(tokens(":root")).toStrictEqual(
 			{
-				"--chart-reference": "#898781",
-				"--chart-muted": "#c3c2b7",
+				"--chart-reference": "#878787",
+				"--chart-muted": "#c2c2c2",
 				"--chart-reference-tint": "hsl(from var(--chart-reference) h s l / 15%)",
 				...FIZZY_PALETTE,
 			},
@@ -74,8 +74,8 @@ describe("chart tokens", () =>
 	{
 		expect(tokens(".dark")).toStrictEqual(
 			{
-				"--chart-reference": "#97958d",
-				"--chart-muted": "#5f5e5a",
+				"--chart-reference": "#959595",
+				"--chart-muted": "#5e5e5e",
 				"--chart-reference-tint": "hsl(from var(--chart-reference) h s l / 15%)",
 				...FIZZY_PALETTE,
 			},

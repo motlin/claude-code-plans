@@ -948,8 +948,8 @@ html[data-interface-font="dyslexic"]
 	/* Upstream --cds-ring-hairline: one device pixel (DPR media blocks below). */
 	--sb-field-hairline: 1px;
 	/* Upstream --cds-chart-* (light: reference gray-400, muted gray-200) */
-	--chart-reference: #898781;
-	--chart-muted: #c3c2b7;
+	--chart-reference: #878787;
+	--chart-muted: #c2c2c2;
 	--chart-reference-tint: hsl(from var(--chart-reference) h s l / 15%);
 	/* categorical and status read live from .cds-root 2026-11-07 (fizzy-lake color on): the fizzy ramp's blue-400,
 	   orange-400, aqua-400, yellow-350, magenta-400, green-500, violet-350, red-350; status green-400, yellow-200,
@@ -1218,8 +1218,8 @@ html[data-interface-font="dyslexic"]
 	/* Upstream claude.ai/code — approval card (dark) */
 	--approval-card-shadow: 0 0 0 1px hsl(0 0% 100% / 0.1), 0 1px 2px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.3);
 	/* Upstream --cds-chart-* (dark: reference gray-350, muted gray-550) */
-	--chart-reference: #97958d;
-	--chart-muted: #5f5e5a;
+	--chart-reference: #959595;
+	--chart-muted: #5e5e5e;
 	--chart-reference-tint: hsl(from var(--chart-reference) h s l / 15%);
 	/* Same fizzy ramp as light (shared-styles dump 2026-11-06): blue-400 .. red-350; status green-400 .. red-450. */
 	--chart-categorical-1: #338ced;
