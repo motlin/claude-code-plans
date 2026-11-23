@@ -2863,6 +2863,8 @@ const DataFlowEntrySchema = z
 						id: z.string().optional(),
 						transport: z.string().optional(),
 						plugin_id_hash: z.string().optional(),
+						// Observed only as null so far, on claude_ai_connector servers.
+						directory_id: z.union([z.string(), z.null()]).optional(),
 					},
 				)
 				.strict()
