@@ -22,6 +22,7 @@ import
 	ARTIFACT_OPENED_RANGES,
 	ARTIFACT_OWNERS,
 	ARTIFACT_SHARINGS,
+	ARTIFACT_SORTS,
 	ARTIFACT_TYPE_KEYS,
 	artifactInView,
 	artifactMatchesSearch,
@@ -84,8 +85,8 @@ export interface ArtifactsSearch
 	tab?: ArtifactTabParam;
 	/** Comma list of Type keys (`docs,other`); a single `?type=docs` reads the same. */
 	type?: string;
-	/** The non-default sort; "Last opened" omits it. */
-	sort?: "edited";
+	/** The URL's own sort; the Sort by radio omits it for "Last opened", but an explicit `?sort=opened` is kept. */
+	sort?: ArtifactSort;
 	/** Comma list of `me` / `others`. */
 	owner?: string;
 	opened?: Exclude<ArtifactOpenedRange, "any">;
@@ -128,10 +129,10 @@ export const Route = createFileRoute("/artifacts")(
 						{
 							type: types.join(","),
 						}),
-				...(search["sort"] === "edited"
+				...(isOneOf(search["sort"], ARTIFACT_SORTS)
 					?
 						{
-							sort: "edited" as const,
+							sort: search["sort"],
 						}
 					: {}),
 				...(owners.length === 0
@@ -244,7 +245,7 @@ function filtersFromSearch(search: ArtifactsSearch): ArtifactFilters
 
 function sortFromSearch(search: ArtifactsSearch): ArtifactSort | undefined
 {
-	return search.sort === "edited" ? "edited" : undefined;
+	return isOneOf(search.sort, ARTIFACT_SORTS) ? search.sort : undefined;
 }
 
 function searchFromState({
@@ -256,7 +257,8 @@ function searchFromState({
 	search: string;
 	view: ArtifactView;
 	filters: ArtifactFilters;
-	sort: ArtifactSort;
+	/** The URL sort to write; undefined omits it. */
+	sort: ArtifactSort | undefined;
 }): ArtifactsSearch
 {
 	const tab = tabParamFromView(view);
@@ -279,12 +281,12 @@ function searchFromState({
 				{
 					type: filters.types.join(","),
 				}),
-		...(sort === "edited"
-			?
+		...(sort === undefined
+			? {}
+			:
 				{
-					sort: "edited" as const,
-				}
-			: {}),
+					sort,
+				}),
 		...(filters.owners.length === 0
 			? {}
 			:
@@ -512,7 +514,7 @@ function ArtifactsPage()
 			search: string;
 			view: ArtifactView;
 			filters: ArtifactFilters;
-			sort: ArtifactSort;
+			sort: ArtifactSort | undefined;
 		}>,
 	)
 	{
@@ -525,7 +527,7 @@ function ArtifactsPage()
 						view,
 						filters,
 						// A filter write keeps the URL's own sort, never copying the remembered one into it.
-						sort: urlSort ?? "opened",
+						sort: urlSort,
 						...next,
 					},
 				),
@@ -615,9 +617,10 @@ function ArtifactsPage()
 							{
 								writeArtifactsSort(next);
 								setSortLanded(true);
+								// Upstream's setSort deletes the param on "opened".
 								updateSearch(
 									{
-										sort: next,
+										sort: next === "opened" ? undefined : next,
 									},
 								);
 							}}
@@ -754,10 +757,10 @@ function ArtifactFilterMenu({
 							value={sort}
 							onValueChange={(next: unknown) =>
 							{
-								if (next === "opened" || next === "edited") onSort(next);
+								if (isOneOf(next, ARTIFACT_SORTS)) onSort(next);
 							}}
 						>
-							{(["opened", "edited"] as const).map((option) => (
+							{ARTIFACT_SORTS.map((option) => (
 								<MenuRadioItem key={option} value={option}>
 									{SORT_LABELS[option]}
 								</MenuRadioItem>

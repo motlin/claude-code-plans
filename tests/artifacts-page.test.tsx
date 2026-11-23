@@ -3133,6 +3133,83 @@ describe("artifacts route", () =>
 		);
 	});
 
+	it("lets an explicit ?sort=opened beat the stored Last edited pick and keeps it through filter picks until the Sort by radio drops it", async () =>
+	{
+		storage.removeItem(ARTIFACTS_LAYOUT_STORAGE_KEY);
+		storage.setItem(ARTIFACTS_SORT_STORAGE_KEY, "edited");
+		const router = await renderArtifactsPage("/artifacts?sort=opened", seedDocsOpenedRecently);
+		const initialCards = cards();
+
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Filter and sort",
+				},
+			),
+		);
+		const menu = await screen.findByRole("menu");
+		const initialRow = menuRows(menu)[0];
+		fireEvent.click(
+			within(menu).getByRole(
+				"menuitemcheckbox",
+				{
+					name: "Pinned",
+				},
+			),
+		);
+		await waitFor(() =>
+		{
+			expect(
+				{
+					...router.state.location.search,
+				},
+			).toStrictEqual(
+				{
+					sort: "opened",
+					pinned: 1,
+				},
+			);
+		});
+
+		storage.removeItem(ARTIFACTS_SORT_STORAGE_KEY);
+		const submenu = await openSubmenu(menu, "Sort by");
+		fireEvent.click(
+			within(submenu).getByRole(
+				"menuitemradio",
+				{
+					name: "Last opened",
+				},
+			),
+		);
+		await waitFor(() =>
+		{
+			expect(
+				{
+					...router.state.location.search,
+				},
+			).toStrictEqual(
+				{
+					pinned: 1,
+				},
+			);
+		});
+
+		expect(
+			{
+				initialCards,
+				initialRow,
+				stored: storage.getItem(ARTIFACTS_SORT_STORAGE_KEY),
+			},
+		).toStrictEqual(
+			{
+				initialCards: ["Quarterly plan", "Asap Ladder Queue", "household-cash.html"],
+				initialRow: "menuitem:Sort by=Last opened",
+				stored: "opened",
+			},
+		);
+	});
+
 	it("follows a Sort by pick made in another tab while the URL has no sort", async () =>
 	{
 		storage.removeItem(ARTIFACTS_LAYOUT_STORAGE_KEY);

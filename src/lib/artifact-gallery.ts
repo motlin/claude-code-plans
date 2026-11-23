@@ -233,8 +233,9 @@ export function artifactInView(audience: string | null, view: ArtifactView): boo
 	return (audience === "owner") === (view === "yours");
 }
 
-/** Upstream's Sort by: "Last opened" (the default) or "Last edited". */
-export type ArtifactSort = "opened" | "edited";
+/** Upstream's Sort by options (`LA`): "Last opened" (the default) or "Last edited". */
+export const ARTIFACT_SORTS = ["opened", "edited"] as const;
+export type ArtifactSort = (typeof ARTIFACT_SORTS)[number];
 
 interface OpenedArtifact extends DatedArtifact
 {
@@ -257,7 +258,7 @@ export const ARTIFACTS_SORT_STORAGE_KEY = "artifacts-gallery-sort";
 
 function isArtifactSort(value: unknown): value is ArtifactSort
 {
-	return value === "opened" || value === "edited";
+	return ARTIFACT_SORTS.some((option) => option === value);
 }
 
 function parseStoredSort(raw: string | null): ArtifactSort | undefined
