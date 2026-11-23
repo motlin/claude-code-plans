@@ -266,7 +266,7 @@
 	border: 0;
 	border-radius: 6px;
 	background: transparent;
-	color: var(--color-t6);
+	color: var(--color-primary);
 	cursor: pointer;
 }
 
@@ -278,7 +278,6 @@
 
 .markdown :global(.markdown-code-copy) button:hover
 {
-	color: var(--color-primary);
 	background: hsl(0 0% 4.3137% / 0.06);
 }
 

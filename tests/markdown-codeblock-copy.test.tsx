@@ -164,7 +164,7 @@ describe("fenced code block copy button markup", () =>
 					border: "0",
 					"border-radius": "6px",
 					background: "transparent",
-					color: "var(--color-t6)",
+					color: "var(--color-primary)",
 					cursor: "pointer",
 				},
 				icon:

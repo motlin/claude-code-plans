@@ -286,7 +286,7 @@ describe("MermaidFence (upstream EpitaxyMermaidFence)", () =>
 				iconOnly: "",
 				cssTooltip: null,
 				className:
-					"inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-r5 border-0 bg-transparent p-0 text-t6 hover:bg-fill-ghost-hover stacks:hover:bg-fill-button-ghost-hover hover:text-primary [&_svg]:size-4",
+					"inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-r5 border-0 bg-transparent p-0 text-primary hover:bg-fill-ghost-hover stacks:hover:bg-fill-button-ghost-hover [&_svg]:size-4",
 				icon: "true",
 				tooltip: "View source",
 			},

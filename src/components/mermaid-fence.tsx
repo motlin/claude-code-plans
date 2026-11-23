@@ -36,9 +36,10 @@ const MERMAID_RENDER_FAILED_NOTE = "This diagram couldn\u2019t be drawn. Showing
 
 /**
  * Upstream's toolbar button: cds `Button` ghost, iconOnly, size base, the same component as the code card's Copy,
- * so it takes the Copy button's look (24px, 6px radius, t6 ink lifting to primary on the ghost hover).
+ * so it takes the Copy button's look: 24px, 6px radius, text-primary ink (Button ghost), and the `auto` icon size, which
+ * Button size base resolves to sm (16px) at default density and md (20px) only at comfortable.
  */
-const TOOLBAR_BUTTON_CLASS = `inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-r5 border-0 bg-transparent p-0 text-t6 ${CDS_GHOST_HOVER} hover:text-primary [&_svg]:size-4`;
+const TOOLBAR_BUTTON_CLASS = `inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-r5 border-0 bg-transparent p-0 text-primary ${CDS_GHOST_HOVER} [&_svg]:size-4`;
 
 /** Upstream `ve`. */
 const MOTION = "duration-base ease-out motion-reduce:transition-none";
