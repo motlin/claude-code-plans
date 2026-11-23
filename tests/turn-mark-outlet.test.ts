@@ -5,6 +5,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import
 {
 	cardHoldsTranscriptTail,
+	isTurnMarkEmpty,
 	markedRowBelowTailSlot,
 	moveInto,
 	OUTLET_LATE_NOTICE_MS,
@@ -13,6 +14,7 @@ import
 	REOPEN_WINDOW_MS,
 	markClaimHolds,
 	TurnMarkOutletStore,
+	watchHomeLeftEmpty,
 } from "../src/lib/turn-mark-outlet";
 
 describe("markedRowBelowTailSlot, as upstream's pf", () =>
@@ -510,6 +512,92 @@ describe("moveInto, as upstream's yf", () =>
 			{
 				parent: true,
 				focused: true,
+			},
+		);
+	});
+});
+
+describe("isTurnMarkEmpty and watchHomeLeftEmpty, as upstream's mp/hp/gp", () =>
+{
+	function html(markup: string): HTMLElement
+	{
+		const host = document.createElement("div");
+		host.innerHTML = markup;
+		return host.firstElementChild as HTMLElement;
+	}
+
+	it("counts hidden elements and text-free display:contents trees as empty", () =>
+	{
+		expect(
+			[
+				"<div hidden>text</div>",
+				'<div class="contents"></div>',
+				'<div class="contents"><span hidden>x</span><div class="contents"></div></div>',
+				'<div class="contents">text</div>',
+				'<div class="contents"><span>x</span></div>',
+				"<div></div>",
+			].map((markup) => isTurnMarkEmpty(html(markup))),
+		).toStrictEqual([true, true, true, false, false, false]);
+	});
+
+	it("marks the home and the transcript tail while the home's row is left empty, and clears both on dispose", async () =>
+	{
+		document.body.innerHTML = `
+			<div data-autoscroll-container>
+				<div data-row><div id="home" class="contents"></div><div id="sibling" class="contents"></div></div>
+				<div data-transcript-tail><div id="outlet"></div></div>
+			</div>`;
+		const home = document.getElementById("home")!;
+		const sibling = document.getElementById("sibling")!;
+		const tail = document.querySelector("[data-transcript-tail]")!;
+		const state = () => (
+		{
+			home: home.hasAttribute("data-turn-mark-left-empty"),
+			tail: tail.hasAttribute("data-row-left-empty"),
+		});
+		const flushObserver = async () =>
+			new Promise((resolve) =>
+			{
+				setTimeout(resolve, 0);
+			});
+		const dispose = watchHomeLeftEmpty(home, document.getElementById("outlet")!);
+		const empty = state();
+		sibling.textContent = "now visible";
+		await flushObserver();
+		const filled = state();
+		sibling.textContent = "";
+		await flushObserver();
+		const emptiedAgain = state();
+		dispose();
+		expect(
+			{
+				empty,
+				filled,
+				emptiedAgain,
+				disposed: state(),
+			},
+		).toStrictEqual(
+			{
+				empty:
+				{
+					home: true,
+					tail: true,
+				},
+				filled:
+				{
+					home: false,
+					tail: false,
+				},
+				emptiedAgain:
+				{
+					home: true,
+					tail: true,
+				},
+				disposed:
+				{
+					home: false,
+					tail: false,
+				},
 			},
 		);
 	});

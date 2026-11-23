@@ -117,6 +117,66 @@ export function moveInto(node: Node, parent: Node): void
 	}
 }
 
+/**
+ * Upstream c01e7498d `mp`: whether `el` draws nothing: hidden, or a `display: contents` wrapper with no text of its own
+ * whose children all draw nothing.
+ */
+export function isTurnMarkEmpty(el: Element): boolean
+{
+	return (
+		el.hasAttribute("hidden") ||
+		(el.classList.contains("contents") &&
+			Array.from(el.childNodes).every((node) => node.nodeType !== Node.TEXT_NODE) &&
+			Array.from(el.children).every(isTurnMarkEmpty))
+	);
+}
+
+/**
+ * Upstream c01e7498d `hp`: mark the home left empty, and the transcript tail while this or any other home in the
+ * transcript is left empty.
+ */
+function markHomeLeftEmpty(home: Element, tail: Element | null, empty: boolean): void
+{
+	home.toggleAttribute("data-turn-mark-left-empty", empty);
+	if (tail === null) return;
+	const container = tail.closest("[data-autoscroll-container]") ?? tail.ownerDocument;
+	tail.toggleAttribute(
+		"data-row-left-empty",
+		empty || container.querySelector("[data-turn-mark-left-empty]") !== null,
+	);
+}
+
+/**
+ * Upstream c01e7498d `gp`: while a row is carried out to `outlet`, keep its `home` marked when everything beside it
+ * draws nothing, so the transcript collapses the emptied row's gap. Returns the disposer, which clears the marks.
+ * Unlike upstream, the tail is found once up front: by dispose time the outlet may already be detached, and a tail
+ * looked up from it then would keep a stale mark.
+ */
+export function watchHomeLeftEmpty(home: Element, outlet: Element): () => void
+{
+	const tail = outlet.closest("[data-transcript-tail]");
+	const update = () =>
+	{
+		markHomeLeftEmpty(home, tail, Array.from(home.parentElement?.children ?? []).every(isTurnMarkEmpty));
+	};
+	update();
+	const win = home.ownerDocument.defaultView ?? window;
+	const observer = new win.MutationObserver(update);
+	observer.observe(
+		home.parentElement ?? home,
+		{
+			childList: true,
+			subtree: true,
+			attributeFilter: ["hidden"],
+		},
+	);
+	return () =>
+	{
+		observer.disconnect();
+		markHomeLeftEmpty(home, tail, false);
+	};
+}
+
 export interface OpenOutlet
 {
 	el: HTMLElement;

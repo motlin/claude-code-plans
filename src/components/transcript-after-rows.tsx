@@ -54,10 +54,19 @@ export function TranscriptAfterRows({
 	if (beforeCards == null && cards == null && turnBox == null && chrome === undefined) return null;
 	return (
 		<div data-testid="transcript-after-rows">
-			<div data-testid="transcript-before-cards" {...CONTINUES_TURN} className={PART_CLASS}>
+			<div
+				data-testid="transcript-before-cards"
+				data-transcript-before-cards=""
+				{...CONTINUES_TURN}
+				className={PART_CLASS}
+			>
 				{beforeCards}
 			</div>
-			<div className="flex flex-col [reading-flow:flex-visual]">
+			{/* Upstream's tail: a turn box below a row left empty by a carried turn mark starts gap-xs below it */}
+			<div
+				data-transcript-tail=""
+				className="flex flex-col [reading-flow:flex-visual] [[data-transcript-before-cards]:empty+&[data-row-left-empty]_[data-turn-box]]:!mt-xs"
+			>
 				<div
 					data-testid="transcript-trailing-slot"
 					data-find-omitted=""

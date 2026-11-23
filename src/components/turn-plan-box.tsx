@@ -71,6 +71,7 @@ function TurnBoxShell({
 	return (
 		<div
 			ref={ref}
+			data-turn-box=""
 			className="mt-[var(--chat-turn-gap,15px)] epitaxy-root motion-safe:animate-fade-in text-body text-primary break-words overflow-clip rounded-card shadow-[inset_0_0_0_1px_var(--card-outline)] [&:not(:has(li:not([hidden]_li),button:not([hidden]_button):not([data-turn-dismiss]_button),p:not([hidden]_p)))]:hidden"
 		>
 			{children}

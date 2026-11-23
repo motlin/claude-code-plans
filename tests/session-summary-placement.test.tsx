@@ -288,6 +288,7 @@ async function renderSessionPage(
 	seed(queryClient);
 	seedSession(queryClient, SESSION_ID, data, subagents, extraRecords);
 	await renderInRouter(queryClient, <SessionPage sessionId={SESSION_ID} requestedPane={requestedPane} />);
+	return queryClient;
 }
 
 /** The session route's shape: one SessionPage instance that follows the URL's id, beside a sidebar row link. */
@@ -1870,28 +1871,70 @@ describe("SessionPage dock composition", () =>
 	});
 	it("carries the in-flight row into the outlet below the plan box, as upstream's plan claimer", async () =>
 	{
-		await renderSessionPage(detail, [], seedWorking, planTurnRecords(true));
+		const queryClient = await renderSessionPage(detail, [], seedWorking, planTurnRecords(true));
 		await flush();
 		const outlet = document.querySelector("[data-turn-mark-outlet]");
+		const home = document.querySelector("[data-turn-mark-home]");
+		const tail = outlet?.closest("[data-transcript-tail]");
+		const carriedState =
+		{
+			carried: outlet?.querySelector("[data-turn-mark-box] [data-tool-row] [data-cds=WorkingMark]") !== null,
+			lineBesideOutlet:
+				document.querySelector('[data-testid="code-working-line"]')?.parentElement === outlet?.parentElement,
+			quiet: document.querySelector('[data-testid="code-working-line"]')?.getAttribute("data-quiet"),
+			// Upstream's `gp`: the emptied home is marked, its row's turn gap collapses, and the plan box's top gap
+			// drops to gap-xs through the tail's rule.
+			homeLeftEmpty: home?.hasAttribute("data-turn-mark-left-empty"),
+			rowGapCollapses: home?.closest("[data-grouped-tool-row]")?.classList.contains(ROW_LEFT_EMPTY_COLLAPSE),
+			tailLeftEmpty: tail?.hasAttribute("data-row-left-empty"),
+			tailClass: tail?.className,
+			tailAfterBeforeCards: tail?.previousElementSibling?.hasAttribute("data-transcript-before-cards"),
+			planBoxMarked:
+				screen.getByTestId("transcript-tail-slot").querySelector(":scope > [data-turn-box]") !== null,
+		};
+		act(() =>
+		{
+			seedSessionState(queryClient, "idle");
+		});
+		await flush();
 		expect(
 			{
-				carried: outlet?.querySelector("[data-turn-mark-box] [data-tool-row] [data-cds=WorkingMark]") !== null,
-				lineBesideOutlet:
-					document.querySelector('[data-testid="code-working-line"]')?.parentElement ===
-					outlet?.parentElement,
-				quiet: document.querySelector('[data-testid="code-working-line"]')?.getAttribute("data-quiet"),
+				carriedState,
+				homeAfter:
+				{
+					leftEmpty: home?.hasAttribute("data-turn-mark-left-empty"),
+					tailLeftEmpty: tail?.hasAttribute("data-row-left-empty"),
+					rowBackHome: home?.parentElement?.querySelector("[data-turn-mark-box] [data-tool-row]") !== null,
+				},
 			},
 		).toStrictEqual(
 			{
-				carried: true,
-				lineBesideOutlet: true,
-				quiet: "true",
+				carriedState:
+				{
+					carried: true,
+					lineBesideOutlet: true,
+					quiet: "true",
+					homeLeftEmpty: true,
+					rowGapCollapses: true,
+					tailLeftEmpty: true,
+					tailClass:
+						"flex flex-col [reading-flow:flex-visual] [[data-transcript-before-cards]:empty+&[data-row-left-empty]_[data-turn-box]]:!mt-xs",
+					tailAfterBeforeCards: true,
+					planBoxMarked: true,
+				},
+				homeAfter:
+				{
+					leftEmpty: false,
+					tailLeftEmpty: false,
+					rowBackHome: true,
+				},
 			},
 		);
 	});
-	function seedWorking(queryClient: QueryClient)
+	const ROW_LEFT_EMPTY_COLLAPSE =
+		"[&:has([data-turn-mark-left-empty]):not(:has([data-record-index]~[data-record-index]))]:pb-0";
+	function seedSessionState(queryClient: QueryClient, state: "working" | "idle")
 	{
-		seedUsage(queryClient);
 		queryClient.setQueryData(
 			recentSessionsInfiniteQueryOptions().queryKey,
 			{
@@ -1900,7 +1943,7 @@ describe("SessionPage dock composition", () =>
 						sessions: [
 							{
 								id: SESSION_ID,
-								state: "working",
+								state,
 							},
 						],
 						nextCursor: null,
@@ -1909,6 +1952,11 @@ describe("SessionPage dock composition", () =>
 				pageParams: [null],
 			} as never,
 		);
+	}
+	function seedWorking(queryClient: QueryClient)
+	{
+		seedUsage(queryClient);
+		seedSessionState(queryClient, "working");
 	}
 	function pendingCallRecords(name: string, input: Record<string, unknown>): Record<string, unknown>[]
 	{

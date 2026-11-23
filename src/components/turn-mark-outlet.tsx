@@ -14,7 +14,7 @@ import {createPortal} from "react-dom";
 
 import {releaseEndFollow} from "../lib/jump-to-message";
 import {pressOrKeyReleasesPin} from "../lib/transcript-follow-pin";
-import {moveInto, type OpenOutlet, type TurnMarkOutletStore} from "../lib/turn-mark-outlet";
+import {moveInto, type OpenOutlet, type TurnMarkOutletStore, watchHomeLeftEmpty} from "../lib/turn-mark-outlet";
 import {findScrollContainer} from "./scroll-container";
 import {noSubscribe, TurnMarkOutletContext, useTurnMarkStore} from "./turn-mark-context";
 
@@ -88,7 +88,10 @@ export function TurnMarkOutlet({className, underPlan = false}: {className?: stri
 	);
 }
 
-/** Upstream `bf`: keep the box in the open outlet while it is connected, else at home. */
+/**
+ * Upstream `bf` (c01e7498d `_p`): keep the box in the open outlet while it is connected, else at home. While carried out,
+ * the home is watched so its emptied row collapses its gap (`gp`).
+ */
 function BoxPlacer({
 	box,
 	outlet,
@@ -101,8 +104,11 @@ function BoxPlacer({
 {
 	useLayoutEffect(() =>
 	{
-		const parent = (outlet?.el.isConnected === true ? outlet.el : null) ?? homeRef.current;
-		if (parent !== null) moveInto(box, parent);
+		const home = homeRef.current;
+		const parent = (outlet?.el.isConnected === true ? outlet.el : null) ?? home;
+		if (parent === null) return undefined;
+		moveInto(box, parent);
+		return home === null || parent === home ? undefined : watchHomeLeftEmpty(home, parent);
 	}, [box, outlet, homeRef]);
 	return null;
 }

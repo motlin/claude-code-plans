@@ -638,8 +638,8 @@ describe("SessionChat turn spacing", () =>
 				itemGap: "10px",
 				turnWrappers: [
 					"group relative",
-					"group/msg flex flex-col w-full pb-[var(--chat-turn-gap)] empty:pb-0",
-					"group/msg flex flex-col w-full pb-[var(--chat-turn-gap)] empty:pb-0",
+					"group/msg flex flex-col w-full pb-[var(--chat-turn-gap)] empty:pb-0 [&amp;:has([data-turn-mark-left-empty]):not(:has([data-record-index]~[data-record-index]))]:pb-0",
+					"group/msg flex flex-col w-full pb-[var(--chat-turn-gap)] empty:pb-0 [&amp;:has([data-turn-mark-left-empty]):not(:has([data-record-index]~[data-record-index]))]:pb-0",
 				],
 				itemGapColumns: 2,
 			},

@@ -1427,7 +1427,10 @@ interface LineRenderProps
  * Upstream claude.ai/code pads every turn wrapper by --chat-turn-gap and
  * collapses that padding when the turn renders nothing.
  */
-const TURN_GAP_CLASS = "pb-[var(--chat-turn-gap)] empty:pb-0";
+// Upstream's list rule `[&>[data-transcript-row]:has(…[data-turn-mark-left-empty])]:!mt-0`: a row whose only record was
+// carried out to the turn-mark outlet keeps no turn gap.
+const TURN_GAP_CLASS =
+	"pb-[var(--chat-turn-gap)] empty:pb-0 [&:has([data-turn-mark-left-empty]):not(:has([data-record-index]~[data-record-index]))]:pb-0";
 
 /** Upstream's 20px row margin between consecutive user rows, such as prompts queued mid-turn. */
 const USER_ROW_GAP_CLASS = "pb-[var(--chat-user-row-gap)] empty:pb-0";

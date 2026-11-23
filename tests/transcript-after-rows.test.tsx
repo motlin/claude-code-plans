@@ -54,11 +54,13 @@ describe("TranscriptAfterRows", () =>
 				children: [
 					{
 						"data-testid": "transcript-before-cards",
+						"data-transcript-before-cards": "",
 						...CONTINUES,
 						class: "chat-column w-full empty:hidden",
 					},
 					{
-						class: "flex flex-col [reading-flow:flex-visual]",
+						"data-transcript-tail": "",
+						class: "flex flex-col [reading-flow:flex-visual] [[data-transcript-before-cards]:empty+&[data-row-left-empty]_[data-turn-box]]:!mt-xs",
 					},
 				],
 				column: [
