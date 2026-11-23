@@ -54,10 +54,10 @@ const LINE_CELL_CLASS = "flex h-[1lh] items-center text-body";
 const EXPANDED_CLASS = "col-span-full flex min-w-0 flex-col gap-[3px] pb-1.5";
 
 /** Upstream cds Button `variant="secondary" size="xxs"` (20px, 6px pad) with the card's ink. */
-export const WALK_THROUGH_CLASS = `${cdsButtonClass("secondary", "sm")} shrink-0 text-footnote text-secondary`;
-export const VIEW_IN_CHANGES_CLASS = `${cdsButtonClass("secondary", "sm")} ms-auto shrink-0 text-footnote text-secondary`;
+export const WALK_THROUGH_CLASS = `${cdsButtonClass("secondary", "sm")} shrink-0 text-footnote`;
+export const VIEW_IN_CHANGES_CLASS = `${cdsButtonClass("secondary", "sm")} ms-auto shrink-0 text-footnote`;
 /** Upstream cds Button `variant="ghost" size="xxs"` with `Ao` (muted ink) and the footnote size. */
-const GHOST_XXS_CLASS = `relative inline-flex h-5 shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-[var(--upstream-radius)] whitespace-nowrap select-none px-1.5 font-control-regular hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus ${CDS_BUTTON_DISABLED} text-muted-as-secondary hover:text-secondary text-footnote shrink-0`;
+const GHOST_XXS_CLASS = `relative inline-flex h-5 shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-[var(--upstream-radius)] whitespace-nowrap select-none px-1.5 font-control-regular hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus ${CDS_BUTTON_DISABLED} text-muted-as-secondary hover:text-primary text-footnote shrink-0`;
 
 /** Upstream cds `Badge size="xs"` geometry (as `line-comment-card`'s neutral xs badge) with `l5`'s tints. */
 const BADGE_BASE_CLASS =

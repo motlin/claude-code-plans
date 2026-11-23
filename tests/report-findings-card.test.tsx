@@ -252,7 +252,10 @@ describe("ReportFindingsCard (upstream c3fef5c6f iC/rC)", () =>
 				oldLabels: null,
 			},
 		);
-		expect(VIEW_IN_CHANGES_CLASS.endsWith(" ms-auto shrink-0 text-footnote text-secondary")).toBe(true);
+		expect(
+			VIEW_IN_CHANGES_CLASS.endsWith(" ms-auto shrink-0 text-footnote") &&
+				!VIEW_IN_CHANGES_CLASS.includes(" text-secondary"),
+		).toBe(true);
 		expand(second.container, 0);
 	});
 
@@ -304,6 +307,12 @@ describe("ReportFindingsCard (upstream c3fef5c6f iC/rC)", () =>
 			);
 		const view = render(<ReportFindingsCard {...props()} />);
 		const actionable = walk().disabled;
+		const applyClass = screen.getByRole(
+			"button",
+			{
+				name: "Apply fixes",
+			},
+		).className;
 		act(() =>
 		{
 			markReviewFindingsFixing(SESSION, ["finding-t1-0", "finding-t1-1", "finding-t1-2", "finding-t1-3"]);
@@ -321,7 +330,10 @@ describe("ReportFindingsCard (upstream c3fef5c6f iC/rC)", () =>
 				actionable,
 				applying,
 				terminal,
-				className: WALK_THROUGH_CLASS.endsWith(" shrink-0 text-footnote text-secondary"),
+				className:
+					WALK_THROUGH_CLASS.endsWith(" shrink-0 text-footnote") &&
+					!WALK_THROUGH_CLASS.includes(" text-secondary"),
+				applyHover: applyClass.includes("hover:text-primary") && !applyClass.includes("hover:text-secondary"),
 			},
 		).toStrictEqual(
 			{
@@ -329,6 +341,7 @@ describe("ReportFindingsCard (upstream c3fef5c6f iC/rC)", () =>
 				applying: false,
 				terminal: true,
 				className: true,
+				applyHover: true,
 			},
 		);
 	});
