@@ -46,6 +46,7 @@ export function useRegisterBackgroundTasksPane(
 				{
 					title: "Background tasks",
 					resetKey: sessionId,
+					ownsScroll: true,
 					headerActions: <ClearFinishedTasksButton sessionId={sessionId} groups={groups} />,
 					render: () => (
 						<DeferredBackgroundTasksList

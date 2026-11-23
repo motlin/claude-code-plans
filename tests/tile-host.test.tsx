@@ -394,6 +394,21 @@ describe("TileHost", () =>
 			"overflow-y-auto",
 			"[scrollbar-gutter:stable_both-edges]",
 		]);
+
+		cleanup();
+		unregister();
+		unregister = registerPane(
+			"plan",
+			{
+				title: "Test pane",
+				ownsScroll: true,
+				render: () => <p>Test pane body</p>,
+			},
+		);
+		renderHost("session-a");
+		openTestPane();
+
+		expect(screen.getByText("Test pane body").parentElement?.hasAttribute("data-pane-body")).toBe(true);
 	});
 
 	it("frames a pane's header as upstream's corner-row toolbar: actions, Expand and Close, then Move", () =>

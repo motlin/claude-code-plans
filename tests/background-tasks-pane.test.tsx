@@ -281,18 +281,37 @@ describe("BackgroundTasksList", () =>
 		);
 	});
 
-	it("lays out upstream's pane content: 220px minimum, 32px between sections, density-aware pads", () =>
+	it("lays out upstream's pane content in its own one-edge stable scroller: 220px minimum, 32px between sections, density-aware pads", () =>
 	{
 		const {container} = render(<BackgroundTasksList groups={GROUPS} />);
 
+		const scroller = container.firstElementChild;
 		expect(
 			{
-				root: container.firstElementChild?.className,
+				scroller:
+				{
+					tag: scroller?.tagName,
+					tabIndex: scroller?.getAttribute("tabindex"),
+					role: scroller?.getAttribute("role"),
+					className: scroller?.className,
+					children: scroller?.childElementCount,
+				},
+				status: scroller?.firstElementChild?.outerHTML,
+				root: scroller?.children[1]?.className,
 				sections: [...container.querySelectorAll("section")].map((section) => section.className),
 				lists: [...container.querySelectorAll("[data-task-list]")].map((list) => list.className),
 			},
 		).toStrictEqual(
 			{
+				scroller:
+				{
+					tag: "DIV",
+					tabIndex: "-1",
+					role: "group",
+					className: "h-full overflow-y-auto scroll-py-2.5 outline-none [scrollbar-gutter:stable]",
+					children: 2,
+				},
+				status: '<span class="sr-only" role="status"></span>',
 				root: "flex min-w-[220px] flex-col gap-8 px-p6 py-p6 comfortable:px-p8 comfortable:py-p8",
 				sections: ["flex flex-col gap-g5 comfortable:gap-g6", "flex flex-col gap-g5 comfortable:gap-g6"],
 				lists: ["@container flex flex-col gap-g5 comfortable:gap-g6"],

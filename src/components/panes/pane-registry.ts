@@ -25,6 +25,11 @@ export interface PaneDefinition
 	headerActions?: ReactNode;
 	/** The pane's current target (session, file, plan…); a change clears a body render crash. */
 	resetKey?: string;
+	/**
+	 * The body draws its own scroller (upstream's Background tasks pane puts a focusable `role=group` one-edge-gutter
+	 * scroller there), so the host renders it straight into the pane body instead of inside the shared scroller.
+	 */
+	ownsScroll?: true;
 	render: (chrome: PaneChrome) => ReactNode;
 }
 

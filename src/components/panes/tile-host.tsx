@@ -1093,6 +1093,14 @@ function PaneSurface({kind, definition, host}: {kind: PaneKind; definition: Pane
 		</>
 	);
 
+	const content = definition.render(
+		{
+			moveHandle,
+			controls,
+		},
+	);
+	const body = <PaneCrashBoundary resetKey={crashResetKey}>{content}</PaneCrashBoundary>;
+
 	return (
 		<section
 			data-pane-root
@@ -1121,12 +1129,7 @@ function PaneSurface({kind, definition, host}: {kind: PaneKind; definition: Pane
 							/>
 						}
 					>
-						{definition.render(
-							{
-								moveHandle,
-								controls,
-							},
-						)}
+						{content}
 					</PaneCrashBoundary>
 				) : (
 					<>
@@ -1145,20 +1148,18 @@ function PaneSurface({kind, definition, host}: {kind: PaneKind; definition: Pane
 							}
 							moveHandle={moveHandle}
 						/>
+						{/* An `ownsScroll` body is its own scroller; every other pane's sits in the shared one. */}
 						<div
 							data-pane-body
 							className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-b-[inherit]"
 						>
-							<div className="h-full scroll-py-2.5 overflow-y-auto [scrollbar-gutter:stable_both-edges]">
-								<PaneCrashBoundary resetKey={crashResetKey}>
-									{definition.render(
-										{
-											moveHandle,
-											controls,
-										},
-									)}
-								</PaneCrashBoundary>
-							</div>
+							{definition.ownsScroll === true ? (
+								body
+							) : (
+								<div className="h-full scroll-py-2.5 overflow-y-auto [scrollbar-gutter:stable_both-edges]">
+									{body}
+								</div>
+							)}
 						</div>
 					</>
 				)}

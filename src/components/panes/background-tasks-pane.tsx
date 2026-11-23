@@ -1,6 +1,6 @@
 import {useQuery} from "@tanstack/react-query";
 import {Link} from "@tanstack/react-router";
-import {type RefObject, useEffect, useId, useLayoutEffect, useRef, useState} from "react";
+import {type ReactNode, type RefObject, useEffect, useId, useLayoutEffect, useRef, useState} from "react";
 
 import {type BackgroundTaskStop, useStoppingTaskIds} from "../../hooks/use-background-task-stop";
 import {useNow} from "../../hooks/use-now";
@@ -667,6 +667,24 @@ function RunningHeading({count}: {count: number})
 }
 
 /** Upstream `Yd`: the pane placeholder, centred in the pane. */
+/**
+ * Upstream's pane body: a focusable group that scrolls with a gutter on one edge only, led by the polite status its
+ * loop and server stops announce through.
+ */
+function PaneScroller({children}: {children: ReactNode})
+{
+	return (
+		<div
+			tabIndex={-1}
+			role="group"
+			className="h-full overflow-y-auto scroll-py-2.5 outline-none [scrollbar-gutter:stable]"
+		>
+			<span className="sr-only" role="status" />
+			{children}
+		</div>
+	);
+}
+
 function EmptyPlaceholder()
 {
 	return (
@@ -744,82 +762,89 @@ export function BackgroundTasksList({
 	const focusedId = useFocusedTaskId(rootRef);
 	const keepIds = new Set([focusTarget, focusedId].filter((id) => id !== undefined));
 
-	if (groups.running.length === 0 && finished.length === 0 && subagentCount === 0) return <EmptyPlaceholder />;
+	if (groups.running.length === 0 && finished.length === 0 && subagentCount === 0)
+		return (
+			<PaneScroller>
+				<EmptyPlaceholder />
+			</PaneScroller>
+		);
 	return (
-		<div
-			ref={rootRef}
-			className="flex min-w-[220px] flex-col gap-8 px-p6 py-p6 comfortable:px-p8 comfortable:py-p8"
-		>
-			{groups.running.length > 0 && (
-				<section className={`flex flex-col ${GAP_XS}`}>
-					<RunningHeading count={groups.running.length} />
-					<TaskCards
-						tasks={groups.running}
-						sessionId={sessionId}
-						inRunning
-						openRows={openRows}
-						setRowOpen={setRowOpen}
-						workflowRuns={workflowRuns}
-						keepIds={keepIds}
-						stop={rowStop}
-						stoppingIds={stoppingIds}
-					/>
-				</section>
-			)}
-			{finished.length > 0 && (
-				<section className={`flex flex-col ${GAP_XS}`}>
-					<h3 className={SECTION_HEADING}>
-						<button
-							type="button"
-							aria-expanded={finishedOpen}
-							onClick={() =>
-							{
-								setFinished(!finishedOpen);
-							}}
-							className="-mx-1.5 flex min-h-5 cursor-pointer items-center gap-1 rounded px-1.5 hide-focus-ring hover:text-secondary-control focus-visible:shadow-focus focus-visible:outline-hidden"
-						>
-							<Caret open={finishedOpen} />
-							<span>Finished</span>
-							<span className="text-ink-muted">{finished.length}</span>
-						</button>
-					</h3>
-					{finishedOpen && (
-						// oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- upstream's capture latch: a press on a control inside keeps the section open
-						<div
-							className="contents"
-							onClickCapture={(event) =>
-							{
-								if (event.target instanceof Element && event.target.closest("button, a") !== null)
-									setFinished(true);
-							}}
-						>
-							<TaskCards
-								tasks={finished}
-								sessionId={sessionId}
-								inRunning={false}
-								openRows={openRows}
-								setRowOpen={setRowOpen}
-								workflowRuns={workflowRuns}
-								keepIds={keepIds}
-								stop={rowStop}
-								stoppingIds={stoppingIds}
-							/>
-						</div>
-					)}
-				</section>
-			)}
-			{subagents !== undefined && subagentCount > 0 && (
-				<Link
-					to="/session/$id/subagents"
-					params={
-					{
-						id: subagents.sessionId,
-					}}
-					className="self-start text-caption text-secondary underline-offset-2 hover:text-primary hover:underline"
-				>
-					{subagentCount} subagent{subagentCount === 1 ? "" : "s"}
-				</Link>
-			)}
-		</div>
+		<PaneScroller>
+			<div
+				ref={rootRef}
+				className="flex min-w-[220px] flex-col gap-8 px-p6 py-p6 comfortable:px-p8 comfortable:py-p8"
+			>
+				{groups.running.length > 0 && (
+					<section className={`flex flex-col ${GAP_XS}`}>
+						<RunningHeading count={groups.running.length} />
+						<TaskCards
+							tasks={groups.running}
+							sessionId={sessionId}
+							inRunning
+							openRows={openRows}
+							setRowOpen={setRowOpen}
+							workflowRuns={workflowRuns}
+							keepIds={keepIds}
+							stop={rowStop}
+							stoppingIds={stoppingIds}
+						/>
+					</section>
+				)}
+				{finished.length > 0 && (
+					<section className={`flex flex-col ${GAP_XS}`}>
+						<h3 className={SECTION_HEADING}>
+							<button
+								type="button"
+								aria-expanded={finishedOpen}
+								onClick={() =>
+								{
+									setFinished(!finishedOpen);
+								}}
+								className="-mx-1.5 flex min-h-5 cursor-pointer items-center gap-1 rounded px-1.5 hide-focus-ring hover:text-secondary-control focus-visible:shadow-focus focus-visible:outline-hidden"
+							>
+								<Caret open={finishedOpen} />
+								<span>Finished</span>
+								<span className="text-ink-muted">{finished.length}</span>
+							</button>
+						</h3>
+						{finishedOpen && (
+							// oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- upstream's capture latch: a press on a control inside keeps the section open
+							<div
+								className="contents"
+								onClickCapture={(event) =>
+								{
+									if (event.target instanceof Element && event.target.closest("button, a") !== null)
+										setFinished(true);
+								}}
+							>
+								<TaskCards
+									tasks={finished}
+									sessionId={sessionId}
+									inRunning={false}
+									openRows={openRows}
+									setRowOpen={setRowOpen}
+									workflowRuns={workflowRuns}
+									keepIds={keepIds}
+									stop={rowStop}
+									stoppingIds={stoppingIds}
+								/>
+							</div>
+						)}
+					</section>
+				)}
+				{subagents !== undefined && subagentCount > 0 && (
+					<Link
+						to="/session/$id/subagents"
+						params={
+						{
+							id: subagents.sessionId,
+						}}
+						className="self-start text-caption text-secondary underline-offset-2 hover:text-primary hover:underline"
+					>
+						{subagentCount} subagent{subagentCount === 1 ? "" : "s"}
+					</Link>
+				)}
+			</div>
+		</PaneScroller>
 	);
 }
