@@ -106,6 +106,10 @@ describe("app chrome design tokens", () =>
 		const designSystem = await loadDesignSystem();
 		const light = styles.slice(ruleStart(styles, ":root"), ruleStart(styles, ".dark"));
 		const dark = styles.slice(ruleStart(styles, ".dark"));
+		const fizzyLightStart = ruleStart(styles, ':root[data-cds-fizzy-lake~="color"]');
+		const fizzyDarkStart = ruleStart(styles, ':root.dark[data-cds-fizzy-lake~="color"]');
+		const fizzyLight = styles.slice(fizzyLightStart, styles.indexOf("\n}", fizzyLightStart));
+		const fizzyDark = styles.slice(fizzyDarkStart, styles.indexOf("\n}", fizzyDarkStart));
 		const token = (block: string, name: string) =>
 			block.match(new RegExp(`${name}:\\s*([^;]+);`))?.[1]?.replaceAll(/\s+/g, " ") ?? null;
 		const [rule] = designSystem.candidatesToCss(["shadow-panel"]);
@@ -116,6 +120,8 @@ describe("app chrome design tokens", () =>
 				utility: token(styles, "--shadow-panel"),
 				light: token(light, "--upstream-shadow-panel"),
 				dark: token(dark, "--upstream-shadow-panel"),
+				fizzyLight: token(fizzyLight, "--upstream-shadow-panel"),
+				fizzyDark: token(fizzyDark, "--upstream-shadow-panel"),
 			},
 		).toStrictEqual(
 			{
@@ -123,6 +129,8 @@ describe("app chrome design tokens", () =>
 				utility: "var(--upstream-shadow-panel)",
 				light: "inset 0 0 0 0 rgb(11 11 11 / 0.1), 0 0 0 1px rgb(11 11 11 / 0.1), 0 8px 24px #0000001f, 0 2px 6px #00000014",
 				dark: "inset 0 0 0 1px rgb(255 255 255 / 0.1), 0 0 0 0 rgb(255 255 255 / 0.1), 0 8px 24px #00000052, 0 2px 6px #0003",
+				fizzyLight: "inset 0 0 0 0 #00000014, 0 0 0 1px #00000014, 0 8px 24px #0000001f, 0 2px 6px #00000014",
+				fizzyDark: "inset 0 0 0 1px #ffffff0a, 0 0 0 0 #ffffff0a, 0 8px 24px #00000052, 0 2px 6px #0003",
 			},
 		);
 	});
