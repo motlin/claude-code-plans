@@ -627,6 +627,7 @@ export function GroupSection({
 					})}
 					{group.hiddenCount > 0 ? (
 						<OverflowRow
+							rowKey={`label:showmore:${group.key}`}
 							ariaLabel={`Show ${group.revealCount} more in ${group.label}`}
 							onClick={() =>
 							{
@@ -640,6 +641,7 @@ export function GroupSection({
 					) : fetchMore === undefined ? (
 						group.canShowLess && (
 							<OverflowRow
+								rowKey={`label:showmore:${group.key}`}
 								ariaLabel={`Show less in ${group.label}`}
 								held={showLessHeld ? heldHintId : undefined}
 								onClick={() =>
@@ -655,6 +657,7 @@ export function GroupSection({
 					) : (
 						// Upstream `rr` count 0 with `canFetchMore`: "Show more", aria "Show more sessions", fetching the next page.
 						<OverflowRow
+							rowKey={`label:showmore:${group.key}`}
 							ariaLabel="Show more sessions"
 							disabled={fetchMore.loading}
 							onClick={fetchMore.onFetch}
@@ -850,6 +853,7 @@ export function StaticGroupLabel({
  * `held` (the id for its sr-only reason) marks a Show less that would hide the open session.
  */
 function OverflowRow({
+	rowKey,
 	ariaLabel,
 	onClick,
 	disabled = false,
@@ -857,6 +861,8 @@ function OverflowRow({
 	awaiting = false,
 	children,
 }: {
+	/** Upstream's `label:showmore:<groupKey>` row key on the drag-shiftable wrapper. */
+	rowKey: string;
 	ariaLabel?: string;
 	onClick: (event: MouseEvent<HTMLElement>) => void;
 	disabled?: boolean;
@@ -890,24 +896,30 @@ function OverflowRow({
 			)}
 		</button>
 	);
-	if (held === undefined) return button;
-	// Upstream wraps the held row in a lazy 350ms inline-end multiline tooltip (`JJ`) that stays open on click.
+	// Upstream wraps the row in a `label:showmore:<groupKey>` drag-shiftable div, and a held row's button
+	// in a lazy 350ms inline-end multiline tooltip (`JJ`) that stays open on click.
 	return (
-		<>
-			<Tooltip
-				content={HELD_REASON}
-				side="right"
-				multiline
-				closeOnClick={false}
-				delay={350}
-				className="flex w-full"
-			>
-				{button}
-			</Tooltip>
-			<span id={held} hidden>
-				{HELD_REASON}
-			</span>
-		</>
+		<div data-row-key={rowKey} className="df-drag-shiftable [overflow-anchor:none]">
+			{held === undefined ? (
+				button
+			) : (
+				<>
+					<Tooltip
+						content={HELD_REASON}
+						side="right"
+						multiline
+						closeOnClick={false}
+						delay={350}
+						className="flex w-full"
+					>
+						{button}
+					</Tooltip>
+					<span id={held} hidden>
+						{HELD_REASON}
+					</span>
+				</>
+			)}
+		</div>
 	);
 }
 

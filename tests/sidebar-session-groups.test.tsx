@@ -1022,6 +1022,7 @@ describe("sidebar SessionGroups", () =>
 			{
 				text: button.textContent,
 				label: button.getAttribute("aria-label"),
+				wrapper: `${button.parentElement?.getAttribute("data-row-key")} ${button.parentElement?.className}`,
 			}));
 		const status = () =>
 			container.querySelector('[data-group-key="state-done"] [data-group-rows] > span[role="status"]');
@@ -1052,6 +1053,8 @@ describe("sidebar SessionGroups", () =>
 					{
 						text: "Show more",
 						label: "Show 20 more in Idle",
+
+						wrapper: "label:showmore:state-done df-drag-shiftable [overflow-anchor:none]",
 					},
 				],
 				roving: true,
@@ -1079,6 +1082,8 @@ describe("sidebar SessionGroups", () =>
 					{
 						text: "Show more",
 						label: "Show 7 more in Idle",
+
+						wrapper: "label:showmore:state-done df-drag-shiftable [overflow-anchor:none]",
 					},
 				],
 				status: "Showing 20 more in Idle",
@@ -1123,6 +1128,8 @@ describe("sidebar SessionGroups", () =>
 					{
 						text: "Show less",
 						label: "Show less in Idle",
+
+						wrapper: "label:showmore:state-done df-drag-shiftable [overflow-anchor:none]",
 					},
 				],
 			},
@@ -1150,6 +1157,8 @@ describe("sidebar SessionGroups", () =>
 					{
 						text: "Show more",
 						label: "Show 20 more in Idle",
+
+						wrapper: "label:showmore:state-done df-drag-shiftable [overflow-anchor:none]",
 					},
 				],
 				status: "Showing less in Idle",
@@ -3265,7 +3274,17 @@ describe("sidebar SessionGroups", () =>
 				name: "Show more sessions",
 			},
 		);
-		expect(showMore.textContent).toBe("Show more");
+		expect(
+			{
+				text: showMore.textContent,
+				wrapperKey: showMore.parentElement?.getAttribute("data-row-key"),
+			},
+		).toStrictEqual(
+			{
+				text: "Show more",
+				wrapperKey: "label:showmore:date-today",
+			},
+		);
 		fireEvent.click(showMore);
 		const loading = await screen.findByRole(
 			"button",
