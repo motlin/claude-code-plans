@@ -101,10 +101,14 @@ const QUARTO_URL = "https://claude.ai/code/artifact/29d89ae8-e33b-4f55-bbbd-874d
 const QUARTO_TEXT = `Published /Users/craig/projects/quarto/dist/quarto.html at ${QUARTO_URL}\n\nLive subscription: armed`;
 const PIN_URL = "https://claude.ai/code/artifact/17b8a2c1-4c41-46bf-b064-a272240be709";
 
+/** Upstream's xs cds Card: a CardLink inside paints the fill-card after-layer, its hover and press fills and the focus ring. */
 const CARD_CLASS =
-	"relative isolate flex self-start min-w-[min(100%,318px)] max-w-[min(100%,318px)] items-start gap-xs rounded-lg ps-2.5 pe-xs py-sm text-start group/btn focus-visible:outline-hidden hide-focus-ring focus-visible:shadow-focus group/tool cursor-pointer";
-const SURFACE_CLASS =
-	"task-card-surface shadow-[inset_0_0_0_1px_var(--upstream-border)] absolute inset-0 -z-[1] rounded-[inherit] group-hover/btn:bg-fill-ghost-hover";
+	"group/card relative isolate flex flex-col rounded-card-xs after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] after:content-[''] has-[[data-cds=CardLink]:focus-visible]:after:shadow-focus has-[[data-cds=CardLink]:active]:after:bg-neutral-hover has-[[data-cds=CardLink]]:after:bg-fill-card has-[[data-cds=CardLink]]:not-has-[[data-cds=CardLink]:active]:hover:after:bg-fill-card-hover self-start min-w-[min(100%,318px)] max-w-[min(100%,318px)] text-start";
+const CARD_FILL_CLASS = "cds-card-fill pointer-events-none absolute inset-0 -z-[1] m-0 rounded-[inherit]";
+const CARD_BODY_CLASS = "cds-card-body flex min-h-0 flex-1 flex-col self-stretch rounded-[inherit] p-p8";
+const CARD_LINK_CLASS =
+	"cds-reset outline-none after:absolute after:inset-0 after:rounded-card after:contain-paint after:content-[''] cursor-pointer";
+const ICON_CLASS = "shrink-0 self-center text-muted-as-secondary";
 const STATUS_CLASS = "shrink-0 text-footnote text-muted-as-secondary";
 
 function transcriptRecords(
@@ -172,28 +176,45 @@ function transcriptCall(
 	);
 }
 
+function cardLink(container: HTMLElement)
+{
+	return container.querySelector('[aria-label^="Open artifact"]');
+}
+
 function cardSummary(container: HTMLElement)
 {
-	const card = container.querySelector('[role="button"]');
+	const link = cardLink(container);
+	const card = link?.closest("[data-cds=Card]");
 	return {
 		wrapper: card?.parentElement?.className,
-		tag: card?.tagName,
-		ariaLabel: card?.getAttribute("aria-label"),
-		href: card?.getAttribute("href"),
-		target: card?.getAttribute("target"),
-		rel: card?.getAttribute("rel"),
-		tabIndex: card?.getAttribute("tabindex"),
-		className: card?.getAttribute("class"),
-		label: card?.querySelector("span.truncate")?.textContent,
-		surface: card?.querySelector('span[aria-hidden="true"]')?.className,
+		card: card?.getAttribute("data-size"),
+		cardClass: card?.className,
+		cardKids: [...(card?.children ?? [])].map((child) => [
+			child.tagName,
+			child.className,
+			child.getAttribute("aria-hidden"),
+			child.hasAttribute("data-cds-card-body"),
+		]),
+		linkParent: link?.parentElement?.className,
+		linkTag: link?.tagName,
+		linkCds: link?.getAttribute("data-cds"),
+		role: link?.getAttribute("role"),
+		ariaLabel: link?.getAttribute("aria-label"),
+		href: link?.getAttribute("href"),
+		target: link?.getAttribute("target"),
+		rel: link?.getAttribute("rel"),
+		tabIndex: link?.getAttribute("tabindex"),
+		linkClass: link?.className,
+		rowClass: link?.firstElementChild?.className,
+		label: link?.querySelector("span.truncate")?.textContent,
 	};
 }
 
-/** The card's direct children as [tag, class, text]; the icon and caret are summarized by tag. */
+/** The card row's children as [tag, class, text]; the icon and caret are summarized by tag. */
 function cardChildren(container: HTMLElement)
 {
-	const card = container.querySelector('[role="button"]');
-	return [...(card?.children ?? [])].map((child) => [child.tagName, child.getAttribute("class"), child.textContent]);
+	const row = cardLink(container)?.firstElementChild;
+	return [...(row?.children ?? [])].map((child) => [child.tagName, child.getAttribute("class"), child.textContent]);
 }
 
 describe("Artifact tool labels", () =>
@@ -353,16 +374,25 @@ describe("ArtifactRenderer", () =>
 
 		expect(cardSummary(container)).toStrictEqual(
 			{
-				wrapper: "flex flex-col w-full my-[6px]",
-				tag: "DIV",
+				wrapper: "flex flex-col w-full my-[var(--chat-card-bump,6px)]",
+				card: "xs",
+				cardClass: CARD_CLASS,
+				cardKids: [
+					["SPAN", CARD_FILL_CLASS, "true", false],
+					["DIV", CARD_BODY_CLASS, null, true],
+				],
+				linkParent: CARD_BODY_CLASS,
+				linkTag: "SPAN",
+				linkCds: "CardLink",
+				role: "button",
 				ariaLabel: "Open artifact Quarto Oracle",
 				href: null,
 				target: null,
 				rel: null,
 				tabIndex: "0",
-				className: CARD_CLASS,
+				linkClass: CARD_LINK_CLASS,
+				rowClass: "flex min-w-0 items-center gap-xs",
 				label: "Quarto Oracle",
-				surface: SURFACE_CLASS,
 			},
 		);
 	});
@@ -375,9 +405,9 @@ describe("ArtifactRenderer", () =>
 			const {container} = render(<ArtifactRenderer toolCall={transcriptCall(input, text, undefined)} />);
 			const children = cardChildren(container);
 			cleanup();
-			return children.slice(2);
+			return children.slice(1);
 		};
-		const caret = ["SPAN", "shrink-0 self-center text-muted-as-secondary", ""];
+		const caret = ["SPAN", ICON_CLASS, ""];
 
 		expect(
 			{
@@ -432,9 +462,8 @@ describe("ArtifactRenderer", () =>
 		);
 
 		expect(
-			container
-				.querySelector('[role="button"]')
-				?.lastElementChild?.querySelector("svg")
+			cardLink(container)
+				?.firstElementChild?.lastElementChild?.querySelector("svg")
 				?.getAttribute("data-cds-mirror"),
 		).toBe("");
 	});
@@ -456,9 +485,9 @@ describe("ArtifactRenderer", () =>
 			/>,
 		);
 
-		expect(cardChildren(container).slice(2)).toStrictEqual([
+		expect(cardChildren(container).slice(1)).toStrictEqual([
 			["SPAN", "min-w-0 flex-1 text-body text-primary truncate", "Quarto Oracle"],
-			["SPAN", "shrink-0 self-center text-muted-as-secondary", ""],
+			["SPAN", ICON_CLASS, ""],
 		]);
 	});
 
@@ -539,7 +568,10 @@ describe("ArtifactRenderer", () =>
 				plain:
 				{
 					marks: plain.container.querySelectorAll("[data-artifact-mark]").length,
-					fallback: plain.container.querySelector('[role="button"] > svg')?.getAttribute("class"),
+					fallback: [
+						cardLink(plain.container)?.firstElementChild?.firstElementChild?.className,
+						cardLink(plain.container)?.querySelector("svg")?.getAttribute("class"),
+					],
 				},
 			},
 		).toStrictEqual(
@@ -553,7 +585,7 @@ describe("ArtifactRenderer", () =>
 				plain:
 				{
 					marks: 0,
-					fallback: "lucide lucide-app-window shrink-0 self-center text-muted-as-secondary",
+					fallback: [ICON_CLASS, "lucide lucide-app-window"],
 				},
 			},
 		);
@@ -843,7 +875,7 @@ describe("Artifact row in the session transcript", () =>
 					name,
 				},
 			);
-			const row = card.parentElement?.parentElement;
+			const row = card.closest("[data-cds=Card]")?.parentElement?.parentElement;
 
 			expect(
 				{

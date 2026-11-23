@@ -282,7 +282,6 @@ describe("WorkflowCard", () =>
 				text: link.textContent,
 				cells: cells(container),
 				summary: container.querySelector('[role="img"]')?.getAttribute("aria-label"),
-				taskCardSurfaces: container.querySelectorAll(".task-card-surface").length,
 				opens: onOpen.mock.calls.length,
 			},
 		).toStrictEqual(
@@ -306,7 +305,6 @@ describe("WorkflowCard", () =>
 				text: `${NAME}Starting workflow`,
 				cells: ["epitaxy-agent-cell shrink-0 rounded-xs epitaxy-agent-cell--ghost"],
 				summary: "Waiting for agents to start",
-				taskCardSurfaces: 0,
 				opens: 3,
 			},
 		);
