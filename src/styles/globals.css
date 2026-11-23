@@ -5021,6 +5021,12 @@ html[data-reduce-motion="true"] [data-cds="ShimmerText"][data-shimmer-mode="fall
 	--upstream-leading-body: var(--upstream-leading-prose);
 }
 
+/* Upstream's chapter heading wrapper pulls the next transcript item up by pad-md. */
+.epitaxy-transcript-typography [data-cds="AssistantMessage"] .epitaxy-chapter-title
+{
+	margin-bottom: calc(-1 * var(--cds-pad-md));
+}
+
 /* Settings ▸ Claude Code ▸ Transcript text size. The settings provider sets the
    size (rem) and unitless leading on <html>; every `text-body` inside the transcript
    follows. The body leading stays a length (its consumers size boxes with it) but is

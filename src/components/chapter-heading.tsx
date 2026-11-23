@@ -4,6 +4,9 @@ import {renameChapter, useSessionChapters} from "../lib/chapter-store";
 import {chapterAnchorId} from "../lib/session-chapters";
 import {ChapterTitleReveal} from "./reveal-text";
 
+/** Upstream's chapter wrapper (`vV`): the assistant-text inset, prose-sized, pulled pad-md toward the next item. */
+const CHAPTER_WRAPPER_CLASS_NAME =
+	"ps-[var(--cds-assistant-message-text-inset,0px)] epitaxy-chapter-title epitaxy-reply-size-line empty:hidden";
 const HEADING_CLASS_NAME = "text-body-semibold text-primary select-text scroll-mt-[56px]";
 const INPUT_CLASS_NAME =
 	"min-w-0 max-w-full rounded-r2 border-0 bg-transparent p-0 outline outline-[1.5px] outline-fill-accent outline-offset-[1px] [field-sizing:content]";
@@ -26,7 +29,7 @@ export function ChapterHeading({id, title, onRename}: ChapterHeadingProps)
 	const [editing, setEditing] = useState(false);
 	const canRename = onRename !== undefined && title !== "";
 	return (
-		<div className="ps-[var(--cds-assistant-message-text-inset,0px)]">
+		<div className={CHAPTER_WRAPPER_CLASS_NAME}>
 			{editing && canRename ? (
 				<h3 className={HEADING_CLASS_NAME}>
 					<ChapterTitleInput

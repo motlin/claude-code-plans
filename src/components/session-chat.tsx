@@ -4243,15 +4243,16 @@ function buildSessionListEntries(
 					kind: "assistant_other",
 					assistantSpan: displaySpans?.get(line.lineIndex),
 					replyHead: line,
+					// Upstream's chapter sits inside a padded turn, so its pad-md pull-up eats into the turn gap.
 					element: (
-						<>
+						<div className={TURN_GAP_CLASS}>
 							<ClaudeChapterHeading
 								sessionId={renderProps.sessionId}
 								id={chapter.chapter.id}
 								title={chapter.chapter.title}
 							/>
 							{footerFor(line)}
-						</>
+						</div>
 					),
 				},
 			);

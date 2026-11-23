@@ -35,7 +35,8 @@ describe("ChapterHeading", () =>
 			},
 		).toStrictEqual(
 			{
-				wrapper: "ps-[var(--cds-assistant-message-text-inset,0px)]",
+				wrapper:
+					"ps-[var(--cds-assistant-message-text-inset,0px)] epitaxy-chapter-title epitaxy-reply-size-line empty:hidden",
 				className: "line-clamp-2 text-body-semibold text-primary select-text scroll-mt-[56px]",
 				id: "epitaxy-ch-toolu_ch1",
 				title: "Staging refinement nodes",
@@ -292,6 +293,9 @@ describe("text-body-semibold utility", () =>
 		const styles = readFileSync("src/styles/globals.css", "utf8").replaceAll(/\s+/g, " ");
 		expect(styles).toContain(
 			"--text-body-semibold: var(--upstream-text-body); --text-body-semibold--line-height: var(--upstream-leading-body); --text-body-semibold--font-weight: 600;",
+		);
+		expect(styles).toContain(
+			'.epitaxy-transcript-typography [data-cds="AssistantMessage"] .epitaxy-chapter-title { margin-bottom: calc(-1 * var(--cds-pad-md)); }',
 		);
 	});
 });

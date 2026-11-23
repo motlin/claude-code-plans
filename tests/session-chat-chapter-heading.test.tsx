@@ -189,6 +189,11 @@ function rows(
 			(element) => element.textContent,
 		),
 		headings: Array.from(row.querySelectorAll("h3[id^='epitaxy-ch-']"), (h3) => `${h3.id} ${h3.textContent}`),
+		// The chapter wrapper's pad-md pull-up eats into the turn gap below it, as upstream's does, not into the next row.
+		headingInTurnGap:
+			row
+				.querySelector(".epitaxy-chapter-title")
+				?.parentElement?.classList.contains("pb-[var(--chat-turn-gap)]") ?? null,
 	}));
 	const text = container.textContent;
 	cleanup();
@@ -203,18 +208,21 @@ const human =
 	perfRow: "human",
 	tools: [],
 	headings: [],
+	headingInTurnGap: null,
 };
 const tool = (labels: string[]) => (
 {
 	perfRow: "assistant_tool",
 	tools: labels,
 	headings: [],
+	headingInTurnGap: null,
 });
 const heading =
 {
 	perfRow: "assistant_other",
 	tools: [],
 	headings: ["epitaxy-ch-toolu_ch1 Staging refinement nodes"],
+	headingInTurnGap: true,
 };
 
 describe("a mark_chapter call draws as a chapter heading, not a tool row", () =>
@@ -394,6 +402,7 @@ describe("a Claude chapter follows the outline's edits", () =>
 					{
 						...heading,
 						headings: [],
+						headingInTurnGap: null,
 					},
 				],
 			},
