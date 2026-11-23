@@ -61,9 +61,12 @@ export const VIEW_IN_CHANGES_CLASS = `${cdsButtonClass("secondary", "sm")} ${XXS
 /** Upstream cds Button `variant="ghost" size="xxs"` with `Ao` (muted ink) and the footnote size. */
 const GHOST_XXS_CLASS = `relative inline-flex h-5 shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-[var(--upstream-radius)] ${XXS_RADIUS} whitespace-nowrap select-none px-1.5 font-control-regular hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus ${CDS_BUTTON_DISABLED} text-muted-as-secondary hover:text-primary text-footnote shrink-0`;
 
-/** Upstream cds `Badge size="xs"` geometry (as `line-comment-card`'s neutral xs badge) with `l5`'s tints. */
+/**
+ * Upstream cds `Badge size="xs"` pill with `l5`'s tints: the xs scope pins --cds-h-control-nested to 18px at every
+ * density, so the full pill radius is 9px; the transparent 1px border sits inside the 6px pad.
+ */
 const BADGE_BASE_CLASS =
-	"inline-flex h-[18px] shrink-0 items-center whitespace-nowrap rounded-[4.5px] px-1.5 font-sans text-[11px] leading-[14px] font-medium";
+	"inline-flex h-[18px] shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-solid border-transparent px-1.5 font-sans text-[11px] leading-[14px] font-medium";
 const BADGE_VARIANT_CLASS =
 {
 	neutral: "bg-fill-ghost-hover text-secondary",
@@ -84,6 +87,7 @@ function Badge({variant, className, children}: {variant: BadgeVariant; className
 	return (
 		<span
 			data-cds="Badge"
+			data-size="xs"
 			className={`${BADGE_BASE_CLASS} ${BADGE_VARIANT_CLASS[variant]}${className === undefined ? "" : ` ${className}`}`}
 		>
 			{children}
@@ -155,7 +159,7 @@ function FindingRow({
 					setExpanded(!expanded);
 				}}
 			>
-				<span className={`min-w-0 ${LINE_CELL_CLASS}`}>
+				<span className={`min-w-0 gap-[3px] ${LINE_CELL_CLASS}`}>
 					<FindingBadge finding={finding} status={status} />
 				</span>
 				<span className="flex min-w-0 flex-1 items-start gap-[3px]">

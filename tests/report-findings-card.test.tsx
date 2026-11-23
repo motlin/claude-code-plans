@@ -169,6 +169,24 @@ describe("ReportFindingsCard (upstream c3fef5c6f iC/rC)", () =>
 					text: row.querySelector("button")?.textContent,
 					expanded: row.querySelector("button")?.getAttribute("aria-expanded"),
 				})),
+				badgeGeometry: (() =>
+				{
+					const badge = rows(container)[0]?.querySelector("[data-cds=Badge]");
+					const tokens = badge?.className.split(" ") ?? [];
+					return {
+						size: badge?.getAttribute("data-size"),
+						pill: [
+							"rounded-full",
+							"border",
+							"border-solid",
+							"border-transparent",
+							"gap-1",
+							"h-[18px]",
+							"px-1.5",
+						].filter((token) => tokens.includes(token)),
+						cell: badge?.parentElement?.className,
+					};
+				})(),
 			},
 		).toStrictEqual(
 			{
@@ -212,6 +230,20 @@ describe("ReportFindingsCard (upstream c3fef5c6f iC/rC)", () =>
 						expanded: "false",
 					},
 				],
+				badgeGeometry:
+				{
+					size: "xs",
+					pill: [
+						"rounded-full",
+						"border",
+						"border-solid",
+						"border-transparent",
+						"gap-1",
+						"h-[18px]",
+						"px-1.5",
+					],
+					cell: "min-w-0 gap-[3px] flex h-[1lh] items-center text-body",
+				},
 			},
 		);
 	});
