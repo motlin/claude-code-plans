@@ -312,7 +312,12 @@ describe("sessionApprovalQueue", () =>
 					{
 						id: "question:toolu_q",
 						kind: "hook-question",
-						name: "Question",
+						name: "AskUserQuestion",
+						// The question's own input, so its "Also waiting" row reads "Asked “<header>”".
+						input:
+						{
+							questions: [],
+						},
 						createdAt: 1,
 					},
 					queued: [],

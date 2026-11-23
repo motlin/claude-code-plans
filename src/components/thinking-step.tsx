@@ -9,7 +9,13 @@ import {turnStatusSwapKey} from "../lib/working-marker";
 import {ProseMarkdown} from "./file-refs";
 import {StepActions} from "./message-actions";
 import {ShimmerText} from "./shimmer-text";
-import {TURN_STATUS_ROW_GEOMETRY, TURN_STATUS_ROW_PAD_Y, TURN_STATUS_ROW_STYLE} from "./turn-status-row-geometry";
+import
+{
+	CARET_STYLE,
+	TURN_STATUS_ROW_GEOMETRY,
+	TURN_STATUS_ROW_PAD_Y,
+	TURN_STATUS_ROW_STYLE,
+} from "./turn-status-row-geometry";
 import {Icon} from "./ui/icon";
 import {MorphSlot} from "./ui/morph-slot";
 
@@ -19,9 +25,9 @@ import {MorphSlot} from "./ui/morph-slot";
  * class is upstream's tailwind-merged `kT.Panel` (`Ma` + `wr`'s overrides), so the height animation is gone.
  */
 
-const ROW_CLASS = `group/step flex min-w-0 gap-xs text-start font-sans text-body font-normal ${TURN_STATUS_ROW_PAD_Y} ${TURN_STATUS_ROW_GEOMETRY}`;
+export const ROW_CLASS = `group/step flex min-w-0 gap-xs text-start font-sans text-body font-normal ${TURN_STATUS_ROW_PAD_Y} ${TURN_STATUS_ROW_GEOMETRY}`;
 
-const LABEL_CLIP = "min-w-0 overflow-x-clip text-ellipsis whitespace-nowrap py-[0.125em] -my-[0.125em]";
+export const LABEL_CLIP = "min-w-0 overflow-x-clip text-ellipsis whitespace-nowrap py-[0.125em] -my-[0.125em]";
 
 const LABEL_HOVER_INK =
 	"group-hover/step:text-secondary group-has-[:focus-visible]/step:text-secondary group-focus-visible/step:text-secondary";
@@ -34,14 +40,7 @@ export const TOGGLE_STRETCHED = `${TOGGLE_BASE} static justify-center after:abso
 
 export const TOGGLE_UNSTRETCHED = `${TOGGLE_BASE} min-w-[1lh] justify-end rounded transition-shadow duration-[60ms] focus-visible:shadow-focus`;
 
-/** Upstream's `rS` caret beside text (shared-frame): `CaretDownSmall` turned by `A9` while closed. */
-const CARET_STYLE =
-{
-	contain: "layout paint",
-	pointerEvents: "none",
-	translate: "0 0.5px",
-} as const;
-const CARET_MOTION = "transition-transform duration-[60ms] motion-reduce:transition-none";
+export const CARET_MOTION = "transition-transform duration-[60ms] motion-reduce:transition-none";
 
 const PANEL_CLASS =
 	"break-words ease-[cubic-bezier(0.165,0.84,0.44,1)] motion-reduce:transition-none data-[starting-style]:[clip-path:inset(-8px_-100vw_0_-100vw)] data-[ending-style]:[clip-path:inset(-8px_-100vw_0_-100vw)] data-[animating]:[clip-path:inset(-8px_-100vw_0_-100vw)] data-[starting-style]:contain-layout data-[ending-style]:contain-layout data-[animating]:contain-layout [--cds-disclosure-panel-height:var(--collapsible-panel-height)] h-auto overflow-visible transition-none duration-0 data-[ending-style]:h-auto data-[starting-style]:h-auto";

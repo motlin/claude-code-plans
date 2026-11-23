@@ -62,3 +62,11 @@ export const TURN_STATUS_CARD_CLASS =
  */
 export const TURN_STATUS_CELLS_CLASS =
 	"[&>*]:min-w-0 [&>*]:px-[var(--cds-turn-status-card-pad-x,var(--cds-pad-md))] [&>*]:py-sm [&>*]:[--cds-assistant-message-text-inset:0px] [&>*]:[--cds-assistant-message-text-stop:0px]";
+
+/** Upstream's `rS` caret beside text (shared-frame): `CaretDownSmall` turned by `A9` while closed. */
+export const CARET_STYLE =
+{
+	contain: "layout paint",
+	pointerEvents: "none",
+	translate: "0 0.5px",
+} as const;

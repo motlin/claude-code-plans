@@ -1271,7 +1271,7 @@ describe("SessionPage dock composition", () =>
 				},
 			],
 		);
-		const queued = document.querySelector("[data-approval-queued]")?.parentElement;
+		const queued = document.querySelector("[data-approval-queued]")?.parentElement?.parentElement;
 		expect(
 			{
 				cards: document.querySelectorAll("[data-approval-card-root]").length,
@@ -1284,7 +1284,7 @@ describe("SessionPage dock composition", () =>
 				cards: 1,
 				// The inline card never draws ghosts; only the dock does.
 				ghosts: 0,
-				alsoWaiting: ["Also waiting", "List files"],
+				alsoWaiting: ["Also waiting", "List filesNeeds approval"],
 			},
 		);
 	});

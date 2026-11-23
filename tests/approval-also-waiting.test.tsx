@@ -26,6 +26,38 @@ const QUEUED: QueuedApproval[] = [
 		name: "use github",
 		createdAt: 3,
 	},
+	{
+		id: "question:q1",
+		kind: "question",
+		name: "AskUserQuestion",
+		input:
+		{
+			questions: [
+				{
+					header: "Color",
+					question: "Which color?",
+				},
+			],
+		},
+		createdAt: 4,
+	},
+	{
+		id: "question:q2",
+		kind: "hook-question",
+		name: "AskUserQuestion",
+		input:
+		{
+			questions: [
+				{
+					header: "Fruit",
+				},
+				{
+					header: "Size",
+				},
+			],
+		},
+		createdAt: 5,
+	},
 ];
 
 function drawn(queued: QueuedApproval[], presentation: "card" | "dock")
@@ -37,9 +69,33 @@ function drawn(queued: QueuedApproval[], presentation: "card" | "dock")
 		:
 			{
 				className: list.getAttribute("class"),
-				heading: list.firstElementChild?.getAttribute("class"),
-				text: [...list.children].map((child) => child.textContent),
+				children: [...list.children].map((child) => child.getAttribute("class")),
+				rows: [...list.querySelectorAll("[data-approval-queued]")].map((step) =>
+				{
+					const row = step.querySelector("[data-cds-row]");
+					const toggle = row?.querySelector("button[data-cds-row-toggle]");
+					return {
+						cds: step.getAttribute("data-cds"),
+						state: step.getAttribute("data-state"),
+						closed: step.getAttribute("data-closed"),
+						title: row?.getAttribute("data-cds-row-title"),
+						text: row?.textContent,
+						expanded: toggle?.getAttribute("aria-expanded"),
+					};
+				}),
 			};
+}
+
+function step(title: string)
+{
+	return {
+		cds: "TurnStatusStep",
+		state: "blocked",
+		closed: "",
+		title,
+		text: `${title}Needs approval`,
+		expanded: "false",
+	};
 }
 
 describe("ApprovalAlsoWaiting (upstream c390f938b ui)", () =>
@@ -49,8 +105,9 @@ describe("ApprovalAlsoWaiting (upstream c390f938b ui)", () =>
 		expect(drawn(QUEUED, "card")).toStrictEqual(
 			{
 				className: "flex flex-col gap-[var(--chat-item-gap)]",
-				heading: "text-footnote text-muted-as-secondary",
-				text: ["Also waiting", "List files", "use github"],
+				// Upstream wraps the rows in one full-width column under the footnote.
+				children: ["text-footnote text-muted-as-secondary", "flex flex-col w-full"],
+				rows: [step("List files"), step("use github"), step("Asked “Color”"), step("Asked 2 questions")],
 			},
 		);
 	});

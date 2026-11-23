@@ -9,9 +9,9 @@ export interface QueuedApproval
 	/** The card's key, unique across kinds (`permission:…`, `plan:…`, `question:…`). */
 	id: string;
 	kind: "tool" | "elicitation" | "question" | "plan" | "hook-question";
-	/** The "Also waiting" row's label: the tool name, `use {server}` for an elicitation, or "Question". */
+	/** The "Also waiting" row's label: the tool name (a question's is AskUserQuestion), or `use {server}` for an elicitation. */
 	name: string;
-	/** A tool request's input, which names its "Also waiting" row like the transcript's running label. */
+	/** A tool or question request's input, which names its "Also waiting" row like the transcript's running label. */
 	input?: Record<string, unknown>;
 	/** The transcript's tool_use id for the call a tool request asks about, when its record is on disk. */
 	toolUseId?: string;
@@ -108,6 +108,7 @@ export function sessionApprovalQueue({
 	const {head: headAsk, queued: queuedAsks} = permissionQueue(asks, records);
 	const live = headAsk === null ? [] : [headAsk, ...queuedAsks];
 	const askedAt = (toolName: string) => live.find((ask) => ask.toolName === toolName)?.receivedAt ?? 0;
+	const questionAsk = live.find((ask) => ask.toolName === "AskUserQuestion");
 	const toolAsks = live.filter((ask) => !OWN_CARD_TOOLS.has(ask.toolName));
 	// Each main-thread ask names the first unanswered call it describes that no earlier ask claimed.
 	const openCalls = findMainToolUses(records)
@@ -204,8 +205,14 @@ export function sessionApprovalQueue({
 			{
 				id: `question:${id}`,
 				kind,
-				name: "Question",
-				createdAt: askedAt("AskUserQuestion"),
+				name: "AskUserQuestion",
+				...(questionAsk === undefined
+					? {}
+					:
+						{
+							input: toolInput(questionAsk.toolInput),
+						}),
+				createdAt: questionAsk?.receivedAt ?? 0,
 			},
 		);
 	}
