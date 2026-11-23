@@ -26,7 +26,7 @@
 	{
 		"session": "cbe014a6",
 		"line": 713,
-		"upstream": "Ran 2 commands (1 stopped), read a file, edited a file (1 stopped), created a file (1 stopped)",
+		"upstream": "Ran 2 commands (1 stopped), read a file, tried to edit a file (1 stopped), tried to write a file (1 stopped)",
 		"calls": [
 			{
 				"id": "toolu_017s8NyrGM3M9siNqsHRrrrB",
@@ -112,7 +112,7 @@
 	{
 		"session": "1eb4c73e",
 		"line": 3442,
-		"upstream": "Edited kalshi.ts (1 failed), ran a command",
+		"upstream": "Tried to edit kalshi.ts (1 failed), ran a command",
 		"calls": [
 			{
 				"id": "toolu_01SVseDLTTJ2sbZyD3XjYtvV",

@@ -35,7 +35,7 @@ import {autoModeDenial} from "./auto-mode-denial";
 import {stripAnsi} from "./ansi-codes";
 import {toSubagentSessionId} from "./subagents";
 import {recapText} from "./recap-text";
-import {isInterruptedToolResult} from "./tool-interruption";
+import {isInterruptedToolResult, isNeverRanToolResult} from "./tool-interruption";
 import {capDetails, parseHookMessage} from "./hook-prompt-block";
 import {JsonlRecordSchema} from "./runtime-schemas";
 import
@@ -1674,6 +1674,8 @@ function* processRecordBatchSteps(
 							: null;
 						if (info.isError && interruptedResult(content, record, resultText)) info.interrupted = true;
 						if (denial === "stopped") info.stopped = true;
+						if (info.isError && isNeverRanToolResult(resultText, record.toolDenialKind))
+							info.neverRan = true;
 						if (denial === "denied") info.denied = true;
 						const autoMode =
 							info.isError && denial === null ? autoModeDenial(record.toolDenialKind, resultText) : null;

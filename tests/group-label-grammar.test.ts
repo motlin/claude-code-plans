@@ -412,7 +412,7 @@ describe("group label: failure count", () =>
 				),
 				bash(),
 			],
-			expected: "Edited k.ts, ran a command, 1 failed",
+			expected: "Tried to edit k.ts, ran a command, 1 failed",
 		},
 		{
 			calls: [
@@ -456,7 +456,7 @@ describe("group label: failure count", () =>
 					},
 				),
 			],
-			expected: "Ran a command, read 3 files, 4 failed",
+			expected: "Ran a command, tried to read 3 files, 4 failed",
 		},
 		{
 			calls: [
@@ -575,7 +575,7 @@ describe("group label: rejected and interrupted calls", () =>
 					},
 				),
 			],
-			expected: "Edited a.ts (1 failed)",
+			expected: "Tried to edit a.ts (1 failed)",
 		},
 		{
 			calls: [
@@ -620,7 +620,8 @@ describe("group label: rejected and interrupted calls", () =>
 					},
 				),
 			],
-			expected: "Ran 2 commands (1 stopped), read a file, edited a file (1 stopped), created a file (1 stopped)",
+			expected:
+				"Ran 2 commands (1 stopped), read a file, tried to edit a file (1 stopped), tried to write a file (1 stopped)",
 		},
 		{
 			calls: [
@@ -795,7 +796,7 @@ describe("group label: auto-mode blocked calls", () =>
 				),
 				read("/r/a.ts"),
 			],
-			expected: "Ran a command, read a.ts, 1 blocked",
+			expected: "Tried to run a command, read a.ts, 1 blocked",
 		},
 		{
 			calls: [
@@ -817,7 +818,7 @@ describe("group label: auto-mode blocked calls", () =>
 					},
 				),
 			],
-			expected: "Ran 2 commands, read a.ts, 1 failed, 1 blocked",
+			expected: "Ran 2 commands, tried to read a.ts, 1 failed, 1 blocked",
 		},
 		{
 			calls: [
@@ -829,9 +830,128 @@ describe("group label: auto-mode blocked calls", () =>
 				),
 				edit("/r/a.ts", blocked),
 			],
-			expected: "Edited a.ts (1 blocked)",
+			expected: "Tried to edit a.ts (1 blocked)",
 		},
 	])("counts the block instead of a failure: $expected", ({calls, expected}) =>
+	{
+		expect(label(calls)).toBe(expected);
+	});
+});
+
+describe("group label: segments whose calls never ran", () =>
+{
+	const blocked =
+	{
+		isError: true,
+		blocked: true,
+	} as const;
+
+	it.each([
+		{
+			calls: [
+				bash(
+					{
+						id: "1",
+						...blocked,
+					},
+				),
+				bash(
+					{
+						id: "2",
+						...blocked,
+					},
+				),
+			],
+			expected: "Tried to run 2 commands (2 blocked)",
+		},
+		{
+			calls: [
+				{
+					name: "Write",
+					input:
+					{
+						file_path: "/r/c.ts",
+						content: "x",
+					},
+				},
+				bash(
+					{
+						id: "1",
+					},
+				),
+				bash(
+					{
+						id: "2",
+					},
+				),
+				edit(
+					"/r/a.ts",
+					{
+						isError: true,
+					},
+				),
+				edit(
+					"/r/b.ts",
+					{
+						isError: true,
+					},
+				),
+			],
+			expected: "Created a file, ran 2 commands, tried to edit 2 files, 2 failed",
+		},
+		{
+			calls: [
+				bash(
+					{
+						id: "1",
+						isError: true,
+					},
+				),
+				bash(
+					{
+						id: "2",
+					},
+				),
+			],
+			expected: "Ran 2 commands (1 failed)",
+		},
+		{
+			calls: [
+				bash(
+					{
+						isError: true,
+						stopped: true,
+					},
+				),
+			],
+			expected: "Ran a command (1 stopped)",
+		},
+		{
+			calls: [
+				bash(
+					{
+						isError: true,
+						stopped: true,
+						neverRan: true,
+					},
+				),
+			],
+			expected: "Tried to run a command (1 stopped)",
+		},
+		{
+			calls: [
+				edit(
+					"/r/x.ts",
+					{
+						isError: true,
+						stopped: true,
+					},
+				),
+				read("/r/x.ts"),
+			],
+			expected: "Read and tried to edit x.ts (1 stopped)",
+		},
+	])("swaps in upstream's 'tried to' verb: $expected", ({calls, expected}) =>
 	{
 		expect(label(calls)).toBe(expected);
 	});
@@ -961,7 +1081,7 @@ describe("group label: one file", () =>
 					},
 				),
 			],
-			expected: "Read and edited x.ts (2 failed)",
+			expected: "Tried to read and tried to edit x.ts (2 failed)",
 		},
 		{
 			calls: [
@@ -974,7 +1094,7 @@ describe("group label: one file", () =>
 					},
 				),
 			],
-			expected: "Read and edited x.ts (1 stopped)",
+			expected: "Read and tried to edit x.ts (1 stopped)",
 		},
 		{
 			calls: [
@@ -992,7 +1112,7 @@ describe("group label: one file", () =>
 					},
 				),
 			],
-			expected: "Read and edited x.ts (1 failed, 1 stopped)",
+			expected: "Tried to read and tried to edit x.ts (1 failed, 1 stopped)",
 		},
 		{
 			calls: [
@@ -1011,7 +1131,7 @@ describe("group label: one file", () =>
 				),
 				bash(),
 			],
-			expected: "Read and edited x.ts (1 stopped), ran a command, 1 failed",
+			expected: "Tried to read and tried to edit x.ts (1 stopped), ran a command, 1 failed",
 		},
 	])("names the file only when the whole group touches just it: $expected", ({calls, expected}) =>
 	{
@@ -1343,7 +1463,7 @@ describe("group label: cap", () =>
 					},
 				),
 			]),
-		).toBe("Ran a command, searched code, found files, and 2 more actions, 1 failed, 1 blocked");
+		).toBe("Tried to run a command, searched code, found files, and 2 more actions, 1 failed, 1 blocked");
 	});
 });
 

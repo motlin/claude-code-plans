@@ -198,6 +198,8 @@ export interface ToolResultInfo
 	stopped?: boolean | undefined;
 	/** Upstream `vl`'s `interrupted`: the errored call was cut short rather than refused (see `isInterruptedToolResult`). */
 	interrupted?: boolean | undefined;
+	/** The call never started: rejected at its prompt or skipped (see `isNeverRanToolResult`). */
+	neverRan?: boolean | undefined;
 	/** The user rejected the call with a typed reply, so upstream labels it "Denied" rather than "Failed". */
 	denied?: boolean | undefined;
 	/** The auto-mode classifier refused the call or gave no verdict, so upstream labels it "Blocked" rather than "Failed". */

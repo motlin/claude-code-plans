@@ -41,6 +41,17 @@ const STOPPED_WHILE_RUNNING_NOTICES: ReadonlySet<string> = new Set([
 	STOPPED_WHILE_RUNNING + MEMORY_NOTE,
 ]);
 
+/**
+ * Whether an errored result says its call never started (upstream `rejected`/`neverBegan`): the
+ * user rejected it at its prompt (`toolDenialKind` "user-rejected", unless the text corrects it to
+ * stopped while running) or a skipped-call notice (`hI`) took its place.
+ */
+export function isNeverRanToolResult(text: string, toolDenialKind: string | undefined): boolean
+{
+	if (SKIPPED_NOTICE_PREFIXES.some((prefix) => text.startsWith(prefix))) return true;
+	return toolDenialKind === "user-rejected" && !STOPPED_WHILE_RUNNING_NOTICES.has(text.trim());
+}
+
 export interface ToolResultInterruptionInput
 {
 	/** The result's full text. */

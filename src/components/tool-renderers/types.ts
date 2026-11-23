@@ -55,6 +55,8 @@ export interface ClientToolCall
 	denied?: boolean | undefined;
 	/** The auto-mode classifier refused the call; see `ToolResultInfo.blocked`. */
 	blocked?: boolean | undefined;
+	/** See `ToolResultInfo.neverRan`. */
+	neverRan?: boolean | undefined;
 	/** See `ToolResultInfo.blockedReason`. */
 	blockedReason?: string | undefined;
 	/** See `ToolResultInfo.blockedNoVerdict`. */
@@ -300,6 +302,7 @@ export function buildClientToolCall(
 		if (resultInfo.stopped === true) call.stopped = true;
 		if (resultInfo.denied === true) call.denied = true;
 		if (resultInfo.blocked === true) call.blocked = true;
+		if (resultInfo.neverRan === true) call.neverRan = true;
 		if (resultInfo.blockedReason !== undefined) call.blockedReason = resultInfo.blockedReason;
 		if (resultInfo.blockedNoVerdict !== undefined) call.blockedNoVerdict = resultInfo.blockedNoVerdict;
 		if (resultInfo.orphaned === true) call.orphaned = true;

@@ -20,6 +20,12 @@ export interface ToolCallLike
 	denied?: boolean | undefined;
 	/** The auto-mode classifier refused the call or gave no verdict, so it settled "Blocked". */
 	blocked?: boolean | undefined;
+	/**
+	 * The call never started: the user rejected it at its prompt or it was
+	 * skipped before it ran (upstream `rejected`/`neverBegan`), unlike one
+	 * interrupted while running.
+	 */
+	neverRan?: boolean | undefined;
 	/** A SendMessage recipient's subagent description, when this session launched it. */
 	recipientDescription?: string | null | undefined;
 	/**
@@ -573,6 +579,18 @@ function isMutation(cat: ToolCategory): boolean
 /** Categories that name a file, which collapse into one segment when the group touches only one file. */
 const FILE_CATEGORIES: ReadonlySet<ToolCategory> = new Set(["read", "write", "edit", "notebook"]);
 
+/** Upstream's verb for a segment none of whose calls ran (c24951e9f `we`): "Tried to run 2 commands". */
+const TRIED_VERBS: Partial<Record<ToolCategory, string>> =
+{
+	read: "tried to read",
+	write: "tried to write",
+	edit: "tried to edit",
+	notebook: "tried to edit",
+	bash: "tried to run",
+	websearch: "tried to search",
+	webfetch: "tried to fetch",
+};
+
 function countDiffLines(
 	oldStr: string,
 	newStr: string,
@@ -1103,6 +1121,24 @@ function callOutcome(call: ToolCallLike, failedLaunches: ReadonlySet<string>): C
 }
 
 /**
+ * Whether a call counts as having run (upstream's `S` set): a file call only
+ * when it succeeded, any other call unless it was blocked or never started, so
+ * a failed or interrupted command still "Ran".
+ */
+function callRan(call: ToolCallLike, cat: ToolCategory, outcome: CallOutcome): boolean
+{
+	if (FILE_CATEGORIES.has(cat)) return outcome === "succeeded";
+	return call.blocked !== true && call.denied !== true && call.neverRan !== true;
+}
+
+/** The category's verb, or upstream's "tried to" form when none of its calls ran (c24951e9f `j`). */
+function segmentVerb(cat: ToolCategory, ran: ReadonlySet<ToolCategory>): string
+{
+	const tried = ran.has(cat) ? undefined : TRIED_VERBS[cat];
+	return tried ?? CATEGORY_LABELS[cat].verb;
+}
+
+/**
  * Upstream's per-key merge (c24951e9f `Z`): a stopped retry keeps the key's
  * earlier outcome, so only a key whose every call stopped reads stopped; any
  * other outcome replaces it.
@@ -1156,12 +1192,14 @@ interface CountedSegment extends SummarySegment, SegmentOutcomes
 
 /**
  * One segment for every file call when they all touched one file: the verbs in
- * the order first used, then its name -- "Read, edited, and created x.ts" --
- * with one failure, stop, or block per verb that holds one (upstream `A`).
+ * the order first used, those that ran before those only tried, then its name
+ * -- "Read, edited, and created x.ts", "Read and tried to edit x.ts" -- with
+ * one failure, stop, or block per verb that holds one (upstream `A`).
  */
 function soleFileSegment(
 	path: string,
 	outcomes: Map<ToolCategory, Map<string, CallOutcome | undefined>>,
+	ran: ReadonlySet<ToolCategory>,
 	link:
 	{
 		linkable: boolean;
@@ -1169,15 +1207,36 @@ function soleFileSegment(
 	},
 ): CountedSegment
 {
-	const byVerb = new Map<string, Set<CallOutcome | undefined>>();
+	// Upstream groups by the plain verb and picks the tried form from the group's first category.
+	const byVerb = new Map<
+		string,
+		{
+			cat: ToolCategory;
+			held: Set<CallOutcome | undefined>;
+		}
+	>();
 	for (const [cat, byKey] of outcomes)
 	{
 		if (!FILE_CATEGORIES.has(cat)) continue;
 		const verb = CATEGORY_LABELS[cat].verb.toLowerCase();
-		byVerb.set(verb, new Set([...(byVerb.get(verb) ?? []), ...byKey.values()]));
+		const entry = byVerb.get(verb);
+		byVerb.set(
+			verb,
+			{
+				cat: entry?.cat ?? cat,
+				held: new Set([...(entry?.held ?? []), ...byKey.values()]),
+			},
+		);
 	}
-	const verbsHolding = (outcome: CallOutcome) => [...byVerb.values()].filter((held) => held.has(outcome)).length;
-	const verbs = VERB_LIST.format(byVerb.keys());
+	const verbsHolding = (outcome: CallOutcome) => [...byVerb.values()].filter(({held}) => held.has(outcome)).length;
+	const ranVerbs: string[] = [];
+	const triedVerbs: string[] = [];
+	for (const [verb, {cat}] of byVerb)
+	{
+		const shown = segmentVerb(cat, ran).toLowerCase();
+		(shown === verb ? ranVerbs : triedVerbs).push(shown);
+	}
+	const verbs = VERB_LIST.format([...ranVerbs, ...triedVerbs]);
 	const segment: CountedSegment =
 	{
 		verb: verbs.charAt(0).toUpperCase() + verbs.slice(1),
@@ -1440,6 +1499,8 @@ function buildSummarySegments(
 	// "Updated todos, read 3 files" and "Read index.ts, updated todos", so
 	// segments follow the order each tool was first called.
 	const outcomes = new Map<ToolCategory, Map<string, CallOutcome | undefined>>();
+	// The categories with at least one call that ran; the rest read "tried to".
+	const ran = new Set<ToolCategory>();
 	const words = new Map<string, WordsEntry>();
 	let otherTools = 0;
 	// Upstream's generic bucket notes failures and blocks only (`z`), never stops.
@@ -1479,6 +1540,7 @@ function buildSummarySegments(
 			if (outcome === "blocked") otherOutcomes.blocked++;
 			return;
 		}
+		if (callRan(call, cat, outcome)) ran.add(cat);
 		let byKey = outcomes.get(cat);
 		if (byKey === undefined)
 		{
@@ -1512,11 +1574,16 @@ function buildSummarySegments(
 	{
 		if (solePath !== null && FILE_CATEGORIES.has(cat))
 		{
-			if (!soleFileNamed) segments.push(soleFileSegment(solePath, outcomes, link));
+			if (!soleFileNamed) segments.push(soleFileSegment(solePath, outcomes, ran, link));
 			soleFileNamed = true;
 			continue;
 		}
-		segments.push(labelledSegment(CATEGORY_LABELS[cat], byKey.size, keyOutcomes(byKey)));
+		const label =
+		{
+			...CATEGORY_LABELS[cat],
+			verb: segmentVerb(cat, ran),
+		};
+		segments.push(labelledSegment(label, byKey.size, keyOutcomes(byKey)));
 	}
 
 	for (const [done, entry] of words) segments.push(wordsSegment(done, entry));

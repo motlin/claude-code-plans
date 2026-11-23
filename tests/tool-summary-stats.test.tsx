@@ -339,7 +339,7 @@ describe("summarizeToolCallStats", () =>
 			{
 				segments: [
 					{
-						verb: "Read",
+						verb: "Tried to read",
 						rest: "a.ts",
 					},
 					{
@@ -1333,7 +1333,7 @@ describe("group header file meta slot", () =>
 		).toStrictEqual(
 			{
 				meta: null,
-				names: "Ran 2 commands, read input-debug.png",
+				names: "Ran 2 commands, tried to read input-debug.png",
 				labelledBy: true,
 			},
 		);
@@ -1369,9 +1369,34 @@ describe("group header file meta slot", () =>
 		).toStrictEqual(
 			{
 				meta: null,
-				label: "Read and edited x.ts (1 stopped)",
+				label: "Read and tried to edit x.ts (1 stopped)",
 			},
 		);
+	});
+
+	it("reads 'tried to run' for a command rejected at its prompt, which never ran", () =>
+	{
+		const root = mount([
+			{
+				id: "t1",
+				name: "Bash",
+				input:
+				{
+					command: "ls",
+				},
+				isError: true,
+				denialKind: "user-rejected",
+			},
+			{
+				id: "t2",
+				name: "Read",
+				input:
+				{
+					file_path: "/r/x.ts",
+				},
+			},
+		]);
+		expect(root.querySelector("[id$=-label]")?.textContent).toBe("Tried to run a command (1 stopped), read");
 	});
 });
 
