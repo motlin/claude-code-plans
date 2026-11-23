@@ -1218,10 +1218,10 @@ function ArtifactCover({artifact, priority}: {artifact: ArtifactSummary; priorit
 }
 
 /**
- * The gallery's ArtifactMark: Docs resolve to a `document` mark; an untyped publish (no mark upstream's `PO` would
+ * The list row's ArtifactMark (grid card bodies are markless upstream): Docs resolve to a `document` mark; an untyped publish (no mark upstream's `PO` would
  * draw) still gets a `file` tile, with its icon word as the declared glyph.
  */
-function GalleryMark({artifact, size}: {artifact: ArtifactSummary; size: "card" | "row"})
+function GalleryMark({artifact}: {artifact: ArtifactSummary})
 {
 	const kind =
 		resolveArtifactMark(
@@ -1232,7 +1232,7 @@ function GalleryMark({artifact, size}: {artifact: ArtifactSummary; size: "card" 
 	return (
 		<ArtifactMark
 			kind={kind}
-			size={size}
+			size="row"
 			glyph={kind === "file" ? TYPE_MEDIA_ICONS[typeMediaIconWord(artifact)] : undefined}
 			{...(artifact.kind === "docs"
 				?
@@ -1551,7 +1551,7 @@ function ArtifactList({
 									<ArtifactContextMenu artifact={artifact} pinned={group.pinned}>
 										<PrimaryLink artifact={artifact} className="rounded" />
 										<div className="pointer-events-none grid grid-cols-[2.25rem_minmax(0,1fr)_max-content] items-center gap-x-3 rounded px-3 py-1 group-hover/cdsrow:bg-fill-ghost-hover group-has-[:focus-visible]/cdsrow:bg-fill-ghost-hover">
-											<GalleryMark artifact={artifact} size="row" />
+											<GalleryMark artifact={artifact} />
 											<div className="flex min-h-10 min-w-0 flex-col justify-center gap-0.5 sm:pr-8">
 												<span
 													aria-hidden="true"
@@ -1696,9 +1696,6 @@ function ArtifactCard({
 							<ArtifactCover artifact={artifact} priority={priorityThumb} />
 						</div>
 						<div data-card-body="" className="relative flex min-h-18 flex-1 items-center gap-3 p-4">
-							<div aria-hidden="true">
-								<GalleryMark artifact={artifact} size="card" />
-							</div>
 							<div data-artifact-mark-words="" className="flex min-w-0 flex-1 flex-col gap-0.5">
 								<div className="flex items-start gap-2">
 									<div

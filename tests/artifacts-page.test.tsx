@@ -1554,7 +1554,7 @@ describe("artifacts route", () =>
 		);
 	});
 
-	it("draws upstream's 72px mark row: a 40px ArtifactMark, a one-line title and the Opened meta with sr-only Private", async () =>
+	it("draws upstream's markless 72px card body: no ArtifactMark, just a one-line title and the Opened meta with sr-only Private", async () =>
 	{
 		storage.removeItem(ARTIFACTS_LAYOUT_STORAGE_KEY);
 		await renderArtifactsPage("/artifacts", (db) =>
@@ -1614,11 +1614,10 @@ describe("artifacts route", () =>
 				opened:
 				{
 					body,
-					mark: "file",
-					markClass:
-						"flex items-center justify-center size-10 shrink-0 overflow-hidden rounded-lg bg-fill-secondary text-secondary",
-					markSize: "card",
-					glyph: "calc(1.25rem * var(--cds-rem-scale, 1))",
+					mark: undefined,
+					markClass: undefined,
+					markSize: undefined,
+					glyph: undefined,
 					words,
 					title,
 					meta: "Opened 2h agoPrivate",
@@ -1628,11 +1627,10 @@ describe("artifacts route", () =>
 				edited:
 				{
 					body,
-					mark: "document",
-					markClass:
-						"flex items-center justify-center size-10 shrink-0 overflow-hidden rounded-lg bg-tint-blue text-tint-blue",
-					markSize: "card",
-					glyph: "calc(1.25rem * var(--cds-rem-scale, 1))",
+					mark: undefined,
+					markClass: undefined,
+					markSize: undefined,
+					glyph: undefined,
 					words,
 					title,
 					meta: expect.stringMatching(/^Edited Nov 3, 2025Private$/),
