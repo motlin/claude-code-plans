@@ -119,6 +119,8 @@ export function MoreNavMenu({
 	);
 }
 
+const EDIT_SIDEBAR_HINT = "Choose which items appear in your sidebar.";
+
 /** Upstream's 400px "Edit sidebar" dialog: one checkbox per toggleable nav item, then Done. */
 function EditSidebarDialog({
 	open,
@@ -149,11 +151,21 @@ function EditSidebarDialog({
 					<div className={`${DIALOG_BODY_CLASS} ${pad.p} ${pad.ring} ${bandBody}`}>
 						<DialogHeader
 							title="Edit sidebar"
-							description="Choose which items appear in your sidebar."
+							// Upstream drops the description under panels; the list's aria-label carries it.
+							{...(panels
+								? {}
+								:
+									{
+										description: EDIT_SIDEBAR_HINT,
+									})}
 							offHeaderClassName="mb-4 flex items-start gap-2"
 							offTitleClassName="text-[17px] leading-6 font-semibold break-words text-primary"
 						/>
-						<div className={panels ? "flex flex-col" : "mt-2 flex flex-col"}>
+						<div
+							role="group"
+							aria-label={EDIT_SIDEBAR_HINT}
+							className={panels ? "flex flex-col" : "mt-2 flex flex-col"}
+						>
 							{navItems.map((item) =>
 							{
 								const Glyph = item.icon;

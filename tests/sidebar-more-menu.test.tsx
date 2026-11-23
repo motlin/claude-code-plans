@@ -22,6 +22,7 @@ import {activeSessionsQueryOptions} from "../src/lib/api/sessions";
 import type {NavSection} from "../src/lib/nav-sections";
 import {ToastProvider} from "../src/components/toast";
 import {installLocalStorage} from "./fake-storage";
+import {PanelsOff} from "./fizzy-lake-off";
 
 const BASE_SETTINGS =
 {
@@ -92,21 +93,26 @@ function stubFetch()
 async function renderSidebar(
 	visibleNavSections: NavSection[] = ["artifacts", "plans", "memories", "customize"],
 	initialPath = "/plans",
+	panelsOff = false,
 )
 {
 	const queryClient = seedQueryClient(visibleNavSections);
 	const rootRoute = createRootRoute(
 		{
-			component: () => (
-				<QueryClientProvider client={queryClient}>
-					<ToastProvider>
-						<SettingsProvider>
-							<Sidebar collapsed={false} />
-							<Outlet />
-						</SettingsProvider>
-					</ToastProvider>
-				</QueryClientProvider>
-			),
+			component: () =>
+			{
+				const app = (
+					<QueryClientProvider client={queryClient}>
+						<ToastProvider>
+							<SettingsProvider>
+								<Sidebar collapsed={false} />
+								<Outlet />
+							</SettingsProvider>
+						</ToastProvider>
+					</QueryClientProvider>
+				);
+				return panelsOff ? <PanelsOff>{app}</PanelsOff> : app;
+			},
 		},
 	);
 	const pageRoute = createRoute(
@@ -454,7 +460,7 @@ describe("sidebar More menu", () =>
 
 describe("Edit sidebar dialog", () =>
 {
-	it("renders upstream's panels band, the description, a flush list, a 16px body and footer, and focuses Done", async () =>
+	it("renders upstream's panels band, a labelled checkbox group with no visible description, a 16px body and footer, and focuses Done", async () =>
 	{
 		await renderSidebar();
 		const dialog = await openEditSidebar();
@@ -477,12 +483,15 @@ describe("Edit sidebar dialog", () =>
 				band: [...(band?.children ?? [])].map(
 					(child) => `${child.tagName} ${child.textContent || child.getAttribute("aria-label")}`,
 				),
-				description:
+				next: band?.nextElementSibling === list,
+				list:
 				{
-					text: band?.nextElementSibling?.textContent,
-					mb: pick(band?.nextElementSibling, ["mb-4"]),
+					className: list?.className,
+					role: list?.getAttribute("role"),
+					label: list?.getAttribute("aria-label"),
 				},
-				list: list?.className,
+				visibleDescription: within(dialog).queryByText("Choose which items appear in your sidebar."),
+				describedBy: dialog.getAttribute("aria-describedby"),
 				body: pick(band?.parentElement, [
 					"p-4",
 					"p-6",
@@ -497,16 +506,39 @@ describe("Edit sidebar dialog", () =>
 		).toStrictEqual(
 			{
 				band: ["H2 Edit sidebar", "BUTTON Close"],
-				description:
+				next: true,
+				list:
 				{
-					text: "Choose which items appear in your sidebar.",
-					mb: ["mb-4"],
+					className: "flex flex-col",
+					role: "group",
+					label: "Choose which items appear in your sidebar.",
 				},
-				list: "flex flex-col",
+				visibleDescription: null,
+				describedBy: null,
 				body: ["p-4", "m-[var(--ring-inner)]", "scroll-fade-y", "break-words"],
 				footer: ["mt-4"],
 				fizzy: "",
 				focused: true,
+			},
+		);
+	});
+
+	it("keeps the flag-off header and description with panels off", async () =>
+	{
+		await renderSidebar(undefined, undefined, true);
+		const dialog = await openEditSidebar();
+		const description = within(dialog).getByText("Choose which items appear in your sidebar.");
+		expect(
+			{
+				band: dialog.querySelector("[data-cds-part=band]"),
+				tag: description.tagName,
+				describedBy: dialog.getAttribute("aria-describedby") === description.id,
+			},
+		).toStrictEqual(
+			{
+				band: null,
+				tag: "P",
+				describedBy: true,
 			},
 		);
 	});
