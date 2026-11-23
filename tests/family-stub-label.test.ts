@@ -121,6 +121,7 @@ describe("family stub label", () =>
 			).segments.waiting,
 		]).toStrictEqual([
 			{
+				label: "1 nested",
 				sessions: "1 nested session",
 				segments:
 				{
@@ -132,6 +133,7 @@ describe("family stub label", () =>
 				ariaLabel: "Show 1 nested session",
 			},
 			{
+				label: "3 more nested",
 				sessions: "3 more nested sessions",
 				segments:
 				{
@@ -144,6 +146,7 @@ describe("family stub label", () =>
 			},
 			"Show 2 nested sessions, 1 unread",
 			{
+				label: "3 nested",
 				sessions: "3 nested sessions",
 				segments:
 				{

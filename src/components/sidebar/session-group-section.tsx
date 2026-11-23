@@ -1191,7 +1191,7 @@ function FamilyStub({
 	onExpand: (focusNext: boolean) => void;
 })
 {
-	const {sessions, segments, ariaLabel} = familyStubLabel(tally, someListed);
+	const {label, segments, ariaLabel} = familyStubLabel(tally, someListed);
 	const separator = (
 		<span aria-hidden="true" className="px-1.5 text-ink-muted">
 			·
@@ -1221,7 +1221,7 @@ function FamilyStub({
 		>
 			<span className="df-fade-truncate flex items-center whitespace-nowrap">
 				<span data-row-label="" className="min-w-0">
-					<FadeLabel text={sessions} />
+					<FadeLabel text={label} />
 				</span>
 				{segments.waiting !== undefined && (
 					<span className="flex shrink-0 items-center">

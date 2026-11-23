@@ -45,6 +45,9 @@ export function familyStubTally(rows: readonly TallyRow[]): FamilyStubTally
 
 export interface FamilyStubLabel
 {
+	/** Upstream `hiddenCountShort` / `hiddenMoreCountShort`: the visible count. */
+	label: string;
+	/** Upstream `aP` long count words, kept for the aria label. */
 	sessions: string;
 	segments:
 	{
@@ -71,6 +74,7 @@ function segment(count: number, word: string): string | undefined
 /** Upstream `bD` count words, `Xf` segments and `qY` aria label, in upstream `hN` segment order. */
 export function familyStubLabel(tally: FamilyStubTally, someListed: boolean): FamilyStubLabel
 {
+	const label = `${tally.count} ${someListed ? "more " : ""}nested`;
 	const sessions = `${tally.count} ${someListed ? "more " : ""}nested session${tally.count === 1 ? "" : "s"}`;
 	const segments =
 	{
@@ -83,6 +87,7 @@ export function familyStubLabel(tally: FamilyStubTally, someListed: boolean): Fa
 		(text) => text !== undefined,
 	);
 	return {
+		label,
 		sessions,
 		segments,
 		ariaLabel: news.length === 0 ? `Show ${sessions}` : `Show ${sessions}, ${NEWS_FORMAT.format(news)}`,

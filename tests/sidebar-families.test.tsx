@@ -402,8 +402,8 @@ describe("sidebar session families", () =>
 		).toStrictEqual(
 			{
 				aria: "Show 2 nested sessions, 1 unread, 1 working",
-				text: "2 nested sessions·1 unread·1 working",
-				label: "2 nested sessions",
+				text: "2 nested·1 unread·1 working",
+				label: "2 nested",
 				segments: ["·1 unread", "·1 working"],
 				separators: [true, true],
 				unreadInk: "1 unread",
@@ -551,6 +551,7 @@ describe("sidebar session families", () =>
 		{
 			listed: listed(),
 			selected: c1Selected(),
+			stub: foldedStub(container, "h1").textContent,
 		};
 
 		await router.navigate(
@@ -582,6 +583,7 @@ describe("sidebar session families", () =>
 				{
 					listed: ["Child one"],
 					selected: true,
+					stub: "1 more nested·1 unread",
 				},
 				afterNavigate: ["Child one"],
 				afterFoldChange: [],
@@ -729,7 +731,7 @@ describe("sidebar session families", () =>
 			{
 				collapsed: ["code:h1"],
 				titles: [],
-				stub: "2 nested sessions·1 unread·1 working",
+				stub: "2 nested·1 unread·1 working",
 			},
 		);
 
