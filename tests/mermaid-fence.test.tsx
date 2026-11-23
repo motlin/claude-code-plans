@@ -479,7 +479,7 @@ describe("MermaidFence (upstream EpitaxyMermaidFence)", () =>
 			expect(toolbarOf(container)).toStrictEqual(
 				{
 					placement: "row",
-					dir: null,
+					dir: "ltr",
 					className: "relative order-first flex justify-end gap-0.5",
 					buttons: [
 						["epitaxy-mermaid-fence-expand", "Expand diagram"],
@@ -539,7 +539,7 @@ describe("MermaidFence (upstream EpitaxyMermaidFence)", () =>
 					viewingSource:
 					{
 						placement: "row",
-						dir: null,
+						dir: "ltr",
 						className: "relative order-first flex justify-end gap-0.5",
 						buttons: [["epitaxy-mermaid-fence-view", "Preview"]],
 					},
