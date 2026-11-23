@@ -1495,8 +1495,8 @@ function SessionView({
 			questionId: headKind === "hook-question" && !hookQuestionSent ? (hookQuestion?.toolUseId ?? null) : null,
 		},
 	);
-	// Upstream's cluster head (`Ms`): on a short viewport the whole approval cluster docks above the composer, and the
-	// head that docked stays there until another card heads the cluster.
+	// Upstream's cluster head (`Ms`): an MCP call's approval docks the whole cluster above the composer, latched per
+	// head; an AskUserQuestion head that drew inline never moves down.
 	const transcriptQuestionId = transcriptQuestionCard && headKind === "question" ? pendingQuestion.toolUseId : null;
 	const hookQuestionHeadId = headKind === "hook-question" ? (hookQuestion?.toolUseId ?? null) : null;
 	const approvalHeadId =
@@ -1504,7 +1504,10 @@ function SessionView({
 		headPlanCard?.toolUseId ??
 		hookQuestionHeadId ??
 		transcriptQuestionId;
-	const approvalDecision = useApprovalPresentation(approvalHeadId);
+	const approvalDecision = useApprovalPresentation(
+		approvalHeadId,
+		headKind !== "question" && headKind !== "hook-question",
+	);
 	const [approvalDockSlot, setApprovalDockSlot] = useState<HTMLDivElement | null>(null);
 	const approvalDock: ApprovalDock = useMemo(
 		() => (

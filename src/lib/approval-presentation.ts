@@ -1,31 +1,62 @@
 /** Where a pending approval draws: inline after the transcript ("card") or above the composer ("dock"). */
 export type ApprovalPresentation = "card" | "dock";
 
-/** Upstream's short-viewport dock trigger (cc970fefe `jR`). */
-export const SHORT_VIEWPORT_QUERY = "(max-height: 420px)";
+/** The head card the decision last resolved, and whether it docked (upstream's `{id, docked}` state). */
+export interface ApprovalLatch
+{
+	id: string;
+	docked: boolean;
+}
+
+/** Upstream's dock-by-kind trigger (c5da7eb42 `ab`): an MCP call's approval docks above the composer. */
+const MCP_CALL_TOOL_USE_PREFIX = "toolu_mcp_call_";
 
 /**
- * Upstream's dock decision (cc970fefe `FR`, local triggers only): a short viewport docks the approval cluster,
- * and the head card that docked stays docked (`NR` latch) until a different head card arrives, even after the
- * viewport grows again. A new head docks only while the viewport is still short.
+ * Upstream's dock decision (cb534450a `l`): a head docks when its tool use is an MCP call or when corner widgets
+ * float beside the composer (cc43287c9 `WDe`; the local app has none yet, so `cornerWidgets` defaults false). The
+ * decision latches per head card: a docked head stays docked, and a head that resolved inline moves down later only
+ * when it `mayGoDown` (it is not an AskUserQuestion). With no head, only corner widgets dock.
  */
 export function nextApprovalPresentation({
-	shortViewport,
 	headId,
-	latchedId,
+	mayGoDown,
+	cornerWidgets = false,
+	latch,
 }: {
-	shortViewport: boolean;
 	headId: string | null;
-	latchedId: string | null;
+	mayGoDown: boolean;
+	cornerWidgets?: boolean;
+	latch: ApprovalLatch | null;
 }):
 {
 	presentation: ApprovalPresentation;
-	latchedId: string | null;
+	latch: ApprovalLatch | null;
 }
 {
-	const latched = shortViewport && headId !== null ? headId : latchedId;
+	if (headId === null)
+	{
+		return {
+			presentation: cornerWidgets ? "dock" : "card",
+			latch,
+		};
+	}
+	const docks = headId.startsWith(MCP_CALL_TOOL_USE_PREFIX) || cornerWidgets;
+	const next =
+		latch?.id === headId
+			? !latch.docked && mayGoDown && docks
+				?
+					{
+						id: headId,
+						docked: true,
+					}
+				: latch
+			:
+				{
+					id: headId,
+					docked: docks,
+				};
 	return {
-		presentation: shortViewport || (headId !== null && latched === headId) ? "dock" : "card",
-		latchedId: latched,
+		presentation: next.docked ? "dock" : "card",
+		latch: next,
 	};
 }

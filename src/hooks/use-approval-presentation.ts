@@ -1,25 +1,23 @@
 import {useState} from "react";
 
-import {nextApprovalPresentation, SHORT_VIEWPORT_QUERY, type ApprovalPresentation} from "../lib/approval-presentation";
-import {useMediaQuery} from "../lib/use-phone-sheet";
+import {nextApprovalPresentation, type ApprovalLatch, type ApprovalPresentation} from "../lib/approval-presentation";
 
 /**
  * The approval cluster's presentation for its head card (`headId`, null with none pending): docked above the
- * composer on a viewport at most 420px tall, and kept docked for that card after the viewport grows. The server
- * snapshot is tall, so the first paint is inline, as upstream's (`t6`).
+ * composer for an MCP call's approval, else inline, latched per head card. `mayGoDown` is false for an
+ * AskUserQuestion head, which never moves down once drawn inline.
  */
-export function useApprovalPresentation(headId: string | null): ApprovalPresentation
+export function useApprovalPresentation(headId: string | null, mayGoDown: boolean): ApprovalPresentation
 {
-	const shortViewport = useMediaQuery(SHORT_VIEWPORT_QUERY);
-	const [latchedId, setLatchedId] = useState<string | null>(null);
+	const [latch, setLatch] = useState<ApprovalLatch | null>(null);
 	const next = nextApprovalPresentation(
 		{
-			shortViewport,
 			headId,
-			latchedId,
+			mayGoDown,
+			latch,
 		},
 	);
 	// Upstream sets the latch during render; React re-renders this component at once with the new state.
-	if (next.latchedId !== latchedId) setLatchedId(next.latchedId);
+	if (next.latch !== latch) setLatch(next.latch);
 	return next.presentation;
 }

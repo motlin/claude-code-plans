@@ -1194,19 +1194,8 @@ describe("SessionPage dock composition", () =>
 		);
 	});
 
-	it("docks the permission card above the usage chip and composer on a viewport at most 420px tall, with the plain scroll pill", async () =>
+	it("docks an MCP call's permission card above the usage chip and composer, with the plain scroll pill", async () =>
 	{
-		vi.stubGlobal("matchMedia", (query: string) => (
-		{
-			matches: query === "(max-height: 420px)",
-			media: query,
-			addEventListener: () =>
-			{
-			},
-			removeEventListener: () =>
-			{
-			},
-		}));
 		await renderSessionPage(
 			{
 				...detail,
@@ -1247,7 +1236,7 @@ describe("SessionPage dock composition", () =>
 						content: [
 							{
 								type: "tool_use",
-								id: "toolu_waiting",
+								id: "toolu_mcp_call_waiting",
 								name: "Bash",
 								input:
 								{

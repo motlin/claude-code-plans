@@ -1,170 +1,179 @@
 // @vitest-environment jsdom
 
-import {act, cleanup, renderHook} from "@testing-library/react";
-import {renderToString} from "react-dom/server";
-import {createElement} from "react";
-import {afterEach, describe, expect, it, vi} from "vite-plus/test";
+import {cleanup, renderHook} from "@testing-library/react";
+import {afterEach, describe, expect, it} from "vite-plus/test";
 
-import {nextApprovalPresentation, SHORT_VIEWPORT_QUERY} from "../src/lib/approval-presentation";
+import {nextApprovalPresentation} from "../src/lib/approval-presentation";
 import {useApprovalPresentation} from "../src/hooks/use-approval-presentation";
 
 afterEach(() =>
 {
 	cleanup();
-	vi.unstubAllGlobals();
 });
 
-describe("nextApprovalPresentation: upstream's dock decision with its per-card latch (cc970fefe jR/NR)", () =>
+describe("nextApprovalPresentation: upstream's dock decision with its per-head latch (cb534450a l, c5da7eb42 ab)", () =>
 {
-	it("docks a card that arrives on a short viewport and latches its id", () =>
+	it("draws an AskUserQuestion head inline and latches that it stayed inline", () =>
 	{
 		expect(
 			nextApprovalPresentation(
 				{
-					shortViewport: true,
-					headId: "a",
-					latchedId: null,
-				},
-			),
-		).toStrictEqual(
-			{
-				presentation: "dock",
-				latchedId: "a",
-			},
-		);
-	});
-
-	it("keeps the latched card docked after the viewport grows", () =>
-	{
-		expect(
-			nextApprovalPresentation(
-				{
-					shortViewport: false,
-					headId: "a",
-					latchedId: "a",
-				},
-			),
-		).toStrictEqual(
-			{
-				presentation: "dock",
-				latchedId: "a",
-			},
-		);
-	});
-
-	it("draws a new head card inline once the viewport is tall again", () =>
-	{
-		expect(
-			nextApprovalPresentation(
-				{
-					shortViewport: false,
-					headId: "b",
-					latchedId: "a",
+					headId: "q1",
+					mayGoDown: false,
+					latch: null,
 				},
 			),
 		).toStrictEqual(
 			{
 				presentation: "card",
-				latchedId: "a",
+				latch:
+				{
+					id: "q1",
+					docked: false,
+				},
 			},
 		);
 	});
 
-	it("docks with no head on a short viewport, latching nothing", () =>
+	it("docks a head whose tool use is an MCP call", () =>
 	{
 		expect(
 			nextApprovalPresentation(
 				{
-					shortViewport: true,
-					headId: null,
-					latchedId: null,
+					headId: "toolu_mcp_call_1",
+					mayGoDown: true,
+					latch: null,
 				},
 			),
 		).toStrictEqual(
 			{
 				presentation: "dock",
-				latchedId: null,
+				latch:
+				{
+					id: "toolu_mcp_call_1",
+					docked: true,
+				},
+			},
+		);
+	});
+
+	it("docks on corner widgets only a new head, or a latched inline head that may go down", () =>
+	{
+		const inline =
+		{
+			id: "a",
+			docked: false,
+		};
+		expect([
+			nextApprovalPresentation(
+				{
+					headId: "a",
+					mayGoDown: false,
+					cornerWidgets: true,
+					latch: inline,
+				},
+			),
+			nextApprovalPresentation(
+				{
+					headId: "a",
+					mayGoDown: true,
+					cornerWidgets: true,
+					latch: inline,
+				},
+			),
+			nextApprovalPresentation(
+				{
+					headId: "b",
+					mayGoDown: false,
+					cornerWidgets: true,
+					latch: inline,
+				},
+			),
+		]).toStrictEqual([
+			{
+				presentation: "card",
+				latch: inline,
+			},
+			{
+				presentation: "dock",
+				latch:
+				{
+					id: "a",
+					docked: true,
+				},
+			},
+			{
+				presentation: "dock",
+				latch:
+				{
+					id: "b",
+					docked: true,
+				},
+			},
+		]);
+	});
+
+	it("keeps a docked head docked after the corner widgets go away", () =>
+	{
+		const docked =
+		{
+			id: "a",
+			docked: true,
+		};
+		expect(
+			nextApprovalPresentation(
+				{
+					headId: "a",
+					mayGoDown: true,
+					latch: docked,
+				},
+			),
+		).toStrictEqual(
+			{
+				presentation: "dock",
+				latch: docked,
+			},
+		);
+	});
+
+	it("draws inline with no head, keeping the latch", () =>
+	{
+		expect(
+			nextApprovalPresentation(
+				{
+					headId: null,
+					mayGoDown: true,
+					latch: null,
+				},
+			),
+		).toStrictEqual(
+			{
+				presentation: "card",
+				latch: null,
 			},
 		);
 	});
 });
-
-function stubShortViewport(initial: boolean)
-{
-	const listeners = new Set<() => void>();
-	const list =
-	{
-		matches: initial,
-		addEventListener: (_type: string, listener: () => void) =>
-		{
-			listeners.add(listener);
-		},
-		removeEventListener: (_type: string, listener: () => void) =>
-		{
-			listeners.delete(listener);
-		},
-	};
-	const queries: string[] = [];
-	vi.stubGlobal("matchMedia", (query: string) =>
-	{
-		queries.push(query);
-		return list;
-	});
-	return {
-		queries,
-		set(matches: boolean)
-		{
-			list.matches = matches;
-			for (const listener of listeners) listener();
-		},
-	};
-}
 
 describe("useApprovalPresentation", () =>
 {
-	it("follows (max-height: 420px) and keeps a docked card docked until a different head arrives", () =>
+	it("draws an AskUserQuestion head inline and docks an MCP-call head that replaces it", () =>
 	{
-		const viewport = stubShortViewport(true);
 		const {result, rerender} = renderHook(
-			({headId}: {headId: string | null}) => useApprovalPresentation(headId),
+			({headId}: {headId: string | null}) => useApprovalPresentation(headId, false),
 			{
 				initialProps:
 				{
-					headId: "a",
+					headId: "q1",
 				},
 			},
 		);
-		expect(result.current).toBe("dock");
-		act(() =>
-		{
-			viewport.set(false);
-		});
-		expect(result.current).toBe("dock");
+		const first = result.current;
 		rerender(
 			{
-				headId: "b",
+				headId: "toolu_mcp_call_1",
 			},
 		);
-		expect(
-			{
-				presentation: result.current,
-				query: viewport.queries.at(-1),
-			},
-		).toStrictEqual(
-			{
-				presentation: "card",
-				query: SHORT_VIEWPORT_QUERY,
-			},
-		);
-	});
-
-	it("renders the inline card on the server, as upstream's false server snapshot", () =>
-	{
-		stubShortViewport(true);
-		function Probe()
-		{
-			return createElement("span", null, useApprovalPresentation("a"));
-		}
-		expect(renderToString(createElement(Probe))).toBe("<span>card</span>");
+		expect([first, result.current]).toStrictEqual(["card", "dock"]);
 	});
 });
