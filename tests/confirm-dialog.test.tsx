@@ -39,6 +39,7 @@ async function anatomy()
 		cds: popup.getAttribute("data-cds"),
 		fizzy: popup.getAttribute("data-cds-fizzy"),
 		popupPad: popup.className.split(" ").filter((name) => /^p-\d$|^\[--cds-pad-xl:/.test(name)),
+		surface: popup.className.split(" ").filter((name) => /^rounded-|^bg-surface/.test(name)),
 		body: title.parentElement === popup ? "popup" : (popup.firstElementChild?.className ?? null),
 		band:
 			band?.getAttribute("data-cds-part") === "band"
@@ -92,6 +93,7 @@ describe("ConfirmDialog", () =>
 				cds: "ConfirmationDialog",
 				fizzy: "",
 				popupPad: ["[--cds-pad-xl:var(--cds-pad-lg)]"],
+				surface: ["rounded-dialog", "bg-surface-popover"],
 				body: "isolate flex min-h-0 flex-1 flex-col overflow-y-auto scroll-fade-y rounded-[inherit] break-words p-4 m-[var(--ring-inner)]",
 				band:
 				{
@@ -182,6 +184,7 @@ describe("ConfirmDialog", () =>
 				cds: "ConfirmationDialog",
 				fizzy: null,
 				popupPad: ["p-6"],
+				surface: ["rounded-dialog", "bg-surface-popover"],
 				body: "popup",
 				band: null,
 				title: "text-[17px] leading-6 font-semibold break-words text-primary",
