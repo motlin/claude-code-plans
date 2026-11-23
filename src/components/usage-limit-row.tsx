@@ -1,4 +1,4 @@
-import {useId} from "react";
+import {type ReactNode, useId} from "react";
 
 import {usageVariant, type UsageVariant} from "../lib/usage";
 
@@ -32,7 +32,8 @@ function meterFillTransform(percent: number, size: "default" | "sm"): string
 /**
  * Upstream's cds Meter (`mf.Root`): a `w-full` wrapper (here carrying `className`) around an 8px meter,
  * or 4px at `size="sm"`, on a `bg-<variant>` track (`bg-neutral` while an accent meter is empty) with an
- * inset alpha-1 ring. The fill takes the variant; at 0 it isn't drawn.
+ * inset alpha-1 ring. The fill takes the variant; at 0 it isn't drawn. `children` (e.g. Settings › Usage's
+ * share overlay) are drawn over the fill on a `relative` track.
  */
 export function UsageMeter({
 	percent,
@@ -42,6 +43,7 @@ export function UsageMeter({
 	describedBy,
 	valueText,
 	className = "w-full",
+	children,
 }: {
 	percent: number;
 	variant: UsageVariant;
@@ -50,6 +52,7 @@ export function UsageMeter({
 	describedBy?: string | undefined;
 	valueText: string;
 	className?: string;
+	children?: ReactNode;
 })
 {
 	const track = percent === 0 && variant === "accent" ? "bg-neutral" : TRACK_CLASS[variant];
@@ -65,7 +68,7 @@ export function UsageMeter({
 				aria-valuetext={valueText}
 				aria-labelledby={labelledBy}
 				aria-describedby={describedBy}
-				className={`w-full overflow-hidden rounded-full ${FORCED_COLORS_CLASS} ${size === "sm" ? "h-1" : "h-2"} ${track}`}
+				className={`w-full overflow-hidden rounded-full ${FORCED_COLORS_CLASS} ${size === "sm" ? "h-1" : "h-2"} ${track}${children === undefined ? "" : " relative"}`}
 				style={
 				{
 					boxShadow: "inset 0 0 0 1px var(--color-alpha-1)",
@@ -81,6 +84,7 @@ export function UsageMeter({
 						}}
 					/>
 				)}
+				{children}
 			</div>
 		</div>
 	);

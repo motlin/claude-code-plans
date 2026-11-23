@@ -303,12 +303,55 @@ describe("UsagePanel", () =>
 		expect(meterItem?.firstElementChild?.querySelectorAll(":scope > [data-usage-row]").length).toBe(2);
 		expect(document.querySelector(".divide-y")).toBeNull();
 
+		// Upstream's `ze` is the shared cds Meter at size sm.
+		const meterShape = (meter: HTMLElement | undefined) => (
+		{
+			wrapper:
+			{
+				cds: meter?.parentElement?.getAttribute("data-cds"),
+				className: meter?.parentElement?.className,
+			},
+			size: meter?.getAttribute("data-size"),
+			className: meter?.className,
+			fill:
+				meter?.querySelector<HTMLElement>("[data-usage-bar-fill]") === null
+					? null
+					:
+						{
+							className: meter?.querySelector<HTMLElement>("[data-usage-bar-fill]")?.className,
+							transform: meter?.querySelector<HTMLElement>("[data-usage-bar-fill]")?.style.transform,
+						},
+		});
 		const [sessionMeter, weekMeter] = screen.getAllByRole("meter");
-		expect(sessionMeter?.className).toContain("bg-alpha-1");
-		expect(sessionMeter?.querySelector("[data-usage-bar-fill]")).toBeNull();
-		expect(weekMeter?.className).toContain("bg-accent-900");
-		const fill = weekMeter?.querySelector<HTMLElement>("[data-usage-bar-fill]");
-		expect(fill?.style.transform).toContain("max(37%, 4px)");
+		const FORCED =
+			"forced-color-adjust-none forced-colors:bg-[color:Canvas] forced-colors:outline forced-colors:outline-[color:CanvasText]";
+		expect([meterShape(sessionMeter), meterShape(weekMeter)]).toStrictEqual([
+			{
+				wrapper:
+				{
+					cds: "Meter",
+					className: "w-full",
+				},
+				size: "sm",
+				className: `w-full overflow-hidden rounded-full ${FORCED} h-1 bg-neutral relative`,
+				fill: null,
+			},
+			{
+				wrapper:
+				{
+					cds: "Meter",
+					className: "w-full",
+				},
+				size: "sm",
+				className: `w-full overflow-hidden rounded-full ${FORCED} h-1 bg-upstream-accent-pressed relative`,
+				fill:
+				{
+					className:
+						"h-full w-full rounded-full bg-fill-accent transition-transform duration-200 ease-[cubic-bezier(.165,.84,.44,1)] motion-reduce:transition-none rtl:[--_meter-dir:1]",
+					transform: "translateX(calc(var(--_meter-dir, -1) * (100% - min(100%, max(37.0%, 4px)))))",
+				},
+			},
+		]);
 	});
 
 	it("colours the meters by severity", () =>
@@ -426,8 +469,8 @@ describe("UsagePanel", () =>
 		expect(screen.getByText("Current session").className).toBe("text-body text-secondary");
 		expect(screen.getByText("This week").className).toBe("text-body text-primary");
 		const [sessionMeter, weekMeter] = screen.getAllByRole("meter");
-		expect(sessionMeter?.parentElement?.className).toBe("flex-1 opacity-50");
-		expect(weekMeter?.parentElement?.className).toBe("flex-1");
+		expect(sessionMeter?.parentElement?.parentElement?.className).toBe("flex-1 opacity-50");
+		expect(weekMeter?.parentElement?.parentElement?.className).toBe("flex-1");
 		expect(screen.getAllByText(/% used$/).map((node) => node.className)).toStrictEqual([
 			"min-w-20 whitespace-nowrap text-end text-footnote text-secondary",
 			"min-w-20 whitespace-nowrap text-end text-footnote text-danger",

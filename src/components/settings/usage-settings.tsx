@@ -24,6 +24,7 @@ import
 import {ExternalTextLink} from "../external-text-link";
 import {USAGE_BARS_CROSSFADE} from "../../lib/usage-bars-grow";
 import {UsageBars} from "../usage-bars";
+import {UsageMeter} from "../usage-limit-row";
 import * as Collapsible from "../ui/collapsible";
 import {Icon} from "../ui/icon";
 import {Skeleton} from "../ui/skeleton";
@@ -43,21 +44,6 @@ import {SettingsSection} from "./settings-row";
 /** Upstream's `Ei`: the usage-limits support article. */
 const USAGE_LIMITS_ARTICLE = "https://support.claude.com/en/articles/11647753-understanding-usage-and-length-limits";
 
-/** Upstream's cds Meter track (`bg-<variant>`) and fill (`bg-fill-<variant>`) per variant. */
-const TRACK_CLASS =
-{
-	accent: "bg-accent-900",
-	warning: "bg-usage-track-warning",
-	danger: "bg-usage-track-danger",
-} as const satisfies Record<UsageVariant, string>;
-
-const FILL_CLASS =
-{
-	accent: "bg-accent-100",
-	warning: "bg-usage-warning",
-	danger: "bg-usage-danger",
-} as const satisfies Record<UsageVariant, string>;
-
 /** Upstream's meter share overlay colours: blue-300, yellow-150 (dark yellow-100), red-300. */
 const SHARE_CLASS =
 {
@@ -69,7 +55,11 @@ const SHARE_CLASS =
 /** Upstream's `"share"` meter tone: the whole fill is a model's share of the week. */
 type MeterTone = "share";
 
-function UsageMeter({
+/**
+ * Upstream's `ze`: the shared cds Meter at size sm, with the share span drawn over the fill from the
+ * inline start.
+ */
+function ShareMeter({
 	percent,
 	variant,
 	used,
@@ -89,43 +79,23 @@ function UsageMeter({
 	// Upstream's share span: as wide as the fill on a share-toned meter, else the share capped by the fill.
 	const shareWidth = tone === "share" ? percent : Math.min(share, percent);
 	return (
-		<div
-			role="meter"
-			aria-valuemin={0}
-			aria-valuemax={100}
-			aria-valuenow={percent}
-			aria-valuetext={used}
-			aria-labelledby={labelId}
-			className={`relative h-1 w-full overflow-hidden rounded-full shadow-[inset_0_0_0_1px_var(--color-alpha-1)] ${percent === 0 ? "bg-alpha-1" : TRACK_CLASS[variant]}`}
-		>
-			{percent === 0 ? null : (
-				<>
-					<div
-						data-usage-bar-fill=""
-						className={`h-full w-full rounded-full ${FILL_CLASS[variant]} transition-transform duration-200 ease-[cubic-bezier(.165,.84,.44,1)] motion-reduce:transition-none rtl:[--_meter-dir:1]`}
-						style={
-						{
-							transform: `translateX(calc(var(--_meter-dir, -1) * (100% - min(100%, max(${percent}%, 4px)))))`,
-						}}
-					/>
-					{shareWidth > 0 && (
-						<span
-							aria-hidden="true"
-							data-testid="usage-meter-share"
-							// A warning or danger share-toned meter keeps the span transparent.
-							data-share={variant === "accent" || tone !== "share" ? shareWidth : 0}
-							data-usage-bar-fill=""
-							className={`absolute inset-y-0 start-0 rounded-full data-[share=0]:opacity-0 ${SHARE_CLASS[variant]}`}
-							style={
-							{
-								inlineSize: `${shareWidth}%`,
-								minInlineSize: 4,
-							}}
-						/>
-					)}
-				</>
-			)}
-		</div>
+		<UsageMeter percent={percent} variant={variant} size="sm" labelledBy={labelId} valueText={used}>
+			{percent > 0 && shareWidth > 0 ? (
+				<span
+					aria-hidden="true"
+					data-testid="usage-meter-share"
+					// A warning or danger share-toned meter keeps the span transparent.
+					data-share={variant === "accent" || tone !== "share" ? shareWidth : 0}
+					data-usage-bar-fill=""
+					className={`absolute inset-y-0 start-0 rounded-full data-[share=0]:opacity-0 ${SHARE_CLASS[variant]}`}
+					style={
+					{
+						inlineSize: `${shareWidth}%`,
+						minInlineSize: 4,
+					}}
+				/>
+			) : null}
+		</UsageMeter>
 	);
 }
 
@@ -162,7 +132,7 @@ function UsageMeterRow({
 			</div>
 			<div className="flex min-w-48 flex-1 items-center gap-3">
 				<div className={dimmed ? "flex-1 opacity-50" : "flex-1"}>
-					<UsageMeter
+					<ShareMeter
 						percent={percent}
 						variant={variant}
 						used={used}
