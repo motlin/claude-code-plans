@@ -65,7 +65,10 @@ const STATUS = "shrink-0 text-end text-footnote text-muted-as-secondary tabular-
 const STOP_SLOT = "absolute inset-y-0 end-0 flex w-10 items-center justify-end pe-3";
 /** Upstream `QC`: content under the row, indented one step past the row's own. */
 const UNDER_ROW = "ps-[calc(var(--task-step,0)*1.25rem+0.75rem)]";
-const DETAIL = `flex flex-col pe-p6 pb-p6 ${UNDER_ROW} select-text comfortable:pe-p8 comfortable:pb-p8 [&>div]:leading-5`;
+/** Upstream `oL`: the open row's detail, its pieces `gap-xs` apart; `[&>div]:leading-5` sets the notes' 20px lines. */
+const DETAIL = `flex flex-col gap-g5 pe-p6 pb-p6 ${UNDER_ROW} select-text comfortable:gap-g6 comfortable:pe-p8 comfortable:pb-p8 [&>div]:leading-5`;
+/** Upstream's cds horizontal Separator between the command and its output. */
+const SEPARATOR = "h-px w-stretch shrink-0 bg-border";
 /** Upstream `iL`: the detail's plain, height-capped pres. */
 const TASK_PRE =
 	"max-h-[200px] overflow-y-auto rounded-sm font-mono text-code leading-5 text-muted-as-secondary focus-visible:shadow-focus focus-visible:outline-hidden whitespace-pre-wrap break-all";
@@ -184,7 +187,7 @@ function InlineOutput({task, title}: {task: BackgroundTask; title: string})
 			</div>
 		);
 	}
-	return <p className={NOTE}>{task.status === "running" ? "No output yet" : "No output captured."}</p>;
+	return <div className={NOTE}>{task.status === "running" ? "No output yet" : "No output captured."}</div>;
 }
 
 /**
@@ -207,15 +210,15 @@ function OutputFile({
 	if (isError || data?.status === "missing")
 	{
 		return task.output === null ? (
-			<p className={NOTE}>Output unavailable</p>
+			<div className={NOTE}>Output unavailable</div>
 		) : (
 			<InlineOutput task={task} title={title} />
 		);
 	}
-	if (data === undefined) return <p className={NOTE}>Loading output…</p>;
+	if (data === undefined) return <div className={NOTE}>Loading output…</div>;
 	return (
 		<>
-			{data.truncated && <p className={NOTE}>Showing the last 64 KB of output.</p>}
+			{data.truncated && <div className={NOTE}>Showing the last 64 KB of output.</div>}
 			<OutputRegion task={task} title={title} output={data.output} />
 		</>
 	);
@@ -246,6 +249,14 @@ function TaskDetail({task, title, sessionId}: {task: BackgroundTask; title: stri
 					</span>
 					<CommandTokens command={task.command} />
 				</pre>
+			)}
+			{task.command !== null && (
+				<div
+					role="separator"
+					aria-orientation="horizontal"
+					data-orientation="horizontal"
+					className={SEPARATOR}
+				/>
 			)}
 			{sessionId !== undefined && task.outputFile !== null && task.kind !== "agent" ? (
 				<OutputFile sessionId={sessionId} file={task.outputFile} task={task} title={title} />

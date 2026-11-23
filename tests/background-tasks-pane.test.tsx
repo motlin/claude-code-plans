@@ -659,15 +659,24 @@ describe("BackgroundTasksList", () =>
 				detail: detail?.className,
 				step: detail?.style.getPropertyValue("--task-step"),
 				inPiece: detail?.parentElement?.hasAttribute("data-task-piece"),
+				children: [...(detail?.children ?? [])].map((child) => [child.tagName, child.getAttribute("role")]),
+				separator: detail?.querySelector('[role="separator"]')?.outerHTML,
 				command: regionSummary("Command for Poll PR"),
 				output: regionSummary("Output for Poll PR"),
 			},
 		).toStrictEqual(
 			{
 				expanded: "true",
-				detail: "flex flex-col pe-p6 pb-p6 ps-[calc(var(--task-step,0)*1.25rem+0.75rem)] select-text comfortable:pe-p8 comfortable:pb-p8 [&>div]:leading-5",
+				detail: "flex flex-col gap-g5 pe-p6 pb-p6 ps-[calc(var(--task-step,0)*1.25rem+0.75rem)] select-text comfortable:gap-g6 comfortable:pe-p8 comfortable:pb-p8 [&>div]:leading-5",
 				step: "1",
 				inPiece: true,
+				children: [
+					["PRE", "region"],
+					["DIV", "separator"],
+					["PRE", "region"],
+				],
+				separator:
+					'<div role="separator" aria-orientation="horizontal" data-orientation="horizontal" class="h-px w-stretch shrink-0 bg-border"></div>',
 				command:
 				{
 					tag: "PRE",
@@ -715,9 +724,15 @@ describe("BackgroundTasksList", () =>
 			fireEvent.click(opener(title));
 		}
 
-		expect(["No output yet", "No output captured."].map((text) => screen.getByText(text).className)).toStrictEqual([
-			"text-footnote text-muted-as-secondary",
-			"text-footnote text-muted-as-secondary",
+		expect(
+			["No output yet", "No output captured."].map((text) =>
+			{
+				const note = screen.getByText(text);
+				return [note.tagName, note.className, note.parentElement?.querySelector('[role="separator"]') ?? null];
+			}),
+		).toStrictEqual([
+			["DIV", "text-footnote text-muted-as-secondary", null],
+			["DIV", "text-footnote text-muted-as-secondary", null],
 		]);
 	});
 
@@ -1324,8 +1339,12 @@ describe("BackgroundTasksList output file", () =>
 		render(withQueryClient(<BackgroundTasksList groups={LINT_GROUPS} sessionId={SESSION_ID} />));
 
 		fireEvent.click(opener("Lint the fabricated app"));
+		const loading = screen.getByText("Loading output…").tagName;
 
-		expect((await screen.findByText("Showing the last 64 KB of output.")).tagName).toBe("P");
+		expect([loading, (await screen.findByText("Showing the last 64 KB of output.")).tagName]).toStrictEqual([
+			"DIV",
+			"DIV",
+		]);
 	});
 
 	it("says the output is unavailable when the file was cleaned up", async () =>
@@ -1339,7 +1358,7 @@ describe("BackgroundTasksList output file", () =>
 
 		fireEvent.click(opener("Lint the fabricated app"));
 
-		expect((await screen.findByText("Output unavailable")).tagName).toBe("P");
+		expect((await screen.findByText("Output unavailable")).tagName).toBe("DIV");
 	});
 
 	it("shows an agent task's result and never fetches its output file", () =>
