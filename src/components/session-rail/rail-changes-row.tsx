@@ -22,8 +22,11 @@ import {RailGlyph} from "./rail-row";
  * (`RailChangesPrRow`): the PR glyph and title link over a footnote line with "#N" and the stat.
  */
 
-/** Upstream `k`. */
-const ROW_CLASS = "flex min-h-6.5 w-full min-w-0 items-center gap-sm px-xs text-body";
+/**
+ * Upstream `k` (`min-h-6.5 gap-sm px-xs`) as the rail card's section overrides resolve it: `min-h-list-row`
+ * (32px), the `--rail-word-gap` column gap (10px) and the `--rail-row-pad` inline pad (8px).
+ */
+const ROW_CLASS = "flex min-h-8 w-full min-w-0 items-center gap-sm gap-x-2.5 px-2 text-body";
 /** Upstream's ghost xxs flush-both stat button; `-mx-1.5` is `mx-outset` at the 6px xxs pad. */
 const STAT_BUTTON_CLASS = `${cdsButtonClass("ghost", "sm")} -mx-1.5 [--upstream-radius:var(--radius-r4)]`;
 /** Upstream: hidden until something inside has focus or its popup is open; never on hover. */
@@ -298,7 +301,8 @@ export function RailChangesPrRow({
 		<ContextMenu>
 			<ContextMenuTrigger
 				render={<div />}
-				className="flex min-w-0 gap-sm px-xs py-1"
+				// Upstream `gap-sm px-xs py-1` with the rail card's `--rail-word-gap` (10px) and `--rail-row-pad` (8px) overrides.
+				className="flex min-w-0 gap-sm gap-x-2.5 px-2 py-1"
 				{...(grouped &&
 				{
 					role: "group",

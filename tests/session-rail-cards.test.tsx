@@ -2243,7 +2243,12 @@ describe("cards from local data", () =>
 			).toStrictEqual(
 				{
 					outer: ["DIV", "none", "flex min-w-0 flex-col gap-sm"],
-					row: ["DIV", null, "flex min-h-6.5 w-full min-w-0 items-center gap-sm px-xs text-body", null],
+					row: [
+						"DIV",
+						null,
+						"flex min-h-8 w-full min-w-0 items-center gap-sm gap-x-2.5 px-2 text-body",
+						null,
+					],
 					slots: [
 						["SPAN", "flex size-5 shrink-0 items-center justify-center text-secondary [&_svg]:size-4"],
 						["SPAN", "relative inline-flex"],
@@ -2457,7 +2462,7 @@ describe("cards from local data", () =>
 			).toStrictEqual(
 				{
 					rowCount: 1,
-					row: ["DIV", null, null, "flex min-w-0 gap-sm px-xs py-1"],
+					row: ["DIV", null, null, "flex min-w-0 gap-sm gap-x-2.5 px-2 py-1"],
 					glyphSlot: ["flex size-5 shrink-0 items-center justify-center", "pull-request-open"],
 					glyph: ["img", "Open", "inline-flex shrink-0 text-git-opened"],
 					column: "flex min-w-0 flex-1 flex-col gap-sm",
