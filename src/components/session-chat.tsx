@@ -1714,6 +1714,8 @@ interface ToolCallBatch
 	head: MessageSessionLine;
 	sourceSessionId: string;
 	calls: ClientToolCall[];
+	/** Each call's record index, so folded notices take their chronological place among the calls. */
+	callLines: Map<string, number>;
 }
 
 /**
@@ -1768,6 +1770,7 @@ function GroupedToolCallEntry({
 			if (openBatch?.sourceSessionId === sourceSessionId)
 			{
 				openBatch.calls.push(...calls);
+				for (const call of calls) openBatch.callLines.set(call.id, line.lineIndex);
 				continue;
 			}
 			openBatch =
@@ -1775,6 +1778,7 @@ function GroupedToolCallEntry({
 				head: line,
 				sourceSessionId,
 				calls,
+				callLines: new Map(calls.map((call) => [call.id, line.lineIndex])),
 			};
 			result.push(openBatch);
 		}
@@ -1810,6 +1814,7 @@ function GroupedToolCallEntry({
 							calls={batch.calls}
 							sessionId={batch.sourceSessionId}
 							notices={index === batches.length - 1 ? notices : NO_NOTICES}
+							callLines={batch.callLines}
 							leading={opensReply && index === 0}
 						/>
 					</TranscriptMessageMenu>
@@ -2464,6 +2469,28 @@ function BackgroundNoticeStep({notices}: {notices: readonly BackgroundNotice[]})
 			</bdi>
 		</div>
 	);
+}
+
+const NO_CALL_LINES: ReadonlyMap<string, number> = new Map();
+const NO_TASK_NOTICES: readonly BackgroundNotice[] = [];
+
+/**
+ * Splits notices into `steps.length + 1` runs: run `i` draws before step `i` (the notices recorded before it and
+ * after the step before), the last after every step. A step with no known record index takes none.
+ */
+function noticesByStep(
+	notices: readonly BackgroundNotice[],
+	stepLines: readonly (number | undefined)[],
+): BackgroundNotice[][]
+{
+	const runs: BackgroundNotice[][] = stepLines.map(() => []);
+	const tail: BackgroundNotice[] = [];
+	for (const notice of notices)
+	{
+		const step = stepLines.findIndex((line) => line !== undefined && notice.lineIndex < line);
+		(step === -1 ? tail : defined(runs[step], "step index is in range")).push(notice);
+	}
+	return [...runs, tail];
 }
 
 /** A lone notice keeps its own sub-row; a run of them draws one combined step. */
@@ -3506,25 +3533,36 @@ class SlowCommandAbsorber
 	/**
 	 * The completions of the commands that finished after `since` and by the
 	 * group's last record. Any finished earlier stood alone upstream, which
-	 * draws nothing for them.
+	 * draws nothing for them. Each sits at the last group record at or before
+	 * its finish, or at `openerLineIndex` when it finished before them all.
 	 */
-	absorbInto(groupLines: readonly SessionLine[], since: number): BackgroundNotice[]
+	absorbInto(groupLines: readonly SessionLine[], since: number, openerLineIndex: number): BackgroundNotice[]
 	{
-		const last = groupLines.at(-1);
-		const end = Math.max(
-			...groupLines.flatMap((line) =>
-			{
-				const at = lineTimestamp(line);
-				return at === undefined ? [] : [Date.parse(at)];
-			}),
-		);
-		if (last === undefined || !Number.isFinite(end)) return [];
-		return this.take(since, end).map((command) => (
+		const timed = groupLines.flatMap((line) =>
 		{
-			kind: "task",
-			lineIndex: last.lineIndex,
-			notification: slowCommandCompletion(command),
-		}));
+			const at = lineTimestamp(line);
+			return at === undefined
+				? []
+				: [
+						{
+							lineIndex: line.lineIndex,
+							at: Date.parse(at),
+						},
+					];
+		});
+		const end = Math.max(...timed.map((line) => line.at));
+		if (!Number.isFinite(end)) return [];
+		return this.take(since, end).map((command) =>
+		{
+			const finishedAt = Date.parse(command.finishedAt);
+			// oxlint-disable-next-line unicorn/prefer-array-find -- findLast is not in the ES2022 lib
+			const before = timed.findLast((line) => line.at <= finishedAt);
+			return {
+				kind: "task",
+				lineIndex: before?.lineIndex ?? openerLineIndex,
+				notification: slowCommandCompletion(command),
+			};
+		});
 	}
 
 	/**
@@ -4101,7 +4139,7 @@ function buildSessionListEntries(
 						break;
 					}
 				}
-				notices.push(...slowCommands.absorbInto(lines.slice(groupStart, j), since));
+				notices.push(...slowCommands.absorbInto(lines.slice(groupStart, j), since, startRecordIndex));
 			}
 
 			prevVisibleType = "assistant";
@@ -7688,11 +7726,14 @@ function ToolCallSection({
 	calls,
 	sessionId,
 	notices = NO_NOTICES,
+	callLines = NO_CALL_LINES,
 	leading = false,
 }: {
 	calls: ClientToolCall[];
 	sessionId: string;
 	notices?: readonly FoldedNotice[];
+	/** Each call's record index; a folded notice draws before the calls recorded after it. */
+	callLines?: ReadonlyMap<string, number>;
 	/** The section is the first thing drawn in the row that opens a reply. */
 	leading?: boolean;
 })
@@ -7777,6 +7818,7 @@ function ToolCallSection({
 						calls={backgroundCalls}
 						sessionId={sessionId}
 						notices={notices}
+						callLines={callLines}
 						leading={leading}
 						handedOff={handedOffCall}
 					/>
@@ -9161,12 +9203,14 @@ function ToolCallSummary({
 	calls,
 	sessionId,
 	notices = NO_NOTICES,
+	callLines = NO_CALL_LINES,
 	leading,
 	handedOff,
 }: {
 	calls: ClientToolCall[];
 	sessionId: string;
 	notices?: readonly FoldedNotice[];
+	callLines?: ReadonlyMap<string, number>;
 	leading: boolean;
 	/** The finished call of the sole run this group just grew out of, whose words it holds (upstream `subjectOf`). */
 	handedOff?: ClientToolCall | undefined;
@@ -9218,6 +9262,12 @@ function ToolCallSummary({
 		notice.notification.status === "failed" && !calls.some((call) => call.id === notice.notification.toolUseId);
 	const failedNotices = taskNotices.filter(leadsLabel);
 	const settledNotices = taskNotices.filter((notice) => !leadsLabel(notice));
+	const coalescedCalls = coalesceSameTarget(calls);
+	// Upstream lists each settled notice at its chronological place: before the first step recorded after it.
+	const noticesBefore = noticesByStep(
+		settledNotices,
+		coalescedCalls.map((item) => callLines.get(("kind" in item ? item.members[0] : item)?.id ?? "")),
+	);
 	// Upstream draws the grouped header in one 24px padded row whether it completed, failed, or is still running.
 	const summaryLayout = TURN_STATUS_ROW_LAYOUT;
 	// Collapsed rows rest in upstream's KH() ink (secondary under fizzy-lake color, else muted and lifting to secondary on hover); an open
@@ -9487,8 +9537,9 @@ function ToolCallSummary({
 										sentAt={notice.sentAt}
 									/>
 								))}
-								{coalesceSameTarget(calls).map((item) => (
+								{coalescedCalls.map((item, itemIndex) => (
 									<React.Fragment key={"kind" in item ? item.members[0]?.id : item.id}>
+										<BackgroundNoticeRun notices={noticesBefore.at(itemIndex) ?? NO_TASK_NOTICES} />
 										{"kind" in item ? (
 											<ToolCardBoundary resetOn={toolGroupStage(item.members)}>
 												<ToolCallRow
@@ -9543,7 +9594,7 @@ function ToolCallSummary({
 								{claudeNotices.map((notice) => (
 									<ClaudeCodeNoticeSteps key={`notice-${notice.lineIndex}`} notice={notice} />
 								))}
-								<BackgroundNoticeRun notices={settledNotices} />
+								<BackgroundNoticeRun notices={noticesBefore.at(-1) ?? NO_TASK_NOTICES} />
 							</TurnStatusBodyPanel>
 						</div>
 					)}

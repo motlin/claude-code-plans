@@ -1349,6 +1349,16 @@ describe("task notifications in the transcript", () =>
 		);
 	});
 
+	it("lists a completed notice that opened the run before the run's calls, at its chronological position", () =>
+	{
+		const container = renderLines(laterRecords(COMPLETED));
+		fireEvent.click(summaryButton(container, "Ran a command, finished a background command"));
+		expect(groupRowTexts(container)).toStrictEqual([
+			"Background command completedRun the test suite",
+			"Checked the server",
+		]);
+	});
+
 	it("lists a failed notice after its own launch, as the launch takes the failure", () =>
 	{
 		const container = renderLines(
@@ -1700,14 +1710,14 @@ describe("subagent-owned slow commands in the transcript", () =>
 		);
 	});
 
-	it("combines the absorbed commands into one background-commands step after the calls", () =>
+	it("combines the idle absorbed commands with the opening notification into one step before the calls", () =>
 	{
 		const container = renderLines(idleThenNotifiedRecords(), "normal", [teammate([at(30)])]);
 		fireEvent.click(summaryButton(container, "Ran 2 commands, finished 2 background commands"));
 		expect(groupRowTexts(container)).toStrictEqual([
+			"2 background commands completed",
 			"Checked one",
 			"Checked two",
-			"2 background commands completed",
 		]);
 	});
 
