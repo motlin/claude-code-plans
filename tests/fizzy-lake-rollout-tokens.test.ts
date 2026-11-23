@@ -296,7 +296,7 @@ describe("fizzy-lake rollout: component remaps under color", () =>
 				{
 					"--composer-ring": "#ffffff14",
 					"--composer-shadow-idle": "0 4px 20px rgb(0 0 0 / 0.035), inset 0 0 0 1px var(--composer-ring)",
-					"--composer-shadow-focus": "0 4px 20px rgb(0 0 0 / 0.3), 0 0 0 1px var(--composer-ring)",
+					"--composer-shadow-focus": "0 4px 20px rgb(0 0 0 / 0.075), inset 0 0 0 1px var(--composer-ring)",
 				},
 			},
 		);

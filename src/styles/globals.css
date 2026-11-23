@@ -1470,7 +1470,8 @@ html[data-interface-font="dyslexic"]
 	--sb-bg: #1f1f1f;
 	--composer-ring: #ffffff14;
 	--composer-shadow-idle: 0 4px 20px rgb(0 0 0 / 0.035), inset 0 0 0 1px var(--composer-ring);
-	--composer-shadow-focus: 0 4px 20px rgb(0 0 0 / 0.3), 0 0 0 1px var(--composer-ring);
+	/* Upstream `shadow-composer-focus` is mode-agnostic: `0 .25rem 1.25rem color-mix(in srgb, var(--cds-black) 7.5%, transparent), inset 0 0 0 var(--cds-ring-inner) var(--cds-composer-ring), 0 0 0 var(--cds-ring-outer) var(--cds-composer-ring)`; dark ring-inner is 1px and ring-outer 0, so the ring is inset only. */
+	--composer-shadow-focus: 0 4px 20px rgb(0 0 0 / 0.075), inset 0 0 0 1px var(--composer-ring);
 	--message-line: #ffffff1a;
 	--selected-hover: #ffffff37;
 	--upstream-fill-ghost-selected: #ffffff26;
