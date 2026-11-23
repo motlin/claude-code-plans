@@ -4836,6 +4836,15 @@ html[data-reduce-motion="true"] [data-cds="ShimmerText"][data-shimmer-mode="fall
 	--code-leading: initial;
 }
 
+/* Upstream `.epitaxy-root .epitaxy-diff`: pierre's [data-code] block padding and its inline gaps follow the
+   density's pad scale (6px block at comfortable, 4px at compact) instead of pierre's 8px fallback. The
+   transcript isn't wrapped in .epitaxy-root here, so the hook class stands alone. */
+.epitaxy-diff
+{
+	--diffs-gap-block: var(--cds-pad-xs);
+	--diffs-gap-inline: var(--cds-pad-md);
+}
+
 /* Upstream c3fde7009 document figure: a mermaid diagram (`useFigureWidth` sets `--figure-width`) grows past the
    column into the end gutter, then the start gutter, never narrower than the column and never bleeding inside
    li/blockquote/dd. Local has no `.epitaxy-document-column` gutter math yet (document-column-measure), so the bleed

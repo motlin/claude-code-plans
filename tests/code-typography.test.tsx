@@ -10,6 +10,7 @@ import {WriteRenderer} from "../src/components/tool-renderers/write-renderer";
 import type {ClientToolCall} from "../src/components/tool-renderers/types";
 import {compileAll} from "./helpers/tailwind-design-system";
 import {ruleStart} from "./css-rule";
+import {ruleDeclarations} from "./markdown-css";
 
 vi.mock("../src/components/tool-renderers/inline-diff", () => (
 {
@@ -113,6 +114,8 @@ describe("code typography", () =>
 				fileRows: styles.includes(
 					"[data-code-font-size] .epitaxy-file-rows { font-size: var(--code-size); line-height: round(calc(var(--code-size) * 1.5 + 0.01px), 1px); }",
 				),
+				// Upstream `.epitaxy-root .epitaxy-diff`: pierre's [data-code] pads by the density's pad-xs, not 8px.
+				diffGaps: ruleDeclarations(styles, ".epitaxy-diff"),
 			},
 		).toStrictEqual(
 			{
@@ -120,6 +123,11 @@ describe("code typography", () =>
 				exempt: true,
 				globalFallback: false,
 				fileRows: true,
+				diffGaps:
+				{
+					"--diffs-gap-block": "var(--cds-pad-xs)",
+					"--diffs-gap-inline": "var(--cds-pad-md)",
+				},
 			},
 		);
 	});
