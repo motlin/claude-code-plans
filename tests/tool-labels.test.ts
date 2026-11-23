@@ -1,5 +1,13 @@
 import {describeVerbForms, infinitive, pastTense} from "../src/lib/past-tense";
-import {groupWordCase, groupWords, runningToolLabel, toolLabel, toolResultMetaFrom} from "../src/lib/tool-labels";
+import
+{
+	groupRunningText,
+	groupWordCase,
+	groupWords,
+	runningToolLabel,
+	toolLabel,
+	toolResultMetaFrom,
+} from "../src/lib/tool-labels";
 import {AskUserQuestionResultSchema} from "../src/lib/tool-input-schemas";
 import type {ToolLabelCall} from "../src/lib/tool-labels";
 
@@ -1223,6 +1231,57 @@ describe("toolResultMetaFrom agent results", () =>
 
 describe("runningToolLabel", () =>
 {
+	it("names a busy group's running file call with its basename as one string, as upstream's group TurnStatus does", () =>
+	{
+		expect(
+			{
+				read: groupRunningText(
+					call(
+						"Read",
+						{
+							file_path: "/repo/b.ts",
+						},
+					),
+				),
+				edit: groupRunningText(
+					call(
+						"Edit",
+						{
+							file_path: "/repo/a.ts",
+							old_string: "a",
+							new_string: "b",
+						},
+					),
+				),
+				notebook: groupRunningText(
+					call(
+						"NotebookEdit",
+						{
+							notebook_path: "/repo/n.ipynb",
+							new_source: "x",
+						},
+					),
+				),
+				bash: groupRunningText(
+					call(
+						"Bash",
+						{
+							command: "ls",
+							description: "List files",
+						},
+					),
+				),
+			},
+		).toStrictEqual(
+			{
+				read: "Reading b.ts",
+				edit: "Editing a.ts",
+				notebook: "Editing n.ipynb",
+				bash: "Listing files",
+			},
+		);
+	});
+
 	it("inflects a running description as upstream ro does, keeping a queued request's description as written", () =>
 	{
 		const input =

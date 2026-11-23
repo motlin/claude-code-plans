@@ -973,6 +973,18 @@ export function runningToolLabelText(label: RunningToolLabel): string
 }
 
 /**
+ * A busy group header's words: the running label as one phrase, with a file call's basename
+ * joined in, as upstream's group TurnStatus says "Reading b.ts" where the lone row says just "Reading".
+ */
+export function groupRunningText(call: ToolLabelCall): string
+{
+	const running = runningToolLabel(call);
+	if (running.label !== undefined || running.meta !== undefined) return runningToolLabelText(running);
+	const path = stringInput(call.input, "file_path") ?? stringInput(call.input, "notebook_path");
+	return path === null ? running.verb : `${running.verb} ${basename(path)}`;
+}
+
+/**
  * Upstream's label record for a tool call. An errored call also carries the
  * `failedVerb` (and, for a described Bash or subagent call, the `failedLabel`)
  * upstream names it with once it failed.

@@ -173,7 +173,7 @@ import
 } from "../lib/session-utils";
 import type {BackgroundCompletionLike, SummarySegment} from "../lib/session-utils";
 import {pastTense} from "../lib/past-tense";
-import {runningToolLabel, runningToolLabelText, toolLabel} from "../lib/tool-labels";
+import {groupRunningText, runningToolLabel, toolLabel} from "../lib/tool-labels";
 import {stripControlsAndMask} from "../lib/secret-mask";
 import {formatElapsed} from "../lib/elapsed-format";
 import {taskFailureReason} from "../lib/task-failure-reason";
@@ -9278,8 +9278,7 @@ function ToolCallSummary({
 	// progressive label instead of the tally.
 	// oxlint-disable-next-line unicorn/prefer-array-find -- findLast is not in the ES2022 lib
 	const pendingCall = calls.findLast(isPendingToolCall);
-	const runningText =
-		pendingCall === undefined ? null : stripControlsAndMask(runningToolLabelText(runningToolLabel(pendingCall)));
+	const runningText = pendingCall === undefined ? null : stripControlsAndMask(groupRunningText(pendingCall));
 	// A failed completion leads only when its launch is outside the group; a
 	// launch inside it takes the failure, so its notice trails like any other.
 	const leadsLabel = (notice: BackgroundNotice) =>

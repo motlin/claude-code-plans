@@ -567,8 +567,8 @@ describe("busy same-target run row (upstream mergeLiveLoneStep)", () =>
 						status: "Editing a.ts",
 					},
 					{
-						parts: ["Reading"],
-						status: "Reading",
+						parts: ["Reading b.ts"],
+						status: "Reading b.ts",
 					},
 				]);
 			},

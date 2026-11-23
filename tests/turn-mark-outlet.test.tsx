@@ -530,7 +530,7 @@ describe("rows hand their running words to a line that takes the mark (upstream 
 				line:
 				{
 					held: false,
-					words: "Reading",
+					words: "Reading foo.ts",
 					unspoken: true,
 					callId: "toolu_running",
 				},
