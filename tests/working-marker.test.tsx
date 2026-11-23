@@ -3026,7 +3026,7 @@ describe("WorkingMarker smoothed token count", () =>
 
 describe("workingLineUnderCard", () =>
 {
-	it("draws no line under a live card unless this page watched the turn, which gets the blocked line", () =>
+	it("draws no line under a live card unless this page watched the turn, which gets the blocked line, or an empty one under a plan card", () =>
 	{
 		const cases: Parameters<typeof workingLineUnderCard>[0][] = [
 			{
@@ -3045,7 +3045,30 @@ describe("workingLineUnderCard", () =>
 				cardShown: true,
 				respondingHere: true,
 			},
-		];
-		expect(cases.map((signals) => workingLineUnderCard(signals))).toStrictEqual([null, null, "none", "blocked"]);
+		].map((signals) => (
+		{
+			...signals,
+			planCard: false,
+		}));
+		cases.push(
+			{
+				cardShown: true,
+				respondingHere: true,
+				planCard: true,
+			},
+			{
+				cardShown: true,
+				respondingHere: false,
+				planCard: true,
+			},
+		);
+		expect(cases.map((signals) => workingLineUnderCard(signals))).toStrictEqual([
+			null,
+			null,
+			"none",
+			"blocked",
+			"empty",
+			"none",
+		]);
 	});
 });

@@ -223,6 +223,7 @@ export function WorkingMarker({
 	runningTasks = 0,
 	quiet = false,
 	waitingOnUser = false,
+	empty = false,
 	inline = false,
 	bare = false,
 	sending = false,
@@ -237,6 +238,8 @@ export function WorkingMarker({
 	runningTasks?: number;
 	quiet?: boolean;
 	waitingOnUser?: boolean;
+	/** Upstream's line under a plan-exit card: mounted, not working, with no status or placeholder inside. */
+	empty?: boolean;
 	/** Nested under the last assistant reply, as upstream's `ps-[inset] -mt-pad-xs` wrapper, not in its own column. */
 	inline?: boolean;
 	/** A child of upstream's tail-chrome grid (`si`), which places the line itself, so no column wrapper. */
@@ -260,7 +263,7 @@ export function WorkingMarker({
 	const linePhase = useLinePhase(state, sending, waitingOnUser);
 	// Upstream draws no mark while the turn waits on the user.
 	const turnWorking =
-		!waitingOnUser && (linePhase !== null || (state.status !== "idle" && state.status !== "waiting"));
+		!empty && !waitingOnUser && (linePhase !== null || (state.status !== "idle" && state.status !== "waiting"));
 	// Upstream keeps the last phase word until the token stat or Thinking has something to say.
 	const holdPhase =
 		state.status === "working" &&
@@ -417,8 +420,8 @@ export function WorkingMarker({
 					{waitingOnUser ? NEEDS_INPUT_LABEL : held.announcement}
 				</span>
 			) : (
-				// Upstream's done line holds one control-height placeholder and drops its status.
-				<div className="flex items-center h-6 comfortable:h-8" />
+				// Upstream's done line holds one control-height placeholder and drops its status; the empty line holds none.
+				!empty && <div className="flex items-center h-6 comfortable:h-8" />
 			)}
 		</div>
 	);

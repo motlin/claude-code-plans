@@ -292,19 +292,24 @@ export function workingLineWaitsOnUser({
 /**
  * The working line under a live inline card: upstream hides the transcript loader for any live card
  * (`hideLoader: vs`), so the tail grid's line (`Vt`) mounts only while the tab is responding, as the blocked
- * "Needs your input" line. `null` when no card is shown, so the usual line rules apply.
+ * "Needs your input" line, or as an empty line under a plan-exit card. `null` when no card is shown, so the
+ * usual line rules apply.
  */
 export function workingLineUnderCard({
 	cardShown,
 	respondingHere,
+	planCard,
 }: Readonly<
 {
 	cardShown: boolean;
 	respondingHere: boolean;
-}>): "none" | "blocked" | null
+	/** The shown card is a plan-exit card, with no question, permission or elicitation card waiting. */
+	planCard: boolean;
+}>): "none" | "blocked" | "empty" | null
 {
 	if (!cardShown) return null;
-	return respondingHere ? "blocked" : "none";
+	if (!respondingHere) return "none";
+	return planCard ? "empty" : "blocked";
 }
 
 /**

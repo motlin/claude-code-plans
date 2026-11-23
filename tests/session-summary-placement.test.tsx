@@ -1037,6 +1037,81 @@ describe("SessionPage dock composition", () =>
 			},
 		);
 	});
+	it("leaves upstream's empty working line in the tail chrome below a transcript plan card when this page watched the turn reach it", async () =>
+	{
+		let client: QueryClient | undefined;
+		const listed = (state: string) => (
+		{
+			pages: [
+				{
+					sessions: [
+						{
+							id: SESSION_ID,
+							state,
+						},
+					],
+					nextCursor: null,
+				},
+			],
+			pageParams: [null],
+		});
+		await renderSessionPage(
+			detail,
+			[],
+			(queryClient) =>
+			{
+				client = queryClient;
+				seedUsage(queryClient);
+				queryClient.setQueryData(recentSessionsInfiniteQueryOptions().queryKey, listed("working") as never);
+			},
+			[
+				{
+					type: "assistant",
+					uuid: "a1",
+					sessionId: SESSION_ID,
+					timestamp: "2026-09-28T10:00:01.000Z",
+					message:
+					{
+						role: "assistant",
+						content: [
+							{
+								type: "tool_use",
+								id: "toolu_plan",
+								name: "ExitPlanMode",
+								input:
+								{
+									plan: "Rebase onto upstream first.",
+								},
+							},
+						],
+					},
+				},
+			],
+		);
+		act(() =>
+		{
+			client?.setQueryData(recentSessionsInfiniteQueryOptions().queryKey, listed("waiting") as never);
+		});
+		await flush();
+		const card = document.querySelector("[data-inline-plan]");
+		const line = document.querySelector('[data-testid="code-working-line"]');
+		expect(
+			{
+				present:
+					card !== null &&
+					line !== null &&
+					(card.compareDocumentPosition(line) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
+				blocked: line?.querySelector('[data-state="blocked"]') != null,
+				children: line?.children.length ?? null,
+			},
+		).toStrictEqual(
+			{
+				present: true,
+				blocked: false,
+				children: 0,
+			},
+		);
+	});
 	it("draws the permission card inline after the transcript, as upstream's inline approvals, leaving the dock to the PR chip, usage chip and composer", async () =>
 	{
 		await renderSessionPage(

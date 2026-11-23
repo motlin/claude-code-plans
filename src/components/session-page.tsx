@@ -1558,13 +1558,13 @@ function SessionView({
 			: null,
 	);
 	// A sent hook question's card stays as its receipt, but the turn no longer waits on it.
-	const cardWaitsOnUser =
+	const nonPlanCardWaits =
 		pendingPermission !== null ||
 		transcriptQuestionCard ||
 		(hookQuestionCardShown && !hookQuestionSent) ||
-		inlinePlanId !== null ||
-		dockedPlan !== null ||
 		urlElicitationCard !== null;
+	const planCardWaits = inlinePlanId !== null || dockedPlan !== null;
+	const cardWaitsOnUser = nonPlanCardWaits || planCardWaits;
 	const liveCardShown = cardWaitsOnUser || hookQuestionCardShown;
 	// The working line's "Needs your input" replaces the dock's waiting notice, as upstream shows only the former.
 	const workingLineWaits = workingLineWaitsOnUser(
@@ -2643,8 +2643,11 @@ function SessionView({
 		{
 			cardShown: cardWaitsOnUser,
 			respondingHere,
+			planCard: planCardWaits && !nonPlanCardWaits,
 		},
 	);
+	// Upstream's line under a plan-exit card in the page that watched the turn stays mounted with nothing in it.
+	const lineEmpty = underCard === "empty";
 	const lineWaits = workingLineWaits || underCard === "blocked";
 	const workingLine = useCallback(
 		(inline: boolean, bare = false) => (
@@ -2652,6 +2655,7 @@ function SessionView({
 				state={workingMarkerState}
 				quiet={workingLineQuiet}
 				waitingOnUser={lineWaits}
+				empty={lineEmpty}
 				runningTasks={runningTaskCount}
 				inline={inline}
 				bare={bare}
@@ -2667,6 +2671,7 @@ function SessionView({
 			workingMarkerState,
 			workingLineQuiet,
 			lineWaits,
+			lineEmpty,
 			runningTaskCount,
 			promptSending,
 			turnTokens,
@@ -2701,9 +2706,10 @@ function SessionView({
 		},
 	);
 	// Upstream `busyLineBelowTailSlot`: the line moves into the tail chrome's grid below the card or plan box.
-	// The blocked line under a live card sits in that grid too, after the card, wherever the card is drawn.
-	const lineBelowTailSlot = planHolds || (workingLineFollowsTranscript && cardHoldsTail) || underCard === "blocked";
-	const lineAfterTranscript = workingLineFollowsTranscript || planHolds || underCard === "blocked";
+	// The blocked or empty line under a live card sits in that grid too, after the card, wherever the card is drawn.
+	const lineUnderCard = underCard === "blocked" || lineEmpty;
+	const lineBelowTailSlot = planHolds || (workingLineFollowsTranscript && cardHoldsTail) || lineUnderCard;
+	const lineAfterTranscript = workingLineFollowsTranscript || planHolds || lineUnderCard;
 	// Upstream's fresh tab draws no line at all under a live card.
 	const lineShown = underCard !== "none";
 	// Upstream `aDe`'s `yieldFor`: the line below the tail slot takes the mark when no row is carried there.
