@@ -6,7 +6,7 @@
  * `[data-active]` pill ghost-selected; the wrapping element must carry `data-cds="Tabs"`.
  */
 export const CDS_TAB_CLASS =
-	"relative isolate inline-flex h-7 shrink-0 items-center justify-center gap-1.5 px-3 text-body font-control whitespace-nowrap text-ink-muted no-underline outline-none select-none before:absolute before:inset-x-px before:inset-y-0 before:-z-[1] before:rounded-r6 before:transition-shadow before:duration-[60ms] focus-visible:outline-hidden focus-visible:before:shadow-focus data-[active]:text-primary data-[active]:before:bg-fill-ghost-hover [&:not([data-active])]:hover:text-secondary [&:not([data-active])]:hover:before:bg-fill-ghost-hover";
+	"relative isolate inline-flex h-7 shrink-0 items-center justify-center gap-1.5 px-3 text-body font-control whitespace-nowrap text-ink-muted no-underline outline-none select-none before:absolute before:inset-x-px before:inset-y-0 before:-z-[1] before:rounded-r6 before:transition-shadow before:duration-[60ms] focus-visible:outline-hidden focus-visible:before:shadow-focus data-[active]:text-primary data-[active]:before:bg-fill-ghost-hover [&:not([data-active])]:hover:text-secondary [&:not([data-active])]:hover:before:bg-fill-ghost-hover stacks:[&[data-active]:not([data-disabled])]:hover:before:layers-1-fill-ghost-hover";
 
 /** Upstream's cds Tabs list: abutting tabs whose first/last pills run to the strip's edges. */
 export const CDS_TAB_LIST_CLASS =

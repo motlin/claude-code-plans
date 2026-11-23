@@ -388,6 +388,7 @@ describe("customize shell", () =>
 			"data-[active]:before:bg-fill-ghost-hover",
 			"[&:not([data-active])]:hover:text-secondary",
 			"[&:not([data-active])]:hover:before:bg-fill-ghost-hover",
+			"stacks:[&[data-active]:not([data-disabled])]:hover:before:layers-1-fill-ghost-hover",
 			"focus-visible:before:shadow-focus",
 		];
 		const dropped = ["text-t6", "h-8", "aria-selected:before:bg-fill-ghost-hover", "font-medium"];
