@@ -288,6 +288,8 @@ html[data-interface-font="dyslexic"]
 	--color-neutral-hover: var(--upstream-bg-neutral-hover);
 	/* Upstream --cds-fill-card: the Background tasks pane's row pieces. */
 	--color-fill-card: var(--upstream-fill-card);
+	/* Upstream --cds-fill-card-hover: a CardLink Card's hovered after-layer (the workflow transcript card). */
+	--color-fill-card-hover: var(--upstream-fill-card-hover);
 	/* Upstream --cds-fill-button-ghost-hover: a cds ghost Button's hover paint (the `stacks:` variant). */
 	--color-fill-button-ghost-hover: var(--upstream-fill-button-ghost-hover);
 	/* Upstream --cds-fill-button-layer: the hovered segment's extra layer over a fizzy ghost split's group hover. */
@@ -590,6 +592,8 @@ html[data-interface-font="dyslexic"]
 	--upstream-fill-disabled: var(--upstream-alpha-1);
 	/* Upstream `--cds-fill-card` falls back to --cds-alpha-1 outside fizzy color. */
 	--upstream-fill-card: var(--upstream-alpha-1);
+	/* Upstream `--cds-fill-card-hover` falls back to --cds-bg-neutral outside fizzy color. */
+	--upstream-fill-card-hover: var(--upstream-bg-neutral);
 	--upstream-opacity-disabled: 0.4;
 	/* Upstream --cds-skeleton-base/-sheen: alpha-1 in light, neutral-900 at 7.5% in dark. */
 	--skeleton-base: var(--upstream-alpha-1);
@@ -1245,7 +1249,9 @@ html[data-interface-font="dyslexic"]
 	/* Upstream fizzy `--cds-fill-disabled`, `--cds-text-button-disabled` and
 	   `--cds-fizzy-lake-color-icon-only-disabled`: a disabled cds Button keeps opacity 1 with this paint and ink. */
 	--upstream-fill-disabled: #00000006;
-	--upstream-fill-card: #00000006;
+	/* Upstream fizzy `--cds-fill-card` / `--cds-fill-card-hover`: wash ink at 3.5% / 6% (live workflow card, 2026-11-21). */
+	--upstream-fill-card: color-mix(in srgb, #000 3.5%, transparent);
+	--upstream-fill-card-hover: color-mix(in srgb, #000 6%, transparent);
 	--upstream-text-button-disabled: #0007;
 	--upstream-icon-only-disabled: #0006;
 	/* Upstream `--control-ink: var(--cds-fizzy-lake-color-control-ink, var(--cds-text-primary))`
@@ -1403,6 +1409,7 @@ html[data-interface-font="dyslexic"]
 	--cds-fizzy-lake-color-solid-secondary: #c2c2c2;
 	--upstream-fill-disabled: #ffffff0d;
 	--upstream-fill-card: #ffffff08;
+	--upstream-fill-card-hover: color-mix(in srgb, #fff 6%, transparent);
 	--upstream-text-button-disabled: #fff6;
 	--upstream-icon-only-disabled: #fff6;
 	--upstream-bg-tint-blue: #257de01f;
@@ -2298,7 +2305,7 @@ input.cds-input::-webkit-search-cancel-button
 }
 
 /* Upstream `.epitaxy-task-card-surface`: a pressed 318px task card's surface shrinks
-   to .99 in 60ms and springs back over .45s, shared by the workflow and artifact cards. */
+   to .99 in 60ms and springs back over .45s (the artifact card). */
 .task-card-surface
 {
 	transform-origin: 50%;

@@ -26,9 +26,20 @@ const NO_AGENTS: WorkflowProgressCounts =
 /** Upstream `Vme`'s card cell grid: up to 8 wrapped rows. */
 const CARD_MAX_ROWS = 8;
 
-/** Upstream `K$` (`group/tool my-[6px]` plus the 318px task-card shell `dae`). */
-const CARD_SHELL =
-	"group/tool my-[6px] relative isolate flex self-start min-w-[318px] max-w-[318px] items-start gap-g5 rounded-r6 ps-3 py-2.5 text-start text-pretty";
+/**
+ * Upstream's xs cds Card root: a CardLink inside paints the fill-card after-layer, fill-card-hover on hover and
+ * neutral-hover while pressed (its card ring is a zero-width flat edge, so none is drawn).
+ */
+const CARD_CLASS =
+	"group/card relative isolate flex flex-col rounded-card after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] after:content-[''] has-[[data-cds=CardLink]:focus-visible]:after:shadow-focus has-[[data-cds=CardLink]:active]:after:bg-neutral-hover has-[[data-cds=CardLink]]:after:bg-fill-card has-[[data-cds=CardLink]]:not-has-[[data-cds=CardLink]:active]:hover:after:bg-fill-card-hover my-[var(--chat-card-bump,6px)] self-start min-w-[318px] max-w-[318px] text-start text-pretty";
+
+const CARD_FILL_CLASS = "cds-card-fill pointer-events-none absolute inset-0 -z-[1] m-0 rounded-[inherit]";
+
+/** Upstream `p-lg`: 12px under upstream's xs scale, which the local compact xs scale shrinks to 10px. */
+const CARD_BODY_CLASS = "cds-card-body flex min-h-0 flex-1 flex-col self-stretch rounded-[inherit] p-p8";
+
+const CARD_LINK_CLASS =
+	"outline-none after:absolute after:inset-0 after:rounded-card after:contain-paint after:content-[''] cursor-pointer";
 
 /** Upstream `V$`: "N agent(s)" with the number in secondary ink, unless muted. */
 export function AgentCount({total, muted = false}: {total: number; muted?: boolean})
@@ -82,7 +93,11 @@ export function WorkflowCard({
 	const label = preLaunch ? "Starting workflow" : "Workflow";
 	const content = (
 		<span className="flex min-w-0 flex-1 flex-col gap-1">
-			{hasName && <ShimmerText className="min-w-0 truncate text-body text-primary">{name}</ShimmerText>}
+			{hasName && (
+				<span className="flex min-w-0 items-baseline gap-xs">
+					<ShimmerText className="min-w-0 truncate text-body text-primary">{name}</ShimmerText>
+				</span>
+			)}
 			<span
 				className={`flex min-w-0 items-center gap-2 text-footnote text-ink-muted tabular-nums${hasName ? "" : " pb-0.75"}`}
 				style={
@@ -106,46 +121,54 @@ export function WorkflowCard({
 					</span>
 				)}
 			</span>
-			{/* Upstream `pt-sm`: 5px, which the measured 318x81 one-row card pins. */}
-			<span className="block pt-p4 pb-0.5">
+			{/* Upstream `pt-sm`: 6px under upstream's xs scale (the local compact xs scale makes it 4px). */}
+			<span className="relative z-1 block pt-p5 pb-0.5">
 				<WorkflowAgentCells counts={counts} wrap maxRows={CARD_MAX_ROWS} anticipate agents={agents} />
 			</span>
 		</span>
 	);
-	const surface = (
-		<span
-			aria-hidden="true"
-			className="card-outline task-card-surface absolute inset-0 -z-[1] rounded-[inherit] group-hover/btn:bg-fill-ghost-hover"
-		/>
-	);
-	if (onOpen === undefined)
-	{
-		return (
-			<div className={`${CARD_SHELL} pe-4`}>
-				{surface}
-				{content}
-			</div>
-		);
-	}
-	return (
-		<button
-			type="button"
-			onClick={onOpen}
-			data-transcript-keeps-pin=""
-			aria-label={hasName ? `View workflow: ${name}` : "View workflow"}
-			className={`${CARD_SHELL} group/btn outline-none hide-focus-ring focus-visible:ring-focus pe-2`}
-		>
-			{surface}
+	const row = (
+		<span className="flex min-w-0 items-center gap-xs">
 			{content}
-			<span
-				className="flex shrink-0 items-center self-start text-ink-muted"
-				style={
-				{
-					height: "var(--text-body--line-height)",
-				}}
-			>
-				<ChevronRight size={16} aria-hidden="true" />
-			</span>
-		</button>
+			{onOpen !== undefined && (
+				<span
+					className="flex shrink-0 items-center self-start text-ink-muted"
+					style={
+					{
+						height: "var(--text-body--line-height)",
+					}}
+				>
+					<ChevronRight size={16} aria-hidden="true" />
+				</span>
+			)}
+		</span>
+	);
+	return (
+		<div data-cds="Card" data-size="xs" className={CARD_CLASS}>
+			<span aria-hidden="true" className={CARD_FILL_CLASS} />
+			<div data-cds-card-body="" className={CARD_BODY_CLASS}>
+				{onOpen === undefined ? (
+					row
+				) : (
+					<span
+						data-cds="CardLink"
+						role="button"
+						tabIndex={0}
+						data-transcript-keeps-pin=""
+						aria-label={hasName ? `View workflow: ${name}` : "View workflow"}
+						onClick={onOpen}
+						onKeyDown={(event) =>
+						{
+							if (event.key !== "Enter" && event.key !== " ") return;
+							event.preventDefault();
+							onOpen();
+						}}
+						className={CARD_LINK_CLASS}
+					>
+						{row}
+					</span>
+				)}
+			</div>
+		</div>
 	);
 }

@@ -1095,35 +1095,39 @@ describe("fizzy-lake color rings (upstream --cds-border = --cds-ring-color)", ()
 		);
 	});
 
-	it("bg-fill-card is upstream's --cds-fill-card: alpha-1 at rest, #00000006 / #ffffff08 under fizzy color", async () =>
+	it("bg-fill-card and bg-fill-card-hover are upstream's --cds-fill-card(-hover): alpha-1 / bg-neutral at rest, wash ink 3.5% / 6% under fizzy color", async () =>
 	{
-		const names = ["--upstream-fill-card"] as const;
+		const names = ["--upstream-fill-card", "--upstream-fill-card-hover"] as const;
 		expect(
 			{
 				base: tokens(block(":root"), names),
 				light: tokens(block(FIZZY_LIGHT), names),
 				dark: tokens(block(FIZZY_DARK), names),
-				utilities: await compileAll(["bg-fill-card", "not-touch:bg-fill-card"]),
+				utilities: await compileAll(["bg-fill-card", "not-touch:bg-fill-card", "bg-fill-card-hover"]),
 			},
 		).toStrictEqual(
 			{
 				base:
 				{
 					"--upstream-fill-card": "var(--upstream-alpha-1)",
+					"--upstream-fill-card-hover": "var(--upstream-bg-neutral)",
 				},
 				light:
 				{
-					"--upstream-fill-card": "#00000006",
+					"--upstream-fill-card": "color-mix(in srgb, #000 3.5%, transparent)",
+					"--upstream-fill-card-hover": "color-mix(in srgb, #000 6%, transparent)",
 				},
 				dark:
 				{
 					"--upstream-fill-card": "#ffffff08",
+					"--upstream-fill-card-hover": "color-mix(in srgb, #fff 6%, transparent)",
 				},
 				utilities:
 				{
 					"bg-fill-card": ".bg-fill-card { background-color: var(--upstream-fill-card); }",
 					"not-touch:bg-fill-card":
 						"@media (hover: hover) and (pointer: fine) { .not-touch\\:bg-fill-card { background-color: var(--upstream-fill-card); } }",
+					"bg-fill-card-hover": ".bg-fill-card-hover { background-color: var(--upstream-fill-card-hover); }",
 				},
 			},
 		);

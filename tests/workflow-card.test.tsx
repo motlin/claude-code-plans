@@ -69,8 +69,13 @@ const NAME = "upstream-sync-wf-test";
 const NOW = Date.parse("2026-10-19T12:00:13.000Z");
 const STARTED_AT = Date.parse("2026-10-19T12:00:00.000Z");
 
+/** Upstream's xs cds Card root around the workflow CardLink. */
 const CARD_CLASS =
-	"group/tool my-[6px] relative isolate flex self-start min-w-[318px] max-w-[318px] items-start gap-g5 rounded-r6 ps-3 py-2.5 text-start text-pretty group/btn outline-none hide-focus-ring focus-visible:ring-focus pe-2";
+	"group/card relative isolate flex flex-col rounded-card after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] after:content-[''] has-[[data-cds=CardLink]:focus-visible]:after:shadow-focus has-[[data-cds=CardLink]:active]:after:bg-neutral-hover has-[[data-cds=CardLink]]:after:bg-fill-card has-[[data-cds=CardLink]]:not-has-[[data-cds=CardLink]:active]:hover:after:bg-fill-card-hover my-[var(--chat-card-bump,6px)] self-start min-w-[318px] max-w-[318px] text-start text-pretty";
+const CARD_FILL_CLASS = "cds-card-fill pointer-events-none absolute inset-0 -z-[1] m-0 rounded-[inherit]";
+const CARD_BODY_CLASS = "cds-card-body flex min-h-0 flex-1 flex-col self-stretch rounded-[inherit] p-p8";
+const CARD_LINK_CLASS =
+	"outline-none after:absolute after:inset-0 after:rounded-card after:contain-paint after:content-[''] cursor-pointer";
 
 function agent(index: number, state: "start" | "progress" | "done"): WorkflowProgressEntry
 {
@@ -227,39 +232,82 @@ describe("WorkflowCard", () =>
 {
 	it("shows a pre-launch card as Starting workflow with only the ghost cell", () =>
 	{
-		const {container} = render(
-			<WorkflowCard
-				name={NAME}
-				preLaunch
-				progress={[]}
-				onOpen={() =>
-				{
-				}}
-			/>,
-		);
-		const card = screen.getByRole(
+		const onOpen = vi.fn<() => void>();
+		const {container} = render(<WorkflowCard name={NAME} preLaunch progress={[]} onOpen={onOpen} />);
+		const link = screen.getByRole(
 			"button",
 			{
 				name: `View workflow: ${NAME}`,
 			},
 		);
+		const card = container.firstElementChild as HTMLElement;
+		fireEvent.click(link);
+		fireEvent.keyDown(
+			link,
+			{
+				key: "Enter",
+			},
+		);
+		fireEvent.keyDown(
+			link,
+			{
+				key: " ",
+			},
+		);
+		fireEvent.keyDown(
+			link,
+			{
+				key: "a",
+			},
+		);
 
 		expect(
 			{
-				className: card.className,
-				text: card.textContent,
+				card:
+				{
+					cds: card.dataset["cds"],
+					size: card.dataset["size"],
+					className: card.className,
+				},
+				children: [...card.children].map((child) => child.className),
+				link:
+				{
+					tag: link.tagName,
+					cds: link.dataset["cds"],
+					tabIndex: link.tabIndex,
+					keepsPin: link.hasAttribute("data-transcript-keeps-pin"),
+					className: link.className,
+					parent: link.parentElement?.className,
+				},
+				text: link.textContent,
 				cells: cells(container),
 				summary: container.querySelector('[role="img"]')?.getAttribute("aria-label"),
-				surface: card.querySelector('span[aria-hidden="true"]')?.className,
+				taskCardSurfaces: container.querySelectorAll(".task-card-surface").length,
+				opens: onOpen.mock.calls.length,
 			},
 		).toStrictEqual(
 			{
-				className: CARD_CLASS,
+				card:
+				{
+					cds: "Card",
+					size: "xs",
+					className: CARD_CLASS,
+				},
+				children: [CARD_FILL_CLASS, CARD_BODY_CLASS],
+				link:
+				{
+					tag: "SPAN",
+					cds: "CardLink",
+					tabIndex: 0,
+					keepsPin: true,
+					className: CARD_LINK_CLASS,
+					parent: CARD_BODY_CLASS,
+				},
 				text: `${NAME}Starting workflow`,
 				cells: ["epitaxy-agent-cell shrink-0 rounded-xs epitaxy-agent-cell--ghost"],
 				summary: "Waiting for agents to start",
-				surface:
-					"card-outline task-card-surface absolute inset-0 -z-[1] rounded-[inherit] group-hover/btn:bg-fill-ghost-hover",
+				taskCardSurfaces: 0,
+				opens: 3,
 			},
 		);
 	});
@@ -381,13 +429,14 @@ describe("WorkflowCard", () =>
 			{
 				buttons: screen.queryAllByRole("button").length,
 				className: (container.firstElementChild as HTMLElement).className,
+				body: container.querySelector("[data-cds-card-body]")?.firstElementChild?.className,
 				svgs: container.querySelectorAll("svg").length,
 			},
 		).toStrictEqual(
 			{
 				buttons: 0,
-				className:
-					"group/tool my-[6px] relative isolate flex self-start min-w-[318px] max-w-[318px] items-start gap-g5 rounded-r6 ps-3 py-2.5 text-start text-pretty pe-4",
+				className: CARD_CLASS,
+				body: "flex min-w-0 items-center gap-xs",
 				svgs: 0,
 			},
 		);
