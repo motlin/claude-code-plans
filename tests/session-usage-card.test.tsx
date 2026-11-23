@@ -170,9 +170,9 @@ describe("SessionUsageCard plan section", () =>
 				row:
 				{
 					className: "flex flex-col gap-0.75",
-					top: "flex items-baseline justify-between gap-sm",
-					label: "text-footnote text-secondary truncate",
-					readout: "flex items-baseline gap-xs text-footnote text-muted-as-secondary tabular-nums shrink-0",
+					top: "flex flex-wrap items-baseline justify-between gap-x-sm",
+					label: "min-w-0 text-footnote text-secondary wrap-anywhere",
+					readout: "ms-auto flex items-baseline gap-xs text-footnote text-secondary tabular-nums shrink-0",
 				},
 				percents: [
 					{
@@ -188,12 +188,12 @@ describe("SessionUsageCard plan section", () =>
 				],
 				meters: [
 					{
-						label: "Current session",
+						label: "5-hour limit",
 						valueText: `80% · ${fiveHourReset}`,
 						variant: "warning",
 					},
 					{
-						label: "This week",
+						label: "Weekly · all models",
 						valueText: `0% · ${weekReset}`,
 						variant: "accent",
 					},

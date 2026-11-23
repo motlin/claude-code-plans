@@ -6,7 +6,7 @@ import {useTimedFlag} from "../hooks/use-timed-flag";
 import {sessionQueryKeys, sessionUsageStatsQueryOptions} from "../lib/api/sessions";
 import {usageQueryOptions} from "../lib/api/usage";
 import {writeClipboardText} from "../lib/clipboard";
-import {formatResetLabel} from "../lib/composer-state";
+import {formatResetLabel, WEEKLY_LABEL} from "../lib/composer-state";
 import {formatModelName} from "../lib/model-name";
 import
 {
@@ -32,6 +32,8 @@ const COPIED_MS = 1200;
 const VISIBLE_ROWS = 5;
 /** Upstream's `KB`: the smallest top share that earns a tip. */
 const TIP_MIN_PCT = 10;
+/** Upstream's `Zg` label for the five-hour window (the composer chin says "Session limit" instead). */
+const FIVE_HOUR_WINDOW_LABEL = "5-hour limit";
 /** Upstream's `jB`: a model with no cost in the Cost row. */
 const NO_COST = "–";
 
@@ -89,7 +91,7 @@ function planWindows(usage: UsageSummary | undefined): PlanWindow[]
 		windows.push(
 			{
 				key: "five_hour",
-				label: "Current session",
+				label: FIVE_HOUR_WINDOW_LABEL,
 				window: usage.fiveHour,
 			},
 		);
@@ -97,7 +99,7 @@ function planWindows(usage: UsageSummary | undefined): PlanWindow[]
 		windows.push(
 			{
 				key: "seven_day",
-				label: "This week",
+				label: WEEKLY_LABEL,
 				window: usage.sevenDay,
 			},
 		);
@@ -115,11 +117,11 @@ function PlanWindowRow({plan, nowMs}: {plan: PlanWindow; nowMs: number})
 	const reset = formatResetLabel(plan.window.resetsAt, nowMs);
 	return (
 		<div className="flex flex-col gap-0.75">
-			<div className="flex items-baseline justify-between gap-sm">
-				<span id={labelId} className="text-footnote text-secondary truncate">
+			<div className="flex flex-wrap items-baseline justify-between gap-x-sm">
+				<span id={labelId} className="min-w-0 text-footnote text-secondary wrap-anywhere">
 					{plan.label}
 				</span>
-				<span className="flex items-baseline gap-xs text-footnote text-muted-as-secondary tabular-nums shrink-0">
+				<span className="ms-auto flex items-baseline gap-xs text-footnote text-secondary tabular-nums shrink-0">
 					<span>{reset}</span>
 					<span
 						className={percent === 0 ? "text-muted-as-secondary" : "text-primary"}
