@@ -168,10 +168,14 @@ export function reduceSectionView<Row extends KeyedRow>(
 	previous: SectionView<Row> | null,
 ): SectionView<Row>
 {
-	const {epoch, sorted, truncateAt, extraRevealed} = input;
+	const {epoch, sorted, truncateAt} = input;
 	const prev = previous?.epoch === epoch ? previous : null;
 	const orderChanged = prev !== null && prev.order !== input.order;
 	const sortRelease = orderChanged && input.sortMenuOpen;
+	// A count adopted at a focus release (upstream `gy`) persists into the group only after commit, so carry it until
+	// then; Show less starts a new epoch.
+	const extraRevealed =
+		prev === null || sortRelease ? input.extraRevealed : Math.max(input.extraRevealed, prev.extraRevealed);
 	if (prev?.sorted === sorted && prev.truncateAt === truncateAt && prev.extraRevealed === extraRevealed)
 	{
 		const kept =

@@ -192,10 +192,19 @@ describe("reduceSectionView (upstream B5/hk)", () =>
 			),
 			held,
 		);
+		const rerendered = reduceSectionView(
+			input(
+				{
+					sorted: [...RESORTED],
+				},
+			),
+			blurred,
+		);
 		expect(
 			{
 				held: summary(held),
 				blurred: summary(blurred),
+				rerendered: summary(rerendered),
 			},
 		).toStrictEqual(
 			{
@@ -208,6 +217,14 @@ describe("reduceSectionView (upstream B5/hk)", () =>
 					extraRevealed: 0,
 				},
 				blurred:
+				{
+					visible: "ABCDFGEH",
+					hiddenCount: 0,
+					holding: false,
+					focusHeld: false,
+					extraRevealed: 2,
+				},
+				rerendered:
 				{
 					visible: "ABCDFGEH",
 					hiddenCount: 0,

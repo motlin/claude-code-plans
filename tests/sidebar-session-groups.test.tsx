@@ -1333,6 +1333,84 @@ describe("sidebar SessionGroups", () =>
 		);
 	});
 
+	it("keeps a focused row adopted after focus leaves and later re-sorts land, as upstream's gy carries it", async () =>
+	{
+		const sessions = doneSessions(30);
+		const {container, queryClient} = await renderGroups(sessions);
+		const push = (rows: unknown[]) =>
+		{
+			act(() =>
+			{
+				for (const status of ["active", "all"] as const)
+				{
+					queryClient.setQueryData(
+						recentSessionsInfiniteQueryOptions(undefined, status).queryKey,
+						{
+							pages: [
+								RecentSessionsResponse.parse(
+									{
+										sessions: rows,
+										nextCursor: null,
+									},
+								),
+							],
+							pageParams: [null],
+						},
+					);
+				}
+			});
+		};
+		const toTop = (rows: readonly ReturnType<typeof session>[], id: string, minutesAgo: number) =>
+			rows.map((row) => (row.id === id ? session(id, row.title, "done", minutesAgo) : row));
+		const link = container.querySelector<HTMLElement>(
+			'[data-group-key="state-done"] [data-row-key="d19"] a[data-row-main-button]',
+		);
+		act(() =>
+		{
+			link?.focus();
+		});
+		const first = toTop(sessions, "d29", 0.5);
+		push(first);
+		await waitFor(() =>
+		{
+			expect(rowTitlesIn(container, "state-done")[0]).toBe("Done 29");
+		});
+		act(() =>
+		{
+			link?.blur();
+		});
+		const second = toTop(first, "d28", 0.25);
+		push(second);
+		await waitFor(() =>
+		{
+			expect(rowTitlesIn(container, "state-done")[0]).toBe("Done 28");
+		});
+		push(
+			second.map((row) => (
+			{
+				...row,
+			})),
+		);
+		expect(
+			{
+				tail: rowTitlesIn(container, "state-done").slice(19),
+				showMore: screen
+					.getByRole(
+						"button",
+						{
+							name: /^Show \d+ more in Idle$/,
+						},
+					)
+					.getAttribute("aria-label"),
+			},
+		).toStrictEqual(
+			{
+				tail: ["Done 17", "Done 18", "Done 19"],
+				showMore: "Show 8 more in Idle",
+			},
+		);
+	});
+
 	it("reveals an open session hidden past the cap on first paint, and keeps it revealed after opening another", async () =>
 	{
 		const {container, setActiveItemId} = await renderGroups(
