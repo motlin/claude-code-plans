@@ -1037,9 +1037,21 @@ describe("FilesTree content search", () =>
 		);
 		await screen.findByText("a.ts");
 
-		const groups = screen.getAllByRole("group").map((group) => (
+		const list = screen.getByRole(
+			"tree",
+			{
+				name: "File content matches",
+			},
+		).firstElementChild!;
+		const groupList =
 		{
-			file: group.getAttribute("aria-label"),
+			role: list.getAttribute("role"),
+			className: list.className,
+			groupRoles: [...list.children].map((group) => group.getAttribute("role")),
+		};
+		const groups = [...list.children].map((group) => (
+		{
+			file: group.querySelector("[data-content-file]")?.getAttribute("title"),
 			rows: [...group.querySelectorAll("[data-content-match]")].map((row) => row.textContent),
 			more: group.querySelector("[data-content-more]")?.textContent ?? null,
 		}));
@@ -1063,6 +1075,7 @@ describe("FilesTree content search", () =>
 				treeRequestedQuestion: requests.some(
 					(request) => !request.startsWith("/api/search/files") && request.includes("%3F"),
 				),
+				groupList,
 				groups,
 				opens: onOpenFile.mock.calls,
 			},
@@ -1070,6 +1083,12 @@ describe("FilesTree content search", () =>
 			{
 				contentRequests: ["/api/search/files?query=needle&scopeRoot=%2Frepo"],
 				treeRequestedQuestion: false,
+				groupList:
+				{
+					role: "none",
+					className: "flex flex-col gap-1.5",
+					groupRoles: ["none", "none"],
+				},
 				groups: [
 					{
 						file: "src/a.ts",

@@ -484,131 +484,139 @@ export function ContentSearchResults({
 			aria-label="File content matches"
 			className="min-h-0 flex-1 overflow-y-auto px-1 py-1.25 outline-none"
 		>
-			{results.groups.map((group, groupIndex) =>
-			{
-				const dir = parentDir(group.relPath);
-				const moreId = `${moreIdPrefix}-${groupIndex}`;
-				return (
-					<div key={group.path} role="group" aria-label={group.relPath} className="pb-1">
-						<button
-							type="button"
-							tabIndex={-1}
-							data-content-file
-							title={group.relPath}
-							aria-describedby={group.more ? moreId : undefined}
-							onClick={() =>
-								onOpenFile?.(
-									group.relPath,
-									{
-										pin: false,
-									},
-								)
-							}
-							onDoubleClick={() =>
-								onOpenFile?.(
-									group.relPath,
-									{
-										pin: true,
-									},
-								)
-							}
-							className="flex h-6 w-full min-w-0 cursor-pointer items-baseline gap-1 rounded-r5 border-0 bg-transparent pr-2 pl-2 text-left text-body outline-none select-none hover:bg-fill-ghost-hover"
-						>
-							<FileTypeIcon fileName={group.relPath} size="xs" className="self-center text-ink-muted" />
-							<span className="truncate text-primary">{fileName(group.relPath)}</span>
-							{dir !== "" && <span className="min-w-0 truncate text-footnote text-ink-muted">{dir}</span>}
-						</button>
-						{group.matches.map((match) =>
-						{
-							const index = rowIndex;
-							rowIndex += 1;
-							return (
-								<ContextMenu key={match.line}>
-									<ContextMenuTrigger
-										data-tree-row
-										role="treeitem"
-										aria-level={2}
-										aria-selected={false}
-										tabIndex={-1}
-										data-content-match
-										data-row-index={index}
-										onKeyDown={(event: KeyboardEvent<HTMLDivElement>) =>
+			<div role="none" className="flex flex-col gap-1.5">
+				{results.groups.map((group, groupIndex) =>
+				{
+					const dir = parentDir(group.relPath);
+					const moreId = `${moreIdPrefix}-${groupIndex}`;
+					return (
+						<div key={group.path} role="none">
+							<button
+								type="button"
+								tabIndex={-1}
+								data-content-file
+								title={group.relPath}
+								aria-describedby={group.more ? moreId : undefined}
+								onClick={() =>
+									onOpenFile?.(
+										group.relPath,
 										{
-											handleRowKeyDown(event, index);
-										}}
-										className={MATCH_ROW_CLASS}
-										style={MATCH_ROW_PADDING}
-									>
-										<button
-											type="button"
-											data-tree-primary
-											tabIndex={-1}
-											onClick={(event) =>
-											{
-												openMatch(group.relPath, match, event.metaKey || event.ctrlKey);
-											}}
-											onDoubleClick={() =>
-											{
-												openMatch(group.relPath, match, true);
-											}}
-											onMouseDown={(event) =>
-											{
-												if (event.button === 1) event.preventDefault();
-											}}
-											onAuxClick={(event) =>
-											{
-												if (event.button === 1) openMatch(group.relPath, match, true);
-											}}
-											className={MATCH_PRIMARY_CLASS}
-										>
-											<span
-												className={`${LINE_NUMBER_SIZER_CLASS} shrink-0 text-secondary text-end`}
-												data-widest={group.maxLine}
-											>
-												{match.line}
-											</span>
-											<Snippet snippet={match.snippet} />
-										</button>
-									</ContextMenuTrigger>
-									<MenuContent>
-										{onAsk !== undefined && (
-											<MenuItem
-												onSelect={() =>
-												{
-													onAsk(askAboutPrompt(group.relPath, match.line, match.text));
-												}}
-											>
-												Ask about this
-											</MenuItem>
-										)}
-										<TreeRowMenuItems
-											path={group.path}
-											cwd={cwd}
-											isDirectory={false}
-											onAttachContext={onAttachContext}
-										/>
-									</MenuContent>
-								</ContextMenu>
-							);
-						})}
-						{group.more && (
-							<div
-								id={moreId}
-								aria-hidden
-								data-content-more
-								className={`flex items-center ${MATCH_GAP_CLASS} h-control text-footnote text-secondary select-none`}
-								style={MATCH_ROW_PADDING}
+											pin: false,
+										},
+									)
+								}
+								onDoubleClick={() =>
+									onOpenFile?.(
+										group.relPath,
+										{
+											pin: true,
+										},
+									)
+								}
+								className="flex h-6 w-full min-w-0 cursor-pointer items-baseline gap-1 rounded-r5 border-0 bg-transparent pr-2 pl-2 text-left text-body outline-none select-none hover:bg-fill-ghost-hover"
 							>
-								<span
-									className={`${LINE_NUMBER_SIZER_CLASS} shrink-[9999]`}
-									data-widest={group.maxLine}
+								<FileTypeIcon
+									fileName={group.relPath}
+									size="xs"
+									className="self-center text-ink-muted"
 								/>
-								<span className="min-w-0 truncate">More matches in this file.</span>
-							</div>
-						)}
-					</div>
-				);
-			})}
+								<span className="truncate text-primary">{fileName(group.relPath)}</span>
+								{dir !== "" && (
+									<span className="min-w-0 truncate text-footnote text-ink-muted">{dir}</span>
+								)}
+							</button>
+							{group.matches.map((match) =>
+							{
+								const index = rowIndex;
+								rowIndex += 1;
+								return (
+									<ContextMenu key={match.line}>
+										<ContextMenuTrigger
+											data-tree-row
+											role="treeitem"
+											aria-level={2}
+											aria-selected={false}
+											tabIndex={-1}
+											data-content-match
+											data-row-index={index}
+											onKeyDown={(event: KeyboardEvent<HTMLDivElement>) =>
+											{
+												handleRowKeyDown(event, index);
+											}}
+											className={MATCH_ROW_CLASS}
+											style={MATCH_ROW_PADDING}
+										>
+											<button
+												type="button"
+												data-tree-primary
+												tabIndex={-1}
+												onClick={(event) =>
+												{
+													openMatch(group.relPath, match, event.metaKey || event.ctrlKey);
+												}}
+												onDoubleClick={() =>
+												{
+													openMatch(group.relPath, match, true);
+												}}
+												onMouseDown={(event) =>
+												{
+													if (event.button === 1) event.preventDefault();
+												}}
+												onAuxClick={(event) =>
+												{
+													if (event.button === 1) openMatch(group.relPath, match, true);
+												}}
+												className={MATCH_PRIMARY_CLASS}
+											>
+												<span
+													className={`${LINE_NUMBER_SIZER_CLASS} shrink-0 text-secondary text-end`}
+													data-widest={group.maxLine}
+												>
+													{match.line}
+												</span>
+												<Snippet snippet={match.snippet} />
+											</button>
+										</ContextMenuTrigger>
+										<MenuContent>
+											{onAsk !== undefined && (
+												<MenuItem
+													onSelect={() =>
+													{
+														onAsk(askAboutPrompt(group.relPath, match.line, match.text));
+													}}
+												>
+													Ask about this
+												</MenuItem>
+											)}
+											<TreeRowMenuItems
+												path={group.path}
+												cwd={cwd}
+												isDirectory={false}
+												onAttachContext={onAttachContext}
+											/>
+										</MenuContent>
+									</ContextMenu>
+								);
+							})}
+							{group.more && (
+								<div
+									id={moreId}
+									aria-hidden
+									data-content-more
+									className={`flex items-center ${MATCH_GAP_CLASS} h-control text-footnote text-secondary select-none`}
+									style={MATCH_ROW_PADDING}
+								>
+									<span
+										className={`${LINE_NUMBER_SIZER_CLASS} shrink-[9999]`}
+										data-widest={group.maxLine}
+									/>
+									<span className="min-w-0 truncate">More matches in this file.</span>
+								</div>
+							)}
+						</div>
+					);
+				})}
+			</div>
 			{capNote !== null && (
 				<div
 					id={capNoteId}
