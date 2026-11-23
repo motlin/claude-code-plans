@@ -312,7 +312,7 @@ describe("type-to-focus", () =>
 		);
 	});
 
-	it("leaves keys and pastes alone while focus is inside [data-owns-typing-and-pastes]", () =>
+	it("routes keys but leaves pastes alone while focus is inside [data-owns-typing-and-pastes]", () =>
 	{
 		render(
 			<>
@@ -342,20 +342,28 @@ describe("type-to-focus", () =>
 				key: "r",
 			},
 		);
+		const afterKey = state(prompts()[0]!);
+		button.focus();
 		const pasted = paste(button, "hi");
 
 		expect(
 			{
 				key,
+				afterKey,
 				pasted,
 				...state(prompts()[0]!),
 				buttonFocused: document.activeElement === button,
 			},
 		).toStrictEqual(
 			{
-				key: true,
+				key: false,
+				afterKey:
+				{
+					value: "r",
+					focused: true,
+				},
 				pasted: true,
-				value: "",
+				value: "r",
 				focused: false,
 				buttonFocused: true,
 			},
