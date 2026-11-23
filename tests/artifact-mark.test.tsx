@@ -40,6 +40,8 @@ const TILE_TONES: Record<ArtifactMarkKind, string> =
 	design: "bg-tint-violet text-tint-violet",
 	chart: "bg-tint-red text-tint-red",
 	animation: "bg-tint-aqua text-tint-aqua",
+	sheet: "bg-tint-green text-tint-green",
+	whiteboard: "bg-tint-magenta text-tint-magenta",
 	web: "bg-tint-yellow text-tint-yellow",
 	video: "bg-tint-magenta text-tint-magenta",
 	code: "bg-fill-secondary text-secondary",
@@ -55,6 +57,8 @@ const INKS: Record<ArtifactMarkKind, string> =
 	design: "text-tint-violet",
 	chart: "text-tint-red",
 	animation: "text-tint-aqua",
+	sheet: "text-tint-green",
+	whiteboard: "text-tint-magenta",
 	web: "text-tint-yellow",
 	video: "text-tint-magenta",
 	code: "text-secondary",
@@ -237,6 +241,21 @@ describe("resolveArtifactMark", () =>
 						typeName: "motion",
 					},
 				),
+				data: resolveArtifactMark(
+					{
+						typeName: " Data ",
+					},
+				),
+				sheets: resolveArtifactMark(
+					{
+						typeName: "Sheets",
+					},
+				),
+				whiteboard: resolveArtifactMark(
+					{
+						typeName: "Whiteboard",
+					},
+				),
 				untypedWord: resolveArtifactMark(
 					{
 						iconWord: "code",
@@ -258,6 +277,24 @@ describe("resolveArtifactMark", () =>
 					{
 						typeName: "Unknown",
 						iconWord: "PlayCircle",
+					},
+				),
+				typedSpreadsheetWord: resolveArtifactMark(
+					{
+						typeName: "Unknown",
+						iconWord: "Spreadsheet",
+					},
+				),
+				typedDatabaseWord: resolveArtifactMark(
+					{
+						typeName: "Unknown",
+						iconWord: "Database",
+					},
+				),
+				typedShapesWord: resolveArtifactMark(
+					{
+						typeName: "Unknown",
+						iconWord: "Shapes",
 					},
 				),
 			},
@@ -289,6 +326,21 @@ describe("resolveArtifactMark", () =>
 					kind: "animation",
 					hue: "aqua",
 				},
+				data:
+				{
+					kind: "chart",
+					hue: "red",
+				},
+				sheets:
+				{
+					kind: "sheet",
+					hue: "green",
+				},
+				whiteboard:
+				{
+					kind: "whiteboard",
+					hue: "magenta",
+				},
 				untypedWord: undefined,
 				untyped: undefined,
 				unknownName:
@@ -305,6 +357,21 @@ describe("resolveArtifactMark", () =>
 				{
 					kind: "animation",
 					hue: "aqua",
+				},
+				typedSpreadsheetWord:
+				{
+					kind: "sheet",
+					hue: "green",
+				},
+				typedDatabaseWord:
+				{
+					kind: "sheet",
+					hue: "green",
+				},
+				typedShapesWord:
+				{
+					kind: "whiteboard",
+					hue: "magenta",
 				},
 			},
 		);

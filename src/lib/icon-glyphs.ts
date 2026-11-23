@@ -140,6 +140,7 @@ export const ICON_GLYPHS =
 	Scroll,
 	Search,
 	Settings,
+	Shapes,
 	SidebarRight: PanelRight,
 	Slides: Presentation,
 	Spreadsheet: Sheet,

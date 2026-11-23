@@ -38,6 +38,16 @@ export const ARTIFACT_MARK_KINDS =
 		icon: "Animation",
 		hue: "aqua",
 	},
+	sheet:
+	{
+		icon: "Spreadsheet",
+		hue: "green",
+	},
+	whiteboard:
+	{
+		icon: "Shapes",
+		hue: "magenta",
+	},
 	web:
 	{
 		icon: "Globe",
@@ -193,6 +203,10 @@ const TYPE_NAME_MARKS: Readonly<Record<string, ArtifactMarkKind>> =
 	motion: "animation",
 	animation: "animation",
 	dashboard: "chart",
+	data: "chart",
+	sheets: "sheet",
+	sheet: "sheet",
+	whiteboard: "whiteboard",
 };
 
 /** Upstream `w2` (lower-cased) plus the local publish icon words: a declared glyph → kind. */
@@ -214,6 +228,9 @@ const GLYPH_WORD_MARKS: Readonly<Record<string, ArtifactMarkKind>> =
 	chartline: "chart",
 	playcircle: "animation",
 	play: "video",
+	spreadsheet: "sheet",
+	database: "sheet",
+	shapes: "whiteboard",
 };
 
 function lookup(
