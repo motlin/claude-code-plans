@@ -1250,17 +1250,16 @@ describe("artifacts route", () =>
 			{
 				html:
 				{
-					preview: "relative h-[152px] shrink-0 select-none overflow-hidden",
+					preview: "relative select-none overflow-hidden aspect-[2/1]",
 					cover: "file",
 					hue: ["bg-cds-gray-100", "text-cds-gray-600", "dark:bg-cds-gray-700", "dark:text-cds-gray-200"],
 					front: [
 						"border-[color:var(--color-border-line)]",
-						"shadow-lg",
-						"top-[30px]",
-						"h-[190px]",
-						"w-[min(232px,100%-24px)]",
+						"top-[20%]",
+						"h-full",
+						"w-[76%]",
 						"z-2",
-						"rounded-xl",
+						"rounded-lg",
 					],
 					blank: "other",
 					viewBox: "0 0 202 130",
@@ -1268,17 +1267,16 @@ describe("artifacts route", () =>
 				},
 				docs:
 				{
-					preview: "relative h-[152px] shrink-0 select-none overflow-hidden",
+					preview: "relative select-none overflow-hidden aspect-[2/1]",
 					cover: "document",
 					hue: ["bg-cds-blue-100", "text-cds-blue-600", "dark:bg-cds-blue-700", "dark:text-cds-blue-200"],
 					front: [
 						"border-[color:var(--color-border-line)]",
-						"shadow-lg",
-						"top-[30px]",
-						"h-[200px]",
-						"w-[182px]",
+						"top-[20%]",
+						"h-full",
+						"w-[76%]",
 						"z-2",
-						"rounded-xl",
+						"rounded-lg",
 					],
 					blank: "document",
 					viewBox: "0 0 180 130",
@@ -4204,7 +4202,7 @@ describe("artifact cover thumbnails", () =>
 			},
 		).toStrictEqual(
 			{
-				front: "absolute overflow-hidden border border-[color:var(--color-border-line)] bg-white text-primary dark:bg-surface-1 dark:bg-clip-padding after:pointer-events-none after:absolute after:inset-0 after:content-[''] isolate shadow-lg inset-x-0 mx-auto top-[30px] h-[190px] w-[min(232px,100%-24px)] z-2 bg-clip-padding [&>img]:h-[121px] [&>[data-cover-light]>img]:h-[121px] rounded-xl dark:group-has-[[data-cover-light]>img]/cover:bg-white dark:group-has-[[data-cover-light]>img]/cover:after:bg-gray-900/20",
+				front: "absolute overflow-hidden border border-[color:var(--color-border-line)] bg-white text-primary dark:bg-surface-1 dark:bg-clip-padding after:pointer-events-none after:absolute after:inset-0 after:content-[''] isolate inset-x-0 mx-auto top-[20%] h-full w-[76%] z-2 bg-clip-padding [&>img]:aspect-[1200/630] [&>[data-cover-light]>img]:aspect-[1200/630] rounded-lg dark:group-has-[[data-cover-light]>img]/cover:bg-white dark:group-has-[[data-cover-light]>img]/cover:after:bg-gray-900/20",
 				light: ["", "h-full"],
 				img: [
 					"IMG",
@@ -4221,7 +4219,7 @@ describe("artifact cover thumbnails", () =>
 		);
 	});
 
-	it("inverts a Docs thumbnail in dark mode and widens its sheet and fade, as upstream", async () =>
+	it("inverts a Docs thumbnail in dark mode and widens its fade, as upstream", async () =>
 	{
 		await renderArtifactsPage("/artifacts", true, thumbFor);
 		const cover = coverFor("Quarterly plan");
@@ -4237,12 +4235,12 @@ describe("artifact cover thumbnails", () =>
 			},
 		).toStrictEqual(
 			{
-				front: "absolute overflow-hidden border border-[color:var(--color-border-line)] bg-white text-primary dark:bg-surface-1 dark:bg-clip-padding after:pointer-events-none after:absolute after:inset-0 after:content-[''] isolate shadow-lg inset-x-0 mx-auto top-[30px] h-[200px] w-[182px] group-has-[img]/cover:w-[min(232px,100%-24px)] z-2 bg-clip-padding [&>img]:aspect-[1005/630] [&>[data-cover-light]>img]:aspect-[1005/630] rounded-xl [&>img]:mix-blend-lighten",
+				front: "absolute overflow-hidden border border-[color:var(--color-border-line)] bg-white text-primary dark:bg-surface-1 dark:bg-clip-padding after:pointer-events-none after:absolute after:inset-0 after:content-[''] isolate inset-x-0 mx-auto top-[20%] h-full w-[76%] z-2 bg-clip-padding [&>img]:aspect-[1005/630] [&>[data-cover-light]>img]:aspect-[1005/630] rounded-lg [&>img]:mix-blend-lighten",
 				light: [
 					"inverted",
 					"h-full dark:has-[>img]:mix-blend-screen dark:has-[>img]:hue-rotate-180 dark:has-[>img]:invert",
 				],
-				img: "block w-full object-cover object-top [mask-image:linear-gradient(to_bottom,black_84px,transparent_118px)]",
+				img: "block w-full object-cover object-top",
 				fade: "pointer-events-none absolute inset-0 isolate z-3 mx-auto overflow-hidden group-has-[[data-cover-front]>img]/cover:opacity-50 max-w-[240px] group-has-[img]/cover:max-w-[290px] bg-cds-blue-100 text-cds-blue-600 dark:bg-cds-blue-700 dark:text-cds-blue-200",
 			},
 		);

@@ -936,17 +936,12 @@ const COVER_HUE: Record<CoverKind, string> =
 	document: "bg-cds-blue-100 text-cds-blue-600 dark:bg-cds-blue-700 dark:text-cds-blue-200",
 };
 
-/** Upstream's `card` cover sizes (`Z.card`): the box, crop and fade width per kind. */
-const COVER_FRONT_SIZE: Record<CoverKind, string> =
-{
-	file: "top-[30px] h-[190px] w-[min(232px,100%-24px)]",
-	// A Docs page widens to the file sheet once it holds a screenshot.
-	document: "top-[30px] h-[200px] w-[182px] group-has-[img]/cover:w-[min(232px,100%-24px)]",
-};
+/** Upstream's `card` front sheet geometry, shared by both kinds: a percentage box inside the aspect-[2/1] cover. */
+const COVER_FRONT_SIZE = "top-[20%] h-full w-[76%]";
 
 const COVER_FRONT_CROP: Record<CoverKind, string> =
 {
-	file: "[&>img]:h-[121px] [&>[data-cover-light]>img]:h-[121px]",
+	file: "[&>img]:aspect-[1200/630] [&>[data-cover-light]>img]:aspect-[1200/630]",
 	document: "[&>img]:aspect-[1005/630] [&>[data-cover-light]>img]:aspect-[1005/630]",
 };
 
@@ -970,12 +965,11 @@ const COVER_FADE_WIDTH: Record<CoverKind, string> =
 	document: "max-w-[240px] group-has-[img]/cover:max-w-[290px]",
 };
 
-/** Upstream's thumbnail img classes: a file crops from its top-left; a Docs page from its top, fading out by 118px. */
+/** Upstream's thumbnail img classes: a file crops from its top-left; a Docs page from its top. */
 const COVER_THUMB_IMG: Record<CoverKind, string> =
 {
 	file: "block w-full object-cover object-left-top",
-	document:
-		"block w-full object-cover object-top [mask-image:linear-gradient(to_bottom,black_84px,transparent_118px)]",
+	document: "block w-full object-cover object-top",
 };
 
 /** Upstream's light wrapper: in dark mode a Docs screenshot is inverted and hue-rotated, then screened onto the page. */
@@ -1185,7 +1179,7 @@ function ArtifactCover({artifact, priority}: {artifact: ArtifactSummary; priorit
 								if (event.target instanceof HTMLImageElement) setWashSrc(event.target.src);
 							}
 				}
-				className={`${COVER_SHEET} isolate shadow-lg inset-x-0 mx-auto ${COVER_FRONT_SIZE[kind]} z-2 bg-clip-padding ${COVER_FRONT_CROP[kind]} rounded-xl ${COVER_FRONT_FINISH[kind]}`}
+				className={`${COVER_SHEET} isolate inset-x-0 mx-auto ${COVER_FRONT_SIZE} z-2 bg-clip-padding ${COVER_FRONT_CROP[kind]} rounded-lg ${COVER_FRONT_FINISH[kind]}`}
 			>
 				{thumbnailSrc === null ? (
 					blank
@@ -1692,7 +1686,7 @@ function ArtifactCard({
 						data-card-frame=""
 						className="pointer-events-none relative flex h-full flex-col overflow-hidden rounded-2xl bg-surface-2 after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] after:shadow-card-ring"
 					>
-						<div data-card-preview="" className="relative h-[152px] shrink-0 select-none overflow-hidden">
+						<div data-card-preview="" className="relative select-none overflow-hidden aspect-[2/1]">
 							<ArtifactCover artifact={artifact} priority={priorityThumb} />
 						</div>
 						<div data-card-body="" className="relative flex min-h-18 flex-1 items-center gap-3 p-4">
