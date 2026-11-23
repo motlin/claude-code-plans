@@ -1686,6 +1686,15 @@ describe("Goal card", () =>
 			fakeComposer();
 		});
 		const both = buttons();
+		const icons = ["Edit goal", "Clear goal"].map((label) =>
+		{
+			const icon = goalSection().querySelector(`[aria-label='${label}'] [data-cds='Icon']`);
+			return {
+				label,
+				glyph: icon?.getAttribute("class"),
+				style: icon?.getAttribute("style"),
+			};
+		});
 		const wrapper = goalSection().querySelector("[aria-label='Edit goal']")?.closest("div")?.className;
 		const {editText: _, ...noEditText} = GOAL;
 		rerender(
@@ -1699,6 +1708,7 @@ describe("Goal card", () =>
 			{
 				none,
 				both,
+				icons,
 				wrapper,
 				clearOnly: buttons(),
 			},
@@ -1706,6 +1716,18 @@ describe("Goal card", () =>
 			{
 				none: [],
 				both: ["Edit goal", "Clear goal"],
+				icons: [
+					{
+						label: "Edit goal",
+						glyph: "lucide lucide-pencil",
+						style: "flex-shrink: 0; font-size: calc(1rem * var(--cds-rem-scale, 1));",
+					},
+					{
+						label: "Clear goal",
+						glyph: "lucide lucide-trash lucide-trash-2",
+						style: "flex-shrink: 0; font-size: calc(1rem * var(--cds-rem-scale, 1));",
+					},
+				],
 				wrapper:
 					"flex shrink-0 opacity-0 empty:hidden group-hover/railcard:opacity-100 group-has-[:focus-visible]/railcard:opacity-100 touch:opacity-100",
 				clearOnly: ["Clear goal"],

@@ -104,7 +104,7 @@ function GoalActions({sessionId, goal}: {sessionId: string; goal: SessionGoal})
 							prefill("edit", event);
 						}}
 					>
-						<Icon name="Edit" />
+						<Icon name="Edit" size="sm" />
 					</button>
 				</Tooltip>
 			)}
@@ -119,7 +119,7 @@ function GoalActions({sessionId, goal}: {sessionId: string; goal: SessionGoal})
 						prefill("clear", event);
 					}}
 				>
-					<Icon name="CheckCircle" />
+					<Icon name="Trash" size="sm" />
 				</button>
 			</Tooltip>
 		</div>
