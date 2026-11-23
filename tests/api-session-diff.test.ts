@@ -1,7 +1,7 @@
-import {chmodSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync} from "node:fs";
+import {appendFileSync, chmodSync, cpSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
-import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
+import {afterAll, afterEach, beforeAll, beforeEach, describe, expect, it} from "vite-plus/test";
 import
 {
 	formatDiffScope,
@@ -185,22 +185,78 @@ async function diffBody(response: Response)
 	return SessionDiffResponseSchema.parse(await response.json());
 }
 
+// The repository every test starts from: main holds keep.txt, and feature, checked out, edits it in one commit. It is
+// built once per file with three git processes and copied for each test, because forking git in a per-test hook
+// outlasted the hook timeout on a loaded machine, even for tests that never touch the repository.
+let templateRepository: string;
+// The commit dates the template's two commits took from the git() counter, which each test continues from.
+const INITIAL_COMMIT_COUNTER = 5;
+const TEMPLATE_COMMIT_COUNTER = 8;
+
+function fastImportData(text: string): string
+{
+	return `data ${String(Buffer.byteLength(text))}\n${text}\n`;
+}
+
+function fastImportCommit(ref: string, counter: number, message: string, body: string): string
+{
+	const identity = `Alice <alice@example.com> ${String(Date.parse("2026-01-01T00:00:00Z") / 1000 + counter)} +0000`;
+	return `commit ${ref}\nauthor ${identity}\ncommitter ${identity}\n${fastImportData(message)}${body}`;
+}
+
+beforeAll(() =>
+{
+	templateRepository = mkdtempSync(join(tmpdir(), "api-session-diff-template-"));
+	runGit(templateRepository, ["init", "--quiet", "--initial-branch=feature"]);
+	appendFileSync(join(templateRepository, ".git", "config"), "[user]\n\temail = alice@example.com\n\tname = Alice\n");
+	runGit(
+		templateRepository,
+		["fast-import", "--quiet"],
+		{
+			input: [
+				`blob\nmark :1\n${fastImportData("one\ntwo\n")}`,
+				fastImportCommit(
+					"refs/heads/main",
+					INITIAL_COMMIT_COUNTER,
+					"Initial commit.\n",
+					"M 100644 :1 keep.txt\n\n",
+				),
+				`blob\nmark :2\n${fastImportData("one\nTWO\n")}`,
+				fastImportCommit(
+					"refs/heads/feature",
+					TEMPLATE_COMMIT_COUNTER,
+					"Edit keep.\n",
+					"from refs/heads/main\nM 100644 :2 keep.txt\n\n",
+				),
+			].join(""),
+		},
+	);
+	runGit(templateRepository, ["reset", "--quiet", "--hard"]);
+});
+
+afterAll(() =>
+{
+	rmSync(
+		templateRepository,
+		{
+			recursive: true,
+			force: true,
+		},
+	);
+});
+
 beforeEach(() =>
 {
 	repository = mkdtempSync(join(tmpdir(), "api-session-diff-test-"));
-	commitCounter = 0;
+	cpSync(
+		templateRepository,
+		repository,
+		{
+			recursive: true,
+		},
+	);
+	commitCounter = TEMPLATE_COMMIT_COUNTER;
 	db = openTestDb();
-
-	git("init", "--initial-branch=main");
-	git("config", "user.email", "alice@example.com");
-	git("config", "user.name", "Alice");
-	write("keep.txt", "one\ntwo\n");
-	git("add", ".");
-	git("commit", "--message", "Initial commit.");
-	git("switch", "--create", "feature");
-	write("keep.txt", "one\nTWO\n");
-	git("add", ".");
-	git("commit", "--message", "Edit keep.");
 });
 
 afterEach(() =>

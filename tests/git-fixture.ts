@@ -1,4 +1,6 @@
 import {execFileSync} from "node:child_process";
+import {mkdirSync, writeFileSync} from "node:fs";
+import {join} from "node:path";
 
 /**
  * Deletes every GIT_* variable from `environment`. A git hook or a linked worktree
@@ -67,4 +69,27 @@ export function runGit(cwd: string, arguments_: readonly string[], options: RunG
 					}),
 		},
 	).trim();
+}
+
+/**
+ * Makes `directory` an empty git repository on `branch` without spawning git: the HEAD file and the objects and refs
+ * directories are all git needs to find and use a repository. A `git init` in a per-test hook forks a process, which
+ * on a loaded machine can alone outlast the hook's timeout.
+ */
+export function initEmptyRepository(directory: string, branch = "main"): void
+{
+	const gitDirectory = join(directory, ".git");
+	mkdirSync(
+		join(gitDirectory, "objects"),
+		{
+			recursive: true,
+		},
+	);
+	mkdirSync(
+		join(gitDirectory, "refs", "heads"),
+		{
+			recursive: true,
+		},
+	);
+	writeFileSync(join(gitDirectory, "HEAD"), `ref: refs/heads/${branch}\n`);
 }

@@ -48,7 +48,7 @@ import type {TaskRow} from "../src/lib/db/queries";
 import {markSessionActive, markSessionEnded, setSessionState} from "../src/lib/active-session-store";
 import * as recursiveWatch from "../src/lib/recursive-watch";
 import type {RecursiveWatcher} from "../src/lib/recursive-watch";
-import {runGit} from "./git-fixture";
+import {initEmptyRepository, runGit} from "./git-fixture";
 
 const
 {
@@ -597,8 +597,7 @@ describe("handleFileChange file content", () =>
 	{
 		fixtureDirectory = realpathSync(mkdtempSync(join(tmpdir(), "watcher-file-content-test-")));
 		repositoryDirectory = join(fixtureDirectory, "repository");
-		mkdirSync(repositoryDirectory);
-		runGit(repositoryDirectory, ["init", "--quiet", "--initial-branch=main"]);
+		initEmptyRepository(repositoryDirectory);
 		__testing.setFileContentRoots([repositoryDirectory]);
 	});
 

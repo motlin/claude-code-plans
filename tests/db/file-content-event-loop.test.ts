@@ -1,13 +1,13 @@
-import {mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync} from "node:fs";
+import {mkdtempSync, realpathSync, rmSync, writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {sql} from "drizzle-orm";
 import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
-import {openAppDb, type AppDb} from "../../src/lib/db/connection";
+import {openTestDb, type AppDb} from "../../src/lib/db/connection";
 import {replaceDb} from "../../src/lib/db";
 import {startStallMonitor} from "../../src/lib/perf/event-loop-stalls";
 import {__testing as watcherTesting} from "../../src/lib/watcher";
-import {runGit} from "../git-fixture";
+import {initEmptyRepository, runGit} from "../git-fixture";
 
 // A git checkout or rebase rewrites hundreds of tracked files at once, and the watcher fires one change event per
 // file. Indexing that burst must hand the event loop back to requests and SSE streams between files, so no loop turn
@@ -38,13 +38,8 @@ describe("file content indexing and the event loop", () =>
 	{
 		fixtureDirectory = realpathSync(mkdtempSync(join(tmpdir(), "file-content-event-loop-")));
 		repositoryDirectory = join(fixtureDirectory, "repository");
-		mkdirSync(repositoryDirectory);
-		runGit(repositoryDirectory, ["init", "--quiet", "--initial-branch=main"]);
-		db = openAppDb(
-			{
-				cacheDir: join(fixtureDirectory, "cache"),
-			},
-		);
+		initEmptyRepository(repositoryDirectory);
+		db = openTestDb();
 		replaceDb(db);
 		watcherTesting.setFileContentRoots([repositoryDirectory]);
 	});
