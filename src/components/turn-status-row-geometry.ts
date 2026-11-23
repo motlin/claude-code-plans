@@ -24,14 +24,22 @@ export const TURN_STATUS_ROW_PAD_Y = "py-[calc((var(--cds-h-control)_-_1lh)_/_2)
 export const TURN_STATUS_ROW_MARKED_MOTION =
 	"transition-[margin-inline-start] duration-200 ease-out motion-reduce:transition-none";
 
+const ROW_RING =
+	"outline-none hide-focus-ring focus-visible:outline-hidden focus-visible:outline-offset-[-2px] focus-visible:[box-shadow:inset_0_0_0_1px_var(--cds-fill-accent)]";
+
 /**
  * Upstream `gR`/`rf`'s TurnStatus row keyboard ring: a 1px inset --cds-fill-accent hairline in the density radius
  * (`rounded`: 6px compact, 8px comfortable). Upstream paints it on a stretched toggle's `::after`; a local row is its
  * own toggle, so the same pixels go on the row. Under forced colors the transparent outline shows 2px inside the row,
  * where upstream's `[data-cds-row-toggle]:focus-visible:after` outline sits.
  */
-export const TURN_STATUS_ROW_FOCUS_RING =
-	"rounded outline-none hide-focus-ring focus-visible:outline-hidden focus-visible:outline-offset-[-2px] focus-visible:[box-shadow:inset_0_0_0_1px_var(--cds-fill-accent)]";
+export const TURN_STATUS_ROW_FOCUS_RING = `rounded ${ROW_RING}`;
+
+/**
+ * Upstream TurnStatusStep's inset row button: the same ring in the cell's row radius (`--cds-row-radius`, 2px under the
+ * density radius), fading over --cds-dur-fast.
+ */
+export const TURN_STATUS_STEP_ROW_FOCUS = `rounded-[var(--cds-row-radius,var(--cds-radius))] ${ROW_RING} transition-shadow duration-fast`;
 
 /** The ring fading over upstream's --cds-dur-fast (60ms). A marked row's margin ease owns `transition` instead. */
 export const TURN_STATUS_ROW_FOCUS = `${TURN_STATUS_ROW_FOCUS_RING} transition-shadow duration-fast`;
@@ -58,7 +66,8 @@ export const TURN_STATUS_CARD_CLASS =
 
 /**
  * Upstream `hm`, the cell `uZ` wraps each step in, applied to the card's children: a step list can render nothing
- * (an empty notice run) and a wrapper would leave an empty padded cell behind.
+ * (an empty notice run) and a wrapper would leave an empty padded cell behind. The cell sets its rows' radius 2px under
+ * the density radius.
  */
 export const TURN_STATUS_CELLS_CLASS =
-	"[&>*]:min-w-0 [&>*]:px-[var(--cds-turn-status-card-pad-x,var(--cds-pad-md))] [&>*]:py-sm [&>*]:[--cds-assistant-message-text-inset:0px] [&>*]:[--cds-assistant-message-text-stop:0px]";
+	"[&>*]:[--cds-row-radius:calc(var(--upstream-radius)_-_0.125rem)] [&>*]:min-w-0 [&>*]:px-[var(--cds-turn-status-card-pad-x,var(--cds-pad-md))] [&>*]:py-sm [&>*]:[--cds-assistant-message-text-inset:0px] [&>*]:[--cds-assistant-message-text-stop:0px]";

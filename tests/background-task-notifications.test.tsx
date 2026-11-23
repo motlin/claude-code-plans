@@ -8,6 +8,7 @@ import
 	BackgroundTasksOpenerProvider,
 } from "../src/components/background-tasks-opener-context";
 import {SessionChat} from "../src/components/session-chat";
+import {TURN_STATUS_ROW_GEOMETRY} from "../src/components/turn-status-row-geometry";
 import {backgroundNoticeSummary} from "../src/lib/background-notice-summary";
 import {noticeKind, parseTaskNotification} from "../src/lib/background-tasks";
 import {summarizeToolCallStats} from "../src/lib/session-utils";
@@ -1107,7 +1108,7 @@ describe("task notifications in the transcript", () =>
 				notices: container.querySelectorAll("[data-background-notice]").length,
 				afterStop: container
 					.querySelector("[data-turn-status-panel] > div")
-					?.lastElementChild?.matches("[data-background-notice]"),
+					?.lastElementChild?.matches("[data-cds=TurnStatusStep]:has(> [data-background-notice])"),
 				children: noticeChildren(container),
 			},
 		).toStrictEqual(
@@ -1172,10 +1173,26 @@ describe("task notifications in the transcript", () =>
 		);
 		fireEvent.click(summaryButton(container, "Ran a command, finished a background command"));
 		const notice = container.querySelector("[data-background-notice]");
-		const button = container.querySelector("button[data-background-notice][data-transcript-step-navigates]");
+		const button = container.querySelector<HTMLElement>(
+			"[data-transcript-step-navigates] > button[data-background-notice]",
+		);
 		const description = notice?.children[1];
+		const step = button?.parentElement;
 		expect(
 			{
+				step:
+				{
+					cds: step?.getAttribute("data-cds"),
+					navigates: step?.getAttribute("data-transcript-step-navigates"),
+					state: step?.getAttribute("data-state"),
+					className: step?.className,
+					children: step?.children.length,
+				},
+				geometry: button?.className.includes(TURN_STATUS_ROW_GEOMETRY),
+				radius: button?.className.split(" ").includes("rounded-[var(--cds-row-radius,var(--cds-radius))]"),
+				outset: button?.style.getPropertyValue("--cds-outset-x"),
+				buttonNavigates: button?.getAttribute("data-transcript-step-navigates"),
+				recordIndex: button?.hasAttribute("data-record-index"),
 				tag: notice?.tagName,
 				title: button?.getAttribute("title"),
 				rowTitle: button?.getAttribute("data-cds-row-title"),
@@ -1187,13 +1204,26 @@ describe("task notifications in the transcript", () =>
 			},
 		).toStrictEqual(
 			{
+				step:
+				{
+					cds: "TurnStatusStep",
+					navigates: "",
+					state: "done",
+					className: "flex w-full min-w-0 flex-col",
+					children: 1,
+				},
+				geometry: true,
+				radius: true,
+				outset: "var(--cds-pad-xs)",
+				buttonNavigates: null,
+				recordIndex: true,
 				tag: "BUTTON",
 				title: null,
 				rowTitle: "Run the test suite",
 				whenCut: "subject",
 				subject: "",
 				descriptionTitle: null,
-				state: "done",
+				state: null,
 				underline: true,
 			},
 		);
@@ -1241,7 +1271,25 @@ describe("task notifications in the transcript", () =>
 	{
 		const container = renderLines(records(COMPLETED));
 		fireEvent.click(summaryButton(container, "Ran a command, finished a background command"));
-		expect(container.querySelector("[data-background-notice]")?.tagName).toBe("DIV");
+		const notice = container.querySelector("[data-background-notice]");
+		const step = notice?.parentElement;
+		expect(
+			{
+				tag: notice?.tagName,
+				cds: step?.getAttribute("data-cds"),
+				navigates: step?.hasAttribute("data-transcript-step-navigates"),
+				state: step?.getAttribute("data-state"),
+				className: step?.className,
+			},
+		).toStrictEqual(
+			{
+				tag: "DIV",
+				cds: "TurnStatusStep",
+				navigates: false,
+				state: "done",
+				className: "flex w-full min-w-0 flex-col",
+			},
+		);
 	});
 
 	it('appends a secondary "Stopped" to a stopped task\'s sub-row', () =>

@@ -115,6 +115,7 @@ import
 	TURN_STATUS_ROW_MARKED_MOTION,
 	TURN_STATUS_ROW_PAD_Y,
 	TURN_STATUS_ROW_STYLE,
+	TURN_STATUS_STEP_ROW_FOCUS,
 } from "./turn-status-row-geometry";
 import {TurnStatusBodyPanel} from "./turn-status-body-panel";
 import {TurnStatusMarkSlot} from "./turn-status-mark-slot";
@@ -2392,45 +2393,55 @@ function BackgroundNoticeRow({
 			{status === "stopped" && <span className="shrink-0 text-secondary">Stopped</span>}
 		</>
 	);
+	const state = status === "completed" ? "done" : status;
+	// Upstream's TurnStatusStep: the step fills the cell and its row is an inset w-stretch button in the row radius.
 	if (navigates)
 	{
 		return (
-			<button
-				type="button"
-				data-record-index={notice.lineIndex}
-				data-background-notice=""
+			<div
+				data-cds="TurnStatusStep"
 				data-transcript-step-navigates=""
-				data-state={status === "completed" ? "done" : status}
-				{...rowTitle}
-				className={`group/tool flex min-w-0 items-center gap-1.5 text-body text-start cursor-pointer ${TURN_STATUS_ROW_FOCUS}`}
-				onClick={() =>
-				{
-					opener.open(
-						taskId === null
-							?
-								{
-									finished: true,
-								}
-							:
-								{
-									taskId,
-									finished: true,
-								},
-					);
-				}}
+				data-state={state}
+				className="flex w-full min-w-0 flex-col"
 			>
-				{children}
-			</button>
+				<button
+					type="button"
+					data-record-index={notice.lineIndex}
+					data-background-notice=""
+					{...rowTitle}
+					className={`group/tool flex min-w-0 items-center gap-1.5 text-body text-start cursor-pointer ${TURN_STATUS_ROW_GEOMETRY} ${TURN_STATUS_STEP_ROW_FOCUS}`}
+					style={TURN_STATUS_ROW_STYLE}
+					onClick={() =>
+					{
+						opener.open(
+							taskId === null
+								?
+									{
+										finished: true,
+									}
+								:
+									{
+										taskId,
+										finished: true,
+									},
+						);
+					}}
+				>
+					{children}
+				</button>
+			</div>
 		);
 	}
 	return (
-		<div
-			data-record-index={notice.lineIndex}
-			data-background-notice=""
-			{...rowTitle}
-			className="flex min-w-0 items-center gap-1.5 text-body"
-		>
-			{children}
+		<div data-cds="TurnStatusStep" data-state={state} className="flex w-full min-w-0 flex-col">
+			<div
+				data-record-index={notice.lineIndex}
+				data-background-notice=""
+				{...rowTitle}
+				className="flex min-w-0 items-center gap-1.5 text-body"
+			>
+				{children}
+			</div>
 		</div>
 	);
 }

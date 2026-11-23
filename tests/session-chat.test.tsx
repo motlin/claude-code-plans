@@ -651,8 +651,8 @@ describe("SessionChat turn spacing", () =>
 /** Upstream shared-9 `Cd`'s card. */
 const TURN_STATUS_CARD_CLASS =
 	"[--cds-assistant-message-text-inset:0px] [--cds-assistant-message-text-stop:0px] flex min-w-0 flex-col divide-y overflow-y-clip rounded-card shadow-card-ring";
-/** The group card: `Cd`'s card with upstream `hm`'s cell padding on each step. */
-const GROUP_CARD = `${TURN_STATUS_CARD_CLASS} [&>*]:min-w-0 [&>*]:px-[var(--cds-turn-status-card-pad-x,var(--cds-pad-md))] [&>*]:py-sm [&>*]:[--cds-assistant-message-text-inset:0px] [&>*]:[--cds-assistant-message-text-stop:0px]`;
+/** The group card: `Cd`'s card with upstream `hm`'s cell padding and row radius on each step. */
+const GROUP_CARD = `${TURN_STATUS_CARD_CLASS} [&>*]:[--cds-row-radius:calc(var(--upstream-radius)_-_0.125rem)] [&>*]:min-w-0 [&>*]:px-[var(--cds-turn-status-card-pad-x,var(--cds-pad-md))] [&>*]:py-sm [&>*]:[--cds-assistant-message-text-inset:0px] [&>*]:[--cds-assistant-message-text-stop:0px]`;
 
 function toolCardClassNames(container: HTMLElement): string[]
 {
