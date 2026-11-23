@@ -2098,7 +2098,17 @@ interface BackgroundOutcomes
 	/** The notification that settled each launch, whose summary a Workflow row's status tooltip shows. */
 	notificationByLaunch: ReadonlyMap<string, TaskNotification>;
 	/** The launch each successful TaskStop ended, keyed by the TaskStop's tool_use id. */
-	stoppedBy: ReadonlyMap<string, string>;
+	stoppedBy: ReadonlyMap<string, StoppedLaunch>;
+}
+
+/** A background launch that a TaskStop ended before any notification settled it. */
+interface StoppedLaunch
+{
+	/** The launching call's tool_use id. */
+	launchId: string;
+	taskId: string;
+	/** The launching call's description, which upstream's stopped step shows. */
+	description: string;
 }
 
 const BackgroundOutcomeContext = createContext<BackgroundOutcomes>(
@@ -2169,7 +2179,13 @@ function backgroundLaunchOutcomes(
 	const byLaunch = new Map<string, BackgroundOutcome>();
 	const notificationByLaunch = new Map<string, TaskNotification>();
 	const notified = new Set<string>();
-	const launchByTaskId = new Map<string, string>();
+	const launchByTaskId = new Map<
+		string,
+		{
+			id: string;
+			description: string;
+		}
+	>();
 	const stops:
 	{
 		stopId: string;
@@ -2190,7 +2206,17 @@ function backgroundLaunchOutcomes(
 		{
 			if (block.type !== "tool_use") continue;
 			const launched = backgroundLaunchTaskId(block, toolResultMap);
-			if (launched !== null) launchByTaskId.set(launched, block.id);
+			if (launched !== null)
+			{
+				const description = block.input["description"];
+				launchByTaskId.set(
+					launched,
+					{
+						id: block.id,
+						description: typeof description === "string" ? description : "",
+					},
+				);
+			}
 			const stopped = stoppedTaskId(block, toolResultMap);
 			if (stopped !== null)
 				stops.push(
@@ -2201,13 +2227,20 @@ function backgroundLaunchOutcomes(
 				);
 		}
 	}
-	const stoppedBy = new Map<string, string>();
+	const stoppedBy = new Map<string, StoppedLaunch>();
 	for (const {stopId, taskId} of stops)
 	{
 		const launch = launchByTaskId.get(taskId);
-		if (launch === undefined || notified.has(launch)) continue;
-		byLaunch.set(launch, "stopped");
-		stoppedBy.set(stopId, launch);
+		if (launch === undefined || notified.has(launch.id)) continue;
+		byLaunch.set(launch.id, "stopped");
+		stoppedBy.set(
+			stopId,
+			{
+				launchId: launch.id,
+				taskId,
+				description: launch.description,
+			},
+		);
 	}
 	return {
 		byLaunch,
@@ -2235,10 +2268,37 @@ function stopCompletions(calls: readonly ClientToolCall[], {stoppedBy}: Backgrou
 					{
 						command: false,
 						status: "stopped",
-						toolUseId: launch,
+						toolUseId: launch.launchId,
 					},
 				];
 	});
+}
+
+/**
+ * Upstream's stopped task step after the TaskStop that ended an unnotified launch: an event with
+ * no task type, so it reads "Background task · {description}" then "Stopped".
+ */
+function StoppedLaunchStep({launch}: {launch: StoppedLaunch})
+{
+	return (
+		<BackgroundNoticeRow
+			notice={
+			{
+				notification:
+				{
+					taskId: launch.taskId,
+					toolUseId: launch.launchId,
+					status: "stopped",
+					command: false,
+					agent: false,
+					taskType: null,
+					description: launch.description,
+					summary: launch.description,
+					durationMs: null,
+				},
+			}}
+		/>
+	);
 }
 
 /**
@@ -2248,7 +2308,14 @@ function stopCompletions(calls: readonly ClientToolCall[], {stoppedBy}: Backgrou
  * that quoted no description reads as one "{clause} · {summary}" label. Where Background tasks
  * can open and no artifact link is drawn, the step is a button that opens the pane on its task.
  */
-function BackgroundNoticeRow({notice}: {notice: BackgroundNotice})
+function BackgroundNoticeRow({
+	notice,
+}: {
+	notice: Pick<BackgroundNotice, "notification"> &
+	{
+		lineIndex?: number;
+	};
+})
 {
 	const {notification} = notice;
 	const {status, description, summary, taskType, taskId, durationMs} = notification;
@@ -9399,46 +9466,52 @@ function ToolCallSummary({
 										sentAt={notice.sentAt}
 									/>
 								))}
-								{coalesceSameTarget(calls).map((item) =>
-									"kind" in item ? (
-										<ToolCardBoundary
-											key={item.members[0]?.id}
-											resetOn={toolGroupStage(item.members)}
-										>
-											<ToolCallRow
-												call={runLabelCall(item.members)}
-												run={item.members}
-												sessionId={sessionId}
-												nested
-												shots={shotPlacements.get(item.members[0]?.id ?? "")}
-											/>
-										</ToolCardBoundary>
-									) : (
-										<ToolCardBoundary key={item.id} resetOn={toolCardStage(item)}>
-											{item.name === "ReportFindings" ? (
-												<ReviewCardOrRow
-													call={item}
-													sessionId={sessionId}
-													row={
-														<ToolCallRow
-															call={item}
-															sessionId={sessionId}
-															nested
-															shots={shotPlacements.get(item.id)}
-														/>
-													}
-												/>
-											) : (
+								{coalesceSameTarget(calls).map((item) => (
+									<React.Fragment key={"kind" in item ? item.members[0]?.id : item.id}>
+										{"kind" in item ? (
+											<ToolCardBoundary resetOn={toolGroupStage(item.members)}>
 												<ToolCallRow
-													call={item}
+													call={runLabelCall(item.members)}
+													run={item.members}
 													sessionId={sessionId}
 													nested
-													shots={shotPlacements.get(item.id)}
+													shots={shotPlacements.get(item.members[0]?.id ?? "")}
 												/>
-											)}
-										</ToolCardBoundary>
-									),
-								)}
+											</ToolCardBoundary>
+										) : (
+											<ToolCardBoundary resetOn={toolCardStage(item)}>
+												{item.name === "ReportFindings" ? (
+													<ReviewCardOrRow
+														call={item}
+														sessionId={sessionId}
+														row={
+															<ToolCallRow
+																call={item}
+																sessionId={sessionId}
+																nested
+																shots={shotPlacements.get(item.id)}
+															/>
+														}
+													/>
+												) : (
+													<ToolCallRow
+														call={item}
+														sessionId={sessionId}
+														nested
+														shots={shotPlacements.get(item.id)}
+													/>
+												)}
+											</ToolCardBoundary>
+										)}
+										{("kind" in item ? item.members : [item]).map((member) =>
+										{
+											const stopped = backgroundOutcomes.stoppedBy.get(member.id);
+											return stopped === undefined ? null : (
+												<StoppedLaunchStep key={`stopped-${member.id}`} launch={stopped} />
+											);
+										})}
+									</React.Fragment>
+								))}
 								{trailingPeers.map((notice) => (
 									<PeerMessageRow
 										key={`notice-${notice.lineIndex}`}

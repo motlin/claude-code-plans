@@ -984,6 +984,129 @@ describe("task notifications in the transcript", () =>
 		]);
 	});
 
+	it("draws upstream's stopped background-task step right after the TaskStop that ended an unnotified launch", () =>
+	{
+		const toolTurn = (uuid: string, parentUuid: string, block: Record<string, unknown>): unknown => (
+		{
+			type: "assistant",
+			uuid,
+			parentUuid,
+			message:
+			{
+				role: "assistant",
+				content: [
+					{
+						type: "tool_use",
+						...block,
+					},
+				],
+			},
+		});
+		const resultTurn = (uuid: string, parentUuid: string, toolUseId: string, content: string): unknown => (
+		{
+			type: "user",
+			uuid,
+			parentUuid,
+			message:
+			{
+				role: "user",
+				content: [
+					{
+						type: "tool_result",
+						tool_use_id: toolUseId,
+						content,
+					},
+				],
+			},
+		});
+		const container = renderLines([
+			{
+				type: "user",
+				uuid: "u-1",
+				message:
+				{
+					role: "user",
+					content: "serve prod, then stop it",
+				},
+			},
+			toolTurn(
+				"a-1",
+				"u-1",
+				{
+					id: "toolu_serve",
+					name: "Bash",
+					input:
+					{
+						command: "just start",
+						description: "Serve production from prod-wt39",
+						run_in_background: true,
+					},
+				},
+			),
+			resultTurn(
+				"r-1",
+				"a-1",
+				"toolu_serve",
+				"Command running in background with ID: boc7ga5se. Output is being written to: /tmp/boc7ga5se.output",
+			),
+			toolTurn(
+				"a-2",
+				"r-1",
+				{
+					id: "toolu_stop",
+					name: "TaskStop",
+					input:
+					{
+						task_id: "boc7ga5se",
+					},
+				},
+			),
+			resultTurn("r-2", "a-2", "toolu_stop", '{"message":"Successfully stopped task: boc7ga5se"}'),
+			{
+				type: "assistant",
+				uuid: "a-3",
+				parentUuid: "r-2",
+				message:
+				{
+					role: "assistant",
+					content: [
+						{
+							type: "text",
+							text: "Stopped.",
+						},
+					],
+				},
+			},
+		]);
+		fireEvent.click(
+			summaryButton(container, "Ran a command, stopped task, finished a background task (1 stopped)"),
+		);
+		expect(
+			{
+				notices: container.querySelectorAll("[data-background-notice]").length,
+				afterStop: container
+					.querySelector("[data-turn-status-panel] > div")
+					?.lastElementChild?.matches("[data-background-notice]"),
+				children: noticeChildren(container),
+			},
+		).toStrictEqual(
+			{
+				notices: 1,
+				afterStop: true,
+				children: [
+					{
+						text: "Background task · Serve production from prod-wt39",
+						className: "min-w-0 truncate text-secondary",
+					},
+					{
+						text: "Stopped",
+						className: "shrink-0 text-secondary",
+					},
+				],
+			},
+		);
+	});
+
 	it('trails a notice with a duration with upstream\'s "took {elapsed}"', () =>
 	{
 		const container = renderLines(
