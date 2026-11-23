@@ -70,7 +70,7 @@ export function HookNoticeRow({notices, verbose}: {notices: readonly HookNotice[
 		<div
 			data-hook-notice=""
 			data-find-omitted=""
-			className="flex w-full flex-col ps-[var(--cds-assistant-message-text-inset,0px)]"
+			className="flex w-full flex-col ps-[var(--cds-assistant-message-text-inset,0px)] epitaxy-notice-row"
 		>
 			<button
 				type="button"
@@ -85,7 +85,7 @@ export function HookNoticeRow({notices, verbose}: {notices: readonly HookNotice[
 							},
 						);
 				}}
-				className="relative group/tool flex self-start max-w-full items-center py-0 gap-1 text-start focus-visible:outline-hidden hide-focus-ring focus-visible:shadow-focus rounded-sm"
+				className="relative group/tool flex self-start max-w-full items-center py-0 gap-1 text-start focus-visible:outline-hidden hide-focus-ring focus-visible:shadow-focus rounded-sm epitaxy-reply-size-line"
 			>
 				{hasWarning && <WarningIcon />}
 				<span className="min-w-0 truncate text-body text-secondary group-hover/tool:text-primary">{label}</span>

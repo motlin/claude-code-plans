@@ -203,8 +203,8 @@ describe("HookNoticeRow", () =>
 			},
 		).toStrictEqual(
 			{
-				root: "flex w-full flex-col ps-[var(--cds-assistant-message-text-inset,0px)]",
-				button: "relative group/tool flex self-start max-w-full items-center py-0 gap-1 text-start focus-visible:outline-hidden hide-focus-ring focus-visible:shadow-focus rounded-sm",
+				root: "flex w-full flex-col ps-[var(--cds-assistant-message-text-inset,0px)] epitaxy-notice-row",
+				button: "relative group/tool flex self-start max-w-full items-center py-0 gap-1 text-start focus-visible:outline-hidden hide-focus-ring focus-visible:shadow-focus rounded-sm epitaxy-reply-size-line",
 				buttonType: "button",
 				label: "min-w-0 truncate text-body text-secondary group-hover/tool:text-primary",
 				caret: "shrink-0 text-secondary group-hover/tool:text-primary",
