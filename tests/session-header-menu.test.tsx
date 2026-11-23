@@ -668,7 +668,7 @@ describe("session header menu", () =>
 			{
 				kind: "ContextMenu",
 				shape: chevronShape,
-				chevronPrevented: true,
+				chevronPrevented: false,
 				contextPrevented: true,
 			},
 		);
