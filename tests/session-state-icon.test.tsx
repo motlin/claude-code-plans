@@ -39,7 +39,7 @@ describe("SessionStateIcon", () =>
 		);
 	});
 
-	it("renders error as upstream's 16px warning-coloured TriangleAlert, not a dot", () =>
+	it("renders error as upstream's 16px muted Warning triangle, not a dot", () =>
 	{
 		const {container} = render(<SessionStateIcon kind="error" live={false} />);
 		const wrapper = container.firstElementChild;
@@ -57,10 +57,10 @@ describe("SessionStateIcon", () =>
 		).toStrictEqual(
 			{
 				role: "img",
-				label: "Error",
+				label: "Something went wrong",
 				wrapperClass: DOT_WRAPPER,
 				iconClass:
-					"lucide lucide-triangle-exclamation-point lucide-alert-triangle lucide-triangle-alert shrink-0 text-upstream-warning",
+					"lucide lucide-triangle-exclamation-point lucide-alert-triangle lucide-triangle-alert shrink-0 text-[color:var(--muted-as-secondary,var(--cds-text-muted))]",
 				iconHidden: "true",
 				size: ["16", "16"],
 				dot: false,

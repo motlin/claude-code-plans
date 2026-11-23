@@ -2573,10 +2573,10 @@ describe("sidebar SessionGroups", () =>
 				{
 					blocked: ["Failed one"],
 					idle: ["Completed newest"],
-					mark: "Error",
+					mark: "Something went wrong",
 					attention: null,
 				},
-				badge: ["Error"],
+				badge: ["Something went wrong"],
 				acked:
 				{
 					blocked: [],
@@ -2595,7 +2595,7 @@ describe("sidebar SessionGroups", () =>
 				{
 					blocked: ["Failed one"],
 					idle: ["Completed newest"],
-					mark: "Error",
+					mark: "Something went wrong",
 					attention: null,
 				},
 			},
@@ -2661,6 +2661,9 @@ describe("sidebar SessionGroups", () =>
 					{
 						label: mark?.getAttribute("aria-label") ?? null,
 						triangle: decoration?.querySelector("svg.lucide-triangle-alert") !== null,
+						triangleInk: [
+							...(decoration?.querySelector("svg.lucide-triangle-alert")?.classList ?? []),
+						].filter((name) => name.startsWith("text-")),
 						dot: decoration?.querySelector(".status-dot")?.getAttribute("data-kind") ?? null,
 						srStatus: link.querySelector("[data-session-status]")?.textContent ?? null,
 					},
@@ -2671,15 +2674,17 @@ describe("sidebar SessionGroups", () =>
 			{
 				"Errored one":
 				{
-					label: "Error",
+					label: "Something went wrong",
 					triangle: true,
+					triangleInk: ["text-[color:var(--muted-as-secondary,var(--cds-text-muted))]"],
 					dot: null,
-					srStatus: " Error",
+					srStatus: " Something went wrong",
 				},
 				"Blocked one":
 				{
 					label: "Awaiting input",
 					triangle: false,
+					triangleInk: [],
 					dot: "awaiting",
 					srStatus: " Awaiting input",
 				},

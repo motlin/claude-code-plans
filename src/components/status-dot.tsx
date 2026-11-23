@@ -113,7 +113,8 @@ export function StatusPulse({kind}: {kind: keyof typeof STATUS_PULSE_COLORS})
 /**
  * Upstream claude.ai/code session row icon: a 6px cds Pulse for awaiting and ready, a blinking
  * muted one while running, upstream's `U7`
- * 16px warning-coloured triangle for an error, and a hollow ring for idle. A PR never takes this
+ * 16px Warning triangle for an error (muted ink, as upstream's sO inside the code sidebar), and a
+ * hollow ring for idle. A PR never takes this
  * slot; it draws as a `PrTailGlyph`.
  */
 export function SessionStateIcon({
@@ -153,7 +154,11 @@ export function SessionStateIcon({
 	return (
 		<span role={live ? "status" : "img"} aria-label={ariaLabel} className={DOT_WRAPPER} {...describedByProps}>
 			{kind === "error" ? (
-				<TriangleAlert aria-hidden="true" size={16} className="shrink-0 text-upstream-warning" />
+				<TriangleAlert
+					aria-hidden="true"
+					size={16}
+					className="shrink-0 text-[color:var(--muted-as-secondary,var(--cds-text-muted))]"
+				/>
 			) : (
 				<StatusPulse kind={kind} />
 			)}

@@ -624,7 +624,8 @@ export const sessionStateKindLabels =
 	awaiting: "Awaiting input",
 	running: "Running",
 	ready: "Ready",
-	error: "Error",
+	/** Upstream's v4() "Something went wrong"; the meta-line "Error" status word is a separate string. */
+	error: "Something went wrong",
 	idle: "Idle",
 } satisfies Record<z.infer<typeof SessionStateKindSchema>, string>;
 
