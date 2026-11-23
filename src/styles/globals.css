@@ -283,6 +283,8 @@ html[data-interface-font="dyslexic"]
 	--color-usage-share-warning: var(--upstream-usage-share-warning);
 	--color-usage-share-danger: rgb(241 119 120);
 	--color-backdrop: var(--upstream-backdrop);
+	/* Upstream --cds-bg-highlight, the same in both modes: search-match marks in the Files ? results. */
+	--color-highlight: color-mix(in srgb, #fbb315 33%, transparent);
 	--color-fill-control: var(--upstream-fill-control);
 	--color-fill-ghost-hover: var(--upstream-fill-ghost-hover);
 	--color-neutral: var(--upstream-bg-neutral);

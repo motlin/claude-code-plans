@@ -27,6 +27,7 @@ import
 	EMPTY_CONTENT_SEARCH_RESULTS,
 	groupContentSearchResults,
 	keepResultsOnFailedRefetch,
+	snippetTailMinWidth,
 	type SnippetParts,
 	type TextRange,
 } from "../../lib/files-content-search";
@@ -205,7 +206,7 @@ function Marked({text, matches}: {text: string; matches: readonly TextRange[]})
 	{
 		if (start > at) parts.push(text.slice(at, start));
 		parts.push(
-			<mark key={start} className="bg-upstream-accent-pressed text-inherit rounded-sm">
+			<mark key={start} className="bg-highlight text-primary rounded-sm">
 				{text.slice(start, end)}
 			</mark>,
 		);
@@ -215,27 +216,43 @@ function Marked({text, matches}: {text: string; matches: readonly TextRange[]})
 	return <>{parts}</>;
 }
 
-/** Upstream's snippet: an rtl lead that ellipsizes from the left, the hit kept whole, and a tail that gives way first. */
+/**
+ * Upstream's snippet: an rtl lead that ellipsizes from the left, the hit kept whole, and a tail that gives way
+ * first. The text is secondary ink with the hit and the marks primary; the width rounds down to whole `ch`.
+ */
 function Snippet({snippet}: {snippet: SnippetParts})
 {
 	const {lead, hit, hitMatches, tail, tailMatches} = snippet;
 	return (
-		<span dir="ltr" className="flex min-w-0 overflow-hidden whitespace-pre text-code text-primary">
-			{lead !== "" && (
-				<span dir="rtl" className="min-w-0 overflow-hidden text-ellipsis">
-					<span dir="ltr">{lead}</span>
-				</span>
-			)}
-			{hit !== "" && (
-				<span className="max-w-full shrink-0 overflow-hidden text-ellipsis">
-					<Marked text={hit} matches={hitMatches} />
-				</span>
-			)}
-			{tail !== "" && (
-				<span className="min-w-[2ch] shrink-[9999] overflow-hidden text-ellipsis">
-					<Marked text={tail} matches={tailMatches} />
-				</span>
-			)}
+		<span className="block min-w-0 flex-1">
+			<span
+				dir="ltr"
+				className="flex w-[calc(round(down,100%,1ch)+0.04ch)] overflow-hidden whitespace-pre text-code text-secondary"
+			>
+				{lead !== "" && (
+					<span dir="rtl" className="min-w-0 overflow-hidden text-ellipsis">
+						<span dir="ltr">{lead}</span>
+					</span>
+				)}
+				{hit !== "" && (
+					<span className="max-w-full shrink-0 overflow-hidden text-ellipsis text-primary">
+						<Marked text={hit} matches={hitMatches} />
+					</span>
+				)}
+				{tail !== "" && (
+					<span
+						className={`shrink-[9999] overflow-hidden text-ellipsis${tailMatches.length > 0 ? " text-primary" : ""}`}
+						style={
+						{
+							minWidth: snippetTailMinWidth(snippet),
+						}}
+					>
+						<span className="text-secondary">
+							<Marked text={tail} matches={tailMatches} />
+						</span>
+					</span>
+				)}
+			</span>
 		</span>
 	);
 }

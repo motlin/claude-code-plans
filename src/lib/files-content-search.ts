@@ -271,6 +271,27 @@ export function windowSnippet(text: string, matches: readonly TextRange[]): Snip
 	return splitSnippet(collapsed.text, collapsed.matches);
 }
 
+/** Upstream `Ik`: a string's width in `ch`, code points from U+1100 up counting as two. */
+function textWidth(text: string): number
+{
+	let width = 0;
+	for (const char of text) width += (char.codePointAt(0) ?? 0) >= 0x1100 ? 2 : 1;
+	return width;
+}
+
+/**
+ * Upstream `Lk`: the tail's CSS min-width. It keeps up to 2ch of the tail, and grows to the leading word
+ * plus 2 (8ch to 12ch, never more than the tail) when half the row and the room after the lead and hit allow.
+ */
+export function snippetTailMinWidth({lead, hit, tail}: Pick<SnippetParts, "lead" | "hit" | "tail">): string
+{
+	let word = 0;
+	while (isWordCode(tail.charCodeAt(word))) word += 1;
+	const wanted = Math.min(tail.length, 12, Math.max(8, word + 2));
+	const used = Math.min(lead.length, 2) + textWidth(hit);
+	return `calc(max(${Math.min(tail.length, 2)}ch, min(${wanted}ch, round(down, 50%, 1ch), round(down, 100% - ${used}ch, 1ch))) + 0.015ch)`;
+}
+
 /** Smart case: an all-lower-case query ignores case, otherwise every word must match exactly. */
 export function matchesSmartCase(text: string, query: string): boolean
 {

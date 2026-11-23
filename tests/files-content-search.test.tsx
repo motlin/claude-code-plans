@@ -22,6 +22,7 @@ import
 	matchesSmartCase,
 	parseContentSearchQuery,
 	parseMarkedSnippet,
+	snippetTailMinWidth,
 	windowSnippet,
 } from "../src/lib/files-content-search";
 import {installLocalStorage} from "./fake-storage";
@@ -256,6 +257,42 @@ describe("windowSnippet", () =>
 	])("%s", (_name, text, matches, expected) =>
 	{
 		expect(windowSnippet(text, matches)).toStrictEqual(expected);
+	});
+});
+
+describe("snippetTailMinWidth", () =>
+{
+	it.each([
+		[
+			"a short tail keeps its length, a word run of 3 asks for 8ch",
+			{
+				lead: "",
+				hit: "needle",
+				tail: " and",
+			},
+			"calc(max(2ch, min(4ch, round(down, 50%, 1ch), round(down, 100% - 6ch, 1ch))) + 0.015ch)",
+		],
+		[
+			"a long word in the tail asks for its length plus 2, capped at 12ch",
+			{
+				lead: "…abc",
+				hit: " x",
+				tail: "abcdefghijklmnop rest",
+			},
+			"calc(max(2ch, min(12ch, round(down, 50%, 1ch), round(down, 100% - 4ch, 1ch))) + 0.015ch)",
+		],
+		[
+			"wide characters in the hit count twice, a one-character tail floors at 1ch",
+			{
+				lead: "a",
+				hit: "日本",
+				tail: ";",
+			},
+			"calc(max(1ch, min(1ch, round(down, 50%, 1ch), round(down, 100% - 5ch, 1ch))) + 0.015ch)",
+		],
+	])("%s", (_name, parts, expected) =>
+	{
+		expect(snippetTailMinWidth(parts)).toBe(expected);
 	});
 });
 
@@ -1529,7 +1566,8 @@ describe("FilesTree content search", () =>
 		await screen.findByText("big.txt");
 		const row = firstMatch()!;
 		const primary = row.querySelector("[data-tree-primary]");
-		const [lineNumber, snippet] = [...(primary?.children ?? [])];
+		const [lineNumber, snippetWrapper] = [...(primary?.children ?? [])];
+		const snippet = snippetWrapper?.firstElementChild;
 		const more = document.querySelector<HTMLElement>("[data-content-more]");
 		const fileRow = document.querySelector("[data-content-file]");
 
@@ -1557,12 +1595,15 @@ describe("FilesTree content search", () =>
 				},
 				snippet:
 				{
+					wrapperClassName: snippetWrapper?.className,
 					dir: snippet?.getAttribute("dir"),
 					className: snippet?.className,
 					parts: [...(snippet?.children ?? [])].map((part) => (
 					{
 						dir: part.getAttribute("dir"),
 						className: part.className,
+						style: part.getAttribute("style"),
+						inner: part.firstElementChild?.tagName === "SPAN" ? part.firstElementChild.className : null,
 						text: part.textContent,
 					})),
 				},
@@ -1612,28 +1653,34 @@ describe("FilesTree content search", () =>
 				},
 				snippet:
 				{
+					wrapperClassName: "block min-w-0 flex-1",
 					dir: "ltr",
-					className: "flex min-w-0 overflow-hidden whitespace-pre text-code text-primary",
+					className:
+						"flex w-[calc(round(down,100%,1ch)+0.04ch)] overflow-hidden whitespace-pre text-code text-secondary",
 					parts: [
 						{
 							dir: null,
-							className: "max-w-full shrink-0 overflow-hidden text-ellipsis",
+							className: "max-w-full shrink-0 overflow-hidden text-ellipsis text-primary",
+							style: null,
+							inner: null,
 							text: "needle",
 						},
 						{
 							dir: null,
-							className: "min-w-[2ch] shrink-[9999] overflow-hidden text-ellipsis",
+							className: "shrink-[9999] overflow-hidden text-ellipsis text-primary",
+							style: "min-width: calc(0.015ch + max(2ch, min(8ch, round(down, 50%, 1ch), round(down, 100% - 6ch, 1ch))));",
+							inner: "text-secondary",
 							text: " and needle",
 						},
 					],
 				},
 				marks: [
 					{
-						className: "bg-upstream-accent-pressed text-inherit rounded-sm",
+						className: "bg-highlight text-primary rounded-sm",
 						text: "needle",
 					},
 					{
-						className: "bg-upstream-accent-pressed text-inherit rounded-sm",
+						className: "bg-highlight text-primary rounded-sm",
 						text: "needle",
 					},
 				],
@@ -1679,7 +1726,7 @@ describe("FilesTree content search", () =>
 		renderTree();
 		typeFilter("?needle");
 		await screen.findByText("a.ts");
-		const lead = firstMatch()?.querySelector("[data-tree-primary] > span[dir=ltr] > span[dir=rtl]");
+		const lead = firstMatch()?.querySelector("[data-tree-primary] > span > span[dir=ltr] > span[dir=rtl]");
 
 		expect(
 			{
