@@ -73,6 +73,37 @@ export const DIFF_RAILS_CSS = `@supports ${SUPPORTS}{${[
 	`[data-content-buffer]{opacity:max(.7,${B})}${z}{[data-content-buffer]{opacity:1}}`,
 ].join("")}}`;
 
+/** Upstream ca9e46d28 `f.row`: the row clamp's oklch lightness bounds (light ceiling, dark floor). */
+const TOKEN_ROW_L =
+{
+	light: 0.5,
+	dark: 0.75,
+} as const;
+
+/** Upstream ca9e46d28 `_`: caps a light-theme token's lightness at `ceiling`, scaling chroma with it. */
+function darkenTo(color: string, ceiling: string | number): string
+{
+	return `oklch(from ${color} min(l,${ceiling}) calc(c*min(l,${ceiling})/max(l,.001)) h / max(alpha,.85))`;
+}
+
+/** Upstream ca9e46d28 `v`: raises a dark-theme token's lightness to `floor`, scaling chroma with it. */
+function lightenTo(color: string, floor: string | number): string
+{
+	return `oklch(from ${color} max(l,${floor}) calc(c*(1 - max(l,${floor}))/max(1 - l,.001)) h / max(alpha,.85))`;
+}
+
+/** Upstream ca9e46d28 `b`: the relative-color probe the clamp sheets need. */
+const TOKEN_CLAMP_SUPPORTS = `(color:light-dark(${darkenTo("red", 0.5)},${lightenTo("red", 0.5)}))`;
+
+/**
+ * Upstream ca9e46d28 `te` (returned by `N()`; its gate `__gb__3154393203` is a kill switch, always on locally):
+ * every line's syntax tokens clamped to a contrast-safe oklch lightness against the tinted rows.
+ */
+const TOKEN_CLAMP_ALL_ROWS_CSS = `@supports ${TOKEN_CLAMP_SUPPORTS}{${[
+	`[data-line]{--diff-token-most-l:${TOKEN_ROW_L.light};--diff-token-least-l:${TOKEN_ROW_L.dark}}`,
+	`[data-line] span{color:light-dark(${darkenTo("var(--diffs-token-light,var(--diffs-light))", "var(--diff-token-most-l)")},${lightenTo("var(--diffs-token-dark,var(--diffs-dark))", "var(--diff-token-least-l)")})}`,
+].join("")}}`;
+
 /** Upstream ca9e46d28 `Z()`: the glyphs' CSS alt words. */
 const WORD =
 {
@@ -83,7 +114,7 @@ const WORD =
 /**
  * Upstream cb6930dae `Vd(side)` (ca9e46d28 `ie`): appended after the pure-side view's sign rule, it hides the
  * glyph behind alt text, tints the line and number cells alike and draws the side's rail on every number
- * cell. Upstream's trailing token-contrast clamp sheet (`N()`) has no local counterpart.
+ * cell, then ends with the token-contrast clamp sheet (`N()`).
  */
 export function pureSideRailsCss(side: "additions" | "deletions"): string
 {
@@ -97,6 +128,7 @@ export function pureSideRailsCss(side: "additions" | "deletions"): string
 		"[data-column-number]{border-color:transparent;color:var(--cds-text-secondary)}",
 		`[data-column-number]::after{${K.box};${K[side]}}`,
 		`@media (forced-colors:active){[data-column-number]::after{${K.forcedColors}}}`,
+		TOKEN_CLAMP_ALL_ROWS_CSS,
 	].join("");
 }
 

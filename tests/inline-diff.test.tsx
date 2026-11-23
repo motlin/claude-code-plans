@@ -122,6 +122,12 @@ const RAIL_BOX = 'content:"";position:absolute;left:0;width:6px;top:0;bottom:0;p
 const RAIL_FORCED_COLORS =
 	"@media (forced-colors:active){[data-column-number]::after{forced-color-adjust:none;--diff-rail-added:CanvasText;--diff-rail-removed:CanvasText}}";
 
+/** Upstream ca9e46d28 `te` (via `N()`), the sheet that ends `Vd`: every line's tokens clamped to a contrast-safe oklch lightness. */
+const TOKEN_CLAMP =
+	"@supports (color:light-dark(oklch(from red min(l,0.5) calc(c*min(l,0.5)/max(l,.001)) h / max(alpha,.85)),oklch(from red max(l,0.5) calc(c*(1 - max(l,0.5))/max(1 - l,.001)) h / max(alpha,.85)))){" +
+	"[data-line]{--diff-token-most-l:0.5;--diff-token-least-l:0.75}" +
+	"[data-line] span{color:light-dark(oklch(from var(--diffs-token-light,var(--diffs-light)) min(l,var(--diff-token-most-l)) calc(c*min(l,var(--diff-token-most-l))/max(l,.001)) h / max(alpha,.85)),oklch(from var(--diffs-token-dark,var(--diffs-dark)) max(l,var(--diff-token-least-l)) calc(c*(1 - max(l,var(--diff-token-least-l)))/max(1 - l,.001)) h / max(alpha,.85)))}}";
+
 /** Upstream's `ES` pure-side view: a `File` (no `data-diff`) tinted one side, its sign drawn before each number. */
 function pureSideMarkup(container: HTMLElement): PureSideMarkup
 {
@@ -143,10 +149,7 @@ function pureSideMarkup(container: HTMLElement): PureSideMarkup
 		gapStyle: container
 			.querySelector<HTMLElement>("[data-cds=FileDiff]")
 			?.style.getPropertyValue("--diffs-gap-style"),
-		rails: css.slice(
-			css.indexOf(":host{--diff-rail-added"),
-			css.indexOf(RAIL_FORCED_COLORS) + RAIL_FORCED_COLORS.length,
-		),
+		rails: unsafe.slice(unsafe.indexOf(":host{--diff-rail-added")).replace(/\s*\}\s*$/, ""),
 	};
 }
 
@@ -565,6 +568,7 @@ describe("inline Edit/Write diffs render with @pierre/diffs", () =>
 						"[data-column-number]{border-color:transparent;color:var(--cds-text-secondary)}",
 						`[data-column-number]::after{${RAIL_BOX};background:var(--diff-rail-added)}`,
 						RAIL_FORCED_COLORS,
+						TOKEN_CLAMP,
 					].join(""),
 				},
 			);
@@ -607,6 +611,7 @@ describe("inline Edit/Write diffs render with @pierre/diffs", () =>
 						"[data-column-number]{border-color:transparent;color:var(--cds-text-secondary)}",
 						`[data-column-number]::after{${RAIL_BOX};background:linear-gradient(135deg,var(--diff-rail-removed) 25%,transparent 25% 50%,var(--diff-rail-removed) 50% 75%,transparent 75%) 0 0/calc(var(--diffs-line-height,20px) / 4) calc(var(--diffs-line-height,20px) / 4)}`,
 						RAIL_FORCED_COLORS,
+						TOKEN_CLAMP,
 					].join(""),
 				},
 			);
