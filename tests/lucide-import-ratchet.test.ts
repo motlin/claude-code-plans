@@ -5,7 +5,7 @@ import {describe, expect, it} from "vite-plus/test";
  * Every icon should go through the cds `Icon` (src/components/ui/icon.tsx). This ratchet only falls:
  * when a migration removes a file's direct lucide import, lower the ceiling to the new count.
  */
-const LUCIDE_IMPORT_CEILING = 164;
+const LUCIDE_IMPORT_CEILING = 162;
 const ICON_MODULES = new Set(["src/lib/icon-glyphs.ts", "src/components/ui/icon.tsx"]);
 
 describe("lucide-react import ratchet", () =>

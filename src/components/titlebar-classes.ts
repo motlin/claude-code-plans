@@ -5,7 +5,7 @@
  * ghost-button hover for hover and press alike, and only the ink transitions.
  */
 export const TITLEBAR_ICON_BUTTON_CLASS =
-	"flex size-[var(--cds-h-control)] shrink-0 cursor-pointer items-center justify-center rounded-[var(--upstream-radius)] text-primary btn-squish stacks:[--btn-squish-paint:color_60ms_cubic-bezier(0.165,0.84,0.44,1)] hover:bg-fill-ghost-hover aria-pressed:bg-fill-ghost-selected aria-pressed:text-primary stacks:hover:bg-fill-button-ghost-hover stacks:aria-pressed:bg-fill-button-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus [&_svg]:size-[18px]";
+	"flex size-[var(--cds-h-control)] shrink-0 cursor-pointer items-center justify-center rounded-[var(--upstream-radius)] text-primary btn-squish stacks:[--btn-squish-paint:color_60ms_cubic-bezier(0.165,0.84,0.44,1)] hover:bg-fill-ghost-hover aria-pressed:bg-fill-ghost-selected aria-pressed:text-primary stacks:hover:bg-fill-button-ghost-hover stacks:aria-pressed:bg-fill-button-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
 
 /** Session chrome sits above its scrollport; sidebar clearance is relative to the tile inset. */
 export const SESSION_STICKY_HEADER_CLASS =

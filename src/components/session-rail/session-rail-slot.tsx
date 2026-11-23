@@ -1,4 +1,3 @@
-import {PanelRight} from "lucide-react";
 import
 {
 	Suspense,
@@ -14,10 +13,12 @@ import
 } from "react";
 
 import {forwardWheel} from "../../lib/forward-wheel";
+import {ICON_GLYPHS} from "../../lib/icon-glyphs";
 import {onHardLoadLocation} from "../../lib/hard-load-location";
 import {useRailFirstCardStyle, useRailRaiseRequest} from "../../lib/session-rail-store";
 import {usePhoneSheet} from "../../lib/use-phone-sheet";
 import {TITLEBAR_ICON_BUTTON_CLASS} from "../titlebar-classes";
+import {Icon} from "../ui/icon";
 import {MenuItem} from "../ui/menu";
 import {Tooltip} from "../ui/tooltip";
 import {RailAsideClassContext} from "./rail-aside-class";
@@ -103,7 +104,7 @@ export function SessionRailToggle({
 				onBlur={onBlur}
 				className={TITLEBAR_ICON_BUTTON_CLASS}
 			>
-				<PanelRight aria-hidden="true" />
+				<Icon name="SidebarRight" size="auto" />
 			</button>
 		</Tooltip>
 	);
@@ -115,7 +116,7 @@ export function SessionRailMenuItem()
 	const {label, toggle} = useSessionRailToggle();
 	return (
 		<MenuItem
-			icon={<PanelRight aria-hidden="true" />}
+			icon={<ICON_GLYPHS.SidebarRight aria-hidden="true" />}
 			onSelect={() =>
 			{
 				toggle();

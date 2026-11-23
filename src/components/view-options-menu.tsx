@@ -1,8 +1,8 @@
-import {FileDiff, Files} from "lucide-react";
 import {useState, type RefObject} from "react";
 
 import {useIsMac} from "../hooks/use-is-mac";
 import {useShortcutKeys} from "../hooks/use-shortcut";
+import {ICON_GLYPHS} from "../lib/icon-glyphs";
 import {bindingsFor} from "../lib/shortcuts/match";
 import {bindingToKeys, type ShortcutId} from "../lib/shortcuts/registry";
 import {foldBudget, splitPanes} from "../lib/titlebar-fold";
@@ -21,6 +21,7 @@ import type {ViewOptionsFacts, ViewOptionsItem, PaneMenuEntry} from "./view-opti
 
 type MainPaneEntry = PaneMenuEntry &
 {
+	glyph: "ChangesPlusMinus" | "Files";
 	shortcut: ShortcutId;
 };
 
@@ -29,13 +30,15 @@ const MAIN_PANE_TOGGLES: readonly MainPaneEntry[] = [
 	{
 		kind: "changes",
 		label: "Changes",
-		icon: FileDiff,
+		glyph: "ChangesPlusMinus",
+		icon: ICON_GLYPHS.ChangesPlusMinus,
 		shortcut: "toggle_changes",
 	},
 	{
 		kind: "files",
 		label: "Files",
-		icon: Files,
+		glyph: "Files",
+		icon: ICON_GLYPHS.Files,
 		shortcut: "toggle_files",
 	},
 ];
@@ -45,7 +48,6 @@ function MainPaneToggle({entry}: {entry: MainPaneEntry})
 	const host = usePaneHost();
 	const keys = useShortcutKeys(entry.shortcut);
 	const open = host.isOpen(entry.kind);
-	const Glyph = entry.icon;
 	return (
 		<Tooltip content={entry.label} shortcut={keys.keys} side="bottom">
 			<button
@@ -59,7 +61,7 @@ function MainPaneToggle({entry}: {entry: MainPaneEntry})
 				}}
 				className={TITLEBAR_ICON_BUTTON_CLASS}
 			>
-				<Glyph aria-hidden="true" />
+				<Icon name={entry.glyph} size="auto" />
 			</button>
 		</Tooltip>
 	);

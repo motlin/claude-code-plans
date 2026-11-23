@@ -11,6 +11,11 @@ import {sessionTitlePending} from "../src/lib/session-stand-in-title";
 import {ToastProvider} from "../src/components/toast";
 import {SESSION_STICKY_HEADER_CLASS, TITLEBAR_ICON_BUTTON_CLASS} from "../src/components/titlebar-classes";
 import {useTitlebarHiddenCount} from "../src/components/titlebar-fold-context";
+import {registerPane} from "../src/components/panes/pane-registry";
+import {TileHost} from "../src/components/panes/tile-host";
+import {SettingsProvider} from "../src/components/settings-provider";
+import {DensityProvider} from "../src/components/ui/density";
+import {SessionPaneControls} from "../src/components/view-options-menu";
 import {FIZZY_LAKE_PARTS, FizzyLakeContext, type FizzyLakePart} from "../src/lib/fizzy-lake";
 import {foldBudget, splitPanes} from "../src/lib/titlebar-fold";
 import {topLeftClearance} from "../src/lib/top-left-clearance";
@@ -1772,8 +1777,67 @@ describe("titlebar icon button (upstream ghost icon-only cds Button)", () =>
 			"hide-focus-ring",
 			"focus-visible:outline-hidden",
 			"focus-visible:shadow-focus",
-			"[&_svg]:size-[18px]",
 		]);
+	});
+
+	it("draws the Session rail, Changes and Files glyphs as 20px md cds Icons under the comfortable density", () =>
+	{
+		const unregister = [
+			registerPane(
+				"changes",
+				{
+					title: "Changes",
+					render: () => null,
+				},
+			),
+			registerPane(
+				"files",
+				{
+					title: "Files",
+					render: () => null,
+				},
+			),
+		];
+		try
+		{
+			render(
+				<SettingsProvider>
+					<TileHost sessionId="titlebar-icons">
+						<DensityProvider density="comfortable">
+							<SessionPaneControls facts={{}} railAvailable />
+						</DensityProvider>
+					</TileHost>
+				</SettingsProvider>,
+			);
+
+			expect(
+				["Session rail", "Changes", "Files"].map((name) =>
+				{
+					const svg = screen
+						.getByRole(
+							"button",
+							{
+								name,
+							},
+						)
+						.querySelector("svg");
+					return [
+						name,
+						svg?.getAttribute("data-cds"),
+						svg?.style.fontSize,
+						svg?.getAttribute("stroke-width"),
+					];
+				}),
+			).toStrictEqual([
+				["Session rail", "Icon", "calc(1.25rem * var(--cds-rem-scale, 1))", "1.5"],
+				["Changes", "Icon", "calc(1.25rem * var(--cds-rem-scale, 1))", "1.5"],
+				["Files", "Icon", "calc(1.25rem * var(--cds-rem-scale, 1))", "1.5"],
+			]);
+		}
+		finally
+		{
+			for (const off of unregister) off();
+		}
 	});
 });
 
