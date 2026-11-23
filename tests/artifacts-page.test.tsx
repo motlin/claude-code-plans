@@ -1288,7 +1288,7 @@ describe("artifacts route", () =>
 		);
 	});
 
-	it("leans upstream's Docs back sheet behind the front over a faint crayon doodle; file covers get neither", async () =>
+	it("leans upstream's Docs back sheet behind the front with no crayon doodle; file covers get no back sheet", async () =>
 	{
 		storage.removeItem(ARTIFACTS_LAYOUT_STORAGE_KEY);
 		await renderArtifactsPage("/artifacts", true);
@@ -1336,16 +1336,13 @@ describe("artifacts route", () =>
 			{
 				docs:
 				{
-					layers: ["wash", "doodle", "back", "front", "fade"],
+					layers: ["wash", "back", "front", "fade"],
 					back: [
 						"ltr",
 						"absolute overflow-hidden border border-[color:var(--color-border-line)] bg-white text-primary dark:bg-surface-1 dark:bg-clip-padding after:pointer-events-none after:absolute after:inset-0 after:content-[''] start-[14.15%] top-[11.76%] h-full w-[76.34%] origin-top-left rotate-[2.2deg] rounded-r6 after:bg-gray-900/5 z-2 bg-clip-padding",
 						0,
 					],
-					doodle: [
-						"pointer-events-none absolute inset-0 overflow-hidden rounded-[inherit] opacity-[0.06]",
-						4,
-					],
+					doodle: null,
 				},
 				html:
 				{
@@ -4253,7 +4250,7 @@ describe("artifact cover thumbnails", () =>
 		);
 	});
 
-	it("keeps a Docs thumbnail's back sheet over the doodle and washes, with upstream's same percentage geometry", async () =>
+	it("keeps a Docs thumbnail's back sheet over the washes with no doodle, with upstream's same percentage geometry", async () =>
 	{
 		await renderArtifactsPage("/artifacts", true, thumbFor);
 		const cover = coverFor("Quarterly plan");
@@ -4281,7 +4278,7 @@ describe("artifact cover thumbnails", () =>
 			},
 		).toStrictEqual(
 			{
-				layers: ["surface wash", "doodle", "wash filter", "cover wash", "back", "front", "fade"],
+				layers: ["surface wash", "wash filter", "cover wash", "back", "front", "fade"],
 				back: [
 					"ltr",
 					"absolute overflow-hidden border border-[color:var(--color-border-line)] bg-white text-primary dark:bg-surface-1 dark:bg-clip-padding after:pointer-events-none after:absolute after:inset-0 after:content-[''] start-[14.15%] top-[11.76%] h-full w-[76.34%] origin-top-left rotate-[2.2deg] rounded-r6 after:bg-gray-900/5 z-2 bg-clip-padding",

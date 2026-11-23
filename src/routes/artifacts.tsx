@@ -15,7 +15,6 @@ import
 } from "../lib/artifact-mark";
 import {ArtifactMark} from "../components/artifact-mark";
 import {CoverThumb} from "../components/cover-thumb";
-import {CrayonDoodle} from "../components/crayon-doodle";
 import
 {
 	activeFilterCount,
@@ -1167,7 +1166,6 @@ function ArtifactCover({artifact, priority}: {artifact: ArtifactSummary; priorit
 			className={`group/cover relative h-full overflow-hidden ${COVER_HUE[kind]} isolate`}
 		>
 			<div className={COVER_SURFACE_WASH} />
-			{kind === "document" && <CrayonDoodle kind="document" faint />}
 			{thumbnailSrc !== null && <CoverWashFilter id={filterId} />}
 			{wash}
 			{kind === "document" && (
