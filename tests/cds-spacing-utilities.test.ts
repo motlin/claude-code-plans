@@ -173,7 +173,7 @@ describe("cds density spacing utilities", () =>
 		);
 	});
 
-	it("remaps the pad scale inside data-size xs/sm/lg subtrees onto upstream's per-size pads, per density", () =>
+	it("remaps the pad scale inside data-size xxs/xs/sm/lg/base subtrees onto upstream's per-size pads, per density", () =>
 	{
 		const sizePads = (selector: string) =>
 		{
@@ -211,19 +211,26 @@ describe("cds density spacing utilities", () =>
 				lg: ["0.375rem", "0.5rem", "0.625rem", "0.875rem", "1.375rem"],
 			},
 		);
+		const xxsScale = ["0.125rem", "0.25rem", "0.375rem", "0.625rem", "0.875rem"];
 
 		expect(
 			{
 				root: sizePads(":root"),
 				compact: sizePads('[data-density="compact"]'),
 				comfortable: sizePads('[data-density="comfortable"]'),
+				xxs: remap("xxs"),
 				xs: remap("xs"),
 				sm: remap("sm"),
 				lg: remap("lg"),
+				base: remap("base"),
 			},
 		).toStrictEqual(
 			{
-				root: compactScale,
+				root:
+				{
+					...compactScale,
+					...Object.fromEntries(steps.map((step, index) => [`--cds-pad-${step}--xxs`, xxsScale[index]])),
+				},
 				compact: compactScale,
 				comfortable: sizeScale(
 					{
@@ -232,8 +239,14 @@ describe("cds density spacing utilities", () =>
 						lg: ["0.5rem", "0.75rem", "1rem", "1.25rem", "1.75rem"],
 					},
 				),
+				base: Object.fromEntries(
+					steps.map((step, index) => [
+						`--cds-pad-${step}`,
+						["0.375rem", "0.5rem", "0.75rem", "1rem", "1.5rem"][index],
+					]),
+				),
 				...Object.fromEntries(
-					["xs", "sm", "lg"].map((size) => [
+					["xxs", "xs", "sm", "lg"].map((size) => [
 						size,
 						Object.fromEntries(
 							steps.map((step) => [`--cds-pad-${step}`, `var(--cds-pad-${step}--${size})`]),

@@ -199,7 +199,7 @@ describe("Switch", () =>
 			const rules = [...styles.matchAll(/(?:\}|\*\/) (\[data-size="xxs"\] \{[^}]*\})/g)].map((match) => match[1]);
 
 			expect(rules).toStrictEqual([
-				'[data-size="xxs"] { --cds-switch-h: calc(0.875rem * var(--cds-rem-scale, 1)); }',
+				'[data-size="xxs"] { --cds-switch-h: calc(0.875rem * var(--cds-rem-scale, 1)); --cds-pad-xs: var(--cds-pad-xs--xxs); --cds-pad-sm: var(--cds-pad-sm--xxs); --cds-pad-md: var(--cds-pad-md--xxs); --cds-pad-lg: var(--cds-pad-lg--xxs); --cds-pad-xl: var(--cds-pad-xl--xxs); }',
 			]);
 		});
 
