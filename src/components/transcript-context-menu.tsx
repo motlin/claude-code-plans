@@ -214,14 +214,20 @@ function snapshotSelection(turn: Element): string | null
 /** Upstream `Kn`'s `beforeOpen`: the longest a file menu waits on its "is this path gone?" check. */
 const GONE_CHECK_WAIT_MS = 150;
 
-/** Upstream's popup sizes to its rows (`min-w-[128px] max-w-[320px]`); these are its live widths. */
-const MENU_WIDTH = "w-[225px]";
+/**
+ * Upstream's popup sizes to its rows (`min-w-[128px] max-w-[320px]`); these are its live widths.
+ * Without Fork, Rewind or a selection both speakers' menus measured 222.93px.
+ */
+const MENU_WIDTH = "w-[222.9px]";
 
 /** With "Attach selection as context ⇧⌘L" the assistant menu measured 242.4px. */
 const SELECTION_MENU_WIDTH = "w-[242.4px]";
 
-/** The Fork row keeps "Starts a new session, keeps this one" on one line at 257px. */
-const FORK_MENU_WIDTH = "w-[257px]";
+/**
+ * The Fork row's footnote "Starts a new session, keeps this one" is 224.195px of text; with the
+ * 10px item padding and 6px menu gutter on each side the menu measured 256.195px.
+ */
+const FORK_MENU_WIDTH = "w-[256.2px]";
 
 /** The Rewind row's wrapped description fills upstream's `max-w-[320px]` popup cap. */
 const REWIND_MENU_WIDTH = "w-[320px]";

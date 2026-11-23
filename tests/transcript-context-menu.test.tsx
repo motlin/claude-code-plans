@@ -274,7 +274,7 @@ describe("transcript context menus", () =>
 		).toStrictEqual(
 			{
 				rows: ASSISTANT_ROWS,
-				width: ["w-[257px]"],
+				width: ["w-[256.2px]"],
 			},
 		);
 	});
@@ -628,7 +628,7 @@ describe("transcript context menus", () =>
 		).toStrictEqual(
 			{
 				userRows: ["Copy message", "Copy message as Markdown", "---", "Attach message as context"],
-				userWidth: ["w-[225px]"],
+				userWidth: ["w-[222.9px]"],
 				assistantRows: ["Copy message", "Copy message as Markdown", "---", "Attach message as context"],
 				toolRows: [],
 			},
@@ -663,7 +663,7 @@ describe("transcript context menus", () =>
 					"---",
 					"Fork from here / Starts a new session, keeps this one",
 				],
-				width: ["w-[257px]"],
+				width: ["w-[256.2px]"],
 				calls: ["fork user-1"],
 			},
 		);
@@ -851,7 +851,7 @@ describe("transcript context menu with a text selection", () =>
 	it("widens the assistant menu to upstream's 242.4px for the Attach selection row only", () =>
 	{
 		const widthOf = (menu: HTMLElement) => [...menu.classList].filter((name) => name.startsWith("w-["));
-		// Without the Fork row, whose description holds the menu at 257px.
+		// Without the Fork row, whose description holds the menu at 256.2px.
 		const bare = (chat: ReactNode) => (
 			<TranscriptActionsContext.Provider value={NO_ACTIONS}>{chat}</TranscriptActionsContext.Provider>
 		);
@@ -882,7 +882,7 @@ describe("transcript context menu with a text selection", () =>
 			{
 				assistant: ["w-[242.4px]"],
 				user: ["w-[320px]"],
-				oneCharacter: ["w-[225px]"],
+				oneCharacter: ["w-[222.9px]"],
 			},
 		);
 	});
@@ -1585,7 +1585,7 @@ describe("transcript file ref menus", () =>
 				rows: menuRows(menu),
 				path: ref.getAttribute("data-file-path"),
 				line: ref.getAttribute("data-file-line"),
-				wide: menu.classList.contains("w-[225px]"),
+				wide: menu.classList.contains("w-[222.9px]"),
 			},
 		).toStrictEqual(
 			{
