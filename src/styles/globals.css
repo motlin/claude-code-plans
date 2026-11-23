@@ -911,7 +911,8 @@ html[data-interface-font="dyslexic"]
 	--sb-radius: 8px;
 	/* Upstream .dframe-sidebar --df-hover = --cds-fill-ghost-hover (#0000000d light), translucent like dark */
 	--sb-hover: var(--upstream-fill-ghost-hover);
-	--sb-selected: #edece8;
+	/* Upstream .dframe-sidebar --df-selected = --cds-fill-ghost-selected (#0000001a light), translucent like dark */
+	--sb-selected: var(--upstream-fill-ghost-selected);
 	/* Unselected New circle: upstream's web --cds-neutral-70 */
 	--sb-new-circle: #eae9e4;
 	/* Session rows: upstream selects them lighter than nav rows in dark. */

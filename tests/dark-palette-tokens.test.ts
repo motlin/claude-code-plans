@@ -101,7 +101,7 @@ describe("dark palette", () =>
 					"--card-outline": "rgb(11 11 11 / 0.1)",
 					"--menu-shadow":
 						"0 0 0 1px rgb(11 11 11 / 0.1), 0 8px 24px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.08)",
-					"--sb-selected": "#edece8",
+					"--sb-selected": "var(--upstream-fill-ghost-selected)",
 					"--sb-session-selected": "var(--sb-selected)",
 					"--upstream-on-primary": "hsl(0 0% 100%)",
 					"--upstream-text-secondary": "rgb(82 81 78)",

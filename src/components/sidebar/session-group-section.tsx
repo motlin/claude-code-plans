@@ -1408,7 +1408,7 @@ function SessionRowLink({
 					{
 						if (selection?.onRowClick(row.sessionId, event) === true) event.preventDefault();
 					}}
-					className={`${rowClass} text-secondary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--color-accent-100),0_0_6px_0_color-mix(in_srgb,var(--color-accent-100)_20%,transparent)] data-[selected=focused]:text-primary data-[multi-selected]:bg-[var(--sb-session-selected)] data-[multi-selected]:text-primary`}
+					className={`${rowClass} text-secondary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--color-accent-100),0_0_6px_0_color-mix(in_srgb,var(--color-accent-100)_20%,transparent)] data-[selected=focused]:text-primary data-[multi-selected]:not-data-[selected=focused]:bg-[var(--sb-session-selected)] data-[multi-selected]:text-primary`}
 				>
 					{metaLine === undefined ? (
 						titleLine
@@ -1443,7 +1443,7 @@ function SessionRowLink({
 const ROW_SHELL_CLASS =
 	"rounded-[var(--sb-radius)] hover:bg-[var(--sb-hover)] has-[:focus-visible]:bg-[var(--sb-hover)] data-[menu-open=true]:bg-[var(--sb-hover)] data-[context-menu-open=true]:bg-[var(--sb-hover)] has-[[data-row-main-button][data-selected=focused]]:bg-[var(--sb-session-selected)] hover:has-[[data-row-main-button][data-selected=focused]]:bg-[var(--selected-hover,var(--sb-session-selected))]";
 
-const ROW_MAIN_CLASS = `${ROW_CLASS} text-secondary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--color-accent-100),0_0_6px_0_color-mix(in_srgb,var(--color-accent-100)_20%,transparent)] data-[selected=focused]:text-primary data-[multi-selected]:bg-[var(--sb-session-selected)] data-[multi-selected]:text-primary`;
+const ROW_MAIN_CLASS = `${ROW_CLASS} text-secondary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--color-accent-100),0_0_6px_0_color-mix(in_srgb,var(--color-accent-100)_20%,transparent)] data-[selected=focused]:text-primary data-[multi-selected]:not-data-[selected=focused]:bg-[var(--sb-session-selected)] data-[multi-selected]:text-primary`;
 
 /**
  * Upstream's optimistic spawn row (`EY` while `rowKey in A_.pending`): a launch this tab started, drawn in Working
