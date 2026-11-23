@@ -1487,6 +1487,7 @@ describe("BackgroundTasksList per-row Stop", () =>
 				description: document.getElementById(button.getAttribute("aria-describedby") ?? "")?.textContent,
 				row: button.closest("[data-task-id]")?.getAttribute("data-task-id"),
 				busy: button.getAttribute("aria-busy"),
+				flush: button.className.split(" ").includes("-me-1"),
 				glyph: button.querySelector<SVGElement>("[data-cds=Icon]")?.style.fontSize,
 			})),
 		).toStrictEqual([
@@ -1495,6 +1496,7 @@ describe("BackgroundTasksList per-row Stop", () =>
 				description: "Serve the fabricated app",
 				row: "bfab1serve",
 				busy: null,
+				flush: false,
 				glyph: iconFontSize(16),
 			},
 			{
@@ -1503,6 +1505,7 @@ describe("BackgroundTasksList per-row Stop", () =>
 				description: "Review the fabricated diff",
 				row: "afab1review",
 				busy: null,
+				flush: false,
 				glyph: iconFontSize(16),
 			},
 		]);

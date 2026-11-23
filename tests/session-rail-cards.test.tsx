@@ -2978,7 +2978,7 @@ describe("Background tasks card", () =>
 			);
 		}
 
-		it("puts a ghost Stop after each running row's open button, in a pe-xs row", async () =>
+		it("puts a flush-end ghost Stop after each running row's open button, in a pe-xs row", async () =>
 		{
 			const running = [runningTask(1), runningTask(2)];
 			await renderCards(
@@ -2993,6 +2993,7 @@ describe("Background tasks card", () =>
 					row: button.closest("[data-rail-task-row]")?.className,
 					before: button.closest("[data-rail-task-row]")?.firstElementChild?.getAttribute("aria-label"),
 					ghost: button.className.includes("hover:bg-fill-ghost-hover"),
+					flush: button.className.split(" ").includes("-me-1"),
 					glyph: button.querySelector<SVGElement>("[data-cds=Icon]")?.style.fontSize,
 				})),
 			).toStrictEqual([
@@ -3000,12 +3001,14 @@ describe("Background tasks card", () =>
 					row: "flex min-w-0 items-center pe-xs",
 					before: "Open Task 1 in Background tasks",
 					ghost: true,
+					flush: true,
 					glyph: iconFontSize(16),
 				},
 				{
 					row: "flex min-w-0 items-center pe-xs",
 					before: "Open Task 2 in Background tasks",
 					ghost: true,
+					flush: true,
 					glyph: iconFontSize(16),
 				},
 			]);

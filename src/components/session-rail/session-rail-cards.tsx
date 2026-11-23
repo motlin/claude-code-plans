@@ -1081,6 +1081,7 @@ function BackgroundTasksBody({
 								{stop !== null && (
 									<BackgroundTaskStopButton
 										variant="ghost"
+										flushEnd
 										busy={stopping}
 										onStop={() =>
 										{
