@@ -138,12 +138,14 @@ function LinkedProseMarkdown({
 	open,
 	smartQuotes,
 	diagrams,
+	reply,
 }: {
 	markdown: string;
 	sessionId: string;
 	open: (ref: FileRef) => void;
 	smartQuotes: boolean;
 	diagrams: boolean;
+	reply: boolean;
 })
 {
 	const texts = useMemo(() => fileRefTexts(markdown), [markdown]);
@@ -165,6 +167,7 @@ function LinkedProseMarkdown({
 			smartQuotes={smartQuotes}
 			zonedTimes={smartQuotes}
 			diagrams={diagrams}
+			reply={reply}
 		/>
 	);
 }
@@ -173,16 +176,19 @@ function LinkedProseMarkdown({
  * Assistant prose whose inline-code paths become clickable file refs; with
  * `smartQuotes`, its quotes curl and its zoned clock times underline as
  * upstream's assistant text does. With `diagrams` (upstream's "diagram" context, assistant transcript text
- * only), mermaid fences draw as diagrams.
+ * only), mermaid fences draw as diagrams. With `reply` (the assistant transcript reply), the root carries
+ * upstream's flat reply Prose attributes.
  */
 export function ProseMarkdown({
 	markdown,
 	smartQuotes = false,
 	diagrams = false,
+	reply = false,
 }: {
 	markdown: string;
 	smartQuotes?: boolean;
 	diagrams?: boolean;
+	reply?: boolean;
 })
 {
 	const context = useContext(FileRefsContext);
@@ -190,7 +196,7 @@ export function ProseMarkdown({
 	return (
 		<RenderErrorBoundary
 			resetOn={markdown}
-			fallback={<PlainTextArticle text={markdown} />}
+			fallback={<PlainTextArticle text={markdown} reply={reply} />}
 			report={reportProseCrash}
 		>
 			{context === null ? (
@@ -199,6 +205,7 @@ export function ProseMarkdown({
 					smartQuotes={smartQuotes}
 					zonedTimes={smartQuotes}
 					diagrams={diagrams}
+					reply={reply}
 				/>
 			) : (
 				<LinkedProseMarkdown
@@ -207,6 +214,7 @@ export function ProseMarkdown({
 					open={context.open}
 					smartQuotes={smartQuotes}
 					diagrams={diagrams}
+					reply={reply}
 				/>
 			)}
 		</RenderErrorBoundary>

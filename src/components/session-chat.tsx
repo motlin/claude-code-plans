@@ -20,8 +20,8 @@ import React,
 import {createPortal, flushSync} from "react-dom";
 import {Bot, FileWarning, GitBranch, Lock, Palette, Plug, Zap} from "lucide-react";
 import {assertNever} from "../lib/assert-never";
-import {useFizzyLake, useRestInk} from "../lib/fizzy-lake";
-import {useTypeRowCut} from "../lib/use-row-cut";
+import {useRestInk} from "../lib/fizzy-lake";
+import {useRowCut} from "../lib/use-row-cut";
 import {Phrases} from "./ui/phrases";
 import {formatModelName} from "../lib/model-name";
 import {useClientRows, type ClientRow} from "../lib/client-rows-store";
@@ -4499,9 +4499,6 @@ function VirtualizedSessionEntries({
 })
 {
 	const geometryReady = useContext(SessionTileGeometryReadyContext);
-	// Upstream AssistantMessage `data-cds-reply-type` (shared-9 `nB`): under fizzy-lake `type` it opts the
-	// reply into the reply-type prose CSS. User rows never carry it.
-	const replyType = useFizzyLake("type");
 	const managesTileGeometry = geometryReady !== undefined;
 	const pendingGeometry = useRef<Map<string, number> | null>(null);
 	const listRef = useRef<HTMLDivElement>(null);
@@ -5158,7 +5155,6 @@ function VirtualizedSessionEntries({
 							// Upstream's AssistantMessage carries the text inset/stop tokens every row and prose block
 							// beneath it lines up with; a prompt is a UserMessage instead.
 							data-cds={entry.isPrompt ? undefined : "AssistantMessage"}
-							data-cds-reply-type={replyType && entry.kind.startsWith("assistant") ? "" : undefined}
 							data-reply-boundary={entry.opensReply ? "" : undefined}
 							className={entry.opensReply ? "pt-[var(--cds-gap-xs)]" : undefined}
 							data-transcript-entry-index={index}
@@ -6032,7 +6028,7 @@ function ClaudeCodeNoticeStep({notice}: {notice: ClaudeCodeNotice["notices"][num
 {
 	const [expanded, setExpanded] = useState(false);
 	const restInk = useRestInk();
-	const rowCut = useTypeRowCut(CLAUDE_CODE_NOTICE_LABEL);
+	const rowCut = useRowCut(true, CLAUDE_CODE_NOTICE_LABEL);
 	return (
 		<Collapsible.Root
 			open={expanded}
@@ -6070,7 +6066,7 @@ function StopHookMarker({line}: {line: MessageSessionLine})
 	const [expanded, setExpanded] = useState(false);
 	const restInk = useRestInk();
 	const bodyId = useId();
-	const rowCut = useTypeRowCut(STOP_HOOK_LABEL);
+	const rowCut = useRowCut(true, STOP_HOOK_LABEL);
 	const feedback = getUserContentText(line).replace(STOP_HOOK_PREFIX_RE, "");
 
 	return (
@@ -6261,7 +6257,7 @@ function CompactedSessionStatus({
 	const bodyId = useId();
 	const verbose = useContext(TranscriptModeContext) === "verbose";
 	const restInk = useRestInk();
-	const rowCut = useTypeRowCut(label);
+	const rowCut = useRowCut(true, label);
 	if (!verbose)
 	{
 		return (
@@ -6339,7 +6335,7 @@ function RewindMarker({
 })
 {
 	const restInk = useRestInk();
-	const rowCut = useTypeRowCut(placement.label);
+	const rowCut = useRowCut(true, placement.label);
 	if (!verbose || !placement.hasRows)
 	{
 		return (
@@ -7476,7 +7472,7 @@ function ContentBlock({
 			<div className="relative min-w-0 text-body text-primary" data-transcript-prose>
 				{/* Upstream's Wbe: transcript text items are the "diagram" context, so mermaid fences draw. */}
 				<MermaidBlockIdContext value={mermaidBlockId(line.uuid, blockIndex)}>
-					<ProseMarkdown markdown={prose} smartQuotes diagrams />
+					<ProseMarkdown markdown={prose} smartQuotes diagrams reply />
 				</MermaidBlockIdContext>
 				<DebugLink sessionId={sessionId} uuid={line.uuid} className="absolute top-0 right-0" />
 			</div>
@@ -8477,7 +8473,7 @@ function ToolCallRow({
 	].join(" ");
 	const announcement = [label, displayParam, rangeLabel ?? "", status ?? ""].filter((part) => part !== "").join(" ");
 	// Upstream `_C`: one row-cut ref fades both the label and the meta while either overflows.
-	const rowCut = useTypeRowCut(`${label}\n${displayParam}`);
+	const rowCut = useRowCut(true, `${label}\n${displayParam}`);
 	// Upstream `$W`: a settled bodiless row whose label or meta clips grows a text toggle that unclips them in place.
 	const unclipMeasured =
 		!expandable &&
@@ -9200,7 +9196,7 @@ function ToolCallSummary({
 				}
 			: undefined,
 	);
-	const busyRowCut = useTypeRowCut(held.state === "busy" ? held.runningText : "");
+	const busyRowCut = useRowCut(true, held.state === "busy" ? held.runningText : "");
 
 	// Each step's place in the group's screenshot strip, which collapsed groups show at the row's end.
 	const shotPlacements = useMemo(() =>

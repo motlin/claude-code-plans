@@ -3,7 +3,7 @@ import {useSmoothedTokens} from "../hooks/use-smoothed-tokens";
 import {useEventStreamConnecting} from "../hooks/use-claude-events";
 import {useRestInk} from "../lib/fizzy-lake";
 import {useReducedMotion} from "../lib/reduced-motion";
-import {useTypeRowCut} from "../lib/use-row-cut";
+import {useRowCut} from "../lib/use-row-cut";
 import {CHAT_COLUMN_CLASS} from "../lib/transcript-width";
 import
 {
@@ -190,7 +190,7 @@ function BusyWord({
 	word: string;
 }>)
 {
-	const rowCut = useTypeRowCut(word);
+	const rowCut = useRowCut(true, word);
 	return (
 		<ShimmerText ref={rowCut} variant="secondary" className={BUSY_LABEL_CLASS}>
 			{word}
@@ -330,7 +330,7 @@ export function WorkingMarker({
 		turnStatusHoldOptions(live.state, true, undefined),
 	);
 	const tasks = runningTasks > 0;
-	const labelRowCut = useTypeRowCut(held.morphWord === null ? held.label : "");
+	const labelRowCut = useRowCut(true, held.morphWord === null ? held.label : "");
 	const labelId = `${useId()}-label`;
 	const line = (
 		<div

@@ -1,11 +1,11 @@
 import {useCallback, useLayoutEffect, useRef, type RefCallback} from "react";
-import {useFizzyLake} from "./fizzy-lake";
 
 /*
  * Upstream's row-cut observer (shared-frame `n_`, backed by `AD`): one ResizeObserver per
  * window toggles `data-cds-row-cut` on every watched element while its text overflows
  * (`scrollWidth > clientWidth`), and the globals.css rule turns that into a 24px end fade.
- * Gated by fizzy-lake `type` at the call sites (cds-type-experiment-gate).
+ * Upstream retired its fizzy-lake `type` gate (cds-type-experiment-gate live check, 2026-11-21), so
+ * every transcript row cut is unconditional.
  */
 
 interface RowCutWatch
@@ -85,10 +85,4 @@ export function useRowCut(enabled: boolean, dep: string): RefCallback<HTMLElemen
 		for (const node of nodes.current) if (node.isConnected) observe(node);
 	}, [enabled, dep]);
 	return enabled ? ref : undefined;
-}
-
-/** Upstream `Me(MM("type"), text)`: the transcript status rows fade their labels only under fizzy-lake `type`. */
-export function useTypeRowCut(dep: string): RefCallback<HTMLElement> | undefined
-{
-	return useRowCut(useFizzyLake("type"), dep);
 }

@@ -588,14 +588,13 @@
 	text-align: right;
 }
 
-/* Upstream's reply-type prose (c6a992d55, cds-type-experiment-gate T5/T6): under fizzy-lake `type` an
-   assistant row carries data-cds-reply-type. Upstream's guard leaves prose nested in another cds component
-   inside the reply alone; local tool rows carry no data-cds, so [data-tool-row] joins the guard. */
-:global([data-cds-reply-type])
-	.markdown:not(:global([data-cds-reply-type] :is([data-cds]:not([data-cds-reply-type]), [data-tool-row])) *)
+/* Upstream's flat reply prose (c6a992d55 `.prose-scroll` flat cell tokens, cds-type-experiment-gate): the
+   assistant reply's Prose root carries data-prose-tables="flat" (with data-prose-font="sans" and
+   data-prose-heading-size="sm"), ungated since upstream retired the type gate (live 2026-11-21). The guard
+   leaves prose nested in another cds component or a local tool row (no data-cds there) alone. */
+.markdown[data-prose-tables="flat"]:not(:global([data-prose-tables="flat"] :is([data-cds], [data-tool-row])) *)
 	> :global(.markdown-table-wrapper),
-:global([data-cds-reply-type])
-	.markdown:not(:global([data-cds-reply-type] :is([data-cds]:not([data-cds-reply-type]), [data-tool-row])) *)
+.markdown[data-prose-tables="flat"]:not(:global([data-prose-tables="flat"] :is([data-cds], [data-tool-row])) *)
 	:is(li, blockquote, details)
 	:global(.markdown-table-wrapper)
 {
@@ -606,8 +605,7 @@
 /* Upstream keeps the table frame under forced colors. */
 @media (forced-colors: none)
 {
-	:global([data-cds-reply-type])
-		.markdown:not(:global([data-cds-reply-type] :is([data-cds]:not([data-cds-reply-type]), [data-tool-row])) *)
+	.markdown[data-prose-tables="flat"]:not(:global([data-prose-tables="flat"] :is([data-cds], [data-tool-row])) *)
 		table
 	{
 		border-width: 0;
@@ -616,8 +614,7 @@
 }
 
 /* Frameless cells: no wash, flush to the column start, 1.5em between columns, message-line rules. */
-:global([data-cds-reply-type])
-	.markdown:not(:global([data-cds-reply-type] :is([data-cds]:not([data-cds-reply-type]), [data-tool-row])) *)
+.markdown[data-prose-tables="flat"]:not(:global([data-prose-tables="flat"] :is([data-cds], [data-tool-row])) *)
 	:is(th, td)
 {
 	background: transparent;
@@ -627,8 +624,7 @@
 	border-color: var(--message-line, var(--color-border));
 }
 
-:global([data-cds-reply-type])
-	.markdown:not(:global([data-cds-reply-type] :is([data-cds]:not([data-cds-reply-type]), [data-tool-row])) *)
+.markdown[data-prose-tables="flat"]:not(:global([data-prose-tables="flat"] :is([data-cds], [data-tool-row])) *)
 	:is(th, td)
 	+ :is(th, td)
 {
@@ -639,8 +635,7 @@
    leading stay the base chip's. */
 @media screen and (forced-colors: none)
 {
-	:global([data-cds-reply-type])
-		.markdown:not(:global([data-cds-reply-type] :is([data-cds]:not([data-cds-reply-type]), [data-tool-row])) *)
+	.markdown[data-prose-tables="flat"]:not(:global([data-prose-tables="flat"] :is([data-cds], [data-tool-row])) *)
 		code:not(pre code)
 	{
 		background: var(--upstream-fill-ghost-hover);
@@ -658,15 +653,13 @@
    var(--cds-font-weight-semibold,580), var(--cds-font-axis-wght-semibold,)` feeds `--cds-font-axis-wght-bold`), so
    they compute 600 drawn at wght 580, or the dark semibold axis where it is set. Strong inside a heading or th is
    bold too. Upstream's Windows/Linux `--cds-reply-weight-floor` has no macOS meaning and is left out. */
-:global([data-cds-reply-type])
-	.markdown:not(:global([data-cds-reply-type] :is([data-cds]:not([data-cds-reply-type]), [data-tool-row])) *)
+.markdown[data-prose-tables="flat"]:not(:global([data-prose-tables="flat"] :is([data-cds], [data-tool-row])) *)
 	:is(h1, h2, h3, h4, h5, h6)
 {
 	font-weight: 580;
 }
 
-:global([data-cds-reply-type])
-	.markdown:not(:global([data-cds-reply-type] :is([data-cds]:not([data-cds-reply-type]), [data-tool-row])) *)
+.markdown[data-prose-tables="flat"]:not(:global([data-prose-tables="flat"] :is([data-cds], [data-tool-row])) *)
 	:is(th, strong, b)
 {
 	font-weight: 600;
@@ -675,8 +668,7 @@
 }
 
 /* Inline code inherits the surrounding reply weight (upstream `var(--_reply-weight, inherit)`). */
-:global([data-cds-reply-type])
-	.markdown:not(:global([data-cds-reply-type] :is([data-cds]:not([data-cds-reply-type]), [data-tool-row])) *)
+.markdown[data-prose-tables="flat"]:not(:global([data-prose-tables="flat"] :is([data-cds], [data-tool-row])) *)
 	:is(code, kbd):not([class])
 {
 	font-weight: inherit;
@@ -1107,7 +1099,7 @@
    `html[data-cds-fizzy-lake~=type]:not([data-atkinson-font],[data-dyslexic-font]):not([data-reply-face=interface])
    .prose:not([data-prose-font]) { --cds-font-weight-header: initial; --cds-font-axis-wght-header: initial }`.
    Live prose (2026-11-21) no longer reads that token, so the reset only lands headings on the same semibold 580;
-   th and strong stay at the reply-type bold 600 above. Deliberately left out:
+   th and strong stay at the flat reply prose bold 600 above. Deliberately left out:
    the Windows/Linux `--cds-reply-weight-floor` rules (no local OS meaning) and the System-font role weight and
    axis reset (rule 3), since local prose has no role weights to reset. */
 :global(html[data-cds-fizzy-lake~="type"]:not([data-interface-font="dyslexic"]):not([data-reply-face="interface"]))

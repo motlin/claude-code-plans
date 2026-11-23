@@ -65,7 +65,21 @@ interface FileRefProps
 	 * instead of code blocks.
 	 */
 	diagrams?: boolean | undefined;
+	/**
+	 * The assistant reply's prose: upstream's reply Prose root carries
+	 * `data-prose-font="sans" data-prose-heading-size="sm" data-prose-tables="flat"`, which scopes the flat
+	 * table, code chip and weight CSS (cds-type-experiment-gate live check, 2026-11-21).
+	 */
+	reply?: boolean | undefined;
 }
+
+/** Upstream's assistant reply Prose attributes. */
+const REPLY_PROSE_ATTRIBUTES =
+{
+	"data-prose-font": "sans",
+	"data-prose-heading-size": "sm",
+	"data-prose-tables": "flat",
+} as const;
 
 type MarkdownArticleProps = FileRefProps &
 	(
@@ -277,10 +291,10 @@ function useSessionChipIslands(
 }
 
 /** Upstream `EM`: prose whose markdown render crashed, drawn as its raw text inside the same prose wrapper. */
-export function PlainTextArticle({text}: {text: string})
+export function PlainTextArticle({text, reply = false}: {text: string; reply?: boolean})
 {
 	return (
-		<article className={styles["markdown"]}>
+		<article className={styles["markdown"]} {...(reply ? REPLY_PROSE_ATTRIBUTES : {})}>
 			<div className="whitespace-pre-wrap">{text}</div>
 		</article>
 	);
@@ -399,6 +413,7 @@ export function MarkdownArticle(props: MarkdownArticleProps)
 							"data-document": "",
 						}
 					: {})}
+				{...(props.reply === true ? REPLY_PROSE_ATTRIBUTES : {})}
 				onClick={handleClick}
 				{...(onFileRef === undefined
 					? {}

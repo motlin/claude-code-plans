@@ -203,7 +203,7 @@ function cutLabels(container: Element):
 	}));
 }
 
-describe("transcript status labels fade under fizzy-lake type (cds-type-experiment-gate T2)", () =>
+describe("transcript status labels fade when cut (cds-type-experiment-gate T2)", () =>
 {
 	it("fades the collapsed group header label inside a cds row", () =>
 	{
@@ -238,12 +238,12 @@ describe("transcript status labels fade under fizzy-lake type (cds-type-experime
 		);
 	});
 
-	// The group header's Phrases fades ungated, as upstream's retired gate left it (live 2026-11-21).
-	it("leaves a standalone tool row's labels alone when type is off", () =>
+	// Upstream retired the type gate (live 2026-11-21): every row cut is unconditional.
+	it("fades a standalone tool row's labels with type off too", () =>
 	{
 		const {container} = renderChat(bashRun(["t1"]), ["color", "panels"]);
 		overflowEverything();
-		expect(cutLabels(container)).toStrictEqual([]);
+		expect(cutLabels(container).some((cut) => cut.text.includes("echo long"))).toBe(true);
 	});
 
 	it("fades the working line's phase word", () =>
