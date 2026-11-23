@@ -1339,7 +1339,7 @@ describe("artifacts route", () =>
 					layers: ["wash", "doodle", "back", "front", "fade"],
 					back: [
 						"ltr",
-						"absolute overflow-hidden border border-[color:var(--color-border-line)] bg-white text-primary dark:bg-surface-1 dark:bg-clip-padding after:pointer-events-none after:absolute after:inset-0 after:content-[''] rounded-xl inset-x-0 mx-auto shadow-cds-sm after:bg-gray-900/5 translate-x-1 rotate-4 top-[30px] h-[200px] w-[182px] group-has-[img]/cover:w-[min(232px,100%-24px)] z-2 bg-clip-padding",
+						"absolute overflow-hidden border border-[color:var(--color-border-line)] bg-white text-primary dark:bg-surface-1 dark:bg-clip-padding after:pointer-events-none after:absolute after:inset-0 after:content-[''] start-[14.15%] top-[11.76%] h-full w-[76.34%] origin-top-left rotate-[2.2deg] rounded-r6 after:bg-gray-900/5 z-2 bg-clip-padding",
 						0,
 					],
 					doodle: [
@@ -4253,7 +4253,7 @@ describe("artifact cover thumbnails", () =>
 		);
 	});
 
-	it("keeps a Docs thumbnail's back sheet over the doodle and washes, widening with the front as upstream", async () =>
+	it("keeps a Docs thumbnail's back sheet over the doodle and washes, with upstream's same percentage geometry", async () =>
 	{
 		await renderArtifactsPage("/artifacts", true, thumbFor);
 		const cover = coverFor("Quarterly plan");
@@ -4276,13 +4276,16 @@ describe("artifact cover thumbnails", () =>
 											? "fade"
 											: "surface wash",
 				),
-				widens: back?.classList.contains("group-has-[img]/cover:w-[min(232px,100%-24px)]"),
+				back: [back?.getAttribute("dir"), back?.getAttribute("class")],
 				hasImg: cover.matches(":has(img)"),
 			},
 		).toStrictEqual(
 			{
 				layers: ["surface wash", "doodle", "wash filter", "cover wash", "back", "front", "fade"],
-				widens: true,
+				back: [
+					"ltr",
+					"absolute overflow-hidden border border-[color:var(--color-border-line)] bg-white text-primary dark:bg-surface-1 dark:bg-clip-padding after:pointer-events-none after:absolute after:inset-0 after:content-[''] start-[14.15%] top-[11.76%] h-full w-[76.34%] origin-top-left rotate-[2.2deg] rounded-r6 after:bg-gray-900/5 z-2 bg-clip-padding",
+				],
 				hasImg: true,
 			},
 		);

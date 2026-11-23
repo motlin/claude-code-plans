@@ -475,8 +475,6 @@ html[data-interface-font="dyslexic"]
 	--shadow-md: var(--cds-shadow-md);
 	/* Upstream cds shadow-lg (--cds-shadow-lg): the Artifacts cover's front sheet. */
 	--shadow-lg: var(--cds-shadow-lg);
-	/* Upstream cds shadow-sm (--cds-shadow-sm): the Docs cover's back sheet; Tailwind's own shadow-sm stays as is. */
-	--shadow-cds-sm: var(--cds-shadow-sm);
 	/* Upstream claude.ai/code — dialog surface (shadow-panel-lg) */
 	--shadow-panel-lg: var(--panel-lg-shadow);
 	/* Upstream claude.ai/code — collapsed sidebar peek popover (--df-shadow-pop) */
@@ -877,7 +875,7 @@ html[data-interface-font="dyslexic"]
 	--cds-shadow-md: 0 2px 4px 0 rgb(11 11 11 / 0.07), 0 6px 16px 0 rgb(11 11 11 / 0.08);
 	/* Upstream --cds-shadow-lg (light): the Artifacts cover's front sheet. */
 	--cds-shadow-lg: 0 4px 8px 0 rgb(11 11 11 / 0.08), 0 12px 28px -2px rgb(11 11 11 / 0.08);
-	/* Upstream --cds-shadow-sm (light): the Docs cover's back sheet. */
+	/* Upstream --cds-shadow-sm (light): the ⌘K Compose field's shadow-panel-sm. */
 	--cds-shadow-sm: 0 1px 2px 0 rgb(11 11 11 / 0.06), 0 2px 8px 0 rgb(11 11 11 / 0.08);
 	/* Upstream claude.ai/code — approval card (.epitaxy-approval-card surface) */
 	--approval-card-shadow: 0 0 0 1px rgb(11 11 11 / 0.1), 0 1px 2px rgba(0, 0, 0, 0.06), 0 2px 8px rgba(0, 0, 0, 0.08);

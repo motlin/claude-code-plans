@@ -519,7 +519,7 @@ describe("fizzy-lake color tokens (upstream data-cds-fizzy-lake~=color)", () =>
 		);
 	});
 
-	it("shadow-cds-sm is upstream's cds --cds-shadow-sm: the Docs cover's back sheet, beside the Tailwind shadow-sm (read live 2026-11-06)", () =>
+	it("--cds-shadow-sm is upstream's cds shadow-sm (read live 2026-11-06), with no shadow-cds-sm utility since the Docs back sheet dropped its shadow (2026-11-21)", () =>
 	{
 		expect(
 			{
@@ -531,7 +531,7 @@ describe("fizzy-lake color tokens (upstream data-cds-fizzy-lake~=color)", () =>
 			{
 				utility:
 				{
-					"--shadow-cds-sm": "var(--cds-shadow-sm)",
+					"--shadow-cds-sm": null,
 				},
 				light:
 				{

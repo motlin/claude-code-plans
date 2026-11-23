@@ -1174,7 +1174,7 @@ function ArtifactCover({artifact, priority}: {artifact: ArtifactSummary; priorit
 				<div
 					data-cover-back=""
 					dir="ltr"
-					className={`${COVER_SHEET} rounded-xl inset-x-0 mx-auto shadow-cds-sm after:bg-gray-900/5 translate-x-1 rotate-4 ${COVER_FRONT_SIZE.document} z-2 bg-clip-padding`}
+					className={`${COVER_SHEET} start-[14.15%] top-[11.76%] h-full w-[76.34%] origin-top-left rotate-[2.2deg] rounded-r6 after:bg-gray-900/5 z-2 bg-clip-padding`}
 				/>
 			)}
 			<div
