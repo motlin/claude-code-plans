@@ -21,6 +21,12 @@ const BashRenderer = lazy(async () =>
 		default: m.BashRenderer,
 	})),
 );
+const MonitorRenderer = lazy(async () =>
+	import("./bash-renderer").then((m) => (
+	{
+		default: m.MonitorRenderer,
+	})),
+);
 const ReadRenderer = lazy(async () =>
 	import("./read-renderer").then((m) => (
 	{
@@ -118,6 +124,7 @@ const registry: Record<string, ComponentType<ToolRendererProps>> =
 	Edit: EditRenderer,
 	MultiEdit: EditRenderer,
 	Bash: BashRenderer,
+	Monitor: MonitorRenderer,
 	Read: ReadRenderer,
 	Write: WriteRenderer,
 	Glob: GlobRenderer,

@@ -3,7 +3,7 @@
 import {act, cleanup, fireEvent, render} from "@testing-library/react";
 import {createElement} from "react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
-import {BashRenderer} from "../src/components/tool-renderers/bash-renderer";
+import {BashRenderer, MonitorRenderer} from "../src/components/tool-renderers/bash-renderer";
 import type {ClientToolCall} from "../src/components/tool-renderers/types";
 
 vi.mock("../src/hooks/use-shiki", () => (
@@ -214,5 +214,65 @@ describe("BashRenderer code card", () =>
 			return text;
 		};
 		expect([tileText(true), tileText(false)]).toStrictEqual(["rm[U+200B] -rf x", command]);
+	});
+
+	it("draws a Monitor command in the same tile with a Copy command that copies only the command, as upstream `Py`", async () =>
+	{
+		const writeText = vi.fn<Clipboard["writeText"]>(async () => Promise.resolve());
+		Object.defineProperty(
+			navigator,
+			"clipboard",
+			{
+				value:
+				{
+					writeText,
+				},
+				configurable: true,
+			},
+		);
+		const monitor: ClientToolCall =
+		{
+			id: "tool-monitor-1",
+			name: "Monitor",
+			input:
+			{
+				command: "tail -f log.txt\r\n",
+				description: "Watch the log",
+			},
+			param: "tail -f log.txt",
+			sourceUuid: "uuid-2",
+		};
+		const {container} = render(<MonitorRenderer toolCall={monitor} />);
+		const button = container.querySelector<HTMLElement>("button[aria-label='Copy command']")!;
+		const wrapper = button.closest(".epitaxy-code-card > .gap-1 > div")?.className;
+		const before = layout(container);
+		fireEvent.click(button);
+		await act(async () =>
+		{
+			await Promise.resolve();
+		});
+		expect(
+			{
+				...before,
+				outer: container.firstElementChild?.className,
+				header: container.textContent.includes("Bash"),
+				alwaysVisible: wrapper === "shrink-0",
+				writes: writeText.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				body: "flex-1 min-w-0 flex flex-col justify-center epitaxy-code-size gap-md text-code",
+				outer: "relative flex w-full px-md py-sm",
+				card: CARD,
+				cardText: "$\u{a0}tail -f log.txt",
+				action: "flex h-[1lh] shrink-0 items-center gap-1",
+				copyInAction: true,
+				output: undefined,
+				outputText: undefined,
+				header: false,
+				alwaysVisible: false,
+				writes: [["tail -f log.txt"]],
+			},
+		);
 	});
 });

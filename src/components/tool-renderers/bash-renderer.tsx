@@ -11,6 +11,7 @@ import {AnsiText, PolicyDenialReason, SecretRevealButton, ToolBodyCopyButton} fr
 import {useSecretReveal} from "./use-secret-reveal";
 import {TOOL_OUTPUT_REGION} from "./tool-output-region";
 import {getMcpRenderer} from "./mcp-registry";
+import {FallbackRenderer} from "./fallback-renderer";
 
 const MCP_CLI_RE = /^mcp-cli\s+call\s+(\S+)\s+(\S+)/;
 
@@ -119,6 +120,36 @@ function BashOutputRow({copyText, children}: {copyText: string | undefined; chil
 export function BashRenderer({toolCall, nested = false}: ToolRendererProps)
 {
 	const command = inputString(toolCall.input, "command") ?? "";
+	const [, mcpServer, mcpTool] = MCP_CLI_RE.exec(command) ?? [];
+	if (mcpServer !== undefined && mcpTool !== undefined && toolCall.blocked !== true && toolCall.result)
+	{
+		return <McpCliBashRenderer toolCall={toolCall} server={mcpServer} tool={mcpTool} />;
+	}
+	return <CommandToolBody toolCall={toolCall} nested={nested} tool="Bash" />;
+}
+
+/**
+ * Upstream `Py`: a Monitor that watches a command draws it in the same tile and Copy command as Bash (never
+ * pinned visible) inside `Q`, which has no tool header; a websocket Monitor keeps the generic body.
+ */
+export function MonitorRenderer({toolCall, nested = false}: ToolRendererProps)
+{
+	if (!inputString(toolCall.input, "command")?.trim())
+		return <FallbackRenderer toolCall={toolCall} nested={nested} />;
+	return <CommandToolBody toolCall={toolCall} nested={nested} tool="Monitor" />;
+}
+
+function CommandToolBody({
+	toolCall,
+	nested,
+	tool,
+}: {
+	toolCall: ToolRendererProps["toolCall"];
+	nested: boolean;
+	tool: "Bash" | "Monitor";
+})
+{
+	const command = inputString(toolCall.input, "command") ?? "";
 	const {isError} = toolCall;
 	// A blocked call never ran, so upstream shows why in place of its raw denial text.
 	const blocked = toolCall.blocked === true;
@@ -128,12 +159,6 @@ export function BashRenderer({toolCall, nested = false}: ToolRendererProps)
 	// Upstream's code card masks secrets until its Reveal toggle is pressed, and Copy copies what shows.
 	const secrets = useSecretReveal(resultContent ? [command, resultContent] : [command]);
 
-	const [, mcpServer, mcpTool] = MCP_CLI_RE.exec(command) ?? [];
-	if (mcpServer !== undefined && mcpTool !== undefined && result)
-	{
-		return <McpCliBashRenderer toolCall={toolCall} server={mcpServer} tool={mcpTool} />;
-	}
-
 	// Upstream `Cm`: a policy-blocked command shows its invisible and control characters (`SO`).
 	const maskedCommand = secrets.show(command);
 	const shownCommand = blocked ? visibleMultiline(maskedCommand) : maskedCommand;
@@ -141,8 +166,14 @@ export function BashRenderer({toolCall, nested = false}: ToolRendererProps)
 	const commandCopyText = (blocked ? shownCommand : maskedCommand.replaceAll("\r\n", "\n")).trimEnd();
 	// The output's Copy (beside the body when there is no command) copies it without ANSI codes.
 	const outputCopyText = resultContent ? stripAnsi(secrets.show(resultContent)) : "";
-	// Upstream passes `alwaysVisible: tool.status === "running"`: a call whose result has not arrived yet.
-	const running = !blocked && toolCall.resultUuid === undefined && toolCall.result === undefined && isError !== true;
+	// Upstream Bash passes `alwaysVisible: tool.status === "running"`: a call whose result has not arrived yet.
+	// Monitor's `jy` gets no alwaysVisible.
+	const running =
+		tool === "Bash" &&
+		!blocked &&
+		toolCall.resultUuid === undefined &&
+		toolCall.result === undefined &&
+		isError !== true;
 
 	// Upstream `tl`: the command in the shared code tile, with the Copy command (after the local secrets Reveal) in the
 	// tile's first-line action column; a long command scrolls in the 10.5-line Command frame.
@@ -183,15 +214,21 @@ export function BashRenderer({toolCall, nested = false}: ToolRendererProps)
 		</>
 	);
 
+	const column = "flex-1 min-w-0 flex flex-col justify-center epitaxy-code-size gap-md text-code";
+	if (tool === "Monitor")
+	{
+		// Upstream `Q`: standalone outside a card, bare inside one; the Copy lives in the tile.
+		const content = <div className={column}>{body}</div>;
+		return nested ? content : <div className="relative flex w-full px-md py-sm">{content}</div>;
+	}
+
 	// Nested in a grouped card (upstream `Q`): no card chrome, so the "Bash" header disappears; only an
 	// output-only body puts its Copy beside the body, as the tile holds it otherwise.
 	if (nested)
 	{
 		return (
 			<>
-				<div className="flex-1 min-w-0 flex flex-col justify-center epitaxy-code-size gap-md text-code">
-					{body}
-				</div>
+				<div className={column}>{body}</div>
 				{!command && <SecretRevealButton {...secrets} />}
 				{!command && <ToolBodyCopyButton text={outputCopyText} />}
 			</>

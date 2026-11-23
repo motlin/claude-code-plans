@@ -192,17 +192,17 @@ describe("ReportFindingsRenderer", () =>
 
 describe("Monitor and TaskOutput bodies", () =>
 {
-	it("route through the fallback KeyValue renderer", () =>
+	it("give Monitor its command-tile renderer and route TaskOutput through the fallback KeyValue renderer", () =>
 	{
 		expect(
 			{
-				monitor: getToolRenderer("Monitor"),
-				taskOutput: getToolRenderer("TaskOutput"),
+				monitorIsFallback: getToolRenderer("Monitor") === getToolRenderer("Frobnicate"),
+				taskOutputIsFallback: getToolRenderer("TaskOutput") === getToolRenderer("Frobnicate"),
 			},
 		).toStrictEqual(
 			{
-				monitor: getToolRenderer("Frobnicate"),
-				taskOutput: getToolRenderer("Frobnicate"),
+				monitorIsFallback: false,
+				taskOutputIsFallback: true,
 			},
 		);
 	});
