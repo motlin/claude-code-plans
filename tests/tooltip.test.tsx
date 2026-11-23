@@ -620,12 +620,14 @@ describe("<Tooltip> anchor display", () =>
 
 describe("tooltip click-to-open (upstream's receipt Tooltip, closeOnClick false + onClick open)", () =>
 {
-	it("opens at once on a click with openOnClick, stays open on a second click, marks the trigger popup-open, and closes on pointer leave", () =>
+	it("opens at once on a click with openOnClick, stays open on a second click, marks the trigger popup-open, leaves its own description with describeAnchor false, and closes on pointer leave", () =>
 	{
 		vi.useFakeTimers();
 		render(
-			<Tooltip content="Read by Claude" closeOnClick={false} openOnClick markOpen>
-				<button type="button">receipt</button>
+			<Tooltip content="Read by Claude" closeOnClick={false} openOnClick markOpen describeAnchor={false}>
+				<button type="button" aria-describedby="own">
+					receipt
+				</button>
 			</Tooltip>,
 		);
 		const trigger = screen.getByRole("button");
@@ -634,6 +636,7 @@ describe("tooltip click-to-open (upstream's receipt Tooltip, closeOnClick false 
 		{
 			tip: screen.queryByRole("tooltip")?.textContent,
 			open: trigger.hasAttribute("data-popup-open"),
+			describedBy: trigger.getAttribute("aria-describedby"),
 		};
 		fireEvent.click(trigger);
 		const second = screen.queryByRole("tooltip")?.textContent;
@@ -654,6 +657,7 @@ describe("tooltip click-to-open (upstream's receipt Tooltip, closeOnClick false 
 				{
 					tip: "Read by Claude",
 					open: true,
+					describedBy: "own",
 				},
 				second: "Read by Claude",
 				left:

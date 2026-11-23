@@ -682,6 +682,8 @@ function StepRowButton({
 				side="top"
 				align="start"
 				stacked
+				describeAnchor={false}
+				markOpen
 				className="w-full"
 			>
 				{button}

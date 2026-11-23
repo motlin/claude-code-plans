@@ -125,6 +125,7 @@ export function Tooltip({
 	forceOpen = false,
 	closed = false,
 	markOpen = false,
+	describeAnchor = true,
 	trackCursor,
 	suppressAfterPopup = false,
 	portal: portalProp,
@@ -179,6 +180,11 @@ export function Tooltip({
 	closed?: boolean;
 	/** Mark the anchored child `data-popup-open` while the tip is open, as Base UI's tooltip trigger does. */
 	markOpen?: boolean;
+	/**
+	 * Append the tip's id to the anchored child's `aria-describedby` while open. False leaves the child's own description
+	 * alone, as Base UI's tooltip trigger does (upstream's Next steps rows, described only by a hidden title span).
+	 */
+	describeAnchor?: boolean;
 	/**
 	 * `y`: follow the pointer's Y along the anchor, centring the tip on it 8px inside the viewport (upstream's
 	 * sidebar resize edge, `trackCursorAxis="y"`). Until the pointer moves it sits at the side's default.
@@ -518,7 +524,7 @@ export function Tooltip({
 					}
 				: undefined,
 	};
-	const describe = open && variant !== "reason";
+	const describe = open && describeAnchor && variant !== "reason";
 	const childProps: Partial<TriggerChildProps> =
 	{
 		...(describe

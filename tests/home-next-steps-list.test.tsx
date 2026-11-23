@@ -698,6 +698,8 @@ describe("NextStepsList", () =>
 
 			expect(
 				{
+					openDescribedBy: button.getAttribute("aria-describedby") === describedBy,
+					popupOpen: button.hasAttribute("data-popup-open"),
 					target: target?.outerHTML.replace(/id="[^"]+"/, 'id=""'),
 					side: tooltip.dataset["side"],
 					align: tooltip.dataset["align"],
@@ -707,6 +709,8 @@ describe("NextStepsList", () =>
 				},
 			).toStrictEqual(
 				{
+					openDescribedBy: true,
+					popupOpen: true,
 					target: '<span id="" hidden="">Task 1</span>',
 					side: "top",
 					align: "start",
