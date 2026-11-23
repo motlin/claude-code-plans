@@ -3882,14 +3882,14 @@ describe("TileHost line-mode chat shell inset (upstream shared-20 it / cc43287c9
 		const shaved = "calc(var(--chat-gutter) - (var(--tiles-gap) - var(--tiles-padding)))";
 		expect(
 			[
-				'[data-tiles-line] [data-tile-slot="chat"] { --chat-gutter: 32px; --tiles-gap: 1px; }',
-				`@container tile-slot (max-width: 560px) { ${tile}:is([data-chat-gutter-start], [data-chat-gutter-end]) { --chat-gutter: 16px; } }`,
-				`${tile}:is([data-chat-gutter-start], [data-chat-gutter-end]) { --chat-column-start: var(--chat-gutter); --chat-column-end: var(--chat-gutter); --chat-column-extra: calc(var(--chat-column-start) + var(--chat-column-end)); }`,
-				`${tile}[data-chat-gutter-start="shave"] { --chat-column-start: ${shaved}; }`,
+				'[data-tiles-line] [data-tile-slot="chat"] { --chat-gutter: 32px; --tiles-gap: 1px; --session-rail-g: var(--session-rail-gutter, 24px); --chat-gutter-start: var(--session-rail-g); }',
+				`@container tile-slot (max-width: 560px) { ${tile} { --chat-gutter: 16px; } }`,
+				`${tile} { --chat-column-start: var(--chat-gutter-start, var(--chat-gutter)); --chat-column-end: var(--chat-gutter); --chat-column-extra: calc(var(--chat-column-start) + var(--chat-column-end)); }`,
+				`${tile}[data-chat-gutter-start="shave"] { --chat-column-start: var(--chat-gutter-start, ${shaved}); }`,
 				`${tile}[data-chat-gutter-end="shave"] { --chat-column-end: ${shaved}; }`,
 				`${tile}[data-chat-gutter-end="bleed"] { --chat-column-end: calc(var(--chat-gutter) + var(--tiles-padding)); }`,
 				`${tile}[data-chat-gutter-end="shave"]:not([data-chat-gutter-start]) { --chat-column-end: calc(var(--chat-column-start) + var(--tiles-padding)); }`,
-				`${tile}[data-chat-gutter-end="bleed"]:not([data-chat-gutter-start]) { --chat-column-end: clamp( 0.75rem, (100% - var(--max-content-width, 768px) + var(--tiles-padding)) / 2, var(--chat-gutter) + var(--tiles-padding) ); --chat-column-start: calc(var(--chat-column-end) - var(--tiles-padding)); }`,
+				`${tile}[data-chat-gutter-end="bleed"]:not([data-chat-gutter-start]) { --chat-column-end: clamp( 0.75rem, (100% - var(--max-content-width, 768px) + var(--tiles-padding)) / 2, var(--chat-gutter-start, var(--chat-gutter)) + var(--tiles-padding) ); --chat-column-start: calc(var(--chat-column-end) - var(--tiles-padding)); }`,
 			].filter((rule) => !styles.includes(rule)),
 		).toStrictEqual([]);
 	});
