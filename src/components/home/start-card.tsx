@@ -1,4 +1,4 @@
-import {Check, ChevronDown, Folder, SquareTerminal, X, Zap, type LucideIcon} from "lucide-react";
+import {Check, ChevronDown, Folder, SquareTerminal, Zap, type LucideIcon} from "lucide-react";
 import {useId, useLayoutEffect, useRef, useState, type ReactNode, type RefObject} from "react";
 
 import {useFolderModeMemory} from "../../hooks/use-folder-mode-memory";
@@ -20,6 +20,7 @@ import
 } from "../../lib/home-next-steps";
 import {TOUCH_REVEAL} from "../../lib/touch-reveal";
 import {POPOVER_SCROLL_BODY_CLASS, PopoverRoot, PopoverTrigger, PopoverContent} from "../ui/popover";
+import {Icon} from "../ui/icon";
 import {PathBreak} from "../ui/path-break";
 import {Tooltip} from "../ui/tooltip";
 import type {StartProject} from "../../lib/palette-start-session";
@@ -583,7 +584,7 @@ export function NextStepsList({
 										}}
 										className="pointer-events-auto flex size-6 items-center justify-center rounded-r5 text-primary hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus comfortable:size-8 comfortable:rounded-r6"
 									>
-										<X aria-hidden="true" className="size-4 comfortable:size-5" />
+										<Icon name="X" size="sm" />
 									</button>
 								</Tooltip>
 							</span>

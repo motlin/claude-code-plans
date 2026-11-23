@@ -964,7 +964,7 @@ describe("home launch-folder request", () =>
 
 describe("Next steps Dismiss at comfortable density", () =>
 {
-	it("grows the Dismiss button to upstream's comfortable 32px square with a 20px icon (coarse pointer)", () =>
+	it("grows the Dismiss button to upstream's comfortable 32px square around an sm cds X Icon in both densities (coarse pointer)", () =>
 	{
 		const candidate: NextStepCandidate =
 		{
@@ -1002,15 +1002,22 @@ describe("Next steps Dismiss at comfortable density", () =>
 		const comfortable = (element: Element | null) =>
 			(element?.getAttribute("class") ?? "").split(" ").filter((name) => name.startsWith("comfortable:"));
 
+		const icon = dismiss.querySelector<SVGElement>("svg");
+
 		expect(
 			{
 				button: comfortable(dismiss),
-				icon: comfortable(dismiss.querySelector("svg")),
+				icon: [
+					icon?.getAttribute("data-cds"),
+					icon?.style.fontSize,
+					icon?.getAttribute("stroke-width"),
+					comfortable(icon),
+				],
 			},
 		).toStrictEqual(
 			{
 				button: ["comfortable:size-8", "comfortable:rounded-r6"],
-				icon: ["comfortable:size-5"],
+				icon: ["Icon", "calc(1rem * var(--cds-rem-scale, 1))", "1.875", []],
 			},
 		);
 	});
