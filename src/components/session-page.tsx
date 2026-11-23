@@ -3481,11 +3481,6 @@ function SessionView({
 												</SessionFileRefs>
 											</AskUserQuestionProvider>
 
-											<ApprovalArrivalRegion
-												toolId={permissionArrivalText === null ? null : permissionKey}
-												text={permissionArrivalText}
-												cardRef={inlinePermissionRef}
-											/>
 											{(chatStream.state.isStreaming || chatStream.state.isComplete) && (
 												<StreamingMessage
 													text={chatStream.state.text}
@@ -3572,6 +3567,16 @@ function SessionView({
 																	: clusterClass
 															}
 														>
+															{/* Upstream's arrival region: in the cluster column so it moves with the cards into the dock */}
+															<ApprovalArrivalRegion
+																toolId={
+																	permissionArrivalText === null
+																		? null
+																		: permissionKey
+																}
+																text={permissionArrivalText}
+																cardRef={inlinePermissionRef}
+															/>
 															<ApprovalSlot sessionId={sessionId} {...approvalSlotCard}>
 																{/* Upstream draws every pending approval inline; a permission prompt is not on disk, so it follows the transcript */}
 																{shownPermission && permissionKey !== null && (

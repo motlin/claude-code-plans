@@ -66,7 +66,7 @@ describe("ApprovalArrivalRegion, as upstream's ES arrival announcer", () =>
 				role: element.getAttribute("role"),
 				className: element.className,
 				ariaLive: element.getAttribute("aria-live"),
-				// Upstream's region sits with the tail slot, which in-app Find skips.
+				// Upstream's region carries only role and class; its trailing-slot ancestor keeps Find out.
 				findOmitted: element.hasAttribute("data-find-omitted"),
 				text: element.textContent,
 			},
@@ -76,7 +76,7 @@ describe("ApprovalArrivalRegion, as upstream's ES arrival announcer", () =>
 				role: "status",
 				className: "sr-only select-none",
 				ariaLive: null,
-				findOmitted: true,
+				findOmitted: false,
 				text: "",
 			},
 		);

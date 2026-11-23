@@ -700,6 +700,16 @@ describe("plan pane", () =>
 
 describe("SessionPage dock composition", () =>
 {
+	function arrivalRegionPlacement()
+	{
+		const element = document.querySelector("[data-approval-arrival-region]");
+		return {
+			inClusterColumn: element?.parentElement?.parentElement?.hasAttribute("data-approval-cluster-host") ?? false,
+			beforeSlot: element?.nextElementSibling?.hasAttribute("data-approval-slot") ?? false,
+			inDock: element?.closest("[data-approval-dock]") != null,
+			inInlineSlot: element?.closest("[data-inline-approval-slot]") != null,
+		};
+	}
 	const pr =
 	{
 		number: 100,
@@ -730,7 +740,7 @@ describe("SessionPage dock composition", () =>
 	{
 		return [
 			...document.querySelectorAll(
-				"[data-session-footer] [data-branch-strip], [data-session-footer] [role=status]:not([data-skill-arg-hint-sr]):not([data-fast-mode-status]), [data-session-footer] [data-composer-card], [data-session-footer] [data-approval-card-root]",
+				"[data-session-footer] [data-branch-strip], [data-session-footer] [role=status]:not([data-skill-arg-hint-sr]):not([data-fast-mode-status]):not([data-approval-arrival-region]), [data-session-footer] [data-composer-card], [data-session-footer] [data-approval-card-root]",
 			),
 		].map((element) =>
 			element.hasAttribute("data-approval-card-root")
@@ -1093,12 +1103,21 @@ describe("SessionPage dock composition", () =>
 				dock: dockContents(),
 				inline: card.closest("[data-inline-permission]") !== null,
 				presentation: card.getAttribute("data-approval-presentation"),
+				arrivalRegion: arrivalRegionPlacement(),
 			},
 		).toStrictEqual(
 			{
 				dock: ["pr", "usage", "composer"],
 				inline: true,
 				presentation: "card",
+				// Upstream's arrival region sits in the cluster column, just before the card slot.
+				arrivalRegion:
+				{
+					inClusterColumn: true,
+					beforeSlot: true,
+					inDock: false,
+					inInlineSlot: true,
+				},
 			},
 		);
 	});
@@ -1263,6 +1282,7 @@ describe("SessionPage dock composition", () =>
 					(slot) => slot.querySelector("[data-approval-card-root]") === null,
 				),
 				presentation: card.getAttribute("data-approval-presentation"),
+				arrivalRegion: arrivalRegionPlacement(),
 				needsInput: screen.queryByRole(
 					"button",
 					{
@@ -1277,6 +1297,14 @@ describe("SessionPage dock composition", () =>
 				inline: true,
 				inlineSlotEmpty: true,
 				presentation: null,
+				// The region moves with the cluster into the dock.
+				arrivalRegion:
+				{
+					inClusterColumn: true,
+					beforeSlot: true,
+					inDock: true,
+					inInlineSlot: false,
+				},
 				needsInput: null,
 			},
 		);
