@@ -35,15 +35,19 @@ const CDS_BUTTON_VARIANTS =
 /** Upstream's cds Button inline pad: pad-md, capped by --cds-button-pad-max (9px under fizzy panels). */
 export const CDS_BUTTON_PAD = "px-[min(var(--cds-pad-md),var(--cds-button-pad-max,var(--cds-pad-md)))]";
 
+/** The 20px cds Button size (upstream xxs, or compact sm), for hand-copied buttons that paint themselves. */
+export const CDS_BUTTON_SM_SIZE = "h-5 px-1.5 text-[12px]/[17px] [--upstream-radius:0.3125rem]";
+
 /**
- * Upstream's cds Button at the density control height and body text, its `size="sm"` button (20px, padding 0 6px,
- * 12/17), or its `size="xs"` button as comfortable density draws it (24px, 13/19, radius 6, the xs pad scale's
- * pad-md; pair it with `data-size="xs"`).
+ * Upstream's cds Button at the density control height and body text, its 20px button (padding 0 6px, 12/17, radius
+ * 5): `size="xxs"` (`data-step="1"`, 5px at every density) or `size="sm"` as compact density draws it
+ * (--cds-radius--sm 5px), or its `size="xs"` button as comfortable density draws it (24px, 13/19, radius 6, the xs
+ * pad scale's pad-md; pair it with `data-size="xs"`).
  */
 const CDS_BUTTON_SIZES =
 {
 	default: `h-control ${CDS_BUTTON_PAD} text-body`,
-	sm: "h-5 px-1.5 text-[12px]/[17px]",
+	sm: CDS_BUTTON_SM_SIZE,
 	xs: `h-6 ${CDS_BUTTON_PAD} text-[13px]/[19px] [--upstream-radius:0.375rem]`,
 } as const;
 

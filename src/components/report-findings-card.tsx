@@ -28,7 +28,7 @@ import
 } from "../lib/review-findings-store";
 import type {ToastOptions} from "./toast-context";
 import type {ClientToolCall} from "./tool-renderers/types";
-import {cdsButtonClass} from "./ui/cds-button";
+import {CDS_BUTTON_SM_SIZE, cdsButtonClass} from "./ui/cds-button";
 import {CDS_BUTTON_DISABLED} from "./ui/cds-button-disabled";
 import {Icon} from "./ui/icon";
 import {PathLabel} from "./ui/path-label";
@@ -54,13 +54,11 @@ const ROW_BUTTON_CLASS =
 const LINE_CELL_CLASS = "flex h-[1lh] items-center text-body";
 const EXPANDED_CLASS = "col-span-full flex min-w-0 flex-col gap-[3px] pb-1.5";
 
-/** Upstream's cds `data-size="xxs"` scope pins --cds-radius to 5px at every density. */
-const XXS_RADIUS = "[--upstream-radius:0.3125rem]";
 /** Upstream cds Button `variant="secondary" size="xxs"` (20px, 6px pad) with the card's ink. */
-export const WALK_THROUGH_CLASS = `${cdsButtonClass("secondary", "sm")} ${XXS_RADIUS} shrink-0 text-footnote`;
-export const VIEW_IN_CHANGES_CLASS = `${cdsButtonClass("secondary", "sm")} ${XXS_RADIUS} ms-auto shrink-0 text-footnote`;
+export const WALK_THROUGH_CLASS = `${cdsButtonClass("secondary", "sm")} shrink-0 text-footnote`;
+export const VIEW_IN_CHANGES_CLASS = `${cdsButtonClass("secondary", "sm")} ms-auto shrink-0 text-footnote`;
 /** Upstream cds Button `variant="ghost" size="xxs"` with `Ao` (muted ink) and the footnote size. */
-const GHOST_XXS_CLASS = `relative inline-flex h-5 shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-[var(--upstream-radius)] ${XXS_RADIUS} whitespace-nowrap select-none px-1.5 font-control-regular hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus ${CDS_BUTTON_DISABLED} text-muted-as-secondary hover:text-primary text-footnote shrink-0`;
+const GHOST_XXS_CLASS = `relative inline-flex ${CDS_BUTTON_SM_SIZE} shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-[var(--upstream-radius)] whitespace-nowrap select-none font-control-regular hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus ${CDS_BUTTON_DISABLED} text-muted-as-secondary hover:text-primary text-footnote shrink-0`;
 
 /**
  * Upstream cds `Badge size="xs"` pill with `l5`'s tints: the xs scope pins --cds-h-control-nested to 18px at every

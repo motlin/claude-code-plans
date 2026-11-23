@@ -28,7 +28,7 @@ import {RailGlyph} from "./rail-row";
  */
 const ROW_CLASS = "flex min-h-8 w-full min-w-0 items-center gap-sm gap-x-2.5 px-2 text-body";
 /** Upstream's ghost xxs flush-both stat button; `-mx-1.5` is `mx-outset` at the 6px xxs pad. */
-const STAT_BUTTON_CLASS = `${cdsButtonClass("ghost", "sm")} -mx-1.5 [--upstream-radius:var(--radius-r4)]`;
+const STAT_BUTTON_CLASS = `${cdsButtonClass("ghost", "sm")} -mx-1.5`;
 /** Upstream: hidden until something inside has focus or its popup is open; never on hover. */
 const MENU_WRAPPER_CLASS = "sr-only flex shrink-0 focus-within:not-sr-only has-[[data-popup-open]]:not-sr-only";
 const MENU_TRIGGER_CLASS =

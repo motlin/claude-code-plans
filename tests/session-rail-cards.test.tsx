@@ -2312,7 +2312,7 @@ describe("cards from local data", () =>
 					glyph: "ChangesPlusMinus",
 					uncommitted: null,
 					keyShortcuts: result.current.ariaKeyShortcuts,
-					buttonClass: `${cdsButtonClass("ghost", "sm")} -mx-1.5 [--upstream-radius:var(--radius-r4)]`,
+					buttonClass: `${cdsButtonClass("ghost", "sm")} -mx-1.5`,
 					mouseDownAllowed: false,
 				},
 			);

@@ -20,6 +20,16 @@ async function ruleOrder(candidates: readonly string[]): Promise<string[]>
 
 describe("cdsButtonClass fizzy paints (upstream sT, Ct)", () =>
 {
+	it("pins each fixed size's corner like upstream's size scale: sm/xxs 5px (step 1, compact sm), xs 6px", () =>
+	{
+		const radii = (["default", "sm", "xs"] as const).map((size) =>
+			cdsButtonClass("ghost", size)
+				.split(" ")
+				.filter((name) => name.startsWith("[--upstream-radius:")),
+		);
+		expect(radii).toStrictEqual([[], ["[--upstream-radius:0.3125rem]"], ["[--upstream-radius:0.375rem]"]]);
+	});
+
 	it("spells every class literally, so Tailwind's source scanner finds it without help from the tests", () =>
 	{
 		const scanner = new Scanner({});
