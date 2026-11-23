@@ -191,6 +191,7 @@ export function SourceEditor(props: SourceEditorProps)
 			whitespace: new Compartment(),
 			pastEnd: new Compartment(),
 			folding: new Compartment(),
+			brackets: new Compartment(),
 			palette: new Compartment(),
 			indentGuides: new Compartment(),
 		},
@@ -290,7 +291,7 @@ export function SourceEditor(props: SourceEditorProps)
 							rectangularSelection(),
 							crosshairCursor(),
 							bracketMatching(),
-							bracketPairColors,
+							compartments.brackets.of(bracketPairColors(initial.language)),
 							keymap.of([...defaultKeymap, ...foldKeymap]),
 							compartments.attributes.of(contentAttributes(initial.ariaLabel, initial.language)),
 							sourceEditorTheme,
@@ -483,7 +484,10 @@ export function SourceEditor(props: SourceEditorProps)
 	{
 		viewRef.current?.dispatch(
 			{
-				effects: compartments.folding.reconfigure(foldingExtension(language)),
+				effects: [
+					compartments.folding.reconfigure(foldingExtension(language)),
+					compartments.brackets.reconfigure(bracketPairColors(language)),
+				],
 			},
 		);
 	}, [compartments, language]);

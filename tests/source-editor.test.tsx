@@ -734,16 +734,35 @@ describe("SourceEditor find highlights", () =>
 
 describe("SourceEditor brackets and whitespace", () =>
 {
-	it("colors bracket pairs by depth", () =>
+	it("colors bracket pairs by depth only in code languages", () =>
 	{
-		const {container} = render(<SourceEditor value="f(a[b{c}])" readOnly />);
-		expect(marks(container, "cm-epitaxyBracketPair")).toStrictEqual([
-			["(", "cm-epitaxyBracketPair0"],
-			["[", "cm-epitaxyBracketPair1"],
-			["{", "cm-epitaxyBracketPair2"],
-			["}", "cm-epitaxyBracketPair2"],
-			["]", "cm-epitaxyBracketPair1"],
-			[")", "cm-epitaxyBracketPair0"],
+		const pairs = (value: string, language?: string): string[][] =>
+			marks(
+				render(<SourceEditor value={value} readOnly language={language} />).container,
+				"cm-epitaxyBracketPair",
+			);
+		expect([
+			pairs("f(a[b{c}])", "typescript"),
+			pairs('{"a":[1]}', "json"),
+			pairs("[a](b)", "markdown"),
+			pairs("[a](b)"),
+		]).toStrictEqual([
+			[
+				["(", "cm-epitaxyBracketPair0"],
+				["[", "cm-epitaxyBracketPair1"],
+				["{", "cm-epitaxyBracketPair2"],
+				["}", "cm-epitaxyBracketPair2"],
+				["]", "cm-epitaxyBracketPair1"],
+				[")", "cm-epitaxyBracketPair0"],
+			],
+			[
+				["{", "cm-epitaxyBracketPair0"],
+				["[", "cm-epitaxyBracketPair1"],
+				["]", "cm-epitaxyBracketPair1"],
+				["}", "cm-epitaxyBracketPair0"],
+			],
+			[],
+			[],
 		]);
 	});
 

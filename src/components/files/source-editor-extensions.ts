@@ -616,7 +616,7 @@ function bracketDecorations(view: EditorView): DecorationSet
 	return builder.finish();
 }
 
-export const bracketPairColors = ViewPlugin.fromClass(
+const bracketPairPlugin = ViewPlugin.fromClass(
 	class
 	{
 		decorations: DecorationSet;
@@ -635,6 +635,15 @@ export const bracketPairColors = ViewPlugin.fromClass(
 		decorations: (plugin) => plugin.decorations,
 	},
 );
+
+/** Languages whose brackets are prose, not code tokens; upstream's tree-walking colorizer finds no bracket nodes there. */
+const PROSE_LANGUAGES = new Set(["markdown", "mdx", "plaintext", "text", "txt"]);
+
+/** Bracket pair colors for code languages only; markdown and unknown-language files get none, like upstream. */
+export function bracketPairColors(language: string | null | undefined): Extension
+{
+	return language && !PROSE_LANGUAGES.has(language) ? bracketPairPlugin : [];
+}
 
 /* ---------- Indent guides ---------- */
 
