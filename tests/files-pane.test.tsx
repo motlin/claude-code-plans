@@ -843,21 +843,37 @@ describe("Files pane header", () =>
 			...screen.getByRole("menu").querySelectorAll<HTMLElement>("[role^=menuitem], [role=separator]"),
 		].map((row) => (row.getAttribute("role") === "separator" ? "─" : (row.firstElementChild?.textContent ?? "")));
 
-		expect(rows).toStrictEqual([
-			"Show file tree",
-			"File tree position",
-			"─",
-			"Preview tabs",
-			"─",
-			"Word wrap",
-			"Indent guides",
-			"Show whitespace",
-			"Scroll past end",
-			"Tab size",
-			"─",
-			"Hide ignored files",
-			"Show files from",
-		]);
+		expect(
+			{
+				rows,
+				popupContextMenuPrevented: !fireEvent.contextMenu(screen.getByRole("menu")),
+				itemContextMenuPrevented: !fireEvent.contextMenu(screen.getAllByRole("menuitemcheckbox")[0]!),
+				separatorContextMenuPrevented: !fireEvent.contextMenu(
+					screen.getByRole("menu").querySelector("[role=separator]")!,
+				),
+			},
+		).toStrictEqual(
+			{
+				rows: [
+					"Show file tree",
+					"File tree position",
+					"─",
+					"Preview tabs",
+					"─",
+					"Word wrap",
+					"Indent guides",
+					"Show whitespace",
+					"Scroll past end",
+					"Tab size",
+					"─",
+					"Hide ignored files",
+					"Show files from",
+				],
+				popupContextMenuPrevented: true,
+				itemContextMenuPrevented: true,
+				separatorContextMenuPrevented: true,
+			},
+		);
 	});
 
 	it("File tree position defaults to Automatic, putting the tree right of the chat's pane, and Left moves it", async () =>

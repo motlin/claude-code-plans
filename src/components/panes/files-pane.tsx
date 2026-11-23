@@ -12,6 +12,7 @@ import {EMPTY_EDIT_GUARD, type EditGuardEvent, editGuardReducer} from "../../lib
 import {onFileOpenRequest, takePendingFileOpen} from "../../lib/file-open-requests";
 import type {FileRef} from "../../lib/file-refs";
 import {loadFileTabs, saveFileTabs} from "../../lib/pane-layout";
+import {SUPPRESS_NATIVE_MENU_POPUP_PROPS} from "../../lib/native-context-menu";
 import {isAnotherOverlayOpen} from "../../lib/overlay";
 import {usePhoneSheet} from "../../lib/use-phone-sheet";
 import type {SessionFiles} from "../../lib/session-files";
@@ -112,7 +113,7 @@ function FilesSettingsMenu({
 			<MenuTrigger aria-label="Files settings" className={PANE_HEADER_ICON_BUTTON_CLASS}>
 				<Icon name="DotsVertical" size="sm" />
 			</MenuTrigger>
-			<MenuContent align="end">
+			<MenuContent align="end" popupProps={SUPPRESS_NATIVE_MENU_POPUP_PROPS}>
 				<MenuCheckboxItem checked={treeShown} onCheckedChange={onTreeShownChange} shortcut={treeKeys.keys}>
 					Show file tree
 				</MenuCheckboxItem>
