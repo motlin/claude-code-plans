@@ -36,15 +36,20 @@ describe("forgetMockModules", () =>
 		);
 	});
 
-	it("drops every module that imports a newly mocked path, so the next import evaluates it against the mock", () =>
+	it("drops every module that imports a newly mocked path, and the source modules its direct importers handed it to", () =>
 	{
 		const graph = new EvaluatedModules();
 		const engine = graph.ensureModule("/src/lib/shrinkwrap.ts", "/src/lib/shrinkwrap.ts");
+		const useShrinkwrap = graph.ensureModule("/src/hooks/use-shrinkwrap.ts", "/src/hooks/use-shrinkwrap.ts");
 		const loader = graph.ensureModule("/src/lib/shrinkwrap-loader.ts", "/src/lib/shrinkwrap-loader.ts");
 		const tooltip = graph.ensureModule("/src/components/ui/tooltip.tsx", "/src/components/ui/tooltip.tsx");
+		const react = graph.ensureModule("/node_modules/react/index.js", "/node_modules/react/index.js");
 		const unrelated = graph.ensureModule("/src/lib/defined.ts", "/src/lib/defined.ts");
-		engine.importers.add(loader.id);
-		loader.importers.add(tooltip.id);
+		// use-shrinkwrap provides the engine it imports to the loader it imports, which tooltip reads it from.
+		engine.importers.add(useShrinkwrap.id);
+		useShrinkwrap.imports.add(engine.id).add(loader.id).add(react.id);
+		loader.importers.add(useShrinkwrap.id).add(tooltip.id);
+		react.importers.add(useShrinkwrap.id).add(tooltip.id);
 		// A cycle back to the loader must not loop.
 		tooltip.importers.add(loader.id);
 
@@ -53,19 +58,23 @@ describe("forgetMockModules", () =>
 		expect(
 			{
 				engine: graph.getModuleById(engine.id) === engine,
+				useShrinkwrap: graph.getModuleById(useShrinkwrap.id),
 				loader: graph.getModuleById(loader.id),
 				loaderByUrl: graph.getModuleByUrl(loader.url),
 				loaderInFileMap: graph.getModulesByFile(loader.file)?.has(loader),
 				tooltip: graph.getModuleById(tooltip.id),
+				react: graph.getModuleById(react.id) === react,
 				unrelated: graph.getModuleById(unrelated.id) === unrelated,
 			},
 		).toStrictEqual(
 			{
 				engine: true,
+				useShrinkwrap: undefined,
 				loader: undefined,
 				loaderByUrl: undefined,
 				loaderInFileMap: false,
 				tooltip: undefined,
+				react: true,
 				unrelated: true,
 			},
 		);
