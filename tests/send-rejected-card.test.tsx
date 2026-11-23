@@ -112,7 +112,7 @@ describe("SendRejectedCard", () =>
 		expect(
 			{
 				expanded: toggle.getAttribute("aria-expanded"),
-				message: container.querySelector("[data-send-rejected-message]")?.textContent,
+				message: container.querySelector("[data-api-error-details] .whitespace-pre-wrap")?.textContent,
 			},
 		).toEqual(
 			{
@@ -126,7 +126,7 @@ describe("SendRejectedCard", () =>
 		expect(
 			{
 				expanded: toggle.getAttribute("aria-expanded"),
-				message: container.querySelector("[data-send-rejected-message]"),
+				message: container.querySelector("[data-api-error-details] .whitespace-pre-wrap"),
 				buttons: buttonNames(),
 			},
 		).toEqual(
@@ -211,7 +211,7 @@ describe("SendRejectedCard", () =>
 		);
 	});
 
-	it("uses upstream's card shell and lets the details row wrap on a phone", () =>
+	it("uses upstream's card shell, ErrorDetails' density tokens, and lets the details row wrap on a phone", () =>
 	{
 		const {container} = renderCard();
 		const card = container.querySelector("[data-testid=send-rejected-card]");
@@ -225,12 +225,16 @@ describe("SendRejectedCard", () =>
 		expect(
 			{
 				card: card?.className,
-				row: row?.className.split(/\s+/).includes("flex-wrap"),
+				row: row?.className,
+				panel: card?.querySelector("[data-api-error-details]")?.className,
+				box: card?.querySelector("[data-api-error-details]")?.firstElementChild?.className,
 			},
-		).toEqual(
+		).toStrictEqual(
 			{
 				card: "card-outline-layer flex w-fit min-w-[min(480px,100%)] max-w-full flex-col overflow-clip rounded-card select-text",
-				row: true,
+				row: "flex min-w-0 max-w-full flex-wrap items-center gap-x-lg gap-y-sm px-lg pb-lg pt-md",
+				panel: "border-t px-lg py-lg",
+				box: "relative flex flex-col gap-xs rounded-card bg-alpha-1 py-sm ps-md text-footnote text-secondary min-h-[calc(var(--cds-h-control)+--spacing(2))] pe-[calc(var(--cds-h-control)+--spacing(1)+var(--cds-pad-sm))]",
 			},
 		);
 	});
@@ -251,7 +255,7 @@ describe("SendRejectedCard", () =>
 	it("gates the details panel's height animation and the caret's rotation under reduced motion", () =>
 	{
 		const {container} = renderCard();
-		const panel = container.querySelector("[data-send-rejected-message]")?.closest("[data-open]");
+		const panel = container.querySelector("[data-api-error-details] .whitespace-pre-wrap")?.closest("[data-open]");
 		const caret = screen
 			.getByRole(
 				"button",

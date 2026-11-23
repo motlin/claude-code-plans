@@ -2228,7 +2228,7 @@ describe("HomeComposer", () =>
 					value: textarea().value,
 					startFailed: shown?.hasAttribute("data-start-failed"),
 					alert: shown?.querySelector("[role=alert]")?.textContent,
-					message: shown?.querySelector("[data-send-rejected-message]")?.textContent,
+					message: shown?.querySelector("[data-api-error-details] .whitespace-pre-wrap")?.textContent,
 					nextHoldsComposer:
 						shown?.parentElement?.nextElementSibling?.nextElementSibling?.querySelector(
 							"[data-composer-card]",
@@ -2594,7 +2594,7 @@ describe("HomeComposer", () =>
 			});
 			expect(
 				{
-					message: card()?.querySelector("[data-send-rejected-message]")?.textContent,
+					message: card()?.querySelector("[data-api-error-details] .whitespace-pre-wrap")?.textContent,
 					value: textarea().value,
 					clipboard: writeText.mock.calls,
 				},
