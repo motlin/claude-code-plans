@@ -105,7 +105,7 @@ describe("ToolOutputBody (upstream aS / oS)", () =>
 				wrapDir: null,
 				tile: "epitaxy-diff epitaxy-code-card rounded-lg flex overflow-clip px-md py-xs text-code",
 				tileDir: "ltr",
-				background: CODE_THEME_BG_FALLBACK,
+				background: `var(--code-fence-bg, ${CODE_THEME_BG_FALLBACK})`,
 				children: 1,
 				inner: "min-w-0 flex-1",
 				fileInInner: true,

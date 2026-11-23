@@ -1,5 +1,5 @@
 import {lazy, type ReactNode, Suspense} from "react";
-import {useCodeThemeBackground} from "../hooks/use-code-theme-background";
+import {useCodeThemeBackground, useCodeThemeVars} from "../hooks/use-code-theme-background";
 import {normalizeTileCode} from "../lib/code-tile";
 
 const CodeTileFile = lazy(async () =>
@@ -32,6 +32,7 @@ export function CodeTile({
 })
 {
 	const background = useCodeThemeBackground();
+	const themeVars = useCodeThemeVars();
 	const held = <span className="whitespace-pre-wrap break-words">{normalizeTileCode(code)}</span>;
 	const file = (
 		<Suspense fallback={held}>
@@ -44,7 +45,9 @@ export function CodeTile({
 			className="epitaxy-diff epitaxy-code-card rounded-lg flex overflow-clip px-md py-xs text-code"
 			style={
 			{
-				background,
+				...themeVars,
+				// Upstream c76aec83a `x`: a code fence ground's --code-fence-bg overrides the theme background.
+				background: `var(--code-fence-bg, ${background})`,
 			}}
 		>
 			{leading}

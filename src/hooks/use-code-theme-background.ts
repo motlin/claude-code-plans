@@ -1,6 +1,6 @@
-import {useEffect, useState} from "react";
+import {useEffect, useMemo, useState} from "react";
 import {type CodeThemeId, loadCodeTheme} from "../lib/code-themes";
-import {selectionMatchColor} from "../lib/code-theme-vars";
+import {codeThemeVars, selectionMatchColor} from "../lib/code-theme-vars";
 import {useCodeThemes} from "./use-code-themes";
 
 /** Upstream c6e73333a `S` before both code themes have loaded. */
@@ -91,4 +91,29 @@ export function useCodeThemeSelectionMatch(): string | undefined
 	return pair === undefined
 		? undefined
 		: `light-dark(${selectionMatchColor(pair.light.colors, "light")}, ${selectionMatchColor(pair.dark.colors, "dark")})`;
+}
+
+/**
+ * Upstream c6e73333a `v`: the code-theme custom properties (backgrounds, git, selection, line-number and
+ * find-match colours) for the chosen light and dark themes, or undefined until both have loaded.
+ */
+export function useCodeThemeVars(): Record<string, string> | undefined
+{
+	const pair = useLoadedCodeThemePair();
+	const light = pair?.light;
+	const dark = pair?.dark;
+	return useMemo(() =>
+	{
+		if (light?.bg === undefined || dark?.bg === undefined) return undefined;
+		return codeThemeVars(
+			{
+				bg: light.bg,
+				colors: light.colors,
+			},
+			{
+				bg: dark.bg,
+				colors: dark.colors,
+			},
+		);
+	}, [light, dark]);
 }

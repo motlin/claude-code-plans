@@ -34,6 +34,7 @@ vi.mock("../src/components/settings-context", () => (
 vi.mock("../src/hooks/use-code-theme-background", () => (
 {
 	useCodeThemeBackground: () => undefined,
+	useCodeThemeVars: () => undefined,
 }));
 vi.mock("../src/lib/hmr-persist", () => (
 {
