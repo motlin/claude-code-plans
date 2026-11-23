@@ -16,7 +16,7 @@ const PERMISSION_MODES_URL = "https://code.claude.com/docs/en/permission-modes";
 
 /** Upstream's cds Dialog popup with qge/q's `epitaxy-root break-words max-w-[28rem]`. */
 const POPUP_CLASS =
-	"epitaxy-root fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-[28rem] -translate-x-1/2 -translate-y-1/2 flex-col break-words rounded-card bg-surface-3 text-body font-normal text-primary shadow-panel-lg outline-none transition-[opacity,scale] duration-200 ease-out data-[ending-style]:scale-[0.98] data-[ending-style]:opacity-0 data-[starting-style]:scale-[0.98] data-[starting-style]:opacity-0 motion-reduce:transition-none";
+	"epitaxy-root fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-[28rem] -translate-x-1/2 -translate-y-1/2 flex-col break-words rounded-dialog bg-surface-popover text-body font-normal text-primary shadow-panel-lg outline-none transition-[opacity,scale] duration-200 ease-out data-[ending-style]:scale-[0.98] data-[ending-style]:opacity-0 data-[starting-style]:scale-[0.98] data-[starting-style]:opacity-0 motion-reduce:transition-none";
 /** cds `Dialog.Footer`: `align="end"` for the notice, `"between"` for the nudge. */
 const FOOTER_CLASS =
 {

@@ -100,6 +100,9 @@ function dialogShape(dialog: HTMLElement)
 		role: dialog.getAttribute("role"),
 		cds: dialog.getAttribute("data-cds"),
 		popupWidth: dialog.className.includes("max-w-[28rem]") && dialog.className.includes("epitaxy-root"),
+		popupSurface: ["rounded-dialog", "bg-surface-popover", "rounded-card", "bg-surface-3"].filter((token) =>
+			dialog.className.split(/\s+/).includes(token),
+		),
 		stackClass: stack?.className,
 		stack: [...(stack?.children ?? [])].map((child) => (
 		{
@@ -157,6 +160,7 @@ describe("AutoDefaultOfferDialogs: the notice", () =>
 					role: "alertdialog",
 					cds: "Dialog",
 					popupWidth: true,
+					popupSurface: ["rounded-dialog", "bg-surface-popover"],
 					stackClass: "flex flex-col gap-3",
 					stack: [
 						{
@@ -318,6 +322,7 @@ describe("AutoDefaultOfferDialogs: the nudge", () =>
 		const shape = dialogShape(dialog);
 		expect(
 			{
+				popupSurface: shape.popupSurface,
 				title: shape.stack[0],
 				footerClass: shape.footerClass,
 				footer: shape.footer,
@@ -325,6 +330,7 @@ describe("AutoDefaultOfferDialogs: the nudge", () =>
 			},
 		).toStrictEqual(
 			{
+				popupSurface: ["rounded-dialog", "bg-surface-popover"],
 				title:
 				{
 					tag: "H2",
