@@ -330,8 +330,17 @@ export function DockedQuestionCard({
 	const question = questions[index];
 	const draft = drafts[index];
 	if (question === undefined || draft === undefined) return null;
-	if (answered !== undefined) return <QuestionReceipt rows={answered} enters={false} />;
-	if (sending) return <QuestionReceipt rows={sentRows()} enters={receiptEnters} />;
+	// Upstream holds the receipt in a bare find-omitted div while the send is in
+	// flight and drops the marker once the result lands. The keyed wrapper keeps the
+	// receipt's node across that change and never reuses the card root's div.
+	if (answered !== undefined || sending)
+	{
+		return (
+			<div key="receipt" data-find-omitted={answered === undefined ? "" : undefined} className="contents">
+				<QuestionReceipt rows={answered ?? sentRows()} enters={answered === undefined && receiptEnters} />
+			</div>
+		);
+	}
 	const editable = onSubmit !== undefined;
 	const multi = question.multiSelect === true;
 	const isLast = index === questions.length - 1;

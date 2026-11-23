@@ -359,10 +359,19 @@ function InlineQuestionCard({
 		question?.multiSelect === true ? undefined : question?.options[draft?.selected[0] ?? -1]?.preview,
 	);
 	if (question === undefined || draft === undefined) return null;
-	if (answered !== undefined) return <QuestionReceipt rows={answered} enters={false} />;
 	// The answered card leaves at once for the receipt of what it sent, which
 	// stays through remounts until the result lands; a failed send brings the card back.
-	if (sending) return <QuestionReceipt rows={sentRows()} enters={receiptEnters} />;
+	// Upstream holds the receipt in a bare find-omitted div while the send is in
+	// flight and drops the marker once the result lands. The keyed wrapper keeps the
+	// receipt's node across that change and never reuses the card root's div.
+	if (answered !== undefined || sending)
+	{
+		return (
+			<div key="receipt" data-find-omitted={answered === undefined ? "" : undefined} className="contents">
+				<QuestionReceipt rows={answered ?? sentRows()} enters={answered === undefined && receiptEnters} />
+			</div>
+		);
+	}
 	const editable = onSubmit !== undefined;
 	const multi = question.multiSelect === true;
 	const isLast = index === questions.length - 1;

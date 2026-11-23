@@ -355,6 +355,51 @@ describe("DockedQuestionCard option rows and clicks, as upstream's Rh7", () =>
 		]);
 	});
 
+	it("holds the sending receipt in upstream's bare find-omitted wrapper, and drops it once the result lands", () =>
+	{
+		const pending = vi.fn<Submit>(async () => new Promise<void>(() => {}));
+		const {rerender} = renderDocked([SINGLE], pending);
+		fireEvent.click(option("Blue"));
+		const sending = document.querySelector("[data-question-receipt]")?.parentElement;
+		const sendingWrapper =
+		{
+			tag: sending?.tagName,
+			findOmitted: sending?.getAttribute("data-find-omitted"),
+			className: sending?.className,
+		};
+		rerender(
+			<QuestionCard
+				questions={[SINGLE]}
+				onSubmit={pending}
+				presentation="dock"
+				answered={[
+					{
+						question: "Which colour?",
+						answer: "Blue",
+						notes: null,
+					},
+				]}
+			/>,
+		);
+		expect(
+			{
+				sendingWrapper,
+				landedOmitted:
+					document.querySelector("[data-question-receipt]")?.closest("[data-find-omitted]") ?? null,
+			},
+		).toStrictEqual(
+			{
+				sendingWrapper:
+				{
+					tag: "DIV",
+					findOmitted: "",
+					className: "contents",
+				},
+				landedOmitted: null,
+			},
+		);
+	});
+
 	it("advances to the next question on one click without submitting", () =>
 	{
 		const onSubmit = noSubmit();

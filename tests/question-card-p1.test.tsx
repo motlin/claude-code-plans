@@ -883,6 +883,68 @@ describe("QuestionCard multi-select status, as upstream's pt", () =>
 	});
 });
 
+describe("QuestionCard sending receipt, as upstream's find-omitted sending wrapper", () =>
+{
+	it("wraps the receipt in a bare data-find-omitted div while sending, and not once the result lands", () =>
+	{
+		const pending = vi.fn<() => Promise<void>>(async () => new Promise<void>(() => {}));
+		const {rerender} = render(<QuestionCard questions={[MULTI]} onSubmit={pending} />);
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Coverage",
+				},
+			),
+		);
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: /^Submit/,
+				},
+			),
+		);
+		const sending = document.querySelector("[data-question-receipt]")?.parentElement;
+		const sendingWrapper =
+		{
+			tag: sending?.tagName,
+			findOmitted: sending?.getAttribute("data-find-omitted"),
+			className: sending?.className,
+		};
+		rerender(
+			<QuestionCard
+				questions={[MULTI]}
+				onSubmit={pending}
+				answered={[
+					{
+						question: "Which features?",
+						answer: "Coverage",
+						notes: null,
+					},
+				]}
+			/>,
+		);
+		expect(
+			{
+				sendingWrapper,
+				landedOmitted:
+					document.querySelector("[data-question-receipt]")?.closest("[data-find-omitted]") ?? null,
+			},
+		).toStrictEqual(
+			{
+				sendingWrapper:
+				{
+					tag: "DIV",
+					findOmitted: "",
+					className: "contents",
+				},
+				landedOmitted: null,
+			},
+		);
+	});
+});
+
 describe("QuestionReceipt answer line, as upstream's Cd", () =>
 {
 	it("renders the answer as a scroll-capped pre-wrap div that keeps newlines", () =>
