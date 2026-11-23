@@ -269,12 +269,12 @@ describe("transcript context menus", () =>
 		expect(
 			{
 				rows: menuRows(menu),
-				wide: menu.classList.contains("w-[225px]"),
+				width: [...menu.classList].filter((name) => name.startsWith("w-[")),
 			},
 		).toStrictEqual(
 			{
 				rows: ASSISTANT_ROWS,
-				wide: true,
+				width: ["w-[257px]"],
 			},
 		);
 	});
@@ -663,7 +663,7 @@ describe("transcript context menus", () =>
 					"---",
 					"Fork from here / Starts a new session, keeps this one",
 				],
-				width: ["w-[249px]"],
+				width: ["w-[257px]"],
 				calls: ["fork user-1"],
 			},
 		);
@@ -851,7 +851,11 @@ describe("transcript context menu with a text selection", () =>
 	it("widens the assistant menu to upstream's 242.4px for the Attach selection row only", () =>
 	{
 		const widthOf = (menu: HTMLElement) => [...menu.classList].filter((name) => name.startsWith("w-["));
-		const container = renderChat();
+		// Without the Fork row, whose description holds the menu at 257px.
+		const bare = (chat: ReactNode) => (
+			<TranscriptActionsContext.Provider value={NO_ACTIONS}>{chat}</TranscriptActionsContext.Provider>
+		);
+		const container = renderChat(bare);
 		const paragraph = find(container, "strong", "details").parentElement;
 		if (paragraph === null) throw new Error("no paragraph");
 		selectText(paragraph, 0, 3);
@@ -862,7 +866,7 @@ describe("transcript context menu with a text selection", () =>
 		selectText(bubbleText, 6, 15);
 		const user = widthOf(openMenuOn(bubbleText));
 		cleanup();
-		const third = renderChat();
+		const third = renderChat(bare);
 		const short = find(third, "strong", "details").parentElement;
 		if (short === null) throw new Error("no paragraph");
 		selectText(short, 0, 1);

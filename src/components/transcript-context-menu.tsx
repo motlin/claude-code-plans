@@ -214,22 +214,14 @@ function snapshotSelection(turn: Element): string | null
 /** Upstream `Kn`'s `beforeOpen`: the longest a file menu waits on its "is this path gone?" check. */
 const GONE_CHECK_WAIT_MS = 150;
 
-const MENU_WIDTH =
-{
-	assistant: "w-[225px]",
-	user: "w-[249px]",
-} as const;
+/** Upstream's popup sizes to its rows (`min-w-[128px] max-w-[320px]`); these are its live widths. */
+const MENU_WIDTH = "w-[225px]";
 
-/**
- * Upstream's menu sizes to its rows; with "Attach selection as context ⇧⌘L"
- * the assistant menu measured 242.4px, while the user menu's Fork row
- * already holds it wider.
- */
-const SELECTION_MENU_WIDTH =
-{
-	assistant: "w-[242.4px]",
-	user: MENU_WIDTH.user,
-} as const;
+/** With "Attach selection as context ⇧⌘L" the assistant menu measured 242.4px. */
+const SELECTION_MENU_WIDTH = "w-[242.4px]";
+
+/** The Fork row keeps "Starts a new session, keeps this one" on one line at 257px. */
+const FORK_MENU_WIDTH = "w-[257px]";
 
 /** The Rewind row's wrapped description fills upstream's `max-w-[320px]` popup cap. */
 const REWIND_MENU_WIDTH = "w-[320px]";
@@ -248,12 +240,12 @@ function showsFork(actions: TranscriptActions): boolean
 	return actions.forkFrom !== undefined || actions.forkDisabledReason !== undefined;
 }
 
-function userMenuWidth(actions: TranscriptActions, selection: boolean): string
+/** The width of the menu's widest row: Rewind (user only), then Fork, then Attach selection. */
+function menuWidth(speaker: Speaker, actions: TranscriptActions, selection: boolean): string
 {
-	if (showsRewind(actions)) return REWIND_MENU_WIDTH;
-	if (showsFork(actions)) return (selection ? SELECTION_MENU_WIDTH : MENU_WIDTH).user;
-	// Without the Rewind/Fork group the widest rows are the assistant menu's.
-	return (selection ? SELECTION_MENU_WIDTH : MENU_WIDTH).assistant;
+	if (speaker === "user" && showsRewind(actions)) return REWIND_MENU_WIDTH;
+	if (showsFork(actions)) return FORK_MENU_WIDTH;
+	return selection ? SELECTION_MENU_WIDTH : MENU_WIDTH;
 }
 
 /** The trimmed selection to attach as an Excerpt, or "" when it is too short. */
@@ -266,7 +258,7 @@ function excerptOf(selectionText: string | null): string
 const FORK_DESCRIPTION = "Starts a new session, keeps this one";
 const REWIND_DESCRIPTION = "Takes this and what follows out of the conversation";
 
-type Speaker = keyof typeof MENU_WIDTH;
+type Speaker = "assistant" | "user";
 
 export interface TranscriptMessageMenuProps
 {
@@ -415,10 +407,7 @@ export function TranscriptMessageMenu({
 					? {}
 					:
 						{
-							className:
-								speaker === "user"
-									? userMenuWidth(actions, excerptOf(selectionText) !== "")
-									: (excerptOf(selectionText) === "" ? MENU_WIDTH : SELECTION_MENU_WIDTH)[speaker],
+							className: menuWidth(speaker, actions, excerptOf(selectionText) !== ""),
 						})}
 				finalFocus={
 					keyboardArticle === null
