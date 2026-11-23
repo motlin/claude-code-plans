@@ -708,7 +708,18 @@ describe("InlinePlanApproval keys (upstream's keyless plan root)", () =>
 {
 	async function renderPlan()
 	{
-		const view = render(<InlinePlanApproval toolUseId="toolu_plan_keys" planText="# P" plan={PLAN} />);
+		const decide = vi.fn<(decision: PlanDecision) => Promise<void>>(async () => Promise.resolve());
+		const view = render(
+			<InlinePlanApproval
+				toolUseId="toolu_plan_keys"
+				planText="# P"
+				plan={
+				{
+					...PLAN,
+					decide,
+				}}
+			/>,
+		);
 		await act(async () => Promise.resolve());
 		const root = view.container.querySelector<HTMLElement>("[data-approval-card-root]");
 		if (root === null) throw new Error("No card root");
@@ -722,6 +733,7 @@ describe("InlinePlanApproval keys (upstream's keyless plan root)", () =>
 		return {
 			root,
 			byText,
+			decide,
 		};
 	}
 
@@ -805,9 +817,12 @@ describe("InlinePlanApproval keys (upstream's keyless plan root)", () =>
 		);
 	});
 
-	it("swallows only a held Enter/Space on a plan button, as upstream's cds Button, and lets a modified Enter through outside a menu, as upstream's `Aq`", async () =>
+	it("swallows only a held Enter/Space on a plan button, as upstream's cds Button, and lets a modified Enter through outside a menu, as upstream's `Aq`, even Cmd/Ctrl+Enter inside the arm grace, as upstream's `claimAllow` \"pass\"", async () =>
 	{
-		const {byText} = await renderPlan();
+		// Frozen inside the 400ms arm grace: upstream's window hotkey neither accepts nor prevents the chord there,
+		// so a focused Accept's native activation still sees it.
+		const now = vi.spyOn(performance, "now").mockReturnValue(1000);
+		const {byText, decide} = await renderPlan();
 		const prevented = (target: Element, init: KeyboardEventInit) => !fireEvent.keyDown(target, init);
 		const keys = (target: Element) => (
 		{
@@ -823,6 +838,20 @@ describe("InlinePlanApproval keys (upstream's keyless plan root)", () =>
 				{
 					key: " ",
 					repeat: true,
+				},
+			),
+			metaEnter: prevented(
+				target,
+				{
+					key: "Enter",
+					metaKey: true,
+				},
+			),
+			ctrlEnter: prevented(
+				target,
+				{
+					key: "Enter",
+					ctrlKey: true,
 				},
 			),
 			altEnter: prevented(
@@ -856,6 +885,8 @@ describe("InlinePlanApproval keys (upstream's keyless plan root)", () =>
 		{
 			repeatEnter: true,
 			repeatSpace: true,
+			metaEnter: false,
+			ctrlEnter: false,
 			altEnter: false,
 			shiftEnter: false,
 			plainEnter: false,
@@ -865,13 +896,16 @@ describe("InlinePlanApproval keys (upstream's keyless plan root)", () =>
 			{
 				accept: keys(byText("Accept and")),
 				reject: keys(byText("Reject")),
+				decided: decide.mock.calls,
 			},
 		).toStrictEqual(
 			{
 				accept: expected,
 				reject: expected,
+				decided: [],
 			},
 		);
+		now.mockRestore();
 	});
 
 	it("swallows a held Enter inside a menu within the accept group, as upstream's `Aq`", async () =>

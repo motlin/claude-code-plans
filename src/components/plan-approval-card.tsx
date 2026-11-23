@@ -323,7 +323,8 @@ function PlanApprovalActions({
 			const card = root?.closest<HTMLElement>("[data-approval-card-root]") ?? root;
 			if (placement === "card" && card !== null && elementOffscreen(card)) return;
 			// Upstream withholds an accept chord that lands within 400ms of the card arriving or re-arming, and
-			// ignores one while the plan is unread (`Ie`), with no nudge.
+			// ignores one while the plan is unread (`Ie`), with no nudge. Neither prevents it (`claimAllow` "pass"),
+			// so a focused Accept's native activation still sees a grace-window chord, as upstream.
 			const armed = armedAt.current ?? performance.now();
 			if (action.kind === "accept" && (readHeld || performance.now() - armed < APPROVAL_ARM_GRACE_MS)) return;
 			event.preventDefault();
