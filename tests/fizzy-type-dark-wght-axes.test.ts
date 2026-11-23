@@ -251,16 +251,21 @@ describe("root consumer and per-weight axis re-declaration (T2)", () =>
 
 describe("markdown prose axes (T3)", () =>
 {
-	it("gives prose body, headings, bold and table headers upstream's axes; code keeps normal", () =>
+	it("gives prose body, headings, bold and table headers upstream's axes; bold holds the semibold axis", () =>
 	{
+		const bare = (tag: string) => `${tag}:where(:not([class*="font"]))`;
 		const rules =
 		{
 			root: ".markdown",
 			headings: ".markdown :is(h1, h2, h3, h4, h5, h6)",
 			headingBold: ".markdown :is(h1, h2, h3, h4, h5, h6) :is(strong, b)",
-			bold: ".markdown :is(strong, b, dt, summary)",
+			held: `.markdown :is(th, ${bare("strong")}, ${bare("b")})`,
+			label: ".markdown :is(th, tbody > tr > td:first-child > strong)",
+			bold: `.markdown :is(${bare("strong")}, ${bare("b")}, dt, summary)`,
+			listBold: `.markdown :where(dt, summary) :is(${bare("strong")}, ${bare("b")})`,
 			th: ".markdown th",
 			code: ".markdown :is(pre, code)",
+			inlineCode: ".markdown :is(code:not(pre code), kbd)",
 		};
 		expect(
 			Object.fromEntries(
@@ -268,33 +273,85 @@ describe("markdown prose axes (T3)", () =>
 					key,
 					pickDeclarations(
 						cssDeclarations(markdown, selector),
-						/^(--cds-font-axis-wght|font-variation-settings)$/,
+						/^(--cds-font-axis-wght(-bold)?|--_prose-.*|font-variation-settings|font-weight)$/,
 					),
 				]),
 			),
 		).toStrictEqual(
 			{
-				root: axis("var(--cds-font-axis-wght-body, var(--cds-font-axis-wght-regular,))"),
+				root:
+				{
+					"--cds-font-axis-wght": "var(--cds-font-axis-wght-body, var(--cds-font-axis-wght-regular,))",
+					"--_prose-bold-axis": "var(--cds-font-axis-wght-bold,)",
+					"font-variation-settings": FVS,
+					"font-weight": "400",
+				},
 				headings: axis("var(--_prose-heading-axis-wght, var(--cds-font-axis-wght-semibold,))"),
 				headingBold:
 				{
 					"--cds-font-axis-wght": "inherit",
 					"font-variation-settings": "inherit",
 				},
+				held:
+				{
+					"--_prose-bold-held":
+						'var(--cds-prose-quiet) "wght" var(--cds-font-weight-semibold, 580), var(--cds-font-axis-wght-semibold,)',
+					"--cds-font-axis-wght-bold": "var(--_prose-bold-held, var(--_prose-bold-axis))",
+					"--_prose-code-axes": 'var(--_prose-bold-held) "GRAD" 0',
+				},
+				label:
+				{
+					"--_prose-label-weight": "var(--cds-prose-quiet) var(--cds-font-weight-bold, 600)",
+					"--_prose-label-axis": "var(--cds-prose-quiet) var(--cds-font-axis-wght-bold,)",
+				},
 				bold: axis("var(--cds-font-axis-wght-bold,)"),
-				th: axis("var(--cds-font-axis-wght-medium,)"),
+				listBold:
+				{
+					"--cds-font-axis-wght-bold": "var(--_prose-bold-axis)",
+					"--_prose-code-axes": "initial",
+				},
+				th:
+				{
+					"font-weight": "var(--_prose-label-weight, 500)",
+					...axis("var(--_prose-label-axis, var(--cds-font-axis-wght-medium,))"),
+				},
 				code:
 				{
 					"font-variation-settings": "normal",
 				},
+				inlineCode:
+				{
+					"font-variation-settings": "var(--_prose-code-axes, normal)",
+				},
 			},
 		);
+	});
+
+	it("resets the held axis after the rule that sets it, so dt and summary bold keep the plain bold axis", () =>
+	{
+		const index = (pattern: RegExp) => markdown.findIndex((rule) => pattern.test(rule.selector));
+		expect(index(/:where\(dt, summary\)/) > index(/^\.markdown :is\(th, strong/)).toStrictEqual(true);
 	});
 
 	it("switches prose table headers to the bold axis under forced colors", () =>
 	{
 		expect(cssDeclarations(markdown, ".markdown th", ["@media (forced-colors: active)"])).toStrictEqual(
 			axis("var(--cds-font-axis-wght-bold,)"),
+		);
+	});
+
+	it("quiets the prose held weights until fizzy-lake type empties --cds-prose-quiet", () =>
+	{
+		expect(
+			{
+				root: cssDeclarations(globals, ":root")?.["--cds-prose-quiet"],
+				type: cssDeclarations(globals, ':root[data-cds-fizzy-lake~="type"]')?.["--cds-prose-quiet"],
+			},
+		).toStrictEqual(
+			{
+				root: "initial",
+				type: "",
+			},
 		);
 	});
 });

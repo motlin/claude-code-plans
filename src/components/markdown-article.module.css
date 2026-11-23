@@ -567,12 +567,13 @@
 	text-align: left;
 }
 
-/* Upstream fizzy-lake color: prose th/td borders read --cds-fizzy-lake-color-message-line. */
+/* Upstream fizzy-lake color: prose th/td borders read --cds-fizzy-lake-color-message-line. The weight is
+   upstream's prose label weight: bold 600 under fizzy-lake type (see the axis block below), else medium. */
 .markdown th
 {
 	font-size: var(--md-prose-size);
 	line-height: var(--md-prose-leading);
-	font-weight: 500;
+	font-weight: var(--_prose-label-weight, 500);
 	background: var(--color-alpha-1);
 	border-bottom: 1px solid var(--message-line, var(--color-border));
 }
@@ -650,10 +651,8 @@
 /* Upstream's prose weights (c6a992d55): headings take semibold (`--_prose-role:
    var(--_prose-heading-weight, var(--cds-font-weight-semibold,580))`; the 520 `--cds-font-weight-header` token is
    not read by prose), and `:where(.prose) strong {font-weight:var(--cds-font-weight-bold,600)}` with th taking the
-   same bold label weight. th and strong hold the semibold axis (`--_prose-bold-held: "wght"
-   var(--cds-font-weight-semibold,580), var(--cds-font-axis-wght-semibold,)` feeds `--cds-font-axis-wght-bold`), so
-   they compute 600 drawn at wght 580, or the dark semibold axis where it is set. Strong inside a heading or th is
-   bold too. Upstream's Windows/Linux `--cds-reply-weight-floor` has no macOS meaning and is left out. */
+   same bold label weight. Their wght axis comes from the held semibold axis in the prose axis block below. Like
+   upstream's `:where(.prose) strong`, a strong or b with a font-* utility keeps the utility's weight. Upstream's Windows/Linux `--cds-reply-weight-floor` has no macOS meaning and is left out. */
 .markdown[data-prose-tables="flat"]:not(:global([data-prose-tables="flat"] :is([data-cds], [data-tool-row])) *)
 	:is(h1, h2, h3, h4, h5, h6)
 {
@@ -661,11 +660,9 @@
 }
 
 .markdown[data-prose-tables="flat"]:not(:global([data-prose-tables="flat"] :is([data-cds], [data-tool-row])) *)
-	:is(th, strong, b)
+	:is(th, strong:where(:not([class*="font"])), b:where(:not([class*="font"])))
 {
 	font-weight: 600;
-	--cds-font-axis-wght: "wght" 580, var(--cds-font-axis-wght-semibold,);
-	font-variation-settings: var(--font-opsz-axis,) var(--cds-font-axis-wght,) "GRAD" var(--cds-font-grad, 0);
 }
 
 /* Inline code inherits the surrounding reply weight (upstream `var(--_reply-weight, inherit)`). */
@@ -1045,6 +1042,7 @@
 .markdown
 {
 	--cds-font-axis-wght: var(--cds-font-axis-wght-body, var(--cds-font-axis-wght-regular,));
+	--_prose-bold-axis: var(--cds-font-axis-wght-bold,);
 	font-variation-settings: var(--font-opsz-axis,) var(--cds-font-axis-wght,) "GRAD" var(--cds-font-grad, 0);
 }
 
@@ -1054,7 +1052,33 @@
 	font-variation-settings: var(--font-opsz-axis,) var(--cds-font-axis-wght,) "GRAD" var(--cds-font-grad, 0);
 }
 
-.markdown :is(strong, b, dt, summary)
+/* Upstream's held bold (c6a992d55 @scope(.prose)): under fizzy-lake type (`--cds-prose-quiet` empty, see
+   globals.css) th and bare strong/b swap the bold axis for "wght" 580 then the semibold axis, so the list ends on
+   the dark semibold 540 and light draws 580. Elsewhere the held value is invalid and the plain bold axis stays.
+   Inline code inside them carries the same axes. */
+.markdown :is(th, strong:where(:not([class*="font"])), b:where(:not([class*="font"])))
+{
+	--_prose-bold-held:
+		var(--cds-prose-quiet) "wght" var(--cds-font-weight-semibold, 580), var(--cds-font-axis-wght-semibold,);
+	--cds-font-axis-wght-bold: var(--_prose-bold-held, var(--_prose-bold-axis));
+	--_prose-code-axes: var(--_prose-bold-held) "GRAD" 0;
+}
+
+/* Upstream's label weight and axis for th and a table's first-column strong: bold under fizzy-lake type. */
+.markdown :is(th, tbody > tr > td:first-child > strong)
+{
+	--_prose-label-weight: var(--cds-prose-quiet) var(--cds-font-weight-bold, 600);
+	--_prose-label-axis: var(--cds-prose-quiet) var(--cds-font-axis-wght-bold,);
+}
+
+/* Bold inside dt and summary is not held: back to the plain bold axis, and inline code inside stays normal. */
+.markdown :where(dt, summary) :is(strong:where(:not([class*="font"])), b:where(:not([class*="font"])))
+{
+	--cds-font-axis-wght-bold: var(--_prose-bold-axis);
+	--_prose-code-axes: initial;
+}
+
+.markdown :is(strong:where(:not([class*="font"])), b:where(:not([class*="font"])), dt, summary)
 {
 	--cds-font-axis-wght: var(--cds-font-axis-wght-bold,);
 	font-variation-settings: var(--font-opsz-axis,) var(--cds-font-axis-wght,) "GRAD" var(--cds-font-grad, 0);
@@ -1068,7 +1092,7 @@
 
 .markdown th
 {
-	--cds-font-axis-wght: var(--cds-font-axis-wght-medium,);
+	--cds-font-axis-wght: var(--_prose-label-axis, var(--cds-font-axis-wght-medium,));
 	font-variation-settings: var(--font-opsz-axis,) var(--cds-font-axis-wght,) "GRAD" var(--cds-font-grad, 0);
 }
 
@@ -1084,6 +1108,12 @@
 .markdown :is(pre, code)
 {
 	font-variation-settings: normal;
+}
+
+/* Upstream `code:not(pre code),kbd{font-variation-settings:var(--_prose-code-axes,normal)}`. */
+.markdown :is(code:not(pre code), kbd)
+{
+	font-variation-settings: var(--_prose-code-axes, normal);
 }
 
 /* Settings ▸ Response font = Serif sets transcript prose in the local serif voice. Upstream's Code transcript passes

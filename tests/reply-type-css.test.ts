@@ -55,7 +55,7 @@ describe("flat reply prose inline code and weights (cds-type-experiment-gate T6)
 			missing(markdown, [
 				`@media screen and (forced-colors: none) { ${S} code:not(pre code) { background: var(--upstream-fill-ghost-hover); color: var(--upstream-text-primary); border: 0; border-radius: 4px; padding: 1px 4px; } }`,
 				`${S} :is(h1, h2, h3, h4, h5, h6) { font-weight: 580; }`,
-				`${S} :is(th, strong, b) { font-weight: 600; --cds-font-axis-wght: "wght" 580, var(--cds-font-axis-wght-semibold,); font-variation-settings: var(--font-opsz-axis,) var(--cds-font-axis-wght,) "GRAD" var(--cds-font-grad, 0); }`,
+				`${S} :is(th, strong:where(:not([class*="font"])), b:where(:not([class*="font"]))) { font-weight: 600; }`,
 				`${S} :is(code, kbd):not([class]) { font-weight: inherit; }`,
 			]),
 		).toStrictEqual([]);

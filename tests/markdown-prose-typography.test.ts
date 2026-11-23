@@ -288,13 +288,13 @@ describe("prose tables", () =>
 		);
 	});
 
-	it("sets headers at 14px/20px weight 500 on the 5% wash over a single bottom rule", () =>
+	it("sets headers at 14px/20px, label weight (500 outside fizzy-lake type) on the 5% wash over a single bottom rule", () =>
 	{
 		expect(ruleDeclarations(markdownCss, ".markdown th")).toStrictEqual(
 			{
 				"font-size": "var(--md-prose-size)",
 				"line-height": "var(--md-prose-leading)",
-				"font-weight": "500",
+				"font-weight": "var(--_prose-label-weight, 500)",
 				background: "var(--color-alpha-1)",
 				"border-bottom": "1px solid var(--message-line, var(--color-border))",
 			},

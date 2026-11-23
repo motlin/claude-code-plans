@@ -230,6 +230,12 @@
 	--cds-font-wght-badge: "wght" 480;
 }
 
+/* Upstream's fizzy-lake type `--cds-prose-quiet: ` (empty): turns on the prose held weights in markdown-article. */
+/* prettier-ignore */
+:root[data-cds-fizzy-lake~="type"] {
+	--cds-prose-quiet: ;
+}
+
 /* Upstream's `[data-font=system]` type axes, for Settings ▸ Interface font ▸ System. */
 :root[data-cds-fizzy-lake~="type"][data-interface-font="system"]
 {
@@ -1007,6 +1013,8 @@ html[data-interface-font="dyslexic"]
 	--cds-font-axis-wght-control: initial;
 	--cds-font-axis-wght-header: initial;
 	--cds-font-axis-wght-badge: initial;
+	/* Upstream `.cds-root{--cds-prose-quiet:initial}`: invalidates the prose held weights until fizzy-lake type. */
+	--cds-prose-quiet: initial;
 }
 
 .dark
