@@ -250,7 +250,7 @@ describe("collapsed sidebar peek", () =>
 			{
 				inTitlebar: titlebar.contains(toggle),
 				titlebar: [
-					"h-11",
+					"h-[45px]",
 					"items-center",
 					"px-2",
 					"before:w-[var(--sb-rail-shift)]",
@@ -286,7 +286,13 @@ describe("collapsed sidebar peek", () =>
 		).toEqual(
 			{
 				inTitlebar: true,
-				titlebar: ["h-11", "items-center", "px-2", "before:w-[var(--sb-rail-shift)]", "before:content-['']"],
+				titlebar: [
+					"h-[45px]",
+					"items-center",
+					"px-2",
+					"before:w-[var(--sb-rail-shift)]",
+					"before:content-['']",
+				],
 				slot: ["flex", "w-8", "shrink-0", "justify-center"],
 				slotOffsets: [],
 				dataSize: "sm",

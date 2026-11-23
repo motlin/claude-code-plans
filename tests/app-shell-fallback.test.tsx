@@ -289,9 +289,14 @@ describe("AppShellFallback", () =>
 		const header = host.querySelector('[aria-label="Sidebar"] [data-nav-block]')!;
 		const liveRow = live.querySelector("button")!;
 		const row = header.children[1]!;
+		const titlebar = host.querySelector('[aria-label="Sidebar"]')!.firstElementChild!;
 
 		expect(
 			{
+				titlebarH: titlebar.classList.contains("h-[45px]") && titlebar.classList.contains("touch:h-12"),
+				titlebarMb: titlebar.classList.contains("-mb-1"),
+				titlebarSpacer: titlebar.nextElementSibling?.outerHTML,
+				newRowMt: header.children[0]?.firstElementChild?.classList.contains("mt-1"),
 				first: header.children[0]?.textContent,
 				tag: row.tagName.toLowerCase(),
 				className: row.className,
@@ -303,6 +308,10 @@ describe("AppShellFallback", () =>
 			},
 		).toStrictEqual(
 			{
+				titlebarH: true,
+				titlebarMb: true,
+				titlebarSpacer: '<div aria-hidden="true" class="h-1 shrink-0"></div>',
+				newRowMt: true,
 				first: "New",
 				tag: "span",
 				className: liveRow.className,

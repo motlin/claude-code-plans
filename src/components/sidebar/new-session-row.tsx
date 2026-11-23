@@ -57,7 +57,7 @@ export function NewSessionRow()
 				data-roving-item=""
 				aria-label="New"
 				aria-keyshortcuts={shortcut.ariaKeyShortcuts}
-				className={NAV_ROW_CLASS}
+				className={`mt-1 ${NAV_ROW_CLASS}`}
 			>
 				<span className="df-leading-slot [--sb-icon:16px]">
 					<span className="df-new-icon-circle">

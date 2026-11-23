@@ -131,6 +131,27 @@ describe("sidebar header", () =>
 			},
 		);
 
+		const newRow = screen.getByRole(
+			"link",
+			{
+				name: "New",
+			},
+		);
+		expect(
+			{
+				titlebarH: header.classList.contains("h-[45px]") && header.classList.contains("touch:h-12"),
+				titlebarMb: header.classList.contains("-mb-1"),
+				spacer: header.nextElementSibling?.outerHTML,
+				newRowMt: newRow.classList.contains("mt-1"),
+			},
+		).toStrictEqual(
+			{
+				titlebarH: true,
+				titlebarMb: true,
+				spacer: '<div aria-hidden="true" class="h-1 shrink-0"></div>',
+				newRowMt: true,
+			},
+		);
 		expect(header.firstElementChild?.contains(toggle)).toBe(true);
 		expect(header.children[1]?.contains(wordmark)).toBe(true);
 		expect(

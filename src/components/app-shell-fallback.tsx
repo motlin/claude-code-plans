@@ -324,7 +324,7 @@ export function AppShellFallback({
 				}}
 				className="relative hidden h-full w-[var(--sidebar-width)] shrink-0 flex-col border-r-[0.5px] border-border bg-[var(--sb-bg)] min-[701px]:flex"
 			>
-				<div className="flex h-11 shrink-0 items-center px-2">
+				<div className="relative z-[1] -mb-1 flex h-[45px] touch:h-12 shrink-0 items-center px-2">
 					<div className="flex w-8 shrink-0 justify-center self-start pt-3">
 						<span className="flex size-6 items-center justify-center text-secondary opacity-70 [&_svg]:size-4">
 							<SidebarToggleIcon />
@@ -334,12 +334,12 @@ export function AppShellFallback({
 						Claude Code Browser
 					</span>
 				</div>
-				<div className="h-2 shrink-0" />
+				<div aria-hidden="true" className="h-1 shrink-0" />
 
 				<div className="flex min-h-0 flex-1 flex-col overflow-hidden px-2">
 					<div data-nav-block="" className="shrink-0">
 						<div className="flex items-center">
-							<span data-row="" className={NAV_ROW_CLASS}>
+							<span data-row="" className={`mt-1 ${NAV_ROW_CLASS}`}>
 								{newRowContents}
 							</span>
 						</div>

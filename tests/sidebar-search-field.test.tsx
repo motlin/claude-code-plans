@@ -297,7 +297,8 @@ describe("sidebar Search row", () =>
 			},
 		).toStrictEqual(
 			{
-				onlyNew: [],
+				// Only New carries upstream's mt-1, which starts the header block 4px below the titlebar overlap.
+				onlyNew: ["mt-1"],
 				onlyRow: [],
 				hint: hintOf(row).toSorted(),
 				noFocusVisibleHint: [],

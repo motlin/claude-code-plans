@@ -294,7 +294,7 @@ export function Sidebar({
 			>
 				<div
 					data-testid="sidebar-titlebar"
-					className="flex h-11 shrink-0 items-center px-2 before:block before:w-[var(--sb-rail-shift)] before:flex-none before:content-['']"
+					className="relative z-[1] -mb-1 flex h-[45px] touch:h-12 shrink-0 items-center px-2 before:block before:w-[var(--sb-rail-shift)] before:flex-none before:content-['']"
 				>
 					{/* Upstream `$3`/`oF`: docked → cds ghost Button `sm` (comfortable 28px, r7 + 1px panels radius-add) centred
 					    in the `w-[32px]` slot, which the 2px rail-shift `::before` pushes to x=10 → button at 12,8. */}
@@ -318,7 +318,8 @@ export function Sidebar({
 					</div>
 				</div>
 
-				<div aria-hidden="true" className="h-2 shrink-0" />
+				{/* Upstream's 45px titlebar overlaps the body by 4px and the body pads 4px back: New's mt-1 lands it at y 49. */}
+				<div aria-hidden="true" className="h-1 shrink-0" />
 				{body}
 				<SidebarResizeHandle width={width} onHide={onToggle ?? toggleSidebarCollapsed} />
 			</nav>
