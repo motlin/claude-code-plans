@@ -321,7 +321,7 @@ describe("groupLists", () =>
 		const fold =
 		{
 			collapsedFamilies: ["code:h1"],
-			pinnedIds: [],
+			pinnedIds: ["c1"],
 			openKeys: new Set<string>(),
 		};
 

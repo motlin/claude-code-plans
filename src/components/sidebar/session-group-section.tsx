@@ -1167,8 +1167,8 @@ function SessionFamily({
 
 /**
  * A folded family's stub row (upstream `nU`): the hidden count as a fading label, then
- * "· {n} failed", "· {n} unread" (accent ink) and "· {n} working" segments, and a trailing error
- * glyph while any hidden row failed.
+ * "· {n} needs input" (warning ink), "· {n} failed", "· {n} unread" (accent ink) and "· {n} working"
+ * segments, and a trailing glyph for the first of waiting (awaiting icon) or failed (error icon).
  */
 function FamilyStub({
 	tally,
@@ -1213,6 +1213,12 @@ function FamilyStub({
 				<span data-row-label="" className="min-w-0">
 					<FadeLabel text={sessions} />
 				</span>
+				{segments.waiting !== undefined && (
+					<span className="flex shrink-0 items-center">
+						{separator}
+						<span className="text-warning">{segments.waiting}</span>
+					</span>
+				)}
 				{segments.failed !== undefined && (
 					<span className="flex shrink-0 items-center">
 						{separator}
@@ -1232,13 +1238,17 @@ function FamilyStub({
 					</span>
 				)}
 			</span>
-			{tally.failed > 0 && (
+			{(tally.waiting > 0 || tally.failed > 0) && (
 				<span
 					aria-hidden="true"
 					data-row-decoration=""
 					className="me-[calc(var(--sb-row-ctl-inset,calc((var(--sb-row-h)-var(--sb-row-ctl))/2))-var(--sb-row-px))] ms-auto flex size-[var(--sb-row-ctl)] shrink-0 items-center justify-center"
 				>
-					<SessionStateIcon kind="error" label="Something went wrong" live={false} />
+					{tally.waiting > 0 ? (
+						<SessionStateIcon kind="awaiting" live={false} />
+					) : (
+						<SessionStateIcon kind="error" label="Something went wrong" live={false} />
+					)}
 				</span>
 			)}
 		</button>

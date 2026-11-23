@@ -13,12 +13,6 @@ export interface FoldableRow
 	};
 }
 
-/** Upstream `NJ`: the row needs input. A failed row (unseen error) also sits in Blocked but is not awaiting. */
-function isAwaitingRow(row: FoldableRow): boolean
-{
-	return row.bucket === "blocked" && row.session.unseenError !== true;
-}
-
 export interface FamilySplit<Row>
 {
 	kept: Row[];
@@ -26,8 +20,8 @@ export interface FamilySplit<Row>
 }
 
 /**
- * Upstream `Nk`: a folded family still lists its awaiting, pinned (`s_`) and open nested rows, in their
- * original order; every other nested row hides behind the stub.
+ * Upstream `Nk` with keep test `Jb` (starred or open): a folded family still lists its pinned and open
+ * nested rows, in their original order; every other nested row, awaiting ones included, hides behind the stub.
  */
 export function splitFoldedFamily<Row extends FoldableRow>(
 	nested: readonly Row[],
@@ -52,7 +46,7 @@ export function splitFoldedFamily<Row extends FoldableRow>(
 	const hidden: Row[] = [];
 	for (const row of nested)
 	{
-		const keep = isAwaitingRow(row) || pinnedIds.includes(row.sessionId) || openKeys.has(row.sessionId);
+		const keep = pinnedIds.includes(row.sessionId) || openKeys.has(row.sessionId);
 		(keep ? kept : hidden).push(row);
 	}
 	return {

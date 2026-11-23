@@ -466,7 +466,7 @@ describe("sidebar session families", () =>
 		);
 	});
 
-	it("keeps awaiting children listed above the stub when the family is folded", async () =>
+	it("hides awaiting children in the stub and counts them as needing input", async () =>
 	{
 		const awaitingFamily = [
 			session("h1", "Head one", "done", 10),
@@ -491,43 +491,45 @@ describe("sidebar session families", () =>
 		];
 		const folded = await renderGroups(awaitingFamily);
 		fireEvent.click(caret(folded.container, "h1"));
-		const nested = family(folded.container, "h1");
-		const stub = nested.lastElementChild?.querySelector("button.df-family-stub");
-		const kept = nested.querySelector("[data-family-child]");
+		const stub = family(folded.container, "h1").querySelector("button.df-family-stub");
+		if (!(stub instanceof HTMLElement)) throw new Error("no stub");
 		expect(
 			{
-				titles: rowTitles(nested),
-				stub: stub?.getAttribute("aria-label"),
-				label: stub?.querySelector("[data-row-label]")?.textContent,
-				keptBeforeStub:
-					kept !== null &&
-					stub !== undefined &&
-					stub !== null &&
-					(kept.compareDocumentPosition(stub) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
-				keptWrapper: kept?.matches('div[data-family-child][data-row-key="c1"].df-drag-shiftable.relative.pl-5'),
+				titles: rowTitles(family(folded.container, "h1")),
+				aria: stub.getAttribute("aria-label"),
+				segments: [...stub.querySelectorAll(".df-fade-truncate > span.flex.shrink-0.items-center")].map(
+					(segment) => segment.textContent,
+				),
+				warning: stub.querySelector(".df-fade-truncate > span.flex.shrink-0.items-center > span.text-warning")
+					?.textContent,
+				decoration: stub
+					.querySelector(':scope > span[aria-hidden="true"][data-row-decoration] [role="img"]')
+					?.getAttribute("aria-label"),
 			},
 		).toStrictEqual(
 			{
-				titles: ["Child one"],
-				stub: "Show 1 more nested session",
-				label: "1 more nested session",
-				keptBeforeStub: true,
-				keptWrapper: true,
+				titles: [],
+				aria: "Show 2 nested sessions, 1 needs input",
+				segments: ["·1 needs input"],
+				warning: "1 needs input",
+				decoration: "Awaiting input",
 			},
 		);
 		folded.unmount();
 
-		const allKept = await renderGroups(awaitingFamily.slice(0, 2));
+		const onlyAwaiting = await renderGroups(awaitingFamily.slice(0, 2));
 		expect(
 			{
-				titles: rowTitles(family(allKept.container, "h1")),
-				stub: family(allKept.container, "h1").querySelector("button.df-family-stub"),
-				caret: caret(allKept.container, "h1").getAttribute("aria-label"),
+				titles: rowTitles(family(onlyAwaiting.container, "h1")),
+				stub: family(onlyAwaiting.container, "h1")
+					.querySelector("button.df-family-stub")
+					?.getAttribute("aria-label"),
+				caret: caret(onlyAwaiting.container, "h1").getAttribute("aria-label"),
 			},
 		).toStrictEqual(
 			{
-				titles: ["Child one"],
-				stub: null,
+				titles: [],
+				stub: "Show 1 nested session, 1 needs input",
 				caret: "Show nested sessions",
 			},
 		);
@@ -943,27 +945,32 @@ describe("sidebar session families", () =>
 
 	it("unfolds from the stub and focuses the first previously hidden child, not a kept one", async () =>
 	{
-		const {container} = await renderGroups([
-			session("h1", "Head one", "done", 10),
-			session(
-				"c1",
-				"Child one",
-				"blocked",
-				1,
-				{
-					forkedFromSessionId: "h1",
-				},
-			),
-			session(
-				"c2",
-				"Child two",
-				"done",
-				2,
-				{
-					forkedFromSessionId: "h1",
-				},
-			),
-		]);
+		const {container} = await renderGroups(
+			[
+				session("h1", "Head one", "done", 10),
+				session(
+					"c1",
+					"Child one",
+					"blocked",
+					1,
+					{
+						forkedFromSessionId: "h1",
+					},
+				),
+				session(
+					"c2",
+					"Child two",
+					"done",
+					2,
+					{
+						forkedFromSessionId: "h1",
+					},
+				),
+			],
+			{
+				path: "/session/c1",
+			},
+		);
 		fireEvent.click(caret(container, "h1"));
 
 		const stub = family(container, "h1").querySelector("button.df-family-stub");

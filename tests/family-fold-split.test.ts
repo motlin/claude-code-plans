@@ -49,7 +49,7 @@ describe("splitFoldedFamily", () =>
 		);
 	});
 
-	it("keeps awaiting rows of a folded family and hides failed and settled ones", () =>
+	it("hides awaiting, failed and settled rows of a folded family", () =>
 	{
 		expect(
 			splitFoldedFamily(
@@ -61,8 +61,8 @@ describe("splitFoldedFamily", () =>
 			),
 		).toStrictEqual(
 			{
-				kept: [C1],
-				hidden: [C2, G1, C3],
+				kept: [],
+				hidden: [C1, C2, G1, C3],
 			},
 		);
 	});
@@ -96,16 +96,16 @@ describe("splitFoldedFamily", () =>
 			),
 		]).toStrictEqual([
 			{
-				kept: [C1, C2],
-				hidden: [G1, C3],
+				kept: [C2],
+				hidden: [C1, G1, C3],
 			},
 			{
-				kept: [C1, C3],
-				hidden: [C2, G1],
+				kept: [C3],
+				hidden: [C1, C2, G1],
 			},
 			{
-				kept: [C1, C2],
-				hidden: [],
+				kept: [C2],
+				hidden: [C1],
 			},
 		]);
 	});
