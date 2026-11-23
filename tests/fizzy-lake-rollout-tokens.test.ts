@@ -362,6 +362,12 @@ describe("fizzy-lake rollout: component remaps under color", () =>
 				sessionRow: row.includes(
 					"hover:has-[[data-row-main-button][data-selected=focused]]:bg-[var(--selected-hover,var(--sb-session-selected))]",
 				),
+				// Upstream draws a multi-selected row exactly like the open row (`selected: multiSelected || paneSelected`),
+				// so its shell takes the selected-hover instead of stacking the link's fill over the shell's hover.
+				multiSelectedRow: row.includes(
+					"hover:has-[[data-row-main-button][data-multi-selected]]:bg-[var(--selected-hover,var(--sb-session-selected))]",
+				),
+				multiSelectedLinkFill: /data-\[multi-selected\][^ `"]*:bg-/.test(row),
 			},
 		).toStrictEqual(
 			{
@@ -382,6 +388,8 @@ describe("fizzy-lake rollout: component remaps under color", () =>
 					"background-color": "var(--selected-hover, var(--sb-selected))",
 				},
 				sessionRow: true,
+				multiSelectedRow: true,
+				multiSelectedLinkFill: false,
 			},
 		);
 	});
