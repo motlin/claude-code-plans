@@ -636,6 +636,7 @@ describe("KeyboardShortcutsDialog", () =>
 					]),
 					scroller: pick(band?.parentElement, [
 						"p-4",
+						"m-[var(--ring-inner)]",
 						"scroll-pt-[52px]",
 						"[:where([data-cds-tall-window])_&]:scroll-pt-[56px]",
 						"panels-fine:[:where([data-cds-tall-window])_&]:scroll-pt-[52px]",
@@ -678,6 +679,7 @@ describe("KeyboardShortcutsDialog", () =>
 					close: ["size-8", "panels-fine:size-7", "self-start"],
 					scroller: [
 						"p-4",
+						"m-[var(--ring-inner)]",
 						"[:where([data-cds-tall-window])_&]:scroll-pt-[56px]",
 						"panels-fine:[:where([data-cds-tall-window])_&]:scroll-pt-[52px]",
 					],
@@ -724,11 +726,13 @@ describe("KeyboardShortcutsDialog", () =>
 					},
 				).parentElement?.dataset["cdsPart"],
 				fizzy: dialog.getAttribute("data-cds-fizzy"),
+				ring: dialog.firstElementChild?.className.split(" ").includes("m-[var(--ring-inner)]"),
 			},
 		).toStrictEqual(
 			{
 				band: "band",
 				fizzy: null,
+				ring: false,
 			},
 		);
 	});

@@ -9,6 +9,7 @@ import
 	subscribeKeyboardShortcutsOpen,
 } from "./keyboard-shortcuts-open";
 import {DensityScope} from "./ui/density";
+import {useDialogPad} from "./ui/dialog-pad";
 import {DialogHeader} from "./ui/dialog-header";
 import {DialogPopup} from "./ui/dialog-popup";
 import {Skeleton} from "./ui/skeleton";
@@ -32,6 +33,7 @@ export function KeyboardShortcutsDialogFrame({
 		getKeyboardShortcutsOpen,
 		getServerKeyboardShortcutsOpen,
 	);
+	const {ring} = useDialogPad();
 	return (
 		<Dialog.Root open={isOpen} onOpenChange={onOpenChange}>
 			<Dialog.Portal>
@@ -48,7 +50,9 @@ export function KeyboardShortcutsDialogFrame({
 						data-perf-overlay="keyboard_shortcuts_dialog"
 						className="fixed top-1/2 left-1/2 z-50 flex h-dvh max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-[520px] -translate-x-1/2 -translate-y-1/2 flex-col rounded-card bg-surface-3 text-body text-primary shadow-panel-lg outline-none transition-[opacity,scale,filter] duration-200 ease-out data-[ending-style]:scale-[0.98] data-[ending-style]:opacity-0 data-[starting-style]:scale-[0.98] data-[starting-style]:opacity-0 motion-reduce:transition-none motion-reduce:data-[ending-style]:scale-100 motion-reduce:data-[starting-style]:scale-100"
 					>
-						<div className="isolate flex min-h-0 flex-1 flex-col overflow-y-auto scroll-fade-y rounded-[inherit] p-4 [timeline-scope:--sc-dialog-scroll] [:where([data-cds-tall-window])_&]:scroll-pt-[56px] panels-fine:[:where([data-cds-tall-window])_&]:scroll-pt-[52px]">
+						<div
+							className={`isolate flex min-h-0 flex-1 flex-col overflow-y-auto scroll-fade-y rounded-[inherit] p-4 ${ring} [timeline-scope:--sc-dialog-scroll] [:where([data-cds-tall-window])_&]:scroll-pt-[56px] panels-fine:[:where([data-cds-tall-window])_&]:scroll-pt-[52px]`}
+						>
 							{/* Upstream forces data-density="comfortable" on this dialog for every user, so the band
 								shows at every density; local keeps it whatever the panels flag. Its bottom line fades in
 								once the list region scrolls (its scroll-timeline, hoisted by timeline-scope). */}

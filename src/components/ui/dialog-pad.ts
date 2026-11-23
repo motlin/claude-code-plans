@@ -21,9 +21,11 @@ export interface DialogPad
 	pb: string;
 	scrollMb: string;
 	maxHList: string;
+	/** upstream yB: m-[var(--cds-ring-inner)] (0 light, 1px dark) under panels only */
+	ring: string;
 }
 
-type PadSet = Omit<DialogPad, "popup">;
+type PadSet = Omit<DialogPad, "popup" | "ring">;
 
 const PAD_16: PadSet =
 {
@@ -78,6 +80,7 @@ export function useDialogPad({
 			"data-cds-fizzy": panels ? "" : undefined,
 		},
 		...set,
+		ring: panels ? "m-[var(--ring-inner)]" : "",
 	};
 }
 

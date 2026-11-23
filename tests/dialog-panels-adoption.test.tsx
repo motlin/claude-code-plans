@@ -29,6 +29,9 @@ function noop()
 const pick = (element: Element | null | undefined, names: string[]) =>
 	names.filter((name) => (element?.className.split(" ") ?? []).includes(name));
 
+/* Upstream yB: m-[var(--cds-ring-inner)] on the body under panels only. */
+const RING = "m-[var(--ring-inner)]";
+
 const DIALOGS: Record<
 	string,
 	{
@@ -110,7 +113,7 @@ describe("dialog popups and pads under panels (dialog-panels-pad-lg)", () =>
 {
 	for (const [name, {node, body}] of Object.entries(DIALOGS))
 	{
-		it(`${name}: data-cds markers and a 16px body; 24px (20px picker) with panels off`, async () =>
+		it(`${name}: data-cds markers and a 16px ring-inset body; 24px (20px picker) with panels off`, async () =>
 		{
 			restore = mockTallWindow(true).restore;
 			const on = await popupOf(node());
@@ -119,7 +122,7 @@ describe("dialog popups and pads under panels (dialog-panels-pad-lg)", () =>
 				cds: on.getAttribute("data-cds"),
 				fizzy: on.getAttribute("data-cds-fizzy"),
 				tall: on.getAttribute("data-cds-tall-window"),
-				pad: pick(body(on), ["p-4", "p-5", "p-6"]),
+				pad: pick(body(on), ["p-4", "p-5", "p-6", RING]),
 				popupPad: pick(on, ["p-4", "p-5", "p-6"]),
 			};
 			cleanup();
@@ -131,7 +134,7 @@ describe("dialog popups and pads under panels (dialog-panels-pad-lg)", () =>
 					{
 						cds: off.getAttribute("data-cds"),
 						fizzy: off.getAttribute("data-cds-fizzy"),
-						pad: pick(body(off), ["p-4", "p-5", "p-6"]),
+						pad: pick(body(off), ["p-4", "p-5", "p-6", RING]),
 					},
 				},
 			).toStrictEqual(
@@ -141,7 +144,7 @@ describe("dialog popups and pads under panels (dialog-panels-pad-lg)", () =>
 						cds: "Dialog",
 						fizzy: "",
 						tall: "",
-						pad: ["p-4"],
+						pad: ["p-4", RING],
 						popupPad: [],
 					},
 					off:

@@ -16,6 +16,7 @@ const PAD_16 =
 	pb: "pb-4",
 	scrollMb: "last:scroll-mb-4",
 	maxHList: "max-h-[calc(50vh+16px)]",
+	ring: "m-[var(--ring-inner)]",
 };
 
 describe("useDialogPad (upstream js: _z under panels, Xn p-xl otherwise)", () =>
@@ -58,6 +59,7 @@ describe("useDialogPad (upstream js: _z under panels, Xn p-xl otherwise)", () =>
 				pb: "pb-6",
 				scrollMb: "last:scroll-mb-6",
 				maxHList: "max-h-[calc(50vh+24px)]",
+				ring: "",
 			},
 		);
 	});
@@ -104,6 +106,7 @@ describe("useDialogPad (upstream js: _z under panels, Xn p-xl otherwise)", () =>
 					pb: "pb-5",
 					scrollMb: "last:scroll-mb-5",
 					maxHList: "max-h-[calc(50vh+20px)]",
+					ring: "",
 				},
 				on:
 				{
