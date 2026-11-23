@@ -3,7 +3,7 @@ import {useEffect, useRef} from "react";
 import type {ClientToolCall, ToolRendererProps} from "./types";
 import {useAskUserQuestionContext} from "../ask-user-question-context";
 import {useQuestionDocked} from "../approval-dock-context";
-import {pendingQuestionCard} from "../pending-question-card";
+import {inQuestionSlot, pendingQuestionCard} from "../pending-question-card";
 import {MarkdownArticle} from "../markdown-article";
 import {FallbackRenderer} from "./fallback-renderer";
 import {QuestionCard} from "../question-card";
@@ -220,13 +220,17 @@ export function AskUserQuestionRenderer({toolCall}: ToolRendererProps)
 			answer: entry.answer ?? (entry.unanswered === undefined ? "" : OUTCOME_LABEL[entry.unanswered]),
 			notes: notes.get(entry.question) ?? null,
 		}));
-		// The card that sent the answer stays mounted to draw the result in its sent receipt's node; its host div
-		// stays too, only losing the slot's markers.
+		// The card that sent the answer stays mounted to draw the result in its sent receipt's node; its host div and
+		// session slot stay too, the host only losing the slot's markers.
 		if (sentHereRef.current)
 		{
 			return (
 				<div>
-					<QuestionCard draftKey={toolCall.id} questions={questions} answered={rows} />
+					{inQuestionSlot(
+						ctx?.sessionId,
+						null,
+						<QuestionCard draftKey={toolCall.id} questions={questions} answered={rows} />,
+					)}
 				</div>
 			);
 		}

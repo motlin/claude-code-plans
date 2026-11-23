@@ -3803,13 +3803,19 @@ describe("question receipt across the answer", () =>
 			rows: [...(receipt?.querySelectorAll("[data-answered-question]") ?? [])].map((row) => row.textContent),
 		};
 	}
-	function tree(toolCall: ClientToolCall)
+	function tree(toolCall: ClientToolCall, sessionId?: string)
 	{
 		return (
 			<AskUserQuestionProvider
 				value={
 				{
 					answerRoute: "live-pane",
+					...(sessionId === undefined
+						? {}
+						:
+							{
+								sessionId,
+							}),
 					submitAnswer: async () =>
 					{
 					},
@@ -3820,7 +3826,7 @@ describe("question receipt across the answer", () =>
 		);
 	}
 
-	it("fades the receipt once and keeps its node when the hook copy was seen, the transcript card is answered with ⌘⏎, and the result lands", async () =>
+	it("fades the receipt once and keeps its node when the hook copy was seen, the session's transcript card is answered with ⌘⏎, and the result lands", async () =>
 	{
 		// jsdom has no IntersectionObserver, so mounting marks the hook copy seen at once.
 		render(
@@ -3834,7 +3840,7 @@ describe("question receipt across the answer", () =>
 			/>,
 		).unmount();
 		const now = vi.spyOn(performance, "now").mockReturnValue(1000);
-		const view = render(tree(colorCall("toolu_sim")));
+		const view = render(tree(colorCall("toolu_sim"), "s-receipt"));
 		const pending = frame(view.container);
 		now.mockReturnValue(5000);
 		fireEvent.click(
@@ -3859,7 +3865,7 @@ describe("question receipt across the answer", () =>
 		});
 		const sent = frame(view.container);
 		const sentNode = view.container.querySelector("[data-question-receipt]");
-		view.rerender(tree(colorCall("toolu_sim", RED_RESULT)));
+		view.rerender(tree(colorCall("toolu_sim", RED_RESULT), "s-receipt"));
 
 		expect(
 			{

@@ -1,3 +1,4 @@
+import type {ReactElement} from "react";
 import {ApprovalSlot} from "./approval-slot";
 import type {AskUserQuestionContextValue} from "./ask-user-question-context";
 import {QuestionCard} from "./question-card";
@@ -63,16 +64,25 @@ export function pendingQuestionCard({
 				: {})}
 		/>
 	);
-	if (ctx?.sessionId === undefined) return card;
+	return inQuestionSlot(ctx?.sessionId, sent ? null : toolUseId, card);
+}
+
+/**
+ * A question's card inside its session's approval slot, or bare outside a session. The row's sent card goes through
+ * here too, so the element tree keeps its types from pending to answered and React keeps the card's node.
+ */
+export function inQuestionSlot(sessionId: string | undefined, questionId: string | null, card: ReactElement)
+{
+	if (sessionId === undefined) return card;
 	// Upstream's slot for a question drawn in its transcript row: a keyboard answer hands focus to the composer.
 	return (
 		<ApprovalSlot
-			sessionId={ctx.sessionId}
+			sessionId={sessionId}
 			{...sessionApprovalSlotCard(
 				{
 					permission: null,
 					planId: null,
-					questionId: sent ? null : toolUseId,
+					questionId,
 				},
 			)}
 		>
