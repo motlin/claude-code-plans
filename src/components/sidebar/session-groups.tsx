@@ -402,7 +402,7 @@ export function SessionGroups({
 	{
 		if (landedIds.length === 0) return;
 		setLandedAnnouncement(
-			landedIds.length === 1 ? "1 more session loaded" : `${landedIds.length} more sessions loaded`,
+			landedIds.length === 1 ? "Loaded 1 more session" : `Loaded ${landedIds.length} more sessions`,
 		);
 		const latest = latestBuilt.current;
 		if (latest === undefined) return;

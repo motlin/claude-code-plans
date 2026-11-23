@@ -3094,7 +3094,7 @@ describe("sidebar SessionGroups", () =>
 			{
 				requests: ["/api/sessions/recent?limit=50&cursor=cursor-2&live=1"],
 				last: ["Next 1", "Next 2", "Next 3"],
-				status: "3 more sessions loaded",
+				status: "Loaded 3 more sessions",
 				text: "Load more sessions",
 			},
 		);

@@ -938,7 +938,7 @@ export function LoadMoreSessionsRow({
 }: {
 	rowKey: "label:fetchmore:recents" | "label:fetchmore:date";
 	loading: boolean;
-	/** "N more sessions loaded" once a load lands. */
+	/** "Loaded N more sessions" once a load lands. */
 	announcement: string;
 	onLoad: (event: MouseEvent<HTMLElement>) => void;
 })
