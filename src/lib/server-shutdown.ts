@@ -175,6 +175,7 @@ export async function requestTakeover({
 		{
 			clearTimeout(windowTimer);
 			clearTimeout(releaseTimer);
+			clearImmediate(pollPasses);
 			channel.close();
 		};
 		const finish = () =>
@@ -194,10 +195,20 @@ export async function requestTakeover({
 			if (message.type === "released") released.add(message.instanceId);
 			finishIfReleased();
 		};
+		// The window timer can fire before acknowledgements already queued for this thread are read: when the thread
+		// stalls past the window, libuv runs due timers before polling for messages. Two passes through the poll phase
+		// read them, the second for an instance in this thread, which acknowledges only once it reads the request.
+		let pollPasses: NodeJS.Immediate | undefined;
 		const windowTimer = setTimeout(() =>
 		{
-			windowClosed = true;
-			finishIfReleased();
+			pollPasses = setImmediate(() =>
+			{
+				pollPasses = setImmediate(() =>
+				{
+					windowClosed = true;
+					finishIfReleased();
+				});
+			});
 		}, ackWindowMs);
 		const releaseTimer = setTimeout(() =>
 		{

@@ -120,7 +120,7 @@ describe("server shutdown hooks", () =>
 		);
 	});
 
-	it("requestTakeover waits for another instance (e.g. a previous dev worker thread) to release its handles", async () =>
+	it("requestTakeover waits for another instance (e.g. a previous dev worker thread) to release its handles, even when this thread stalls past the ack window before reading its acknowledgement", async () =>
 	{
 		const events: string[] = [];
 		const stop = listenForTakeover(async () =>
@@ -133,11 +133,18 @@ describe("server shutdown hooks", () =>
 			events.push("previous:teardown:end");
 		});
 
-		await requestTakeover(
+		const takeover = requestTakeover(
 			{
 				ackWindowMs: 20,
 			},
 		);
+		// A loaded machine can starve the thread this long; the window timer is then due before the queued messages.
+		const stalledUntil = performance.now() + 100;
+		while (performance.now() < stalledUntil)
+		{
+			// Busy-wait: block the event loop.
+		}
+		await takeover;
 		events.push("new:takeover-complete");
 		stop();
 
@@ -242,7 +249,22 @@ describe("server shutdown hooks", () =>
 
 	it("requestTakeover resolves when the ack window closes, not at the release timeout, when no other instance is running", async () =>
 	{
-		vi.useFakeTimers();
+		// Only the timers are fake: the window closes after real passes through the event loop's poll phase.
+		vi.useFakeTimers(
+			{
+				toFake: ["setTimeout", "clearTimeout"],
+			},
+		);
+		const afterPollPasses = async () =>
+		{
+			for (let pass = 0; pass < 2; pass++)
+			{
+				await new Promise((resolve) =>
+				{
+					setImmediate(resolve);
+				});
+			}
+		};
 		try
 		{
 			let resolved = false;
@@ -256,8 +278,10 @@ describe("server shutdown hooks", () =>
 				resolved = true;
 			});
 			await vi.advanceTimersByTimeAsync(19);
+			await afterPollPasses();
 			const beforeWindow = resolved;
 			await vi.advanceTimersByTimeAsync(1);
+			await afterPollPasses();
 			const atWindow = resolved;
 			await vi.advanceTimersByTimeAsync(60_000);
 			await takeover;
