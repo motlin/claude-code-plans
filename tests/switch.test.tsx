@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
 
+import {readFileSync} from "node:fs";
+
 import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
@@ -188,6 +190,17 @@ describe("Switch", () =>
 					knobClass: XXS_KNOB_CLASS,
 				},
 			);
+		});
+
+		it("pins --cds-switch-h to upstream's 14px on the xxs track itself, so every density gets the same height", () =>
+		{
+			const styles = readFileSync("src/styles/globals.css", "utf8").replaceAll(/\s+/g, " ");
+			// A top-level rule (after a closing brace or comment), not nested under a density or media scope.
+			const rules = [...styles.matchAll(/(?:\}|\*\/) (\[data-size="xxs"\] \{[^}]*\})/g)].map((match) => match[1]);
+
+			expect(rules).toStrictEqual([
+				'[data-size="xxs"] { --cds-switch-h: calc(0.875rem * var(--cds-rem-scale, 1)); }',
+			]);
 		});
 
 		it("marks a busy switch aria-busy and aria-disabled, still focusable, and ignores clicks", () =>

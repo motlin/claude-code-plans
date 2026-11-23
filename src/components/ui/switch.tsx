@@ -7,8 +7,8 @@ import type {Tooltip} from "./tooltip";
  * Upstream's cds `Switch size=xs` as a standalone control (the rail's Remote
  * Control setting row): a 25.2x14 button track that a `<label htmlFor>` can
  * click, with a 10px knob that springs 11.2px on (mirrored under RTL).
- * `size=xxs` maps to no size token upstream, so it follows the scope's
- * `--cds-switch-h` (16px, 20px at comfortable): the environment bar's Worktree chip.
+ * `size=xxs` sizes from `--cds-switch-h`, which globals.css's `[data-size="xxs"]`
+ * pins to 14px at every density: the environment bar's Worktree chip.
  */
 
 const TRACK_TAIL =
@@ -33,7 +33,7 @@ export interface SwitchProps
 {
 	id?: string | undefined;
 	checked: boolean;
-	/** `xs` is a fixed 14px track; `xxs` follows the scope's `--cds-switch-h`. */
+	/** `xs` is a fixed 14px track; `xxs` follows `--cds-switch-h` (14px under `[data-size="xxs"]`). */
 	size?: "xs" | "xxs";
 	/** Appended to the track's classes (the Worktree chip's `hit-row-main`). */
 	className?: string | undefined;

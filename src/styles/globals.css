@@ -5013,6 +5013,13 @@ html[data-reduce-motion="true"] [data-cds="ShimmerText"][data-shimmer-mode="fall
 	--cds-pad-xl: var(--cds-pad-xl--lg);
 }
 
+/* Upstream .cds-root [data-size=xxs]: the xxs Switch (the environment bar's Worktree chip) is a flat 14px track at
+   every density; on the track itself, so it beats the density scopes' size-less --cds-switch-h. */
+[data-size="xxs"]
+{
+	--cds-switch-h: calc(0.875rem * var(--cds-rem-scale, 1));
+}
+
 /* Upstream's transcript root (`.epitaxy-root .epitaxy-transcript-typography`): a 15px / 1.4 chat body, so
    the item gap is 10.5px. The root element's own `[--chat-turn-gap:calc(var(--spacing)*5)]!` class then sets
    the turn gap to 20px (16px compact). Panes outside the transcript keep the :root 15px / 10px. */
