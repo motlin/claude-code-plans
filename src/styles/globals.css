@@ -6621,6 +6621,16 @@ html[data-reduce-motion="true"] [data-cds="SkeletonGroup"][data-hold="delayed"]
 	inset-inline-start: calc(var(--sb-row-px) + var(--sb-rail-shift, 0px) + var(--sb-leading-slot) / 2 - 0.5px);
 }
 
+/*
+ * Upstream `[data-pin-dragging] .df-family:not([data-pinned-family] :where(.df-family))::after { visibility: hidden }`:
+ * while a row drags, only pinned families keep their elbows. The local drag engine is one engine for pinning,
+ * reordering and custom groups (upstream's pin-drag hook), so [data-session-dragging] stands in for [data-pin-dragging].
+ */
+[data-session-dragging] .df-family:not([data-pinned-family] :where(.df-family))::after
+{
+	visibility: hidden;
+}
+
 /* Upstream's find-in-page matches (shared-100 `ho`): the same colours in light and dark; the text is the resolved --cds-black. */
 ::highlight(find-in-page)
 {

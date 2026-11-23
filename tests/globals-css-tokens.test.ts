@@ -440,12 +440,16 @@ describe("described row meta line (upstream sidebar-row-metadata-line)", () =>
 		);
 	});
 
-	it("indents a pinned family past its head's icon slot and moves its elbow to match", () =>
+	it("indents a pinned family past its head's icon slot, moves its elbow to match, and keeps only its elbows during a row drag", () =>
 	{
 		expect(
 			{
 				indent: tokens(block("[data-pinned-family] .df-family"), ["--sb-row-indent"]),
 				elbow: tokens(block("[data-pinned-family] .df-family::after"), ["width", "inset-inline-start"]),
+				draggingElbow: tokens(
+					block("[data-session-dragging] .df-family:not([data-pinned-family] :where(.df-family))::after"),
+					["visibility"],
+				),
 			},
 		).toStrictEqual(
 			{
@@ -459,6 +463,10 @@ describe("described row meta line (upstream sidebar-row-metadata-line)", () =>
 					width: "calc(var(--sb-leading-slot) / 2 + var(--sb-row-gap) - 5.5px)",
 					"inset-inline-start":
 						"calc(var(--sb-row-px) + var(--sb-rail-shift, 0px) + var(--sb-leading-slot) / 2 - 0.5px)",
+				},
+				draggingElbow:
+				{
+					visibility: "hidden",
 				},
 			},
 		);
