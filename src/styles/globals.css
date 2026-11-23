@@ -5839,21 +5839,18 @@ html[data-reduce-motion="true"] [data-cds="SkeletonGroup"][data-hold="delayed"]
 	);
 }
 
-/* Upstream shared-18 `Z8`: rail end = max(0, edge - tiles-padding - tiles-border - 1px), edge .5rem with an end
-   attribute (bleed drops the tiles-padding term) and 13px without one. Card mode keeps 12px. */
-[data-tiles-line] [data-session-rail-docked][data-chat-gutter-end="bleed"]
+/* Upstream's flat rail (live 2026-11-22): the chat panel's important overrides dock a 20rem rail flush with the
+   chat edge, pulled out over the tiles padding when the panel has no end gutter attribute. Card mode keeps
+   17.5rem / 12px. */
+[data-tiles-line] [data-session-rail-docked]
 {
-	--session-rail-end: 7px;
-}
-
-[data-tiles-line] [data-session-rail-docked][data-chat-gutter-end="shave"]
-{
+	--session-rail-w: 20rem;
 	--session-rail-end: 0px;
 }
 
 [data-tiles-line] [data-session-rail-docked]:not([data-chat-gutter-end])
 {
-	--session-rail-end: 4px;
+	--session-rail-end: calc(-1 * var(--tiles-padding, 0px));
 }
 
 /* Upstream shared-18 `g_`: the closed rail's end gap is the chat gutter, shaved (39px) or bled (40px) by the end attribute. */

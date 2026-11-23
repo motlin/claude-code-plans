@@ -3910,16 +3910,18 @@ describe("TileHost line-mode chat shell inset (upstream shared-20 it / cc43287c9
 		).toStrictEqual([]);
 	});
 
-	it("sets the docked rail's end inset by the end gutter attribute, as upstream shared-18 Z8 resolves it", () =>
+	it("docks the line-mode rail 20rem wide and flush with the chat edge, pulled into the tiles padding without an end attribute, as upstream's flat rail does", () =>
 	{
 		const styles = readFileSync("src/styles/globals.css", "utf8").replaceAll(/\s+/g, " ");
 		expect(
 			[
-				'[data-tiles-line] [data-session-rail-docked][data-chat-gutter-end="bleed"] { --session-rail-end: 7px; }',
-				'[data-tiles-line] [data-session-rail-docked][data-chat-gutter-end="shave"] { --session-rail-end: 0px; }',
-				"[data-tiles-line] [data-session-rail-docked]:not([data-chat-gutter-end]) { --session-rail-end: 4px; }",
+				"[data-tiles-line] [data-session-rail-docked] { --session-rail-w: 20rem; --session-rail-end: 0px; }",
+				"[data-tiles-line] [data-session-rail-docked]:not([data-chat-gutter-end]) { --session-rail-end: calc(-1 * var(--tiles-padding, 0px)); }",
 				"[data-session-rail-docked] { --session-rail-w: 17.5rem; --session-rail-gutter: 24px;",
 			].filter((rule) => !styles.includes(rule)),
+		).toStrictEqual([]);
+		expect(
+			["--session-rail-end: 7px;", "--session-rail-end: 4px;"].filter((rule) => styles.includes(rule)),
 		).toStrictEqual([]);
 	});
 });

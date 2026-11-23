@@ -128,7 +128,7 @@ export function SessionRailMenuItem()
 }
 
 /**
- * Upstream's `data-epitaxy-rail-column`: the 280px column docked at the chat
+ * Upstream's `data-epitaxy-rail-column`: the column (20rem in line mode, 17.5rem in cards) docked at the chat
  * tile's end, starting 12px under the titlebar. On a phone the same rail floats
  * over the transcript as one card, 8px in from the tile's end. `render` is only
  * called while visible, so the rail's cards (a lazy chunk) load on first show.
