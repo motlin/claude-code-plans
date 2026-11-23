@@ -113,7 +113,7 @@ describe("AssistantMessageActions", () =>
 		);
 	});
 
-	it("keeps the bar, its reveal button, time and copy status out of in-app Find, as upstream's omitted wrapper does", () =>
+	it("leaves the unportaled bar, its reveal button, time and copy status findable, as upstream marks only the tail slot", () =>
 	{
 		const {container} = render(
 			<AssistantMessageActions message={MESSAGE} text="Hello" timestamp={TIMESTAMP} details={[]} />,
@@ -128,10 +128,10 @@ describe("AssistantMessageActions", () =>
 			},
 		).toStrictEqual(
 			{
-				bar: true,
-				reveal: true,
-				time: true,
-				status: '<span role="status" class="sr-only select-none" data-find-omitted=""></span>',
+				bar: false,
+				reveal: false,
+				time: false,
+				status: '<span role="status" class="sr-only"></span>',
 			},
 		);
 	});

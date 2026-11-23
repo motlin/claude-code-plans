@@ -192,11 +192,20 @@ function renderTranscript(): HTMLElement
  * aria-hidden visual copy with text that sit outside every `[data-find-omitted]` subtree, so the
  * in-app Find walker would enter them.
  */
+/**
+ * Upstream (claude.ai/code live 2026-11-21) leaves message actions' sr-only reveal button and
+ * empty copy-status live region unmarked; only the tail-actions slot the last bar portals into is
+ * omitted. Mirror that rather than marking them.
+ */
+const UPSTREAM_UNMARKED =
+	'button.sr-only[aria-label^="Show message actions for"], [data-cds=MessageActions] [role=status]';
+
 function unmarkedHiddenCopy(container: HTMLElement): string[]
 {
 	return [...container.querySelectorAll(".sr-only, [aria-hidden=true]")]
 		.filter(
 			(element) =>
+				!element.matches(UPSTREAM_UNMARKED) &&
 				(element.classList.contains("sr-only") || element.textContent.trim() !== "") &&
 				element.closest("[data-find-omitted]") === null,
 		)

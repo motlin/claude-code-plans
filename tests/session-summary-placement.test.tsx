@@ -1843,6 +1843,7 @@ describe("SessionPage dock composition", () =>
 				toolbars: [...document.querySelectorAll("[role=toolbar][aria-label='Message actions']")].map((bar) => [
 					bar.getAttribute("data-testid"),
 					bar.closest("[data-testid=transcript-tail-actions]") !== null,
+					bar.closest("[data-find-omitted]") !== null,
 				]),
 				chrome: grid?.parentElement?.getAttribute("data-testid"),
 				chromeFollowsTurn: grid?.parentElement?.previousElementSibling === slot.parentElement,
@@ -1860,9 +1861,9 @@ describe("SessionPage dock composition", () =>
 				tailTurn: ["transcript-tail-slot", "transcript-tail-actions"],
 				tailTurnInAfterRows: true,
 				toolbars: [
-					["user-message-actions", false],
-					["user-message-actions", false],
-					["message-actions", true],
+					["user-message-actions", false, false],
+					["user-message-actions", false, false],
+					["message-actions", true, true],
 				],
 				chrome: "transcript-tail-chrome",
 				chromeFollowsTurn: true,
