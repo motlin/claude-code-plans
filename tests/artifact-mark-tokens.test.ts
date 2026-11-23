@@ -43,7 +43,7 @@ describe("artifact mark tint tokens", () =>
 					violet: ["#785ee81f", "#5437b8"],
 					red: ["#dc3c3d1f", "#a42528"],
 					aqua: ["#019c7f24", "#006458"],
-					yellow: ["#fbb31529", "#794c02"],
+					yellow: ["#fbb3151f", "#895902"],
 					magenta: ["#ce447d1f", "#902552"],
 					green: ["#10a12224", "#006c10"],
 				},
