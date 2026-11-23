@@ -5,15 +5,15 @@ export interface GoToLineTarget
 }
 
 /**
- * Upstream `Tc`: the go to line bar's `line` or `line:column`, with the line inside the file's
- * `lines`. Null for anything else, including empty text (which the bar does not mark invalid).
+ * Upstream `Tc`: the go to line bar's `line` or `line:column`, with the line clamped into the file's
+ * `1..lines` as upstream does. Null for anything else, including empty text (which the bar does not
+ * mark invalid).
  */
 export function parseGoToLine(text: string, lines: number): GoToLineTarget | null
 {
 	const match = /^(\d+)(?::(\d+))?$/.exec(text.trim());
 	if (match === null) return null;
-	const line = Number(match[1]);
-	if (!Number.isSafeInteger(line) || line < 1 || line > lines) return null;
+	const line = Math.min(Math.max(Number(match[1]), 1), lines);
 	if (match[2] === undefined)
 		return {
 			line,

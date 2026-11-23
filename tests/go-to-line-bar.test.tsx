@@ -102,9 +102,29 @@ describe("GoToLineBar", () =>
 		);
 	});
 
-	it("goes on Enter and closes with refocus on Escape", () =>
+	it("goes on Enter, clamping out-of-range lines without flagging them, and closes with refocus on Escape", () =>
 	{
-		const {input, onGo, onClose} = renderBar();
+		const {input, onGo, onClose, status} = renderBar();
+		fireEvent.change(
+			input,
+			{
+				target:
+				{
+					value: "99",
+				},
+			},
+		);
+		const outOfRange =
+		{
+			status: status(),
+			fieldInvalid: input.closest("[data-cds=Field]")?.hasAttribute("data-invalid"),
+		};
+		fireEvent.keyDown(
+			input,
+			{
+				key: "Enter",
+			},
+		);
 		fireEvent.change(
 			input,
 			{
@@ -141,8 +161,13 @@ describe("GoToLineBar", () =>
 				key: "Escape",
 			},
 		);
-		expect([onGo.mock.calls, onClose.mock.calls]).toStrictEqual([
+		expect([outOfRange, onGo.mock.calls, onClose.mock.calls]).toStrictEqual([
+			{
+				status: "Line 4 of 30",
+				fieldInvalid: false,
+			},
 			[
+				[30, undefined],
 				[5, undefined],
 				[6, 2],
 			],
