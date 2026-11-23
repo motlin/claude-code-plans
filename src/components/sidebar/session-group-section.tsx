@@ -1111,7 +1111,7 @@ function SessionFamily({
 		<div
 			ref={ref}
 			data-family-head={head.sessionId}
-			className="df-family relative flex flex-col gap-[var(--sb-row-stack-gap)] [--sb-row-indent:calc(var(--sb-icon)+var(--sb-row-gap))]"
+			className="df-family relative flex flex-col gap-[var(--sb-row-stack-gap)] [--sb-row-indent:calc(var(--sb-group-indent,0px)+20px)]"
 		>
 			{kept.map((child) =>
 			{

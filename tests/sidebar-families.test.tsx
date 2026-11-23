@@ -1026,7 +1026,7 @@ describe("sidebar session families", () =>
 		expect(
 			{
 				wrapper: stub.parentElement?.matches('div[data-row-key="family-stub:h1"].df-drag-shiftable.relative'),
-				indent: nested.classList.contains("[--sb-row-indent:calc(var(--sb-icon)+var(--sb-row-gap))]"),
+				indent: nested.classList.contains("[--sb-row-indent:calc(var(--sb-group-indent,0px)+20px)]"),
 				leadingSlot: stub.querySelector(".df-leading-slot"),
 				padded: nested.querySelector(".pl-5 > .df-family-stub"),
 				// The elbow's ::after ends at the last child's centre, so the stub row must stay last.
