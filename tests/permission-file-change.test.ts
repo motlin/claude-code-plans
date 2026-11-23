@@ -193,6 +193,81 @@ describe("analyzeFileChange (upstream's zu)", () =>
 		);
 	});
 
+	// Upstream's `Yv` (live check 2026-11-21): an Edit's line-endings note comes from the file, not the edit.
+	it("notes an Edit's line endings from the file's own mix, as upstream's Yv does", () =>
+	{
+		expect(
+			analyzeFileChange(
+				"Edit",
+				{
+					file_path: "/repo/a.ts",
+					old_string: "gamma",
+					new_string: "GAMMA",
+				},
+				"alpha\nbeta\r\ngamma\n",
+			),
+		).toStrictEqual(
+			{
+				lineEndingsChange: true,
+				patch:
+				{
+					hunks: [
+						{
+							oldStart: 2,
+							oldLines: 2,
+							newStart: 2,
+							newLines: 2,
+							lines: [" beta", "-gamma", "+GAMMA"],
+						},
+					],
+					context: 1,
+				},
+			},
+		);
+		expect(
+			analyzeFileChange(
+				"Edit",
+				{
+					file_path: "/repo/a.ts",
+					old_string: "a\r\nb",
+					new_string: "a\nc",
+				},
+				"a\r\nb\r\n",
+			),
+		).toStrictEqual(
+			{
+				patch:
+				{
+					hunks: [
+						{
+							oldStart: 1,
+							oldLines: 2,
+							newStart: 1,
+							newLines: 2,
+							lines: [" a", "-b", "+c"],
+						},
+					],
+					context: 1,
+				},
+			},
+		);
+		expect(
+			analyzeFileChange(
+				"Edit",
+				{
+					file_path: "/repo/a.ts",
+					old_string: "zz",
+					new_string: "y",
+				},
+				"a\nb\r\nc\n",
+			),
+		).toStrictEqual(
+			{
+				lineEndingsChange: true,
+			},
+		);
+	});
+
 	it("drops the context when any line of the file is 200 characters or longer", () =>
 	{
 		const file = `${"x".repeat(200)}\nold\n`;

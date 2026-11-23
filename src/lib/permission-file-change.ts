@@ -29,6 +29,9 @@ const LONG_LINE = /[^\n]{200}/;
 /** Upstream's `Nu`: credential files whose contents the preview never draws. */
 const SECRET_BASENAMES = new Set([".netrc", "_netrc", ".pgpass", ".htpasswd", ".npmrc", ".git-credentials", ".my.cnf"]);
 
+/** Upstream's `Jv`: a carriage return ending a line, or the text. */
+const CARRIAGE_RETURN_LINE_END = /\r(?:\n|$)/;
+
 function basename(path: string): string
 {
 	return path.replace(/^.*[\\/]/, "");
@@ -107,6 +110,20 @@ function changesLineEndings(before: string, after: string, hunks: readonly Patch
 		}
 	}
 	return skipEqual(Math.min(oldEnds.length - oldIndex, newEnds.length - newIndex));
+}
+
+/**
+ * Upstream's `Yv`: whether an Edit changes line endings, judged from the file. A CRLF-dominant file earns the note
+ * only when its endings are mixed; any other file when it holds a CRLF or the new text ends a line with a carriage return.
+ */
+function lineEndingsByEdit(fileText: string, oldString: string | undefined, newString: string | undefined): boolean
+{
+	if (oldString === undefined || newString === undefined) return false;
+	const head = fileText.slice(0, 4096);
+	const crlf = count(head, "\r\n");
+	return crlf > count(head, "\n") - crlf
+		? lineEndings(fileText) === "mixed"
+		: fileText.includes("\r\n") || CARRIAGE_RETURN_LINE_END.test(newString);
 }
 
 function stringField(input: Record<string, unknown>, key: string): string | undefined
@@ -196,7 +213,9 @@ export function analyzeFileChange(name: string, input: Record<string, unknown>, 
 	{
 		matches,
 		replacesFile: isWrite,
-		lineEndingsChange: isWrite && next !== undefined && changesLineEndings(text, next, []),
+		lineEndingsChange: isWrite
+			? next !== undefined && changesLineEndings(text, next, [])
+			: lineEndingsByEdit(fileText, oldString, newString),
 	};
 	if (
 		next === undefined ||
@@ -229,9 +248,7 @@ export function analyzeFileChange(name: string, input: Record<string, unknown>, 
 		{
 			matches,
 			diffShowsReplaced: isWrite,
-			lineEndingsChange: isWrite
-				? changesLineEndings(text, next, hunks)
-				: oldString !== undefined && newString !== undefined && changesLineEndings(oldString, newString, []),
+			lineEndingsChange: isWrite ? changesLineEndings(text, next, hunks) : base.lineEndingsChange,
 			patch:
 			{
 				hunks,
@@ -283,9 +300,6 @@ const UNREADABLE_FILE_NOTE = "Couldn’t check this file, so this shows only wha
 
 /** Upstream's `gw.lineEndingsMayChange` (z6czbH). */
 export const LINE_ENDINGS_MAY_CHANGE_NOTE = "May also change line endings.";
-
-/** Upstream's `Jv`: a carriage return ending a line, or the text. */
-const CARRIAGE_RETURN_LINE_END = /\r(?:\n|$)/;
 
 /** Upstream's `Zv`: without the file, a carriage return in the new text may change its line endings. */
 export function lineEndingsMayChange(name: string, input: Record<string, unknown>): boolean
