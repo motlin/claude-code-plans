@@ -109,7 +109,9 @@ function useFileChangeRead(name: string, input: Record<string, unknown>): FileCh
 /**
  * Upstream's `uw` (was `cx`): a previewed Write/Edit/MultiEdit card's path detail (drawn by the card, with the note
  * the file read earns) and then the change, in one grid cell: the plain body while the file read is pending, then
- * the diff in its place. A plain body the user touched stays when the read brings no disk diff.
+ * the diff in its place. A plain body the user touched stays when the read brings no disk diff, and every plain
+ * body stays when the diff would draw no lines (upstream's `onDrawn` never fires, e.g. an Edit whose old and new
+ * strings match).
  */
 export function PermissionFileChangePreview({
 	toolName,
@@ -128,16 +130,19 @@ export function PermissionFileChangePreview({
 	// Upstream keys the touch to the tool call (`d === t.id`); the input object stands for it here.
 	const [usedInput, setUsedInput] = useState<object | null>(null);
 	const keepsPlain = usedInput === toolInput && (read?.kind !== "read" || read.analysis.patch === undefined);
-	const diffShown = read !== null && !keepsPlain;
+	const view = useMemo(
+		() => (read === null ? null : fileChangeView(toolName, toolInput, read)),
+		[toolName, toolInput, read],
+	);
+	const shownView = view !== null && drawsLines(view) && !keepsPlain ? view : null;
+	const diffShown = shownView !== null;
 	return (
 		<>
 			{drawDetail(
 				shownFileChangeNote(read ?? unreadFileChange("none", toolName, toolInput), copyNote, diffShown),
 			)}
 			<div className="grid [&>*]:[grid-area:1/1] [&>*]:min-w-0">
-				{diffShown ? (
-					<FileChangeBody toolName={toolName} toolInput={toolInput} read={read} />
-				) : (
+				{shownView === null ? (
 					<PlainFileChange
 						toolName={toolName}
 						toolInput={toolInput}
@@ -146,6 +151,8 @@ export function PermissionFileChangePreview({
 							setUsedInput(toolInput);
 						}}
 					/>
+				) : (
+					<FileChangeBody path={String(toolInput["file_path"])} view={shownView} />
 				)}
 			</div>
 		</>
@@ -231,12 +238,17 @@ function textRows(text: string): number
 	return text.split("\n").length - (text.endsWith("\n") && text !== "" ? 1 : 0);
 }
 
-/** The rows of a patch's hunks: every line after the first hunk header that isn't another hunk header. */
-function patchRows(patch: string): number
+/** A patch's hunk rows: every line after the first hunk header that isn't another hunk header. */
+function patchLines(patch: string): string[]
 {
 	const lines = patch.split("\n");
 	const first = lines.findIndex((line) => line.startsWith("@@"));
-	return first === -1 ? 0 : lines.slice(first).filter((line) => /^[ +-]/.test(line)).length;
+	return first === -1 ? [] : lines.slice(first).filter((line) => /^[ +-]/.test(line));
+}
+
+function patchRows(patch: string): number
+{
+	return patchLines(patch).length;
 }
 
 type FileChangeView =
@@ -253,6 +265,17 @@ type FileChangeView =
 			content: string;
 			rows: number;
 	  };
+
+/**
+ * Upstream's `onDrawn` check (cd98a1763 `l`): the diff counts as drawn only once some row holds text. An input-only
+ * patch with no changed row draws nothing upstream (identical sides make no hunk), so its context rows don't count.
+ */
+function drawsLines(view: FileChangeView): boolean
+{
+	if (view.kind === "additions") return view.content.split("\n").some((line) => line !== "");
+	const rows = patchLines(view.patch);
+	return rows.some((line) => line.startsWith("+") || line.startsWith("-")) && rows.some((line) => line.length > 1);
+}
 
 function fileChangeView(name: string, input: Record<string, unknown>, read: FileChangeRead): FileChangeView
 {
@@ -319,17 +342,8 @@ function fileChangeView(name: string, input: Record<string, unknown>, read: File
  * Upstream's `Yx` in a card (`inCard`, `hideFileHeader`): no header, and the change in a 400px Code scroller
  * on the code theme's background, its height reserved up front at 16px a row.
  */
-function FileChangeBody({
-	toolName,
-	toolInput,
-	read,
-}: {
-	toolName: string;
-	toolInput: Record<string, unknown>;
-	read: FileChangeRead;
-})
+function FileChangeBody({path, view}: {path: string; view: FileChangeView})
 {
-	const view = useMemo(() => fileChangeView(toolName, toolInput, read), [toolName, toolInput, read]);
 	const background = useCodeThemeBackground();
 	const hostStyle = useMemo(
 		() => (
@@ -356,7 +370,7 @@ function FileChangeBody({
 					<InlinePatchDiff patch={view.patch} disableLineNumbers={!view.numbered} hostStyle={hostStyle} />
 				) : (
 					<PureSideFile
-						path={String(toolInput["file_path"])}
+						path={path}
 						content={view.content}
 						side="additions"
 						signColor={PERMISSION_SIGN_COLOR}

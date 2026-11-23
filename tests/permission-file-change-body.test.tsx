@@ -619,6 +619,64 @@ describe("PermissionFileChangePreview, upstream's plain body (uw/fw/dw)", () =>
 		expect(plainBody(container)).toBeNull();
 	});
 
+	it("keeps the plain body for good when the settled read's diff would draw no lines (upstream's onDrawn)", async () =>
+	{
+		const sameEdit =
+		{
+			file_path: "/tmp/x.txt",
+			old_string: "five",
+			new_string: "five",
+		};
+		const settled = async (container: HTMLElement) =>
+		{
+			await act(async () =>
+			{
+				await new Promise((resolve) =>
+				{
+					setTimeout(resolve, 0);
+				});
+			});
+			return {
+				texts: [
+					...container.querySelectorAll(
+						"[data-testid=approval-file-change-plain] p, [data-testid=approval-file-change-plain] div > div",
+					),
+				].map((node) => node.textContent),
+				diff: container.querySelector("[data-cds=FileDiff]"),
+				note: screen.queryByTestId("approval-detail-note")?.textContent ?? null,
+			};
+		};
+		serveFile(404);
+		const missing = preview("Edit", sameEdit);
+		await waitFor(() =>
+		{
+			expect(vi.mocked(fetch).mock.calls.length).toBe(1);
+		});
+		expect(await settled(missing.container)).toStrictEqual(
+			{
+				texts: ["Removed text", "five", "Added text", "five"],
+				diff: null,
+				note: null,
+			},
+		);
+		cleanup();
+		serveFile(200, "one\nfive\n");
+		const already = preview(
+			"Edit",
+			{
+				...sameEdit,
+			},
+		);
+		await screen.findByTestId("approval-detail-note");
+		expect(await settled(already.container)).toStrictEqual(
+			{
+				texts: ["Removed text", "five", "Added text", "five"],
+				diff: null,
+				note: "The file already holds this, so nothing would change.",
+			},
+		);
+	});
+
 	it("draws the disk diff even after a scroll once the read finds the file", async () =>
 	{
 		const answer = serveLater();
