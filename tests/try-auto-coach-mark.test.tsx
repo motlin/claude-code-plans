@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
+import {act, cleanup, fireEvent, render, screen, within} from "@testing-library/react";
 import {useState} from "react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {TryAutoCoachMark} from "../src/components/try-auto-coach-mark";
@@ -82,6 +82,42 @@ describe("TryAutoCoachMark", () =>
 			NOW + 500,
 			String(NOW + 500),
 		]);
+		// Upstream's titled layout: no leading icon, the title row holds the Dismiss, the body is plain white text.
+		const heading = within(dialog).getByRole(
+			"heading",
+			{
+				name: "Try auto mode",
+			},
+		);
+		const dismiss = within(dialog).getByRole(
+			"button",
+			{
+				name: "Dismiss",
+			},
+		);
+		expect(
+			{
+				svgsBeforeHeading: [...dialog.querySelectorAll("svg")].filter(
+					(svg) =>
+						(svg.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0 &&
+						svg.closest("[data-cds='CoachMark'] > :first-child") === null,
+				).length,
+				headingTag: heading.tagName,
+				rowHoldsDismiss: heading.parentElement?.contains(dismiss),
+				dimmedBody: dialog.querySelector(".text-white\\/85"),
+				ariaLabel: dialog.getAttribute("aria-label"),
+				labelledBy: dialog.getAttribute("aria-labelledby"),
+			},
+		).toStrictEqual(
+			{
+				svgsBeforeHeading: 0,
+				headingTag: "H2",
+				rowHoldsDismiss: true,
+				dimmedBody: null,
+				ariaLabel: null,
+				labelledBy: heading.id,
+			},
+		);
 	});
 
 	it("closes when Auto is picked", () =>

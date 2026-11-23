@@ -1,7 +1,7 @@
 // Base UI Popover, not ui/popover: anchored upstream: CoachMark.
 import {Popover} from "@base-ui/react/popover";
 import {Hand, X} from "lucide-react";
-import type {ReactNode} from "react";
+import {useId, type ReactNode} from "react";
 
 const HAND_ICON = <Hand aria-hidden="true" className="size-4 shrink-0" />;
 
@@ -9,6 +9,8 @@ const HAND_ICON = <Hand aria-hidden="true" className="size-4 shrink-0" />;
  * A one-time tip popover, like claude.ai/code's accent CoachMark: an accent-filled
  * card with an arrow pointing at `anchor`, an icon, the message and a Dismiss X,
  * optionally headed by a `title` and followed by an `action` button.
+ * With `icon={null}` and a `title`, it takes upstream's titled layout: a title row holding the Dismiss, then the
+ * message in full white across the card, labelled by the title, with the arrow overlapping the card by 2px.
  * Dismiss or Escape calls `onDismiss` (the tip is done); any other close, such as
  * an outside click, calls `onClose` so the owner can show it again later.
  */
@@ -43,6 +45,16 @@ export function CoachMark({
 	onClose: () => void;
 })
 {
+	const titleId = useId();
+	const titled = icon === null && title !== undefined;
+	const close = (
+		<Popover.Close
+			aria-label="Dismiss"
+			className={`flex shrink-0 items-center justify-center rounded-md text-white hover:bg-white/15 ${titled ? "size-6" : "ml-auto size-5"}`}
+		>
+			<X aria-hidden="true" className={titled ? "size-3" : "size-3.5"} />
+		</Popover.Close>
+	);
 	return (
 		<Popover.Root
 			open={open}
@@ -58,19 +70,22 @@ export function CoachMark({
 					anchor={anchor}
 					side={side}
 					align={align}
-					sideOffset={12}
+					sideOffset={titled ? 10 : 12}
 					className="z-[110] [filter:drop-shadow(0_8px_24px_rgb(0_0_0/0.16))_drop-shadow(0_2px_6px_rgb(0_0_0/0.12))]"
 				>
 					<Popover.Popup
 						data-cds="CoachMark"
 						data-variant="accent"
-						aria-label={title ?? message}
+						aria-labelledby={titled ? titleId : undefined}
+						aria-label={titled ? undefined : (title ?? message)}
 						aria-live="polite"
 						initialFocus={false}
 						finalFocus={false}
 						className={`${className} cursor-default rounded-card bg-accent-100 p-4 text-sm font-normal text-white outline-none transition-[opacity,scale] delay-300 duration-200 ease-out data-[ending-style]:scale-[0.97] data-[ending-style]:opacity-0 data-[ending-style]:delay-0 data-[starting-style]:scale-[0.97] data-[starting-style]:opacity-0 motion-reduce:transition-none`}
 					>
-						<Popover.Arrow className="data-[side=bottom]:top-[-12px] data-[side=left]:right-[-20px] data-[side=left]:-rotate-90 data-[side=right]:left-[-20px] data-[side=right]:rotate-90 data-[side=top]:bottom-[-12px] data-[side=top]:rotate-180">
+						<Popover.Arrow
+							className={`data-[side=bottom]:top-[-12px] data-[side=left]:right-[-20px] data-[side=left]:-rotate-90 data-[side=right]:left-[-20px] data-[side=right]:rotate-90 data-[side=top]:rotate-180 ${titled ? "data-[side=top]:bottom-[-10px]" : "data-[side=top]:bottom-[-12px]"}`}
+						>
 							<svg
 								aria-hidden="true"
 								width="28"
@@ -81,25 +96,34 @@ export function CoachMark({
 								<path d="M0 0H28V2C23.5 2 22.8 2.2 21.6 3.3L15.6 8.6C14.7 9.4 13.3 9.4 12.4 8.6L6.4 3.3C5.2 2.2 4.5 2 0 2Z" />
 							</svg>
 						</Popover.Arrow>
-						<div className="flex items-start gap-2">
-							<div className="flex min-w-[13rem] flex-1 flex-row items-start gap-2">
-								{icon}
-								{title === undefined ? (
-									<p>{message}</p>
-								) : (
-									<div className="flex flex-col gap-1">
-										<p className="font-medium">{title}</p>
-										<p className="text-white/85">{message}</p>
-									</div>
-								)}
+						{titled ? (
+							<div className="flex flex-col gap-1 text-pretty [overflow-wrap:anywhere]">
+								<div className="flex items-start gap-3">
+									<h2 id={titleId} className="min-w-0 font-semibold break-words">
+										{title}
+									</h2>
+									<span className="ml-auto flex size-[1lh] shrink-0 items-center justify-center">
+										{close}
+									</span>
+								</div>
+								{message}
 							</div>
-							<Popover.Close
-								aria-label="Dismiss"
-								className="ml-auto flex size-5 shrink-0 items-center justify-center rounded-md text-white hover:bg-white/15"
-							>
-								<X aria-hidden="true" className="size-3.5" />
-							</Popover.Close>
-						</div>
+						) : (
+							<div className="flex items-start gap-2">
+								<div className="flex min-w-[13rem] flex-1 flex-row items-start gap-2">
+									{icon}
+									{title === undefined ? (
+										<p>{message}</p>
+									) : (
+										<div className="flex flex-col gap-1">
+											<p className="font-medium">{title}</p>
+											<p className="text-white/85">{message}</p>
+										</div>
+									)}
+								</div>
+								{close}
+							</div>
+						)}
 						{action && (
 							<div className="mt-3 flex justify-end">
 								<button

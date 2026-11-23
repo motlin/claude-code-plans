@@ -43,6 +43,7 @@ export function TryAutoCoachMark({eligible, anchor}: {eligible: boolean; anchor:
 			anchor={anchor}
 			side="top"
 			className="max-w-xs"
+			icon={null}
 			title="Try auto mode"
 			message="Claude checks each tool call and runs ones that pass its safety checks. Choose Auto from this menu anytime."
 			onDismiss={close}
