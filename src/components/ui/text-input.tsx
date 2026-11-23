@@ -1,7 +1,7 @@
 /*
  * Upstream's cds `Field` (shared-frame `$_`) and `TextInput` (`Ef`).
  *
- * Copied: the class strings (`fG`, `uk`/`fT`, `Q2`, `zv`, `t5`, `Ab`, `a0`, `ZD`, `HG`), the slot form (a painted
+ * Copied: the class strings (`fG`, `uk`/`fT`, `Q2`, `zv`, `t5`, `Ab`, `a0`, `HG`), the slot form (a painted
  * wrapper with start/end slots around a bare `cds-input`) and the bare form (one input carrying the shell), the
  * click-to-focus wrapper, the nested ghost Clear (`clearable` true or "always"; untabbable and mousedown-guarded
  * while it has something to clear), Escape-to-clear after the consumer's handler, and the Field's
@@ -102,8 +102,12 @@ export function Field({className, validationMode = "onBlur", ...props}: Componen
 	);
 }
 
-/** Upstream `fG`: the field paint, with upstream's `field-fill` (5% ink fill, transparent edge, ring-less light focus). */
-const FIELD_PAINT = "bg-fill-field shadow-field-ring field-fill data-[invalid]:shadow-field-invalid";
+/**
+ * Upstream `fG`: the field paint, with upstream's `field-fill` (5% ink fill, transparent edge, ring-less light
+ * focus) and its forced-colors outline (1px CanvasText, 2px while invalid) when not focus-visible.
+ */
+const FIELD_PAINT =
+	"bg-fill-field shadow-field-ring field-fill data-[invalid]:shadow-field-invalid forced-colors:[&:not(:focus-visible)]:[outline:1px_solid_CanvasText] forced-colors:[&:not(:focus-visible)]:[outline-offset:-1px] forced-colors:data-[invalid]:[&:not(:focus-visible)]:[outline-width:2px] forced-colors:data-[invalid]:[&:not(:focus-visible)]:[outline-offset:-2px]";
 /** Upstream's `field-fill-hover`, last on both forms: the hover fill. */
 const FIELD_FILL_HOVER = "field-fill-hover";
 /** Upstream `Ab`: the hover ring, off while focused, invalid or disabled. */
@@ -113,21 +117,21 @@ const FIELD_HOVER =
 const TEXT_INPUT_SHELL = `h-control ps-md rounded ${FIELD_PAINT} font-sans text-body font-normal text-primary transition duration-fast`;
 /** Upstream `HG`: the end inset while a nested control sits there. */
 const NESTED_END_PAD = "pe-[calc((var(--cds-h-control)-var(--cds-h-control-nested))/2)]";
-/** Upstream `ZD`. */
-const SOLID_END_BUTTON_PAD =
-	"has-[[data-cds-end-slot]_[data-cds=Button]:not([data-cds-ghost])]:pe-[calc((var(--cds-h-control)-var(--cds-h-control-nested))/2)]";
 /** Upstream `zv` (slot form) and `t5` (bare form) focus rings. */
 const FOCUS_WITHIN = "has-[:focus-visible]:shadow-focus data-[invalid]:has-[:focus-visible]:shadow-focus-danger";
 const FOCUS_SELF = "focus-visible:shadow-focus data-[invalid]:focus-visible:shadow-focus-danger";
 /** Upstream `Q2`, with the slot form's `disabled:opacity-100` (the wrapper dims instead). */
 const SLOT_INPUT_CLASS =
-	"cds-input cds-reset min-w-0 flex-1 h-full bg-transparent border-0 p-0 outline-none focus-visible:outline-hidden text-body font-normal text-primary focus-visible:shadow-none placeholder:text-ink-muted disabled:opacity-100";
+	"cds-input cds-reset min-w-0 flex-1 h-full bg-transparent border-0 p-0 outline-none focus-visible:outline-hidden text-body font-normal text-primary focus-visible:shadow-none placeholder:text-ink-muted w-full disabled:opacity-100";
 /** Upstream `qf`: the slots' stays-secondary ink. */
 const SLOT_INK = "text-secondary";
-/** Upstream `a0`: sizes a solid button nested in the end slot. */
+/** Upstream `a0`: sizes a solid or icon-only button nested in the end slot. */
 const NESTED_BUTTON_SIZING =
-	"[&_[data-cds=Button]:not([data-cds-ghost])]:h-[var(--fhn)] [&_[data-cds=Button]:not([data-cds-ghost])]:rounded-[calc(var(--fr)-(var(--fh)-var(--fhn))/2)] [&_[data-cds=Button][data-cds-icon-only]:not([data-cds-ghost])]:w-[var(--fhn)]";
-const END_SLOT_CLASS = `flex shrink-0 items-center gap-[var(--cds-pad-sm,6px)] ${SLOT_INK} [--fh:var(--cds-h-control)] [--fr:var(--upstream-radius)] [--fhn:var(--cds-h-control-nested)] ${NESTED_BUTTON_SIZING}`;
+	"[&_[data-cds=Button]:not([data-cds-ghost]:not([data-cds-icon-only]))]:h-[var(--fhn)] [&_[data-cds=Button]:not([data-cds-ghost]:not([data-cds-icon-only]))]:rounded-[calc(var(--fr)-(var(--fh)-var(--fhn))/2)] [&_[data-cds=Button][data-cds-icon-only]]:w-[var(--fhn)]";
+/** Upstream's end-slot inset that pulls a solid nested button toward the edge (replacing the wrapper's `ZD`). */
+const SOLID_END_BUTTON_INSET =
+	"has-[[data-cds=Button]:not([data-cds-ghost]:not([data-cds-icon-only]))]:me-[calc((var(--fh)-var(--fhn))/2-var(--cds-pad-md))]";
+const END_SLOT_CLASS = `flex shrink-0 items-center gap-[var(--cds-pad-sm,6px)] ${SLOT_INK} [--fh:var(--cds-h-control)] [--fr:var(--upstream-radius)] [--fhn:var(--cds-h-control-nested)] ${NESTED_BUTTON_SIZING} ${SOLID_END_BUTTON_INSET}`;
 /** Upstream `ta`: a non-base size is marked with `data-size`. */
 function sizeAttr(size: TextInputSize | undefined)
 {
@@ -335,7 +339,6 @@ export function TextInput({
 		[
 			TEXT_INPUT_SHELL,
 			clearButton === null ? "pe-md" : NESTED_END_PAD,
-			SOLID_END_BUTTON_PAD,
 			fullWidth ? "inline-flex w-full min-w-0" : "inline-flex",
 			disabled ? "cursor-default" : "cursor-text",
 			"items-center gap-[var(--cds-pad-sm,6px)]",

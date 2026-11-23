@@ -15,6 +15,10 @@ const SHELL = [
 	"shadow-field-ring",
 	"field-fill",
 	"data-[invalid]:shadow-field-invalid",
+	"forced-colors:[&:not(:focus-visible)]:[outline:1px_solid_CanvasText]",
+	"forced-colors:[&:not(:focus-visible)]:[outline-offset:-1px]",
+	"forced-colors:data-[invalid]:[&:not(:focus-visible)]:[outline-width:2px]",
+	"forced-colors:data-[invalid]:[&:not(:focus-visible)]:[outline-offset:-2px]",
 	"font-sans",
 	"text-body",
 	"font-normal",
@@ -23,7 +27,6 @@ const SHELL = [
 	"duration-fast",
 ];
 const TAIL = [
-	"has-[[data-cds-end-slot]_[data-cds=Button]:not([data-cds-ghost])]:pe-[calc((var(--cds-h-control)-var(--cds-h-control-nested))/2)]",
 	"inline-flex",
 	"w-full",
 	"min-w-0",
@@ -104,7 +107,7 @@ describe("TextInput", () =>
 				cds: "TextInput",
 				classes: [...SHELL, "pe-md", ...TAIL],
 				start: "flex shrink-0 items-center text-secondary",
-				input: "cds-input cds-reset min-w-0 flex-1 h-full bg-transparent border-0 p-0 outline-none focus-visible:outline-hidden text-body font-normal text-primary focus-visible:shadow-none placeholder:text-ink-muted disabled:opacity-100",
+				input: "cds-input cds-reset min-w-0 flex-1 h-full bg-transparent border-0 p-0 outline-none focus-visible:outline-hidden text-body font-normal text-primary focus-visible:shadow-none placeholder:text-ink-muted w-full disabled:opacity-100",
 				type: null,
 				clear: null,
 				endSlot: null,
@@ -147,7 +150,7 @@ describe("TextInput", () =>
 			{
 				shell: [...SHELL, NESTED_PE, ...TAIL],
 				endSlot:
-					"flex shrink-0 items-center gap-[var(--cds-pad-sm,6px)] text-secondary [--fh:var(--cds-h-control)] [--fr:var(--upstream-radius)] [--fhn:var(--cds-h-control-nested)] [&_[data-cds=Button]:not([data-cds-ghost])]:h-[var(--fhn)] [&_[data-cds=Button]:not([data-cds-ghost])]:rounded-[calc(var(--fr)-(var(--fh)-var(--fhn))/2)] [&_[data-cds=Button][data-cds-icon-only]:not([data-cds-ghost])]:w-[var(--fhn)]",
+					"flex shrink-0 items-center gap-[var(--cds-pad-sm,6px)] text-secondary [--fh:var(--cds-h-control)] [--fr:var(--upstream-radius)] [--fhn:var(--cds-h-control-nested)] [&_[data-cds=Button]:not([data-cds-ghost]:not([data-cds-icon-only]))]:h-[var(--fhn)] [&_[data-cds=Button]:not([data-cds-ghost]:not([data-cds-icon-only]))]:rounded-[calc(var(--fr)-(var(--fh)-var(--fhn))/2)] [&_[data-cds=Button][data-cds-icon-only]]:w-[var(--fhn)] has-[[data-cds=Button]:not([data-cds-ghost]:not([data-cds-icon-only]))]:me-[calc((var(--fh)-var(--fhn))/2-var(--cds-pad-md))]",
 				endSlotAttr: "",
 				clear:
 				{

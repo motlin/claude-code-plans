@@ -355,7 +355,7 @@ describe("Appearance settings ▸ Code", () =>
 				placeholder: "e.g. JetBrains Mono",
 				cds: "TextInput",
 				className:
-					"cds-input cds-reset h-control ps-md rounded bg-fill-field shadow-field-ring field-fill data-[invalid]:shadow-field-invalid font-sans text-body font-normal text-primary transition duration-fast pe-md placeholder:text-ink-muted outline-none focus-visible:outline-hidden enabled:[&:hover:not(:focus):not([data-invalid])]:shadow-field-hover disabled:opacity-disabled focus-visible:shadow-focus data-[invalid]:focus-visible:shadow-focus-danger field-fill-hover w-56",
+					"cds-input cds-reset h-control ps-md rounded bg-fill-field shadow-field-ring field-fill data-[invalid]:shadow-field-invalid forced-colors:[&:not(:focus-visible)]:[outline:1px_solid_CanvasText] forced-colors:[&:not(:focus-visible)]:[outline-offset:-1px] forced-colors:data-[invalid]:[&:not(:focus-visible)]:[outline-width:2px] forced-colors:data-[invalid]:[&:not(:focus-visible)]:[outline-offset:-2px] font-sans text-body font-normal text-primary transition duration-fast pe-md placeholder:text-ink-muted outline-none focus-visible:outline-hidden enabled:[&:hover:not(:focus):not([data-invalid])]:shadow-field-hover disabled:opacity-disabled focus-visible:shadow-focus data-[invalid]:focus-visible:shadow-focus-danger field-fill-hover w-56",
 				custom: '"Fira Code", "SF Mono", ui-monospace, Menlo, Consolas, monospace',
 				cleared: "",
 				stored: "",
