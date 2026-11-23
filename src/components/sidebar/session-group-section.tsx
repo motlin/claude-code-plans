@@ -1194,7 +1194,7 @@ function FamilyStub({
 {
 	const {label, shown, ariaLabel} = familyStubLabel(tally, someListed);
 	const separator = (
-		<span aria-hidden="true" className="px-1.5 text-ink-muted">
+		<span aria-hidden="true" className="px-1.5 text-secondary">
 			·
 		</span>
 	);

@@ -392,7 +392,9 @@ describe("sidebar session families", () =>
 				)?.textContent,
 				segments: segments.map((segment) => segment.textContent),
 				separators: segments.map((segment) =>
-					segment.firstElementChild?.matches('span[aria-hidden="true"].px-1\\.5.text-ink-muted'),
+					segment.firstElementChild?.matches(
+						'span[aria-hidden="true"].px-1\\.5.text-secondary:not(.text-ink-muted)',
+					),
 				),
 				unreadInk: segments[0]?.querySelector(":scope > span.flex.items-center.gap-1\\.5.text-upstream-accent")
 					?.textContent,
