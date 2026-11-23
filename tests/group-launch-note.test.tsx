@@ -76,7 +76,7 @@ describe("GroupLaunchNote", () =>
 								},
 								{
 									tag: "span",
-									class: "flex min-w-0 font-medium text-primary",
+									class: "flex min-w-0 font-control text-primary",
 									children: [
 										{
 											tag: "span",
@@ -127,7 +127,7 @@ describe("GroupLaunchNote", () =>
 				children: [
 					{
 						tag: "span",
-						class: "font-medium text-primary",
+						class: "font-control text-primary",
 						text: "Infra",
 					},
 					{
