@@ -1129,6 +1129,22 @@ describe("permission title copy", () =>
 			label: "Permission request: use create issue (github)",
 			detail: null,
 		},
+		{
+			tool: "Workflow",
+			input:
+			{
+				name: "upstream-sync-noop",
+				description: "Does nothing",
+			},
+			title: "Allow Claude to run the workflow upstream-sync-noop?",
+			parts: [
+				[PRIMARY, "run the workflow"],
+				[PRIMARY, "upstream-sync-noop"],
+			],
+			valueClass: null,
+			label: "Permission request: run the workflow",
+			detail: null,
+		},
 	])("titles $tool $input as upstream does", ({tool, input, title, parts, valueClass, label, detail}) =>
 	{
 		const pending = findPendingPermission(
@@ -1159,6 +1175,7 @@ describe("permission title copy", () =>
 				parts: [...(value?.children ?? [])].map((span) => [span.className, span.textContent]),
 				valueClass: value?.getAttribute("class") ?? null,
 				approvalValue: value?.hasAttribute("data-approval-value"),
+				parentIsTitle: value?.parentElement?.hasAttribute("data-permission-title"),
 				label: card.getAttribute("aria-label"),
 				detail: card.querySelector("[data-permission-detail]")?.textContent ?? null,
 			},
@@ -1168,6 +1185,7 @@ describe("permission title copy", () =>
 				parts,
 				valueClass,
 				approvalValue: valueClass === null,
+				parentIsTitle: true,
 				label,
 				detail,
 			},

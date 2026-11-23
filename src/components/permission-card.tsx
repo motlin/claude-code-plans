@@ -1424,28 +1424,26 @@ function PermissionTitleText({title, clamp}: {title: PermissionTitle; clamp: boo
 {
 	if (!("action" in title)) return <span className={TITLE_PART}>{title.heading}</span>;
 	return (
-		<span className="min-w-0 break-words">
-			<span
-				data-permission-title-value
-				{...(clamp
-					?
-						{
-							className: "line-clamp-2",
-						}
-					:
-						{
-							"data-approval-value": "",
-						})}
-			>
-				Allow Claude to <span className={TITLE_PART}>{title.action}</span>
-				{title.meta !== null && (
-					<>
-						{" "}
-						<span className={TITLE_PART}>{title.meta}</span>
-					</>
-				)}
+		<span
+			data-permission-title-value
+			{...(clamp
 				?
-			</span>
+					{
+						className: "line-clamp-2",
+					}
+				:
+					{
+						"data-approval-value": "",
+					})}
+		>
+			Allow Claude to <span className={TITLE_PART}>{title.action}</span>
+			{title.meta !== null && (
+				<>
+					{" "}
+					<span className={TITLE_PART}>{title.meta}</span>
+				</>
+			)}
+			?
 		</span>
 	);
 }
