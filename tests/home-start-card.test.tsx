@@ -424,6 +424,7 @@ describe("StartCard", () =>
 		const before =
 		{
 			testid: card?.getAttribute("data-testid"),
+			className: card?.getAttribute("class"),
 			children: [...(card?.children ?? [])].map((child) => child.getAttribute("data-testid") ?? child.tagName),
 			wrapper:
 			{
@@ -472,6 +473,7 @@ describe("StartCard", () =>
 		).toStrictEqual(
 			{
 				testid: "epitaxy-start-card",
+				className: "relative flex w-full min-w-0 flex-col items-center gap-3 p-px",
 				children: ["start-card-clawd", "start-card-environments"],
 				wrapper:
 				{

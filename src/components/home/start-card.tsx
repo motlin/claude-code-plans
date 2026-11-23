@@ -93,7 +93,7 @@ export function StartCard({projects, selected, onSelect, nextSteps}: StartCardPr
 		<div
 			data-start-card
 			data-testid="epitaxy-start-card"
-			className="flex w-full min-w-0 flex-col items-center gap-3 p-px"
+			className="relative flex w-full min-w-0 flex-col items-center gap-3 p-px"
 		>
 			<ClawdMascot />
 			{projects.length > 0 && (
