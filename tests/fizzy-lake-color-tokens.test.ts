@@ -729,10 +729,10 @@ describe("fizzy-lake color tokens under prefers-contrast: more", () =>
 				},
 				dark:
 				{
-					"--settings-switch-track": "#fff6",
-					"--settings-switch-track-hover": "#ffffff70",
-					"--menu-switch-track": "#fff6",
-					"--menu-switch-track-hover": "#ffffff70",
+					"--settings-switch-track": "#ffffff80",
+					"--settings-switch-track-hover": "#ffffff99",
+					"--menu-switch-track": "#ffffff80",
+					"--menu-switch-track-hover": "#ffffff99",
 				},
 			},
 		);

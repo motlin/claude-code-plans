@@ -1569,10 +1569,14 @@ html[data-interface-font="dyslexic"]
 		--upstream-text-muted: #ffffffad;
 		--field-ring-shadow: inset 0 0 0 1px #ffffff80;
 		--field-hover-shadow: inset 0 0 0 1px #ffffff99;
-		--settings-switch-track: #fff6;
-		--settings-switch-track-hover: #ffffff70;
-		--menu-switch-track: #fff6;
-		--menu-switch-track-hover: #ffffff70;
+		/*
+		 * Upstream c6a992d55 base contrast block --cds-switch-track: var(--cds-alpha-5); --cds-switch-track-hover:
+		 * var(--cds-alpha-6), no dark override (2026-11-21). The menu pair is restated because .dark sets it directly.
+		 */
+		--settings-switch-track: #ffffff80;
+		--settings-switch-track-hover: #ffffff99;
+		--menu-switch-track: #ffffff80;
+		--menu-switch-track-hover: #ffffff99;
 		--checkbox-edge: #ffffff80;
 		--checkbox-edge-hover: #ffffff99;
 		--composer-ring: #ffffff80;
