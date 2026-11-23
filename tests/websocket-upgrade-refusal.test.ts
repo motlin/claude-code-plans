@@ -30,6 +30,10 @@ let server: Server;
 let port: number;
 let configHome: string;
 const previousConfigHome = process.env["XDG_CONFIG_HOME"];
+/** Called with each upgrade's path as the route's `upgrade` hook starts, before it first awaits. */
+let onUpgradeStarted = (_pathname: string): void =>
+{
+};
 
 beforeAll(async () =>
 {
@@ -43,7 +47,21 @@ beforeAll(async () =>
 				{
 					crossws?: Partial<Hooks>;
 				} = await app.fetch(req);
-				return response.crossws ?? {};
+				const upgrade = response.crossws?.upgrade;
+				// Only the upgrade hook decides the handshake. The routes' open hooks probe the machine's real tmux and
+				// herdr servers and open the app database after the 101 is sent, which only leaks slow background work
+				// into the later tests of this shared worker.
+				return upgrade === undefined
+					? {}
+					:
+						{
+							upgrade: async (request) =>
+							{
+								const result = upgrade(request);
+								onUpgradeStarted(new URL(request.url).pathname);
+								return result;
+							},
+						};
 			},
 		},
 	);
@@ -243,34 +261,50 @@ describe("per-route WebSocket upgrade checks under the crossws node adapter", ()
 		it("holds every socket's upgrade that arrives before the SSR entry sets the takeover hold, then upgrades it once the databases open", async () =>
 		{
 			const events: string[] = [];
+			const paths = [SHELL_PATH, CONTROL_PATH, OBSERVE_PATH];
+			// Each route's upgrade hook awaits the hold as its first step, so once all three have started they are parked on it.
+			const started = new Set<string>();
+			const allStarted = new Promise<void>((resolve) =>
+			{
+				onUpgradeStarted = (pathname) =>
+				{
+					started.add(pathname);
+					if (started.size === paths.length) resolve();
+				};
+			});
 			// server/plugins/request-hold.ts runs this when the worker starts, before it serves any upgrade.
 			expectRequestHold();
 			const upgraded = Promise.all(
-				[SHELL_PATH, CONTROL_PATH, OBSERVE_PATH].map(async (path) =>
+				paths.map(async (path) =>
 				{
 					const result = await handshake(path, SAME_ORIGIN);
 					events.push(`${String(result.status)} ${new URL(path, "http://localhost").pathname}`);
 				}),
 			);
+
+			await allStarted;
+			onUpgradeStarted = () =>
+			{
+			};
+			events.push("hold set");
 			let openDatabases = (): void =>
 			{
 			};
-			setTimeout(() =>
+			holdRequestsUntil(
+				new Promise<void>((resolve) =>
+				{
+					openDatabases = resolve;
+				}),
+				() => new Response("unused"),
+			);
+			// Give a leaky hold time to let the parked upgrades through before the databases open; a slow machine only
+			// stretches the window, it cannot reorder the events.
+			await new Promise((resolve) =>
 			{
-				events.push("hold set");
-				holdRequestsUntil(
-					new Promise<void>((resolve) =>
-					{
-						openDatabases = resolve;
-					}),
-					() => new Response("unused"),
-				);
-			}, 50);
-			setTimeout(() =>
-			{
-				events.push("databases opened");
-				openDatabases();
-			}, 100);
+				setTimeout(resolve, 50);
+			});
+			events.push("databases opened");
+			openDatabases();
 
 			await upgraded;
 
