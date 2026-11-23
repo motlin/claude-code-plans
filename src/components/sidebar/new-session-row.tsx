@@ -7,7 +7,7 @@ import {Icon} from "../ui/icon";
 
 /** Upstream's sidebar header row (`Xx` variant nav), shared by New and the Search row under it. */
 export const NAV_ROW_CLASS =
-	"group df-nav-row w-full h-[var(--sb-row-h)] rounded-[var(--sb-radius)] flex-1 hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--color-accent-100),0_0_6px_0_color-mix(in_srgb,var(--color-accent-100)_20%,transparent)] hover:[&_.df-leading-slot]:text-primary";
+	"group df-nav-row w-full h-[var(--sb-row-h)] rounded-[var(--sb-radius)] flex-1 hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--upstream-fill-accent),0_0_6px_0_color-mix(in_srgb,var(--upstream-fill-accent)_20%,transparent)] hover:[&_.df-leading-slot]:text-primary";
 
 /**
  * Upstream's trailing text-variant Shortcut on the header rows: revealed by hover only (not by

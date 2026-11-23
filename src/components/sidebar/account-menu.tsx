@@ -138,7 +138,7 @@ export function AccountMenu()
 				<MenuTrigger
 					data-testid="user-menu-button"
 					data-prefetch="settings"
-					className="df-user-menu-btn group/btn relative inline-flex h-7 max-w-full min-w-0 items-center justify-start gap-1.5 rounded-r6 ps-0.5 pe-3 align-top text-left hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--color-accent-100),0_0_6px_0_color-mix(in_srgb,var(--color-accent-100)_20%,transparent)]"
+					className="df-user-menu-btn group/btn relative inline-flex h-7 max-w-full min-w-0 items-center justify-start gap-1.5 rounded-r6 ps-0.5 pe-3 align-top text-left hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--upstream-fill-accent),0_0_6px_0_color-mix(in_srgb,var(--upstream-fill-accent)_20%,transparent)]"
 				>
 					<span aria-hidden="true" className="absolute inset-0 -z-[1] rounded-[inherit]">
 						<span

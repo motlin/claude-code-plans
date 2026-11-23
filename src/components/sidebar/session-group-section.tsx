@@ -456,7 +456,7 @@ export function GroupSection({
 				{
 					toggleSidebarGroup(group.key);
 				}}
-				className="group/label -my-1 -ml-1 flex min-w-0 flex-1 items-center gap-1.25 rounded-[var(--sb-radius)] py-1 pl-1 text-left hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--color-accent-100),0_0_6px_0_color-mix(in_srgb,var(--color-accent-100)_20%,transparent)]"
+				className="group/label -my-1 -ml-1 flex min-w-0 flex-1 items-center gap-1.25 rounded-[var(--sb-radius)] py-1 pl-1 text-left hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--upstream-fill-accent),0_0_6px_0_color-mix(in_srgb,var(--upstream-fill-accent)_20%,transparent)]"
 			>
 				<span data-group-name className="min-w-0">
 					<FadeLabel text={group.label} />
@@ -886,7 +886,7 @@ function OverflowRow({
 				if (inert || event.detail > 1) return;
 				onClick(event);
 			}}
-			className={`${ROW_CLASS} text-ink-muted hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--color-accent-100),0_0_6px_0_color-mix(in_srgb,var(--color-accent-100)_20%,transparent)] hover:bg-[var(--sb-hover)] hover:text-secondary aria-disabled:pointer-events-none aria-disabled:opacity-70 aria-disabled:data-[held]:pointer-events-auto data-[held]:hover:bg-transparent data-[held]:hover:text-ink-muted`}
+			className={`${ROW_CLASS} text-ink-muted hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--upstream-fill-accent),0_0_6px_0_color-mix(in_srgb,var(--upstream-fill-accent)_20%,transparent)] hover:bg-[var(--sb-hover)] hover:text-secondary aria-disabled:pointer-events-none aria-disabled:opacity-70 aria-disabled:data-[held]:pointer-events-auto data-[held]:hover:bg-transparent data-[held]:hover:text-ink-muted`}
 		>
 			<span className="ps-[var(--sb-iconless-pad)]">{children}</span>
 			{awaiting && (
@@ -1079,7 +1079,7 @@ function FamilyCaret({headId, title}: {headId: string; title: string})
 					{
 						if (event.key === "Enter" || event.key === " ") toggle(event);
 					}}
-					className="hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--color-accent-100),0_0_6px_0_color-mix(in_srgb,var(--color-accent-100)_20%,transparent)] -m-0.5 flex shrink-0 cursor-pointer items-center justify-center rounded p-0.5 hover:bg-[var(--upstream-fill-ghost-hover)] hover:text-primary text-[color:var(--muted-as-secondary,var(--color-ink-muted))]"
+					className="hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--upstream-fill-accent),0_0_6px_0_color-mix(in_srgb,var(--upstream-fill-accent)_20%,transparent)] -m-0.5 flex shrink-0 cursor-pointer items-center justify-center rounded p-0.5 hover:bg-[var(--upstream-fill-ghost-hover)] hover:text-primary text-[color:var(--muted-as-secondary,var(--color-ink-muted))]"
 				>
 					<Icon
 						name="CaretDownSmall"
@@ -1454,7 +1454,7 @@ function SessionRowLink({
 					{
 						if (selection?.onRowClick(row.sessionId, event) === true) event.preventDefault();
 					}}
-					className={`${rowClass} text-secondary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--color-accent-100),0_0_6px_0_color-mix(in_srgb,var(--color-accent-100)_20%,transparent)] data-[selected=focused]:text-primary data-[multi-selected]:not-data-[selected=focused]:bg-[var(--sb-session-selected)] data-[multi-selected]:text-primary`}
+					className={`${rowClass} text-secondary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--upstream-fill-accent),0_0_6px_0_color-mix(in_srgb,var(--upstream-fill-accent)_20%,transparent)] data-[selected=focused]:text-primary data-[multi-selected]:not-data-[selected=focused]:bg-[var(--sb-session-selected)] data-[multi-selected]:text-primary`}
 				>
 					{metaLine === undefined ? (
 						titleLine
@@ -1489,7 +1489,7 @@ function SessionRowLink({
 const ROW_SHELL_CLASS =
 	"rounded-[var(--sb-radius)] hover:bg-[var(--sb-hover)] has-[:focus-visible]:bg-[var(--sb-hover)] data-[menu-open=true]:bg-[var(--sb-hover)] data-[context-menu-open=true]:bg-[var(--sb-hover)] has-[[data-row-main-button][data-selected=focused]]:bg-[var(--sb-session-selected)] hover:has-[[data-row-main-button][data-selected=focused]]:bg-[var(--selected-hover,var(--sb-session-selected))]";
 
-const ROW_MAIN_CLASS = `${ROW_CLASS} text-secondary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--color-accent-100),0_0_6px_0_color-mix(in_srgb,var(--color-accent-100)_20%,transparent)] data-[selected=focused]:text-primary data-[multi-selected]:not-data-[selected=focused]:bg-[var(--sb-session-selected)] data-[multi-selected]:text-primary`;
+const ROW_MAIN_CLASS = `${ROW_CLASS} text-secondary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--upstream-fill-accent),0_0_6px_0_color-mix(in_srgb,var(--upstream-fill-accent)_20%,transparent)] data-[selected=focused]:text-primary data-[multi-selected]:not-data-[selected=focused]:bg-[var(--sb-session-selected)] data-[multi-selected]:text-primary`;
 
 /**
  * Upstream's optimistic spawn row (`EY` while `rowKey in A_.pending`): a launch this tab started, drawn in Working

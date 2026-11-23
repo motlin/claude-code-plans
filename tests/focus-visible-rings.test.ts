@@ -40,8 +40,9 @@ describe("focus rings", () =>
 const SHADOW_FOCUS = "hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
 const INSET_FOCUS =
 	"hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--color-accent-100),inset_0_0_6px_1px_color-mix(in_srgb,var(--color-accent-100)_20%,transparent)]";
+// Upstream's sidebar ring constant (`ee`) draws in --cds-fill-accent (#257de0), not --accent-100.
 const ROW_FOCUS =
-	"hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--color-accent-100),0_0_6px_0_color-mix(in_srgb,var(--color-accent-100)_20%,transparent)]";
+	"hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--upstream-fill-accent),0_0_6px_0_color-mix(in_srgb,var(--upstream-fill-accent)_20%,transparent)]";
 
 describe("hand-rolled focus rings", () =>
 {
@@ -185,6 +186,11 @@ describe("sidebar nav row focus ring", () =>
 					`ps-0.5 pe-3 align-top text-left ${ROW_FOCUS}"`,
 				),
 				accountMenuBackground: has("src/components/sidebar/account-menu.tsx", "focus-visible:bg-"),
+				accent100Rings: sources("src/components/sidebar").filter((path) =>
+					readFileSync(path, "utf8").includes(
+						"focus-visible:shadow-[inset_0_0_0_1px_var(--color-accent-100)",
+					),
+				),
 			},
 		).toStrictEqual(
 			{
@@ -195,6 +201,7 @@ describe("sidebar nav row focus ring", () =>
 				fallbackRow: true,
 				accountMenu: true,
 				accountMenuBackground: false,
+				accent100Rings: [],
 			},
 		);
 	});
