@@ -21,6 +21,10 @@ export function shellCommandUnavailableMessage(variant: "session" | "home"): str
 		: "Shell command runner unavailable.";
 }
 
+/** Upstream VnmOei: a bash-mode command holding an accepted @ mention is refused rather than run. */
+export const SHELL_PLAIN_TEXT_REFUSAL =
+	"A shell command takes plain text only, so nothing was sent. Remove @-mentions, slash commands, and formatting.";
+
 /** Upstream WeHyjY: a bash-mode command with hidden characters is refused rather than run. */
 export const HIDDEN_CHARACTERS_REFUSAL =
 	"This command contains hidden characters, so it wasn’t run. Retype it to run it.";

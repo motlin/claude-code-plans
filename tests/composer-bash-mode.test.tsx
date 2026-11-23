@@ -24,6 +24,7 @@ import
 	hasHiddenCharacters,
 	isShellCommandText,
 	runShellCommandInPane,
+	SHELL_PLAIN_TEXT_REFUSAL,
 	shellCommandUnavailableMessage,
 } from "../src/lib/composer-shell-command";
 
@@ -658,9 +659,10 @@ describe("Composer bash mode with a live pane", () =>
 				),
 			),
 		);
-		const {textarea} = renderComposer(
+		const onShellCommand = vi.fn<(command: string) => Promise<boolean>>().mockResolvedValue(true);
+		const {textarea, handlers} = renderComposer(
 			{
-				onShellCommand: vi.fn<(command: string) => Promise<boolean>>().mockResolvedValue(true),
+				onShellCommand,
 				mentionSessionId: "session-alice",
 			},
 		);
@@ -707,6 +709,21 @@ describe("Composer bash mode with a live pane", () =>
 		);
 		const value = textarea.value;
 		const open = screen.queryByRole("listbox");
+		// Upstream rp/Dp: an accepted mention is a non-text node, so the bash-mode send is refused and the draft kept.
+		fireEvent.keyDown(
+			textarea,
+			{
+				key: "Enter",
+			},
+		);
+		await flush();
+		const afterSend =
+		{
+			value: textarea.value,
+			bashMode: composerRoot().getAttribute("data-bash-mode"),
+			commands: onShellCommand.mock.calls,
+			toasts: handlers.toast.mock.calls,
+		};
 		// A chip would swallow Backspace at its end and delete the whole token; plain text leaves it to the textarea.
 		textarea.setSelectionRange(14, 14);
 		const backspaceNotCancelled = fireEvent.keyDown(
@@ -724,6 +741,7 @@ describe("Composer bash mode with a live pane", () =>
 				backspaceNotCancelled,
 				bashMode: composerRoot().getAttribute("data-bash-mode"),
 				open,
+				afterSend,
 			},
 		).toStrictEqual(
 			{
@@ -733,6 +751,59 @@ describe("Composer bash mode with a live pane", () =>
 				backspaceNotCancelled: true,
 				bashMode: "true",
 				open: null,
+				afterSend:
+				{
+					value: "cat @README.md ",
+					bashMode: "true",
+					commands: [],
+					toasts: [
+						[
+							{
+								kind: "error",
+								message: SHELL_PLAIN_TEXT_REFUSAL,
+							},
+						],
+					],
+				},
+			},
+		);
+	});
+
+	it("runs a hand-typed @ that was never accepted as a mention", async () =>
+	{
+		const onShellCommand = vi.fn<(command: string) => Promise<boolean>>().mockResolvedValue(true);
+		const {textarea, handlers} = renderComposer(
+			{
+				onShellCommand,
+			},
+		);
+		pressBang(textarea);
+		fireEvent.change(
+			textarea,
+			{
+				target:
+				{
+					value: "cat @rea",
+				},
+			},
+		);
+		fireEvent.keyDown(
+			textarea,
+			{
+				key: "Enter",
+			},
+		);
+		await flush();
+
+		expect(
+			{
+				commands: onShellCommand.mock.calls,
+				toasts: handlers.toast.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				commands: [["cat @rea"]],
+				toasts: [],
 			},
 		);
 	});

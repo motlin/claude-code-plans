@@ -180,6 +180,7 @@ import {SESSION_COMPOSER_PLACEHOLDER} from "../lib/composer-pending-gate";
 import
 {
 	HIDDEN_CHARACTERS_REFUSAL,
+	SHELL_PLAIN_TEXT_REFUSAL,
 	hasHiddenCharacters,
 	isShellCommandText,
 	shellCommandUnavailableMessage,
@@ -1916,6 +1917,18 @@ export function Composer({
 	} | null>(null);
 	const mentions =
 		mentionState?.draftKey === draftKey && mentionState.text === prompt ? mentionState.mentions : NO_MENTIONS;
+	// Bash mode's accepted mentions stay plain text, but upstream's chip there still refuses the send (rp/Dp):
+	// their ranges are tracked apart from the chips, and an edit inside one drops it.
+	const [bashMentionState, setBashMentionState] = useState<
+	{
+		draftKey: string;
+		text: string;
+		mentions: readonly AcceptedMention[];
+	} | null>(null);
+	const bashMentions =
+		bashMentionState?.draftKey === draftKey && bashMentionState.text === prompt
+			? bashMentionState.mentions
+			: NO_MENTIONS;
 	// Upstream's epitaxyBashHighlight: the command takes Shiki's bash colours, in the bash-mode mono face.
 	const bashLines = useBashHighlight(prompt, bashMode && prompt !== "");
 	const bashPainted = bashMode && bashLines !== null;
@@ -2208,6 +2221,16 @@ export function Composer({
 				],
 			},
 		);
+		setBashMentionState(
+			{
+				draftKey,
+				text: next.text,
+				mentions: [
+					...remapMentions(prompt, next.text, bashMentions),
+					...(accepted === undefined || !bashMode ? [] : [accepted]),
+				],
+			},
+		);
 		pendingCaretRef.current = next.caret;
 		setCaret(next.caret);
 		setPrompt(next.text);
@@ -2447,7 +2470,14 @@ export function Composer({
 		if (bashMode)
 		{
 			// Upstream zO: a command hiding characters stays in the box rather than running.
-			if (hasHiddenCharacters(trimmed))
+			if (bashMentions.length > 0)
+				toast?.(
+					{
+						kind: "error",
+						message: SHELL_PLAIN_TEXT_REFUSAL,
+					},
+				);
+			else if (hasHiddenCharacters(trimmed))
 				toast?.(
 					{
 						kind: "error",
@@ -4109,6 +4139,16 @@ export function Composer({
 										draftKey,
 										text: next,
 										mentions: remapMentions(prompt, next, mentions),
+									},
+								);
+							}
+							if (bashMentions.length > 0)
+							{
+								setBashMentionState(
+									{
+										draftKey,
+										text: next,
+										mentions: remapMentions(prompt, next, bashMentions),
 									},
 								);
 							}
