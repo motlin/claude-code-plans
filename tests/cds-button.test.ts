@@ -61,9 +61,11 @@ describe("cdsButtonClass fizzy paints (upstream sT, Ct)", () =>
 				"stacks:[&[aria-haspopup][aria-expanded=true]]:layers-2-fill-button-layer",
 				"stacks:hover:[&[aria-haspopup][aria-expanded=true]]:layers-3-fill-button-layer",
 				"stacks:active:layers-1-fill-primary-layer",
+				"[&[aria-haspopup][aria-expanded=true]]:bg-fill-primary-hover",
 			]),
 		).toStrictEqual(
 			{
+				"[&[aria-haspopup][aria-expanded=true]]:bg-fill-primary-hover": String.raw`.\[\&\[aria-haspopup\]\[aria-expanded\=true\]\]\:bg-fill-primary-hover[aria-haspopup][aria-expanded=true] { background-color: var(--upstream-fill-primary-hover); }`,
 				"stacks:[&[aria-haspopup][aria-expanded=true]]:layers-2-fill-button-layer": String.raw`@media (forced-colors: none) { .stacks\:\[\&\[aria-haspopup\]\[aria-expanded\=true\]\]\:layers-2-fill-button-layer${STACKS}[aria-haspopup][aria-expanded=true] { background-image: linear-gradient(var(--color-fill-button-layer) 0 0), linear-gradient(var(--color-fill-button-layer) 0 0); } }`,
 				"stacks:hover:[&[aria-haspopup][aria-expanded=true]]:layers-3-fill-button-layer": String.raw`@media (forced-colors: none) { @media (hover: hover) { .stacks\:hover\:\[\&\[aria-haspopup\]\[aria-expanded\=true\]\]\:layers-3-fill-button-layer${STACKS}:hover[aria-haspopup][aria-expanded=true] { background-image: linear-gradient(var(--color-fill-button-layer) 0 0), linear-gradient(var(--color-fill-button-layer) 0 0), linear-gradient(var(--color-fill-button-layer) 0 0); } } }`,
 				"stacks:active:layers-1-fill-primary-layer": String.raw`@media (forced-colors: none) { .stacks\:active\:layers-1-fill-primary-layer${STACKS}:active { background-image: linear-gradient(var(--color-fill-primary-layer) 0 0); } }`,
@@ -79,6 +81,32 @@ describe("cdsButtonClass fizzy paints (upstream sT, Ct)", () =>
 			"stacks:hover:bg-fill-secondary",
 			"stacks:[&:disabled:not([aria-busy])]:bg-fill-disabled",
 			"stacks:[&[aria-haspopup][aria-expanded=true]]:bg-fill-secondary",
+			"stacks:[&:disabled:not([aria-busy])]:[&[aria-haspopup][aria-expanded=true]]:bg-fill-disabled",
+			"stacks:[&:disabled:not([aria-busy])]:[&[aria-haspopup][aria-expanded=true]]:bg-none",
+		]);
+	});
+
+	it("paints the primary like upstream d9 (fill-primary, fill-primary-hover on hover and open), with the disabled fills winning", async () =>
+	{
+		const classes = cdsButtonClass("primary").split(" ");
+		const paints = classes.filter((name) => /bg-(fill-primary|primary|none|fill-disabled)/.test(name));
+		expect(paints).toStrictEqual([
+			"bg-fill-primary",
+			"hover:bg-fill-primary-hover",
+			"[&[aria-haspopup][aria-expanded=true]]:bg-fill-primary-hover",
+			"stacks:active:bg-fill-primary-hover",
+			"stacks:[&[aria-haspopup][aria-expanded=true]]:bg-none",
+			"stacks:[&:disabled:not([aria-busy])]:bg-fill-disabled",
+			"stacks:[&:disabled:not([aria-busy])]:[&[aria-haspopup][aria-expanded=true]]:bg-fill-disabled",
+			"stacks:[&:disabled:not([aria-busy])]:[&[aria-haspopup][aria-expanded=true]]:bg-none",
+		]);
+		expect(await ruleOrder(paints.toReversed())).toStrictEqual([
+			"bg-fill-primary",
+			"hover:bg-fill-primary-hover",
+			"stacks:active:bg-fill-primary-hover",
+			"stacks:[&:disabled:not([aria-busy])]:bg-fill-disabled",
+			"[&[aria-haspopup][aria-expanded=true]]:bg-fill-primary-hover",
+			"stacks:[&[aria-haspopup][aria-expanded=true]]:bg-none",
 			"stacks:[&:disabled:not([aria-busy])]:[&[aria-haspopup][aria-expanded=true]]:bg-fill-disabled",
 			"stacks:[&:disabled:not([aria-busy])]:[&[aria-haspopup][aria-expanded=true]]:bg-none",
 		]);

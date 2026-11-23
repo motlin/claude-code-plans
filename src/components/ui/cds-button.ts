@@ -10,6 +10,7 @@ const CDS_BUTTON_BASE = `relative inline-flex shrink-0 cursor-pointer items-cent
 export const CDS_GHOST_HOVER = "hover:bg-fill-ghost-hover stacks:hover:bg-fill-button-ghost-hover";
 
 /*
+ * The primary paints like upstream `d9`: fill-primary at rest, fill-primary-hover on hover and while its menu is open.
  * Each variant keeps its pre-fizzy hover and adds upstream's fizzy-colour paints (`sT` hover/open, `Ct` press), moved
  * from the paint span's `group-…/btn:` onto the self-painted button.
  *
@@ -25,7 +26,7 @@ const CDS_BUTTON_VARIANTS =
 	ghost: `font-control-regular text-primary aria-pressed:text-upstream-accent ${CDS_GHOST_HOVER} stacks:[&[aria-haspopup][aria-expanded=true]]:bg-fill-button-ghost-hover stacks:hover:[&[aria-haspopup][aria-expanded=true]]:layers-1-fill-button-layer stacks:active:bg-fill-button-ghost-hover stacks:active:layers-1-fill-button-layer stacks:[&:disabled:not([aria-busy])]:bg-transparent stacks:[&:disabled:not([aria-busy])]:[&[aria-haspopup][aria-expanded=true]]:bg-transparent`,
 	/** The local destructive confirm: the danger menu fill on the primary's geometry and weight. */
 	danger: `bg-[var(--menu-danger-fill)] font-control text-[var(--menu-on-danger)] [--shortcut-cap-ink:currentColor] hover:opacity-90 ${CDS_BUTTON_DISABLED_FILL}`,
-	primary: `bg-primary font-control text-surface-1 [--shortcut-cap-ink:currentColor] hover:bg-primary/80 stacks:active:bg-fill-primary-hover stacks:active:layers-1-fill-primary-layer stacks:[&[aria-haspopup][aria-expanded=true]]:bg-none ${CDS_BUTTON_DISABLED_FILL}`,
+	primary: `bg-fill-primary font-control text-surface-1 [--shortcut-cap-ink:currentColor] hover:bg-fill-primary-hover [&[aria-haspopup][aria-expanded=true]]:bg-fill-primary-hover stacks:active:bg-fill-primary-hover stacks:active:layers-1-fill-primary-layer stacks:[&[aria-haspopup][aria-expanded=true]]:bg-none ${CDS_BUTTON_DISABLED_FILL} ${CDS_BUTTON_DISABLED_OPEN_FILL}`,
 } as const;
 
 /** Upstream's cds Button inline pad: pad-md, capped by --cds-button-pad-max (9px under fizzy panels). */

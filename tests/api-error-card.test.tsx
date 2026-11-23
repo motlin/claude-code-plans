@@ -1091,7 +1091,7 @@ describe("ApiErrorCard recovery actions", () =>
 				rowFirst: group?.parentElement?.firstElementChild?.textContent,
 				groupClass: group?.className,
 				buttons: buttons(group),
-				retryPrimary: retry?.className.split(" ").includes("bg-primary"),
+				retryPrimary: retry?.className.split(" ").includes("bg-fill-primary"),
 			},
 		).toStrictEqual(
 			{

@@ -391,15 +391,17 @@ describe("useRewindRequest + RewindConfirm", () =>
 			"h-control",
 			"px-[min(var(--cds-pad-md),var(--cds-button-pad-max,var(--cds-pad-md)))]",
 			"text-body",
-			"bg-primary",
+			"bg-fill-primary",
 			"font-control",
 			"text-surface-1",
 			"[--shortcut-cap-ink:currentColor]",
-			"hover:bg-primary/80",
+			"hover:bg-fill-primary-hover",
+			"[&[aria-haspopup][aria-expanded=true]]:bg-fill-primary-hover",
 			"stacks:active:bg-fill-primary-hover",
 			"stacks:active:layers-1-fill-primary-layer",
 			"stacks:[&[aria-haspopup][aria-expanded=true]]:bg-none",
 			CDS_BUTTON_DISABLED_FILL,
+			...CDS_BUTTON_DISABLED_OPEN_FILL.split(" "),
 		]);
 	});
 
@@ -631,7 +633,11 @@ describe("useRewindRequest + RewindConfirm", () =>
 							CDS_BUTTON_DISABLED_FILL,
 							...CDS_BUTTON_DISABLED_OPEN_FILL.split(" "),
 						],
-						[...CDS_BUTTON_DISABLED.split(" "), CDS_BUTTON_DISABLED_FILL],
+						[
+							...CDS_BUTTON_DISABLED.split(" "),
+							CDS_BUTTON_DISABLED_FILL,
+							...CDS_BUTTON_DISABLED_OPEN_FILL.split(" "),
+						],
 					],
 					restores: 1,
 					runs: 0,

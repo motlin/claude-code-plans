@@ -245,7 +245,7 @@ describe("approval card chrome", () =>
 			{
 				card: [],
 				secondary: `${base} bg-fill-secondary font-control-regular [:root:not([data-cds-fizzy-lake~=color])_&]:shadow-field-drop after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] [:root:not([data-cds-fizzy-lake~=color])_&]:after:shadow-[inset_0_0_0_1px_var(--color-fill-secondary-ring)] text-primary aria-pressed:text-upstream-accent hover:bg-fill-secondary-hover stacks:hover:bg-fill-secondary stacks:[&[aria-haspopup][aria-expanded=true]]:bg-fill-secondary stacks:hover:layers-1-fill-button-layer stacks:[&[aria-haspopup][aria-expanded=true]]:layers-2-fill-button-layer stacks:hover:[&[aria-haspopup][aria-expanded=true]]:layers-3-fill-button-layer stacks:active:layers-2-fill-button-layer stacks:[&:disabled:not([aria-busy])]:bg-fill-disabled stacks:[&:disabled:not([aria-busy])]:[&[aria-haspopup][aria-expanded=true]]:bg-fill-disabled stacks:[&:disabled:not([aria-busy])]:[&[aria-haspopup][aria-expanded=true]]:bg-none`,
-				primary: `${base} bg-primary font-control text-surface-1 [--shortcut-cap-ink:currentColor] hover:bg-primary/80 stacks:active:bg-fill-primary-hover stacks:active:layers-1-fill-primary-layer stacks:[&[aria-haspopup][aria-expanded=true]]:bg-none stacks:[&:disabled:not([aria-busy])]:bg-fill-disabled`,
+				primary: `${base} bg-fill-primary font-control text-surface-1 [--shortcut-cap-ink:currentColor] hover:bg-fill-primary-hover [&[aria-haspopup][aria-expanded=true]]:bg-fill-primary-hover stacks:active:bg-fill-primary-hover stacks:active:layers-1-fill-primary-layer stacks:[&[aria-haspopup][aria-expanded=true]]:bg-none stacks:[&:disabled:not([aria-busy])]:bg-fill-disabled stacks:[&:disabled:not([aria-busy])]:[&[aria-haspopup][aria-expanded=true]]:bg-fill-disabled stacks:[&:disabled:not([aria-busy])]:[&[aria-haspopup][aria-expanded=true]]:bg-none`,
 				shortcut:
 					"inline-flex shrink-0 items-center gap-[2px] text-caption [&:where(:root[dir=rtl]_:dir(rtl))]:flex-row-reverse pointer-coarse:hidden ms-1 me-[calc((var(--cds-h-control)-1em-6px)/2-min(var(--cds-pad-md),var(--cds-button-pad-max,var(--cds-pad-md))))]",
 			},
@@ -274,13 +274,13 @@ describe("approval card disabled actions, as upstream's cds Button", () =>
 			"stacks:[&:disabled:not([aria-busy])]:bg-fill-disabled",
 			"[&:disabled:not([aria-busy])]:opacity-disabled",
 			"hover:bg-fill-secondary-hover",
-			"hover:bg-primary/80",
+			"hover:bg-fill-primary-hover",
 		];
 		const order = (await loadDesignSystem()).getClassOrder(candidates);
 		const sorted = order.toSorted(([, a], [, b]) => (a === null || b === null ? 0 : a < b ? -1 : a > b ? 1 : 0));
 		expect(sorted.map(([name]) => name)).toStrictEqual([
+			"hover:bg-fill-primary-hover",
 			"hover:bg-fill-secondary-hover",
-			"hover:bg-primary/80",
 			"[&:disabled:not([aria-busy])]:opacity-disabled",
 			"stacks:[&:disabled:not([aria-busy])]:bg-fill-disabled",
 			"stacks:[&:disabled:not([aria-busy])]:opacity-100",

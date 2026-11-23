@@ -3308,7 +3308,7 @@ describe("PermissionCard", () =>
 						"rounded-[var(--upstream-radius)]",
 						"px-[min(var(--cds-pad-md),var(--cds-button-pad-max,var(--cds-pad-md)))]",
 						"text-body",
-						"bg-primary",
+						"bg-fill-primary",
 						"text-surface-1",
 					],
 				),
@@ -4871,8 +4871,8 @@ describe("PermissionCard", () =>
 				denyShortcut: deny.getAttribute("aria-keyshortcuts"),
 				allowShortcut: allow.getAttribute("aria-keyshortcuts"),
 				allowKeys: allow.querySelectorAll("kbd").length,
-				denyFill: deny.className.split(/\s+/).includes("bg-primary"),
-				allowFill: allow.className.split(/\s+/).includes("bg-primary"),
+				denyFill: deny.className.split(/\s+/).includes("bg-fill-primary"),
+				allowFill: allow.className.split(/\s+/).includes("bg-fill-primary"),
 			};
 		}
 
