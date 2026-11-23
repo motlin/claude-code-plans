@@ -590,8 +590,9 @@ html[data-interface-font="dyslexic"]
 	/* Upstream `--cds-fill-disabled: var(--cds-alpha-1)` and `--cds-opacity-disabled: .4`: the disabled cds Button
 	   paint and pre-fizzy dimming. `.dark` restates alpha-1, so the dark paint follows without a restatement. */
 	--upstream-fill-disabled: var(--upstream-alpha-1);
-	/* Upstream `--cds-fill-card` falls back to --cds-alpha-1 outside fizzy color. */
-	--upstream-fill-card: var(--upstream-alpha-1);
+	/* Upstream `--cds-fill-card`: every .cds-root mixes its wash ink (#000 light, #fff dark) at 3.5% / 3%
+	   (live task piece, 2026-11-22). */
+	--upstream-fill-card: color-mix(in srgb, #000 3.5%, transparent);
 	/* Upstream `--cds-fill-card-hover` falls back to --cds-bg-neutral outside fizzy color. */
 	--upstream-fill-card-hover: var(--upstream-bg-neutral);
 	--upstream-opacity-disabled: 0.4;
@@ -1017,6 +1018,7 @@ html[data-interface-font="dyslexic"]
 	--composer-shadow-idle: 0 4px 20px rgb(0 0 0 / 0.035), inset 0 0 0 1px rgb(255 255 255 / 0.1);
 	--composer-shadow-focus: 0 4px 20px rgb(0 0 0 / 0.3), 0 0 0 1px rgb(255 255 255 / 0.2);
 	--upstream-alpha-1: rgb(255 255 255 / 0.05);
+	--upstream-fill-card: color-mix(in srgb, #fff 3%, transparent);
 	--skeleton-base: rgb(255 255 255 / 0.075);
 	--skeleton-sheen: rgb(255 255 255 / 0.075);
 	--upstream-alpha-2: rgb(255 255 255 / 0.1);
@@ -1247,8 +1249,7 @@ html[data-interface-font="dyslexic"]
 	/* Upstream fizzy `--cds-fill-disabled`, `--cds-text-button-disabled` and
 	   `--cds-fizzy-lake-color-icon-only-disabled`: a disabled cds Button keeps opacity 1 with this paint and ink. */
 	--upstream-fill-disabled: #00000006;
-	/* Upstream fizzy `--cds-fill-card` / `--cds-fill-card-hover`: wash ink at 3.5% / 6% (live workflow card, 2026-11-21). */
-	--upstream-fill-card: color-mix(in srgb, #000 3.5%, transparent);
+	/* Upstream fizzy `--cds-fill-card-hover`: wash ink at 6% (live workflow card, 2026-11-21). */
 	--upstream-fill-card-hover: color-mix(in srgb, #000 6%, transparent);
 	--upstream-text-button-disabled: #0007;
 	--upstream-icon-only-disabled: #0006;
@@ -1406,7 +1407,6 @@ html[data-interface-font="dyslexic"]
 	--cds-fizzy-lake-color-solid-primary: #efefef;
 	--cds-fizzy-lake-color-solid-secondary: #c2c2c2;
 	--upstream-fill-disabled: #ffffff0d;
-	--upstream-fill-card: #ffffff08;
 	--upstream-fill-card-hover: color-mix(in srgb, #fff 6%, transparent);
 	--upstream-text-button-disabled: #fff6;
 	--upstream-icon-only-disabled: #fff6;
