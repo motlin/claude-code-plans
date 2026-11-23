@@ -99,11 +99,10 @@ function turnHeadings(container: HTMLElement): (string | null)[]
 	});
 }
 
-/** Upstream Code's turn heading: an h3 (`turnHeadingLevel: 3`), find-omitted; the assistant one also carries `data-transcript-words`. */
+/** Upstream Code's turn heading: an h3 (`turnHeadingLevel: 3`), find-omitted, the same shape for both speakers (`data-transcript-words` lives on the roving region, never the heading). */
 function heading(text: string): string
 {
-	const words = text.startsWith("You said") ? "" : 'data-transcript-words="" ';
-	return `<h3 ${words}data-find-omitted="" class="sr-only select-none">${text}</h3>`;
+	return `<h3 data-find-omitted="" class="sr-only select-none">${text}</h3>`;
 }
 
 const USER_TEXT =

@@ -1441,21 +1441,13 @@ const USER_ROW_GAP_CLASS = "pb-[var(--chat-user-row-gap)] empty:pb-0";
  * screen readers a heading list to navigate the transcript turn by turn. It is
  * hidden from sight and from text selection, so copying a turn never picks it up.
  * Code's config sets `turnHeadingLevel: 3`; the marker keeps it out of in-app Find and
- * the roving announcement, and the assistant one carries `data-transcript-words`.
+ * the roving announcement. Both speakers share one shape: upstream puts `data-transcript-words`
+ * on the roving region, never the heading.
  */
 function TurnHeading({speaker, text}: {speaker: "user" | "assistant"; text: string})
 {
 	return (
-		<h3
-			{...(speaker === "assistant"
-				?
-					{
-						"data-transcript-words": "",
-					}
-				: {})}
-			data-find-omitted=""
-			className="sr-only select-none"
-		>
+		<h3 data-find-omitted="" className="sr-only select-none">
 			{messageHeading(speaker, text)}
 		</h3>
 	);
