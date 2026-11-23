@@ -102,6 +102,24 @@ function cards()
 	return [...document.querySelectorAll("[data-background-task] [data-task-title]")].map((title) => title.textContent);
 }
 
+/** A row's opener button, found by its title: upstream gives it no aria-label, so its name is its content. */
+function opener(title: string): HTMLElement
+{
+	const button = screen
+		.getByText(
+			title,
+			{
+				selector: "[data-task-title] > span",
+			},
+		)
+		.closest<HTMLElement>("button[data-task-opener]");
+	if (button === null)
+	{
+		throw new Error(`no opener button for ${title}`);
+	}
+	return button;
+}
+
 function finishedToggle()
 {
 	return screen.getByRole(
@@ -221,12 +239,7 @@ describe("BackgroundTasksList", () =>
 	{
 		render(<BackgroundTasksList groups={GROUPS} />);
 		fireEvent.click(finishedToggle());
-		const row = screen.getByRole(
-			"button",
-			{
-				name: "Background task: Build the fabricated app",
-			},
-		);
+		const row = opener("Build the fabricated app");
 
 		fireEvent.click(row);
 		fireEvent.click(row);
@@ -385,9 +398,8 @@ describe("BackgroundTasksList", () =>
 		fireEvent.click(finishedToggle());
 		const statusOf = (id: string) =>
 		{
-			const opener = document.querySelector(`[data-task-id="${id}"] [data-task-opener]`);
-			const describedBy = opener?.getAttribute("aria-describedby");
-			const status = describedBy == null ? null : document.getElementById(describedBy);
+			const row = document.querySelector(`[data-task-id="${id}"] [data-task-opener]`);
+			const status = row?.querySelector(":scope > span:nth-child(2)") ?? null;
 			return status === null
 				? null
 				:
@@ -438,34 +450,39 @@ describe("BackgroundTasksList", () =>
 		);
 	});
 
-	it("names each card button after its task", () =>
+	it("names each card button by its content, with only upstream's type, data-task-opener and aria-expanded", () =>
 	{
 		render(<BackgroundTasksList groups={POLL_GROUPS} />);
+		const button = opener("Poll PR");
 
 		expect(
-			screen
-				.getByRole(
-					"button",
-					{
-						name: "Background task: Poll PR",
-					},
-				)
-				.getAttribute("aria-expanded"),
-		).toBe("false");
+			{
+				named:
+					screen.getByRole(
+						"button",
+						{
+							name: "Poll PR",
+						},
+					) === button,
+				attributes: button.getAttributeNames().filter((name) => name !== "class"),
+				expanded: button.getAttribute("aria-expanded"),
+			},
+		).toStrictEqual(
+			{
+				named: true,
+				attributes: ["type", "data-background-task", "data-task-opener", "aria-expanded"],
+				expanded: "false",
+			},
+		);
 	});
 
 	it("expands a row into upstream's plain capped Command and Output pres, indented one step", () =>
 	{
 		render(<BackgroundTasksList groups={POLL_GROUPS} />);
-		const card = screen.getByRole(
-			"button",
-			{
-				name: "Background task: Poll PR",
-			},
-		);
+		const card = opener("Poll PR");
 
 		fireEvent.click(card);
-		const detail = document.getElementById(card.getAttribute("aria-controls") ?? "");
+		const detail = card.closest("[data-task-piece]")?.lastElementChild as HTMLElement | null | undefined;
 
 		expect(
 			{
@@ -524,16 +541,9 @@ describe("BackgroundTasksList", () =>
 		};
 		render(<BackgroundTasksList groups={groups} />);
 		fireEvent.click(finishedToggle());
-		for (const name of ["Background task: Serve", "Background task: Build"])
+		for (const title of ["Serve", "Build"])
 		{
-			fireEvent.click(
-				screen.getByRole(
-					"button",
-					{
-						name,
-					},
-				),
-			);
+			fireEvent.click(opener(title));
 		}
 
 		expect(["No output yet", "No output captured."].map((text) => screen.getByText(text).className)).toStrictEqual([
@@ -558,14 +568,7 @@ describe("BackgroundTasksList", () =>
 			finished: [],
 		});
 		const {rerender} = render(<BackgroundTasksList groups={running("one")} />);
-		fireEvent.click(
-			screen.getByRole(
-				"button",
-				{
-					name: "Background task: Follow",
-				},
-			),
-		);
+		fireEvent.click(opener("Follow"));
 		const pre = screen.getByRole(
 			"region",
 			{
@@ -914,7 +917,7 @@ describe("BackgroundTasksList artifact links", () =>
 		return {
 			title: card?.querySelector("[data-background-task] [data-task-title]")?.textContent,
 			titleLinks: card?.querySelectorAll("[data-background-task] a").length,
-			label: card?.querySelector("[data-background-task]")?.getAttribute("aria-label"),
+			label: card?.querySelector("[data-background-task]")?.getAttribute("aria-label") ?? null,
 			artifactRow:
 				row === undefined || row === null
 					? null
@@ -950,7 +953,7 @@ describe("BackgroundTasksList artifact links", () =>
 				{
 					title: "Publish artifact now",
 					titleLinks: 0,
-					label: "Background task: Publish artifact now",
+					label: null,
 					artifactRow:
 					{
 						className:
@@ -971,7 +974,7 @@ describe("BackgroundTasksList artifact links", () =>
 				{
 					title: "Publish artifact https://claude.ai/code/artifact/fab2",
 					titleLinks: 0,
-					label: "Background task: Publish artifact https://claude.ai/code/artifact/fab2",
+					label: null,
 					artifactRow: null,
 				},
 			},
@@ -981,12 +984,7 @@ describe("BackgroundTasksList artifact links", () =>
 	it("opening View artifact does not toggle the card", () =>
 	{
 		render(<BackgroundTasksList groups={ARTIFACT_GROUPS} />);
-		const card = screen.getByRole(
-			"button",
-			{
-				name: "Background task: Publish artifact now",
-			},
-		);
+		const card = opener("Publish artifact now");
 
 		fireEvent.click(
 			screen.getByRole(
@@ -1021,14 +1019,7 @@ describe("BackgroundTasksList artifact links", () =>
 				}}
 			/>,
 		);
-		fireEvent.click(
-			screen.getByRole(
-				"button",
-				{
-					name: "Background task: Build the page",
-				},
-			),
-		);
+		fireEvent.click(opener("Build the page"));
 
 		const summary = document.querySelector(
 			'[data-task-id="afab3done"] div.text-footnote.text-secondary.whitespace-pre-wrap.break-words',
@@ -1129,14 +1120,7 @@ describe("BackgroundTasksList output file", () =>
 		render(withQueryClient(<BackgroundTasksList groups={LINT_GROUPS} sessionId={SESSION_ID} />));
 
 		const beforeExpand = fetchedUrls(fetchMock);
-		fireEvent.click(
-			screen.getByRole(
-				"button",
-				{
-					name: "Background task: Lint the fabricated app",
-				},
-			),
-		);
+		fireEvent.click(opener("Lint the fabricated app"));
 		const region = await screen.findByRole(
 			"region",
 			{
@@ -1170,14 +1154,7 @@ describe("BackgroundTasksList output file", () =>
 		);
 		render(withQueryClient(<BackgroundTasksList groups={LINT_GROUPS} sessionId={SESSION_ID} />));
 
-		fireEvent.click(
-			screen.getByRole(
-				"button",
-				{
-					name: "Background task: Lint the fabricated app",
-				},
-			),
-		);
+		fireEvent.click(opener("Lint the fabricated app"));
 
 		expect((await screen.findByText("Showing the last 64 KB of output.")).tagName).toBe("P");
 	});
@@ -1191,14 +1168,7 @@ describe("BackgroundTasksList output file", () =>
 		);
 		render(withQueryClient(<BackgroundTasksList groups={LINT_GROUPS} sessionId={SESSION_ID} />));
 
-		fireEvent.click(
-			screen.getByRole(
-				"button",
-				{
-					name: "Background task: Lint the fabricated app",
-				},
-			),
-		);
+		fireEvent.click(opener("Lint the fabricated app"));
 
 		expect((await screen.findByText("Output unavailable")).tagName).toBe("P");
 	});
@@ -1230,14 +1200,7 @@ describe("BackgroundTasksList output file", () =>
 		};
 		render(withQueryClient(<BackgroundTasksList groups={groups} sessionId={SESSION_ID} />));
 
-		fireEvent.click(
-			screen.getByRole(
-				"button",
-				{
-					name: "Background task: Review the fabricated diff",
-				},
-			),
-		);
+		fireEvent.click(opener("Review the fabricated diff"));
 
 		expect(
 			{
@@ -1280,9 +1243,9 @@ describe("BackgroundTasksList focus requests", () =>
 
 	function expandedCards()
 	{
-		return [...document.querySelectorAll('button[data-background-task][aria-expanded="true"]')].map((button) =>
-			button.getAttribute("aria-label"),
-		);
+		return [
+			...document.querySelectorAll('button[data-background-task][aria-expanded="true"] [data-task-title]'),
+		].map((title) => title.textContent);
 	}
 
 	afterEach(() =>
@@ -1307,14 +1270,7 @@ describe("BackgroundTasksList focus requests", () =>
 		expect(
 			{
 				finished: finishedToggle().getAttribute("aria-expanded"),
-				card: screen
-					.getByRole(
-						"button",
-						{
-							name: "Background task: Build the fabricated app",
-						},
-					)
-					.getAttribute("aria-expanded"),
+				card: opener("Build the fabricated app").getAttribute("aria-expanded"),
 				scrollCalls: scroll.mock.calls,
 				scrolled: scroll.mock.contexts.map((element) =>
 					(element as Element).closest("[data-task-id]")?.getAttribute("data-task-id"),
@@ -1362,10 +1318,7 @@ describe("BackgroundTasksList focus requests", () =>
 			);
 		});
 
-		expect(expandedCards()).toStrictEqual([
-			"Background task: Serve the fabricated app",
-			"Background task: Build the fabricated app",
-		]);
+		expect(expandedCards()).toStrictEqual(["Serve the fabricated app", "Build the fabricated app"]);
 	});
 
 	it("re-opens a Finished section the user collapsed", () =>
@@ -1413,14 +1366,7 @@ describe("BackgroundTasksList focus requests", () =>
 		const sessionId = nextSession();
 		const first = render(<BackgroundTasksList groups={GROUPS} sessionId={sessionId} />);
 		fireEvent.click(finishedToggle());
-		fireEvent.click(
-			screen.getByRole(
-				"button",
-				{
-					name: "Background task: Build the fabricated app",
-				},
-			),
-		);
+		fireEvent.click(opener("Build the fabricated app"));
 		first.unmount();
 
 		render(<BackgroundTasksList groups={GROUPS} sessionId={sessionId} />);
@@ -1433,7 +1379,7 @@ describe("BackgroundTasksList focus requests", () =>
 		).toStrictEqual(
 			{
 				finished: "true",
-				expanded: ["Background task: Build the fabricated app"],
+				expanded: ["Build the fabricated app"],
 			},
 		);
 	});

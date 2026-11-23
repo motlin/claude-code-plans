@@ -218,21 +218,10 @@ function OutputFile({
 }
 
 /** Upstream `oL`: the open row's command and output, one step in. */
-function TaskDetail({
-	id,
-	task,
-	title,
-	sessionId,
-}: {
-	id: string;
-	task: BackgroundTask;
-	title: string;
-	sessionId: string | undefined;
-})
+function TaskDetail({task, title, sessionId}: {task: BackgroundTask; title: string; sessionId: string | undefined})
 {
 	return (
 		<div
-			id={id}
 			className={DETAIL}
 			style={
 			{
@@ -315,8 +304,6 @@ function BackgroundTaskRow({
 	stopping: boolean;
 })
 {
-	const detailsId = useId();
-	const statusId = useId();
 	const titleId = useId();
 	const {title, artifact} = taskTitle(task);
 	const expandable = isExpandable(task);
@@ -348,13 +335,12 @@ function BackgroundTaskRow({
 		</span>
 	);
 	const statusColumn = status !== null && (
-		<span id={statusId} className={STATUS}>
+		<span className={STATUS}>
 			<span className={status.tone === "danger" ? "text-danger" : status.hideNarrow ? "@max-[296px]:hidden" : ""}>
 				{status.text}
 			</span>
 		</span>
 	);
-	const describedBy = status === null ? undefined : statusId;
 	return (
 		<div className="flex min-w-0 flex-col gap-0.5">
 			<div data-task-piece="" className={PIECE}>
@@ -371,10 +357,7 @@ function BackgroundTaskRow({
 							type="button"
 							data-background-task=""
 							data-task-opener=""
-							aria-label={`Background task: ${title}`}
 							aria-expanded={expanded}
-							aria-controls={detailsId}
-							aria-describedby={describedBy}
 							onClick={onToggle}
 							className={`${OPENER}${stoppable ? " pe-9.5" : ""} ${OPENER_ACTION}`}
 						>
@@ -382,11 +365,7 @@ function BackgroundTaskRow({
 							{statusColumn}
 						</button>
 					) : (
-						<div
-							data-background-task=""
-							aria-describedby={describedBy}
-							className={`${OPENER}${stoppable ? " pe-9.5" : ""}`}
-						>
+						<div data-background-task="" className={`${OPENER}${stoppable ? " pe-9.5" : ""}`}>
 							{label}
 							{statusColumn}
 						</div>
@@ -435,9 +414,7 @@ function BackgroundTaskRow({
 						{inlineSummary}
 					</div>
 				)}
-				{expandable && expanded && (
-					<TaskDetail id={detailsId} task={task} title={title} sessionId={sessionId} />
-				)}
+				{expandable && expanded && <TaskDetail task={task} title={title} sessionId={sessionId} />}
 			</div>
 		</div>
 	);
