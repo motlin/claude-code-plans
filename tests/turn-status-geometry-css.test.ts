@@ -47,4 +47,36 @@ describe("TurnStatus row geometry tokens (c6a992d55 AssistantMessage)", () =>
 
 		expect(body).toBe("width: -webkit-fill-available; width: -moz-available; width: stretch;");
 	});
+
+	it("sizes the error/hook notice markers like upstream's epitaxy-notice-row / epitaxy-reply-size-line", () =>
+	{
+		const css = flatten(globalsCss);
+
+		expect(
+			{
+				row: ruleDeclarations(
+					css,
+					'.epitaxy-transcript-typography [data-cds="AssistantMessage"] .epitaxy-notice-row',
+				),
+				line: ruleDeclarations(
+					css,
+					'.epitaxy-transcript-typography [data-cds="AssistantMessage"] .epitaxy-reply-size-line',
+				),
+			},
+		).toStrictEqual(
+			{
+				row:
+				{
+					"--notice-line": "var(--upstream-leading-prose)",
+					"margin-block":
+						"calc((var(--cds-h-control) - var(--notice-line, var(--upstream-leading-body))) / 2 - var(--cds-pad-xs))",
+				},
+				line:
+				{
+					"--upstream-text-body": "var(--upstream-text-prose)",
+					"--upstream-leading-body": "var(--upstream-leading-prose)",
+				},
+			},
+		);
+	});
 });

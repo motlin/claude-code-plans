@@ -181,13 +181,15 @@ describe("HookBlockedPromptMarker", () =>
 		expect(
 			{
 				root: marker?.className,
+				row: marker?.firstElementChild?.className,
 				label: marker?.firstElementChild?.textContent,
 				icon: marker?.querySelector("svg")?.getAttribute("class"),
 				body: container.querySelector("[data-api-error-details] span")?.textContent,
 			},
 		).toStrictEqual(
 			{
-				root: "flex w-full max-w-[480px] flex-col items-start gap-1 self-start ps-[var(--cds-assistant-message-text-inset,0px)]",
+				root: "epitaxy-notice-row flex w-full max-w-[480px] flex-col items-start gap-1 self-start ps-[var(--cds-assistant-message-text-inset,0px)]",
+				row: "epitaxy-reply-size-line flex max-w-full min-w-0 items-center gap-1.25 select-text",
 				label: "Prompt blocked by a hook",
 				icon: "lucide lucide-triangle-exclamation-point lucide-alert-triangle lucide-triangle-alert size-4 shrink-0 text-danger-000",
 				body: "worker unreachable",

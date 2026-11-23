@@ -763,8 +763,8 @@ describe("ApiErrorCard", () =>
 				markers: 1,
 				cards: 1,
 				order: Node.DOCUMENT_POSITION_FOLLOWING,
-				root: "flex w-full max-w-[480px] flex-col items-start gap-1 self-start ps-[var(--cds-assistant-message-text-inset,0px)]",
-				row: "flex max-w-full min-w-0 items-center gap-1.25 select-text",
+				root: "epitaxy-notice-row flex w-full max-w-[480px] flex-col items-start gap-1 self-start ps-[var(--cds-assistant-message-text-inset,0px)]",
+				row: "epitaxy-reply-size-line flex max-w-full min-w-0 items-center gap-1.25 select-text",
 				icon: "lucide lucide-triangle-exclamation-point lucide-alert-triangle lucide-triangle-alert size-4 shrink-0 text-danger-000",
 				label:
 				{
@@ -2485,8 +2485,8 @@ describe("SignedInAgainMarker", () =>
 
 	const MARKER =
 	{
-		root: "flex w-full max-w-[480px] flex-col items-start gap-1 self-start ps-[var(--cds-assistant-message-text-inset,0px)]",
-		row: "flex max-w-full min-w-0 items-center gap-1.25 select-text",
+		root: "epitaxy-notice-row flex w-full max-w-[480px] flex-col items-start gap-1 self-start ps-[var(--cds-assistant-message-text-inset,0px)]",
+		row: "epitaxy-reply-size-line flex max-w-full min-w-0 items-center gap-1.25 select-text",
 		label: "Signed in again",
 		icons: 0,
 	};

@@ -1,7 +1,7 @@
 import {useState} from "react";
 
 import {capDetails} from "../lib/hook-prompt-block";
-import {ErrorDetails, MARKER_ROOT_CLASS, MarkerWarningIcon} from "./api-error-card";
+import {ErrorDetails, MARKER_LABEL_ROW_CLASS, MARKER_ROOT_CLASS, MarkerWarningIcon} from "./api-error-card";
 import {ApprovalActionButton} from "./approval-action-button";
 import {ErrorCardShell} from "./error-card-shell";
 
@@ -81,7 +81,7 @@ export function HookBlockedPromptMarker({reason}: {reason: string})
 	const trimmed = capDetails(reason.trim());
 	return (
 		<div data-hook-blocked-marker="" className={MARKER_ROOT_CLASS}>
-			<div className="flex max-w-full min-w-0 items-center gap-1.25 select-text">
+			<div className={MARKER_LABEL_ROW_CLASS}>
 				<MarkerWarningIcon />
 				<span className="min-w-0 text-body text-secondary break-words">Prompt blocked by a hook</span>
 			</div>

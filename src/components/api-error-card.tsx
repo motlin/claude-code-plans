@@ -605,9 +605,13 @@ export function MarkerWarningIcon()
 	return <TriangleAlert aria-hidden="true" className={MARKER_ICON_CLASS} />;
 }
 
-/** Upstream's earlier-error marker root (`Ek`), inset like assistant text. */
+/** Upstream's earlier-error marker root (`yF`), inset like assistant text; `epitaxy-notice-row` sets its transcript margin. */
 export const MARKER_ROOT_CLASS =
-	"flex w-full max-w-[480px] flex-col items-start gap-1 self-start ps-[var(--cds-assistant-message-text-inset,0px)]";
+	"epitaxy-notice-row flex w-full max-w-[480px] flex-col items-start gap-1 self-start ps-[var(--cds-assistant-message-text-inset,0px)]";
+
+/** The marker's label row; `epitaxy-reply-size-line` gives its label the transcript prose size. */
+export const MARKER_LABEL_ROW_CLASS =
+	"epitaxy-reply-size-line flex max-w-full min-w-0 items-center gap-1.25 select-text";
 
 /**
  * Upstream's collapsed form for an error that is not the last error of the
@@ -620,7 +624,7 @@ export function ApiErrorMarker(props: ApiErrorCardProps)
 	const Icon = error.icon === "gauge" ? Gauge : TriangleAlert;
 	return (
 		<div data-api-error-marker="" className={MARKER_ROOT_CLASS}>
-			<div className="flex max-w-full min-w-0 items-center gap-1.25 select-text">
+			<div className={MARKER_LABEL_ROW_CLASS}>
 				<Icon aria-hidden="true" className={MARKER_ICON_CLASS} />
 				<span className="min-w-0 text-body text-secondary break-words">{error.markerLabel}</span>
 			</div>
@@ -639,7 +643,7 @@ export function SignedInAgainMarker({text}: {text: string})
 	const ids = trailingRequestIds(text);
 	return (
 		<div data-api-error-marker="" data-signed-in-again="" className={MARKER_ROOT_CLASS}>
-			<div className="flex max-w-full min-w-0 items-center gap-1.25 select-text">
+			<div className={MARKER_LABEL_ROW_CLASS}>
 				<span className="min-w-0 text-body text-secondary break-words">{SIGNED_IN_AGAIN_LABEL}</span>
 			</div>
 			{ids.requestId !== undefined && <ErrorDetails details={ids} inCard={false} />}
