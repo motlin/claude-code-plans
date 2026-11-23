@@ -483,8 +483,10 @@ export type StatusCommandRoute =
 	  }
 	|
 	  {
-			kind: "toast";
-			message: string;
+			kind: "notice";
+			/** What clears the notice: the session starting, or the running turn ending (upstream's `cause`). */
+			cause: "session" | "turn";
+			text: string;
 	  }
 	|
 	  {
@@ -494,7 +496,7 @@ export type StatusCommandRoute =
 
 /**
  * Upstream's `/status` dispatch (`IOe` then `showStatusReport`): the shape bands first, then no session
- * (the home draft) or a running turn toasts and keeps the text; otherwise the card. Null when `text`
+ * (the home draft) or a running turn shows the composer's spawn notice and keeps the text; otherwise the card. Null when `text`
  * isn't `/status`.
  */
 export function routeStatusCommand(
@@ -523,13 +525,15 @@ export function routeStatusCommand(
 		};
 	if (!hasSession)
 		return {
-			kind: "toast",
-			message: "Session info is available once the session starts.",
+			kind: "notice",
+			cause: "session",
+			text: "Session info is available once the session starts.",
 		};
 	if (turnActive)
 		return {
-			kind: "toast",
-			message: "Session info is available when Claude finishes this turn.",
+			kind: "notice",
+			cause: "turn",
+			text: "Session info is available when Claude finishes this turn.",
 		};
 	return {
 		kind: "card",

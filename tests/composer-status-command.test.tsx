@@ -26,7 +26,7 @@ function setup(variant: "session" | "home", turnActive = false)
 		show: vi.fn<(text: string) => void>(),
 		toast: vi.fn<(options: ToastOptions) => void>(),
 	};
-	render(
+	const element = (active: boolean) => (
 		<ToastContext.Provider value={handlers.toast}>
 			<Composer
 				variant={variant}
@@ -39,14 +39,15 @@ function setup(variant: "session" | "home", turnActive = false)
 					variant === "session"
 						?
 							{
-								turnActive,
+								turnActive: active,
 								show: handlers.show,
 							}
 						: undefined
 				}
 			/>
-		</ToastContext.Provider>,
+		</ToastContext.Provider>
 	);
+	const {rerender} = render(element(turnActive));
 	const textarea = screen.getByRole<HTMLTextAreaElement>(
 		"textbox",
 		{
@@ -75,12 +76,18 @@ function setup(variant: "session" | "home", turnActive = false)
 		handlers,
 		textarea,
 		submit,
+		setTurnActive: (active: boolean) =>
+		{
+			rerender(element(active));
+		},
 	};
 }
 
 function outcome({handlers, textarea}: ReturnType<typeof setup>)
 {
+	const notice = document.querySelector<HTMLElement>("[data-composer-command-notice]");
 	return {
+		notice: notice === null ? null : notice.textContent,
 		onSend: [...handlers.onSend.mock.calls],
 		show: [...handlers.show.mock.calls],
 		toast: [...handlers.toast.mock.calls],
@@ -97,6 +104,7 @@ describe("/status", () =>
 
 		expect(outcome(composer)).toStrictEqual(
 			{
+				notice: null,
 				onSend: [],
 				show: [["/status"]],
 				toast: [],
@@ -105,47 +113,68 @@ describe("/status", () =>
 		);
 	});
 
-	it("toasts mid-turn and keeps the text", () =>
+	it("notes mid-turn in the composer dock instead of toasting, keeps the text, and clears when the turn ends", () =>
 	{
 		const composer = setup("session", true);
 		composer.submit("/status");
+		const noted = outcome(composer);
+		composer.setTurnActive(false);
 
-		expect(outcome(composer)).toStrictEqual(
+		expect(
 			{
-				onSend: [],
-				show: [],
-				toast: [
-					[
-						{
-							kind: "error",
-							message: "Session info is available when Claude finishes this turn.",
-							uniqueKey: "epitaxy-status-turn",
-						},
-					],
-				],
-				text: "/status",
+				noted,
+				ended: outcome(composer),
+			},
+		).toStrictEqual(
+			{
+				noted:
+				{
+					notice: "Session info is available when Claude finishes this turn.",
+					onSend: [],
+					show: [],
+					toast: [],
+					text: "/status",
+				},
+				ended:
+				{
+					notice: null,
+					onSend: [],
+					show: [],
+					toast: [],
+					text: "/status",
+				},
 			},
 		);
 	});
 
-	it("toasts on the home composer without starting a session, and keeps the text", () =>
+	it("clears the mid-turn note on the next send", () =>
+	{
+		const composer = setup("session", true);
+		composer.submit("/status");
+		composer.submit("hello");
+
+		expect(outcome(composer)).toStrictEqual(
+			{
+				notice: null,
+				onSend: [["hello"]],
+				show: [],
+				toast: [],
+				text: "",
+			},
+		);
+	});
+
+	it("notes on the home composer without starting a session or toasting, and keeps the text", () =>
 	{
 		const composer = setup("home");
 		composer.submit("/status");
 
 		expect(outcome(composer)).toStrictEqual(
 			{
+				notice: "Session info is available once the session starts.",
 				onSend: [],
 				show: [],
-				toast: [
-					[
-						{
-							kind: "error",
-							message: "Session info is available once the session starts.",
-							uniqueKey: "epitaxy-status-session",
-						},
-					],
-				],
+				toast: [],
 				text: "/status",
 			},
 		);
@@ -172,6 +201,7 @@ describe("/status", () =>
 				band: "/status doesn’t take arguments here. Remove the text after the command, then send it again.",
 				banded:
 				{
+					notice: null,
 					onSend: [],
 					show: [],
 					toast: [],
@@ -179,6 +209,7 @@ describe("/status", () =>
 				},
 				after:
 				{
+					notice: null,
 					onSend: [["/statusline"]],
 					show: [],
 					toast: [],

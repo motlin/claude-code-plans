@@ -1,10 +1,13 @@
-/** Upstream's non-blocking "isn’t a command here" footnote above the composer (cc43287c9 `Pd` spawn notice). */
+/**
+ * Upstream's non-blocking spawn notice footnote above the composer (cc43287c9 `Pd`), such as "isn’t a command here"
+ * with its "Use /x" suggestion.
+ */
 export function ComposerCommandNotice({
-	name,
+	text,
 	suggestion,
 	onUse,
 }: {
-	name: string;
+	text: string;
 	suggestion: string | null;
 	onUse: (command: string) => void;
 })
@@ -14,7 +17,7 @@ export function ComposerCommandNotice({
 			data-composer-command-notice
 			className="mb-1.5 flex flex-wrap items-center gap-2 ps-1 text-footnote text-upstream-warning select-text"
 		>
-			<span>{`/${name} isn’t a command here.`}</span>
+			<span>{text}</span>
 			{suggestion !== null && (
 				<button
 					type="button"

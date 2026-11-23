@@ -644,7 +644,7 @@ describe("routeSkillsCommand", () =>
 
 describe("routeStatusCommand", () =>
 {
-	it("shows the card when idle, toasts without a session or mid-turn, and bands extra text", () =>
+	it("shows the card when idle, notes without a session or mid-turn, and bands extra text", () =>
 	{
 		const idle =
 		{
@@ -693,12 +693,14 @@ describe("routeStatusCommand", () =>
 				kind: "card",
 			},
 			{
-				kind: "toast",
-				message: "Session info is available when Claude finishes this turn.",
+				kind: "notice",
+				cause: "turn",
+				text: "Session info is available when Claude finishes this turn.",
 			},
 			{
-				kind: "toast",
-				message: "Session info is available once the session starts.",
+				kind: "notice",
+				cause: "session",
+				text: "Session info is available once the session starts.",
 			},
 			{
 				kind: "band",

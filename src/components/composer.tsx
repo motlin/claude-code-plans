@@ -495,7 +495,7 @@ interface ComposerProps
 	onOpenContext?: (() => void) | undefined;
 	/**
 	 * A session's `/status` host command: `show` appends the Session info card for the command as sent;
-	 * while `turnActive` it toasts and keeps the text instead. The home composer has none and toasts
+	 * while `turnActive` a spawn notice keeps the text instead. The home composer has none and notes
 	 * that the session hasn't started; a session composer without it lets `/status` reach the CLI.
 	 */
 	statusCommand?: ComposerStatusCommand | undefined;
@@ -1352,14 +1352,29 @@ export function Composer({
 		body: string;
 	} | null>(null);
 	const commandErrorBody = commandError?.draftKey === draftKey ? commandError.body : null;
-	// Upstream's "isn’t a command here" footnote: set by the send of an unknown command, cleared by the next submit.
-	const [unknownCommand, setUnknownCommand] = useState<
-	{
-		draftKey: string;
-		name: string;
-		suggestion: string | null;
-	} | null>(null);
-	const shownUnknownCommand = unknownCommand?.draftKey === draftKey ? unknownCommand : null;
+	// Upstream's spawn notice (`spawnWarning`), cleared by the next submit: the "isn’t a command here" footnote set by
+	// the send of an unknown command, or `/status` deferred until the session starts or the running turn ends.
+	const [spawnNotice, setSpawnNotice] = useState<
+		|
+		  {
+				draftKey: string;
+				kind: "unknown_command";
+				name: string;
+				suggestion: string | null;
+		  }
+		|
+		  {
+				draftKey: string;
+				kind: "status";
+				cause: "session" | "turn";
+				text: string;
+		  }
+		| null
+	>(null);
+	// Upstream's `lFe` effect: a turn-caused notice goes once the turn is over.
+	if (spawnNotice?.kind === "status" && spawnNotice.cause === "turn" && statusCommand?.turnActive !== true)
+		setSpawnNotice(null);
+	const shownSpawnNotice = spawnNotice?.draftKey === draftKey ? spawnNotice : null;
 	const menuShortcutOptions =
 	{
 		disabled: chin === undefined,
@@ -2427,7 +2442,7 @@ export function Composer({
 		// The session composer's draft is keyed by its session id.
 		if (trigger !== undefined && variant === "session") startComposerSubmitJourneys(trigger, draftKey);
 		const trimmed = prompt.trim();
-		setUnknownCommand(null);
+		setSpawnNotice(null);
 		setCommandError(null);
 		if (bashMode)
 		{
@@ -2550,9 +2565,10 @@ export function Composer({
 		if (name === undefined || slashCommands.length === 0 || isKnownSlashCommand(name, slashCommands)) return;
 		// Locally every command is a CLI command, so the loaded list is the candidate set.
 		const candidates = slashCommands.flatMap((command) => [command.name, ...(command.aliases ?? [])]);
-		setUnknownCommand(
+		setSpawnNotice(
 			{
 				draftKey,
+				kind: "unknown_command",
 				name,
 				suggestion: nearestCommand(name, candidates),
 			},
@@ -2560,7 +2576,7 @@ export function Composer({
 	}
 	function applySuggestedCommand(command: string): void
 	{
-		setUnknownCommand(null);
+		setSpawnNotice(null);
 		const rest = prompt.trim();
 		const next = rest === "" ? `/${command} ` : `/${command} ${rest}`;
 		pendingCaretRef.current = next.length;
@@ -2653,7 +2669,7 @@ export function Composer({
 		}
 		return true;
 	}
-	/** Upstream's `/status` (`noArgs`): the Session info card, or a keyed toast or band that keeps the text. */
+	/** Upstream's `/status` (`noArgs`): the Session info card, or a spawn notice or band that keeps the text. */
 	function runStatusCommand(text: string): boolean
 	{
 		if (variant === "session" && statusCommand === undefined) return false;
@@ -2671,12 +2687,13 @@ export function Composer({
 				statusCommand?.show(text.trim());
 				clearDraft();
 				break;
-			case "toast":
-				toast?.(
+			case "notice":
+				setSpawnNotice(
 					{
-						kind: "error",
-						message: route.message,
-						uniqueKey: variant === "session" ? "epitaxy-status-turn" : "epitaxy-status-session",
+						draftKey,
+						kind: "status",
+						cause: route.cause,
+						text: route.text,
 					},
 				);
 				break;
@@ -3803,10 +3820,14 @@ export function Composer({
 					/>
 				</div>
 			)}
-			{commandErrorBody === null && shownUnknownCommand !== null && (
+			{commandErrorBody === null && shownSpawnNotice !== null && (
 				<ComposerCommandNotice
-					name={shownUnknownCommand.name}
-					suggestion={shownUnknownCommand.suggestion}
+					text={
+						shownSpawnNotice.kind === "unknown_command"
+							? `/${shownSpawnNotice.name} isn’t a command here.`
+							: shownSpawnNotice.text
+					}
+					suggestion={shownSpawnNotice.kind === "unknown_command" ? shownSpawnNotice.suggestion : null}
 					onUse={applySuggestedCommand}
 				/>
 			)}
