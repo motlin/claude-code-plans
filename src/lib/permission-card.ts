@@ -52,6 +52,8 @@ export interface PendingPermission
 	detailLang?: PermissionDetailLang;
 	/** Upstream's `clampTitle`: the title value is clamped to two lines. */
 	clampTitle?: true;
+	/** Upstream's `detailIsPath`: the detail is a file path, drawn left-to-right with bidi controls isolated. */
+	detailIsPath?: true;
 	/** Upstream's footnote under the detail, such as a Bash command's sandbox, background and time-limit notes. */
 	detailNote?: string;
 	/** The description line in the body: a Bash command's, an agent's or a Workflow's. */
@@ -401,6 +403,7 @@ interface PermissionCopy
 	detail?: string | null;
 	detailLang?: PermissionDetailLang;
 	clampTitle?: true;
+	detailIsPath?: true;
 	detailNote?: string;
 	description?: string;
 	tokenWarning?: true;
@@ -691,6 +694,7 @@ function fileCopy(action: string, path: string | null): PermissionCopy
 				action,
 				meta: path.replace(/^.*[\\/]/, ""),
 				detail: path,
+				detailIsPath: true,
 			};
 }
 

@@ -3610,6 +3610,10 @@ function SessionView({
 																				clampTitle={
 																					shownPermission.clampTitle === true
 																				}
+																				detailIsPath={
+																					shownPermission.detailIsPath ===
+																					true
+																				}
 																				detailNote={
 																					shownPermission.detailNote ?? null
 																				}

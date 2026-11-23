@@ -1,5 +1,6 @@
 import
 {
+	Fragment,
 	useCallback,
 	useEffect,
 	useId,
@@ -72,7 +73,7 @@ import
 	type PersistentAllowKind,
 	type PersistentAllowSave,
 } from "../lib/permission-suggestions";
-import {visibleSingleLine} from "../lib/visible-text";
+import {revealSpoofing, visibleSingleLine} from "../lib/visible-text";
 import {useBackgroundTasksOpener} from "./background-tasks-opener-context";
 import {APPROVAL_ACTION_SHORTCUT_CLASS, ApprovalActionButton} from "./approval-action-button";
 import {APPROVAL_SENDING_LABEL, ApprovalCardShell, ApprovalScrollRegion} from "./approval-card";
@@ -143,6 +144,7 @@ export function PermissionCard({
 	detail,
 	detailLang = null,
 	clampTitle = false,
+	detailIsPath = false,
 	detailNote = null,
 	description = null,
 	tokenWarning = false,
@@ -178,6 +180,8 @@ export function PermissionCard({
 	detailLang?: PermissionDetailLang | null;
 	/** Upstream's `clampTitle`: the title value is clamped to two lines. */
 	clampTitle?: boolean;
+	/** Upstream's `detailIsPath`: the detail is a path, drawn left-to-right through `PathDetailLines`. */
+	detailIsPath?: boolean;
 	/** Upstream's footnote under the detail ("Keeps running in the background."). */
 	detailNote?: string | null;
 	/** The description line: a Bash command's, an agent's or a Workflow's. */
@@ -512,8 +516,8 @@ export function PermissionCard({
 	if ((decided || answered) && hideOnDecision) return null;
 
 	const pathDetail = (path: string) => (
-		<div data-permission-detail data-approval-value className={DETAIL_CLASS}>
-			{path}
+		<div data-permission-detail data-approval-value className={DETAIL_CLASS} dir={detailIsPath ? "ltr" : undefined}>
+			{detailIsPath ? <PathDetailLines path={path} /> : path}
 		</div>
 	);
 	/** Upstream's `a(note)` for a previewed change: the path, grouped with its note when there is one. */
@@ -1123,6 +1127,30 @@ function usePermissionDigitKeys(
 }
 
 /** Upstream's body classes (`epitaxy-code-size` hooks, held at the default size by the card's data-fixed-code-size): the detail block (`Lg`), its footnote (`kg`) and the description line (`Dg`). */
+/** Upstream's bidi-control test (`be`, shared-l-p-m-w-0 `FN`). */
+const BIDI_CONTROL_RE = /\p{Bidi_Control}/u;
+
+/**
+ * Upstream's `Np` line renderer for a path detail: a line holding a bidi control is drawn as a
+ * left-to-right isolate-override span with its spoofing characters shown; any other line as itself.
+ */
+function PathDetailLines({path}: {path: string})
+{
+	return path.split("\n").map((line, index) => (
+		// oxlint-disable-next-line react/no-array-index-key -- the lines are fixed for one path
+		<Fragment key={index}>
+			{index > 0 && "\n"}
+			{BIDI_CONTROL_RE.test(line) ? (
+				<span dir="ltr" className="[unicode-bidi:isolate-override]">
+					{revealSpoofing(line)}
+				</span>
+			) : (
+				line
+			)}
+		</Fragment>
+	));
+}
+
 const DETAIL_CLASS =
 	"epitaxy-code-size bg-alpha-1 rounded-r4 py-md px-lg text-code text-secondary whitespace-pre-wrap break-words select-text [unicode-bidi:plaintext]";
 /** Upstream's `U` paragraph (`gy`) for a change over the preview cap. */

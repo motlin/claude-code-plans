@@ -502,6 +502,7 @@ describe("findPendingPermission", () =>
 					meta: "b.ts",
 				},
 				detail: "/repo/b.ts",
+				detailIsPath: true,
 				clampTitle: true,
 				fileChange: "preview",
 				toolName: "Write",
@@ -768,6 +769,7 @@ describe("findPendingPermission", () =>
 				meta: "a",
 			},
 			detail: "/repo/a",
+			detailIsPath: true,
 			clampTitle: true,
 			fileChange: "preview",
 			toolName: "Edit",
@@ -1087,6 +1089,8 @@ describe("permission title copy", () =>
 			valueClass: "line-clamp-2",
 			label: "Permission request: run this command",
 			detail: "$ rm -rf dist",
+			detailDir: null,
+			isolated: [],
 		},
 		{
 			tool: "Read",
@@ -1102,6 +1106,8 @@ describe("permission title copy", () =>
 			valueClass: "line-clamp-2",
 			label: "Permission request: read",
 			detail: "/repo/src/a.ts",
+			detailDir: "ltr",
+			isolated: [],
 		},
 		{
 			tool: "Grep",
@@ -1115,6 +1121,8 @@ describe("permission title copy", () =>
 			valueClass: null,
 			label: "Permission request: search files",
 			detail: "TODO",
+			detailDir: null,
+			isolated: [],
 		},
 		{
 			tool: "mcp__github__create_issue",
@@ -1128,6 +1136,8 @@ describe("permission title copy", () =>
 			valueClass: null,
 			label: "Permission request: use create issue (github)",
 			detail: null,
+			detailDir: null,
+			isolated: [],
 		},
 		{
 			tool: "Workflow",
@@ -1144,53 +1154,86 @@ describe("permission title copy", () =>
 			valueClass: null,
 			label: "Permission request: run the workflow",
 			detail: null,
+			detailDir: null,
+			isolated: [],
 		},
-	])("titles $tool $input as upstream does", ({tool, input, title, parts, valueClass, label, detail}) =>
-	{
-		const pending = findPendingPermission(
+		{
+			tool: "Edit",
+			input:
 			{
-				sessionId: "session-test-100",
-				isActive: true,
-				notifications: [permissionNotification()],
-				records: [assistantToolUse("t9", tool, input)],
+				file_path: "/repo/src/evil\u202Ests.ts",
+				old_string: "a",
+				new_string: "b",
 			},
-		)!;
-		const {container} = render(
-			<PermissionCard
-				title={pending.title}
-				detail={pending.detail}
-				detailLang={pending.detailLang ?? null}
-				clampTitle={pending.clampTitle === true}
-				canAnswer
-				onDecision={async () =>
+			title: "Allow Claude to edit evil\u202Ests.ts?",
+			parts: [
+				[PRIMARY, "edit"],
+				[PRIMARY, "evil\u202Ests.ts"],
+			],
+			valueClass: "line-clamp-2",
+			label: "Permission request: edit",
+			detail: "/repo/src/evil[U+202E]sts.ts",
+			detailDir: "ltr",
+			isolated: [["[unicode-bidi:isolate-override]", "/repo/src/evil[U+202E]sts.ts"]],
+		},
+	])(
+		"titles $tool $input as upstream does",
+		({tool, input, title, parts, valueClass, label, detail, detailDir, isolated}) =>
+		{
+			const pending = findPendingPermission(
 				{
-				}}
-			/>,
-		);
-		const card = container.querySelector("[data-approval-card-root]")!;
-		const value = card.querySelector("[data-permission-title] [data-permission-title-value]");
-		expect(
-			{
-				title: value?.textContent,
-				parts: [...(value?.children ?? [])].map((span) => [span.className, span.textContent]),
-				valueClass: value?.getAttribute("class") ?? null,
-				approvalValue: value?.hasAttribute("data-approval-value"),
-				parentIsTitle: value?.parentElement?.hasAttribute("data-permission-title"),
-				label: card.getAttribute("aria-label"),
-				detail: card.querySelector("[data-permission-detail]")?.textContent ?? null,
-			},
-		).toStrictEqual(
-			{
-				title,
-				parts,
-				valueClass,
-				approvalValue: valueClass === null,
-				parentIsTitle: true,
-				label,
-				detail,
-			},
-		);
-	});
+					sessionId: "session-test-100",
+					isActive: true,
+					notifications: [permissionNotification()],
+					records: [assistantToolUse("t9", tool, input)],
+				},
+			)!;
+			const {container} = render(
+				<PermissionCard
+					title={pending.title}
+					detail={pending.detail}
+					detailLang={pending.detailLang ?? null}
+					clampTitle={pending.clampTitle === true}
+					detailIsPath={pending.detailIsPath === true}
+					canAnswer
+					onDecision={async () =>
+					{
+					}}
+				/>,
+			);
+			const card = container.querySelector("[data-approval-card-root]")!;
+			const value = card.querySelector("[data-permission-title] [data-permission-title-value]");
+			const detailElement = card.querySelector("[data-permission-detail]");
+			expect(
+				{
+					title: value?.textContent,
+					parts: [...(value?.children ?? [])].map((span) => [span.className, span.textContent]),
+					valueClass: value?.getAttribute("class") ?? null,
+					approvalValue: value?.hasAttribute("data-approval-value"),
+					parentIsTitle: value?.parentElement?.hasAttribute("data-permission-title"),
+					label: card.getAttribute("aria-label"),
+					detail: detailElement?.textContent ?? null,
+					detailDir: detailElement?.getAttribute("dir") ?? null,
+					isolated: [...(detailElement?.querySelectorAll("span[dir=ltr]") ?? [])].map((span) => [
+						span.className,
+						span.textContent,
+					]),
+				},
+			).toStrictEqual(
+				{
+					title,
+					parts,
+					valueClass,
+					approvalValue: valueClass === null,
+					parentIsTitle: true,
+					label,
+					detail,
+					detailDir,
+					isolated,
+				},
+			);
+		},
+	);
 
 	it.each([
 		{
@@ -1687,6 +1730,7 @@ describe("permission title copy", () =>
 					meta: "a.ts",
 				},
 				detail: "/repo/a.ts",
+				detailIsPath: true,
 				clampTitle: true,
 			},
 		},
@@ -1706,6 +1750,7 @@ describe("permission title copy", () =>
 					meta: "a.ts",
 				},
 				detail: "/repo/a.ts",
+				detailIsPath: true,
 				detailNote: "Line 5",
 				clampTitle: true,
 			},
@@ -1726,6 +1771,7 @@ describe("permission title copy", () =>
 					meta: "a.ts",
 				},
 				detail: "/repo/a.ts",
+				detailIsPath: true,
 				detailNote: "Lines 5 to 14",
 				clampTitle: true,
 			},
@@ -1745,6 +1791,7 @@ describe("permission title copy", () =>
 					meta: "a.ts",
 				},
 				detail: "/repo/a.ts",
+				detailIsPath: true,
 				detailNote: "From line 5",
 				clampTitle: true,
 			},
@@ -1765,6 +1812,7 @@ describe("permission title copy", () =>
 					meta: "a.pdf",
 				},
 				detail: "/repo/a.pdf",
+				detailIsPath: true,
 				detailNote: "First 10 lines, Page 3",
 				clampTitle: true,
 			},
@@ -1784,6 +1832,7 @@ describe("permission title copy", () =>
 					meta: "a.pdf",
 				},
 				detail: "/repo/a.pdf",
+				detailIsPath: true,
 				detailNote: "Pages 1-3",
 				clampTitle: true,
 			},
@@ -1803,6 +1852,7 @@ describe("permission title copy", () =>
 					meta: "a.pdf",
 				},
 				detail: "/repo/a.pdf",
+				detailIsPath: true,
 				clampTitle: true,
 				rows: [
 					{
@@ -1828,6 +1878,7 @@ describe("permission title copy", () =>
 					meta: "b.ts",
 				},
 				detail: "/repo/b.ts",
+				detailIsPath: true,
 				detailNote: "Leaves the file empty.",
 				clampTitle: true,
 			},
@@ -1849,6 +1900,7 @@ describe("permission title copy", () =>
 					meta: "b.ts",
 				},
 				detail: "/repo/b.ts",
+				detailIsPath: true,
 				detailNote: "Replaces every match in the file.",
 				clampTitle: true,
 				fileChange: "preview",
@@ -1870,6 +1922,7 @@ describe("permission title copy", () =>
 					meta: "b.ts",
 				},
 				detail: "/a/b.ts",
+				detailIsPath: true,
 				clampTitle: true,
 				fileChange: "preview",
 			},
@@ -1890,6 +1943,7 @@ describe("permission title copy", () =>
 					meta: "b.ts",
 				},
 				detail: "/a/b.ts",
+				detailIsPath: true,
 				clampTitle: true,
 			},
 		},
@@ -1908,6 +1962,7 @@ describe("permission title copy", () =>
 					meta: "b.ts",
 				},
 				detail: "/a/b.ts",
+				detailIsPath: true,
 				clampTitle: true,
 				fileChange: "too_large",
 			},
@@ -1927,6 +1982,7 @@ describe("permission title copy", () =>
 					meta: "b.ts",
 				},
 				detail: "/a/b.ts",
+				detailIsPath: true,
 				clampTitle: true,
 				fileChange: "preview",
 			},
@@ -1952,6 +2008,7 @@ describe("permission title copy", () =>
 					meta: "b.ts",
 				},
 				detail: "/a/b.ts",
+				detailIsPath: true,
 				detailNote: "Replaces every match in the file.",
 				clampTitle: true,
 				fileChange: "preview",
@@ -1978,6 +2035,7 @@ describe("permission title copy", () =>
 					meta: "b.ts",
 				},
 				detail: "/a/b.ts",
+				detailIsPath: true,
 				clampTitle: true,
 			},
 		},
@@ -1996,6 +2054,7 @@ describe("permission title copy", () =>
 					meta: "b.ts",
 				},
 				detail: "/repo/b.ts",
+				detailIsPath: true,
 				clampTitle: true,
 			},
 		},
@@ -2015,6 +2074,7 @@ describe("permission title copy", () =>
 					meta: "n.ipynb",
 				},
 				detail: "/repo/n.ipynb",
+				detailIsPath: true,
 				clampTitle: true,
 				detailNote: "Replaces cell c1.",
 				folds: [
@@ -2045,6 +2105,7 @@ describe("permission title copy", () =>
 					meta: "n.ipynb",
 				},
 				detail: "/repo/n.ipynb",
+				detailIsPath: true,
 				clampTitle: true,
 				detailNote: "Adds a new cell after cell c1. Cell type: code.",
 				folds: [
@@ -2073,6 +2134,7 @@ describe("permission title copy", () =>
 					meta: "n.ipynb",
 				},
 				detail: "/repo/n.ipynb",
+				detailIsPath: true,
 				clampTitle: true,
 				detailNote: "Adds a new cell at the top.",
 				folds: [
@@ -2102,6 +2164,7 @@ describe("permission title copy", () =>
 					meta: "n.ipynb",
 				},
 				detail: "/repo/n.ipynb",
+				detailIsPath: true,
 				clampTitle: true,
 				detailNote: "Adds a new cell at the top.",
 				folds: [
@@ -2132,6 +2195,7 @@ describe("permission title copy", () =>
 					meta: "n.ipynb",
 				},
 				detail: "/repo/n.ipynb",
+				detailIsPath: true,
 				clampTitle: true,
 				detailNote: "Deletes cell c2.",
 			},
@@ -2152,6 +2216,7 @@ describe("permission title copy", () =>
 					meta: "n.ipynb",
 				},
 				detail: "/repo/n.ipynb",
+				detailIsPath: true,
 				clampTitle: true,
 				rows: [
 					{
@@ -2187,6 +2252,7 @@ describe("permission title copy", () =>
 					meta: "n.ipynb",
 				},
 				detail: "/repo/n.ipynb",
+				detailIsPath: true,
 				clampTitle: true,
 				rows: [
 					{
@@ -2226,6 +2292,7 @@ describe("permission title copy", () =>
 					meta: "n.ipynb",
 				},
 				detail: "/repo/n.ipynb",
+				detailIsPath: true,
 				clampTitle: true,
 				rows: [
 					{
@@ -2263,6 +2330,7 @@ describe("permission title copy", () =>
 					meta: "n.ipynb",
 				},
 				detail: "/repo/n.ipynb",
+				detailIsPath: true,
 				clampTitle: true,
 				rows: [
 					{
@@ -2294,6 +2362,7 @@ describe("permission title copy", () =>
 					meta: "n.ipynb",
 				},
 				detail: "/repo/n.ipynb",
+				detailIsPath: true,
 				clampTitle: true,
 				detailNote: "Replaces cell c1. Cell type: markdown.",
 				folds: [
