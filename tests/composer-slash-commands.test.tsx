@@ -631,7 +631,7 @@ describe("Composer slash commands", () =>
 					"min-h-6",
 					"rounded-r5",
 					"text-balance",
-					"shadow-[0_1px_2px_rgb(11_11_11/0.06)]",
+					"shadow-[0_1px_2px_rgb(11_11_11/0.06),0_2px_8px_rgb(11_11_11/0.08)]",
 					"z-[130]",
 					"transition-[opacity,scale]",
 					"duration-150",

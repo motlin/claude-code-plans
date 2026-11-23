@@ -86,7 +86,7 @@ describe("<Tooltip> box", () =>
 		).toStrictEqual(
 			{
 				className:
-					"pointer-events-none absolute z-50 inline-flex min-h-6 w-max max-w-[240px] items-center gap-2 rounded-r5 bg-[var(--tooltip-bg)] px-2 py-[3px] text-[13px]/[18px] text-[var(--tooltip-fg)] shadow-[0_1px_2px_rgb(11_11_11/0.06)] whitespace-normal bottom-full left-1/2 mb-1 -translate-x-1/2",
+					"pointer-events-none absolute z-50 inline-flex min-h-6 w-max max-w-[240px] items-center gap-2 rounded-r5 bg-[var(--tooltip-bg)] px-2 py-[3px] text-[13px]/[18px] text-[var(--tooltip-fg)] shadow-[0_1px_2px_rgb(11_11_11/0.06),0_2px_8px_rgb(11_11_11/0.08)] whitespace-normal bottom-full left-1/2 mb-1 -translate-x-1/2",
 				shortcut:
 					"inline-flex shrink-0 items-baseline gap-[0.15em] text-caption [&:where(:root[dir=rtl]_:dir(rtl))]:flex-row-reverse text-[12px] whitespace-nowrap [--shortcut-cap-ink:var(--tooltip-shortcut-ink)]",
 			},
@@ -127,7 +127,7 @@ describe("<Tooltip> box", () =>
 		).toStrictEqual(
 			{
 				className:
-					"pointer-events-none absolute z-50 flex w-max flex-col items-start gap-0.5 rounded-r5 bg-[var(--tooltip-bg)] px-2 py-1.5 text-[13px]/[18px] text-[var(--tooltip-fg)] shadow-[0_1px_2px_rgb(11_11_11/0.06)] whitespace-normal bottom-full left-1/2 mb-1 -translate-x-1/2",
+					"pointer-events-none absolute z-50 flex w-max flex-col items-start gap-0.5 rounded-r5 bg-[var(--tooltip-bg)] px-2 py-1.5 text-[13px]/[18px] text-[var(--tooltip-fg)] shadow-[0_1px_2px_rgb(11_11_11/0.06),0_2px_8px_rgb(11_11_11/0.08)] whitespace-normal bottom-full left-1/2 mb-1 -translate-x-1/2",
 				rows: [
 					{
 						className: "inline-flex items-center gap-2",
@@ -234,7 +234,7 @@ describe('<Tooltip variant="reason">', () =>
 		);
 
 		expect(openTooltip().className).toBe(
-			"pointer-events-none absolute z-50 flex w-max max-w-[240px] flex-col gap-0.5 rounded-r5 bg-[var(--tooltip-bg)] px-2 py-1.5 text-[13px]/[18px] text-[var(--tooltip-fg)] shadow-[0_1px_2px_rgb(11_11_11/0.06)] whitespace-normal text-balance bottom-full left-1/2 mb-1 -translate-x-1/2",
+			"pointer-events-none absolute z-50 flex w-max max-w-[240px] flex-col gap-0.5 rounded-r5 bg-[var(--tooltip-bg)] px-2 py-1.5 text-[13px]/[18px] text-[var(--tooltip-fg)] shadow-[0_1px_2px_rgb(11_11_11/0.06),0_2px_8px_rgb(11_11_11/0.08)] whitespace-normal text-balance bottom-full left-1/2 mb-1 -translate-x-1/2",
 		);
 	});
 
@@ -380,7 +380,7 @@ describe('<Tooltip align="start" stacked>', () =>
 			{
 				align: "start",
 				className:
-					"pointer-events-none absolute z-50 flex w-max max-w-[min(480px,calc(100vw-16px))] flex-col gap-0.5 rounded-r5 bg-[var(--tooltip-bg)] px-2 py-1.5 text-[13px]/[18px] text-[var(--tooltip-fg)] shadow-[0_1px_2px_rgb(11_11_11/0.06)] whitespace-normal text-balance bottom-full left-0 mb-1",
+					"pointer-events-none absolute z-50 flex w-max max-w-[min(480px,calc(100vw-16px))] flex-col gap-0.5 rounded-r5 bg-[var(--tooltip-bg)] px-2 py-1.5 text-[13px]/[18px] text-[var(--tooltip-fg)] shadow-[0_1px_2px_rgb(11_11_11/0.06),0_2px_8px_rgb(11_11_11/0.08)] whitespace-normal text-balance bottom-full left-0 mb-1",
 				children: [
 					{
 						className: "inline-flex min-w-0 items-center gap-2",
@@ -572,7 +572,7 @@ describe("TOOLTIP_CLASS", () =>
 	it("is upstream's 13px/18px single-line tooltip box, exported for row-anchored consumers", () =>
 	{
 		expect(TOOLTIP_CLASS).toBe(
-			"pointer-events-none absolute z-50 inline-flex min-h-6 w-max max-w-[240px] items-center gap-2 rounded-r5 bg-[var(--tooltip-bg)] px-2 py-[3px] text-[13px]/[18px] text-[var(--tooltip-fg)] shadow-[0_1px_2px_rgb(11_11_11/0.06)] whitespace-normal",
+			"pointer-events-none absolute z-50 inline-flex min-h-6 w-max max-w-[240px] items-center gap-2 rounded-r5 bg-[var(--tooltip-bg)] px-2 py-[3px] text-[13px]/[18px] text-[var(--tooltip-fg)] shadow-[0_1px_2px_rgb(11_11_11/0.06),0_2px_8px_rgb(11_11_11/0.08)] whitespace-normal",
 		);
 	});
 });

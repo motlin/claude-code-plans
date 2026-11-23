@@ -25,7 +25,7 @@ export const START_SIDE_CLASS =
  * `whitespace-normal` stands in for upstream's portal: a tip inside a `nowrap` row still wraps at 240px.
  */
 export const TOOLTIP_CLASS =
-	"pointer-events-none absolute z-50 inline-flex min-h-6 w-max max-w-[240px] items-center gap-2 rounded-r5 bg-[var(--tooltip-bg)] px-2 py-[3px] text-[13px]/[18px] text-[var(--tooltip-fg)] shadow-[0_1px_2px_rgb(11_11_11/0.06)] whitespace-normal";
+	"pointer-events-none absolute z-50 inline-flex min-h-6 w-max max-w-[240px] items-center gap-2 rounded-r5 bg-[var(--tooltip-bg)] px-2 py-[3px] text-[13px]/[18px] text-[var(--tooltip-fg)] shadow-[0_1px_2px_rgb(11_11_11/0.06),0_2px_8px_rgb(11_11_11/0.08)] whitespace-normal";
 
 /** The wider, wrapping box that keeps the content's line breaks. */
 export const MULTILINE_TOOLTIP_CLASS = TOOLTIP_CLASS.replace("max-w-[240px]", "max-w-[320px]").replace(
