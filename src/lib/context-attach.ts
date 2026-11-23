@@ -1195,6 +1195,22 @@ const IMAGES_TOO_LARGE_MESSAGE = `Some images were too large to attach. Maximum 
 /** Upstream's warning toast timeout (`Qr`): the size and count warnings last 8 s. */
 const ATTACH_WARNING_MS = 8000;
 
+/** Upstream's per-message attachment cap (`aP()`, `max_per_message_upload_count`, server ceiling 20). */
+const MAX_ATTACHMENTS = 20;
+
+/** Upstream `k1.tooManyAttachments` at its cap of 20. */
+const TOO_MANY_ATTACHMENTS_MESSAGE = `You can add at most ${MAX_ATTACHMENTS} attachments to a message. Please select fewer attachments.`;
+
+/**
+ * Chips that count toward upstream's 20-attachment cap: its files and
+ * attachments (pending included), here image and uploaded-file chips plus
+ * pasted text. `@path` mentions and excerpts are prompt text upstream.
+ */
+function isAttachmentChip(chip: ContextChip): boolean
+{
+	return chip.kind === "image" || chip.kind === "pasted-text" || (chip.kind === "file" && chip.name !== undefined);
+}
+
 /** Upstream's image lane types (`Yt`); any other file, BMP or SVG included, goes to the file lane. */
 const IMAGE_TYPES: ReadonlySet<string> = new Set(["image/png", "image/jpeg", "image/gif", "image/webp"]);
 
@@ -1253,8 +1269,10 @@ function withinImageCaps(
 /**
  * Uploads files (⌘U, drop, paste) and adds each as an image or file chip in
  * the composer's strip; a failed upload removes its pending chip and raises
- * an error toast through `notify`. Oversize images and images past the cap
- * are dropped with a warning toast first.
+ * an error toast through `notify`. A batch that would take the message past
+ * 20 attachments is refused whole with upstream's warning, as is upstream's
+ * `newUploads + staged > aP()` guard; otherwise oversize images and images
+ * past the cap are dropped with a warning toast first.
  */
 export function attachUploadedFiles(
 	sessionId: string,
@@ -1262,6 +1280,17 @@ export function attachUploadedFiles(
 	notify: (options: ToastOptions) => void,
 ): void
 {
+	if (files.length + getContextChips(sessionId).filter(isAttachmentChip).length > MAX_ATTACHMENTS)
+	{
+		notify(
+			{
+				kind: "warning",
+				message: TOO_MANY_ATTACHMENTS_MESSAGE,
+				durationMs: ATTACH_WARNING_MS,
+			},
+		);
+		return;
+	}
 	for (const file of withinImageCaps(sessionId, files, notify))
 	{
 		const image = isImage(file);

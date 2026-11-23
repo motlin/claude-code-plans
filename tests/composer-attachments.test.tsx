@@ -1292,6 +1292,66 @@ describe("Composer attachments", () =>
 		);
 	});
 
+	it("rejects a whole batch past 20 attachments, counting staged and pending ones, with upstream's warning", () =>
+	{
+		deferUploads();
+		renderComposer();
+		const files = (prefix: string, count: number) =>
+			Array.from(
+				{
+					length: count,
+				},
+				(_, i) =>
+					new File(
+						["x"],
+						`${prefix}${i}.txt`,
+						{
+							type: "text/plain",
+						},
+					),
+			);
+
+		paste(
+			{
+				files: files("over", 21),
+			},
+		);
+		paste(
+			{
+				files: files("a", 3),
+			},
+		);
+		paste(
+			{
+				files: files("b", 18),
+			},
+		);
+		paste(
+			{
+				files: files("c", 17),
+			},
+		);
+
+		const tooMany = [
+			{
+				kind: "warning",
+				message: "You can add at most 20 attachments to a message. Please select fewer attachments.",
+				durationMs: 8000,
+			},
+		];
+		expect(
+			{
+				uploads,
+				toasts: toasts.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				uploads: [...files("a", 3), ...files("c", 17)].map((file) => file.name),
+				toasts: [tooMany, tooMany],
+			},
+		);
+	});
+
 	it("does not count files toward the 5-image cap", () =>
 	{
 		deferUploads();

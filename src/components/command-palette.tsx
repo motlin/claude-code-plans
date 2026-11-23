@@ -1410,7 +1410,7 @@ class PaletteExitSnapshot extends Component<
 	}
 }
 
-/** Upstream `ah`'s zone cap: `Yg()` (`max_per_message_upload_count`, server ceiling 20) + 1. */
+/** Upstream `ah`'s zone cap: `Yg()` (`max_per_message_upload_count`, server ceiling 20) + 1, so an over-cap folder reaches `attachUploadedFiles`' 20-attachment guard. */
 const PALETTE_DROP_MAX_FILES = 21;
 
 function hasFileDrag(event: DragEvent): boolean

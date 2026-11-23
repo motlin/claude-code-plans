@@ -6236,8 +6236,14 @@ describe("CommandPalette shell", () =>
 			);
 		});
 
-		it("flattens a dropped folder into its files, skipping junk, with no toast", async () =>
+		it("flattens a dropped folder into its files, skipping junk, and rejects a folder over 20 files with upstream's toast", async () =>
 		{
+			const uploads: string[] = [];
+			vi.stubGlobal("fetch", async (input: RequestInfo | URL) =>
+			{
+				if (String(input).includes("/api/attachments")) uploads.push(String(input));
+				return new Promise(() => {});
+			});
 			const fileEntry = (name: string, parent: string) => (
 			{
 				isFile: true,
@@ -6291,15 +6297,20 @@ describe("CommandPalette shell", () =>
 				dirEntry("sub", "/proj", [fileEntry("b.png", "/proj/sub")]),
 				fileEntry(".DS_Store", "/proj"),
 			]);
-			const many = folder(
-				"many",
-				Array.from(
-					{
-						length: 25,
-					},
-					(_, i) => fileEntry(`f${i}.txt`, "/many"),
-				),
-			);
+			const folderOf = (name: string, count: number) =>
+				folder(
+					name,
+					Array.from(
+						{
+							length: count,
+						},
+						(_, i) => fileEntry(`f${i}.txt`, `/${name}`),
+					),
+				);
+			const toastMessages = () =>
+				Array.from(document.querySelectorAll('[data-toast][data-type="warning"] h2[data-toast-message]')).map(
+					(heading) => heading.textContent,
+				);
 			const drop = (items: readonly object[]) =>
 				fireEvent.drop(
 					document.body,
@@ -6322,16 +6333,31 @@ describe("CommandPalette shell", () =>
 			const afterProj = chipNames();
 			for (const chip of getContextChips("command-palette-compose"))
 				removeContextChip("command-palette-compose", chip.id);
-			drop([many]);
+			const uploadsAfterProj = uploads.length;
+			drop([folderOf("many", 25)]);
 			await waitFor(() =>
 			{
-				expect(chipNames()).toHaveLength(21);
+				expect(toastMessages()).toHaveLength(1);
+			});
+			const many =
+			{
+				chips: chipNames(),
+				uploads: uploads.length - uploadsAfterProj,
+			};
+			drop([folderOf("twenty", 20)]);
+			await waitFor(() =>
+			{
+				expect(chipNames()).toHaveLength(20);
 			});
 
 			expect(
 				{
 					afterProj,
-					many: chipNames(),
+					uploadsAfterProj,
+					many,
+					twenty: chipNames(),
+					twentyUploads: uploads.length - uploadsAfterProj,
+					toasts: toastMessages(),
 					composeShown:
 						within(dialog).queryByRole(
 							"combobox",
@@ -6340,17 +6366,27 @@ describe("CommandPalette shell", () =>
 							},
 						) !== null,
 					mode: localStorage.getItem("cmdk-mode"),
-					dialogs: document.querySelectorAll('[role="dialog"], [role="alertdialog"]').length,
+					dialogs: document.querySelectorAll(
+						'[role="dialog"]:not([data-toast]), [role="alertdialog"]:not([data-toast])',
+					).length,
 				},
 			).toStrictEqual(
 				{
 					afterProj: ["a.ts", "b.png"],
-					many: Array.from(
+					uploadsAfterProj: 2,
+					many:
+					{
+						chips: [],
+						uploads: 0,
+					},
+					twenty: Array.from(
 						{
-							length: 21,
+							length: 20,
 						},
 						(_, i) => `f${i}.txt`,
 					),
+					twentyUploads: 20,
+					toasts: ["You can add at most 20 attachments to a message. Please select fewer attachments."],
 					composeShown: true,
 					mode: null,
 					dialogs: 1,
