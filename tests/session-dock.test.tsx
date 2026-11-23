@@ -233,7 +233,7 @@ describe("SessionDock scroll-to-bottom pill", () =>
 		).toStrictEqual(
 			{
 				columnClassName:
-					"chat-dock-column relative flex flex-col gap-1.5 comfortable:gap-2 [&>*]:shrink-0 [&_.epitaxy-approval-card]:shrink supports-[flex-basis:content]:[&_.epitaxy-approval-card]:basis-[content] supports-[flex-basis:content]:[&_.epitaxy-approval-card]:h-[var(--approval-dock-floor,144px)] [.epitaxy-chat-panel_&]:[@container_tile-slot_(max-width:500px)]:[--approval-dock-floor:208px] vh-max-420:[&_.epitaxy-approval-card]:max-h-[max(60vh,calc(16rem*var(--cds-rem-scale,1)))] vh-max-420:[&_.epitaxy-approval-body]:overscroll-auto",
+					"chat-dock-column relative flex flex-col gap-1.5 comfortable:gap-2 [&>*]:shrink-0 [&_.epitaxy-approval-card]:shrink supports-[flex-basis:content]:[&_.epitaxy-approval-card]:basis-[content] supports-[flex-basis:content]:[&_.epitaxy-approval-card]:h-[var(--approval-dock-floor,144px)] [.epitaxy-chat-panel_&]:[@container_tile-slot_(max-width:500px)]:[--approval-dock-floor:208px]",
 				pillPositioning: [
 					["absolute", true],
 					["bottom-full", true],

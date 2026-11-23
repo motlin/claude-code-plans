@@ -17,11 +17,11 @@ export const SESSION_FOOTER_CLASS =
 
 /**
  * The session dock's column, which the composer and its strips stack in. A docked approval card is the one child
- * that shrinks, down to upstream's 144px floor (208px in a tile at most 500px wide); at most 420px tall it may grow
- * to max(60vh, 16rem) and its body hands scroll on to the page (shared-6 `og`/`Xg`, cc970fefe).
+ * that shrinks, down to upstream's 144px floor (208px in a tile at most 500px wide). Upstream's live dock column
+ * carries no vh-max-420 tokens (2026-11-22).
  */
 export const SESSION_DOCK_COLUMN_CLASS =
-	"chat-dock-column relative flex flex-col gap-1.5 comfortable:gap-2 [&>*]:shrink-0 [&_.epitaxy-approval-card]:shrink supports-[flex-basis:content]:[&_.epitaxy-approval-card]:basis-[content] supports-[flex-basis:content]:[&_.epitaxy-approval-card]:h-[var(--approval-dock-floor,144px)] [.epitaxy-chat-panel_&]:[@container_tile-slot_(max-width:500px)]:[--approval-dock-floor:208px] vh-max-420:[&_.epitaxy-approval-card]:max-h-[max(60vh,calc(16rem*var(--cds-rem-scale,1)))] vh-max-420:[&_.epitaxy-approval-body]:overscroll-auto";
+	"chat-dock-column relative flex flex-col gap-1.5 comfortable:gap-2 [&>*]:shrink-0 [&_.epitaxy-approval-card]:shrink supports-[flex-basis:content]:[&_.epitaxy-approval-card]:basis-[content] supports-[flex-basis:content]:[&_.epitaxy-approval-card]:h-[var(--approval-dock-floor,144px)] [.epitaxy-chat-panel_&]:[@container_tile-slot_(max-width:500px)]:[--approval-dock-floor:208px]";
 
 /** The home composer's wrapper, inset from the tile's bottom like upstream's dock. */
 export const HOME_DOCK_CLASS = "pb-[var(--home-dock-bottom,24px)]";
