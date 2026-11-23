@@ -137,18 +137,21 @@ function DiagramStage({
 
 function ZoomButton({label, icon, onClick}: {label: string; icon: IconName; onClick: () => void})
 {
+	// Upstream's cds ButtonGroup wraps each child in its own `div[data-cds-segment].contents`.
 	return (
-		<button
-			type="button"
-			data-cds="Button"
-			data-cds-icon-only=""
-			data-cds-ghost=""
-			aria-label={label}
-			className={ZOOM_BUTTON_CLASS}
-			onClick={onClick}
-		>
-			<Icon name={icon} />
-		</button>
+		<div data-cds-segment="" className="contents">
+			<button
+				type="button"
+				data-cds="Button"
+				data-cds-icon-only=""
+				data-cds-ghost=""
+				aria-label={label}
+				className={ZOOM_BUTTON_CLASS}
+				onClick={onClick}
+			>
+				<Icon name={icon} />
+			</button>
+		</div>
 	);
 }
 

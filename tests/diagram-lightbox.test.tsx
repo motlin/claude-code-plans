@@ -181,6 +181,12 @@ describe("DiagramLightbox (upstream c3fde7009 Zr + qr)", () =>
 					className: group.className,
 					cds: group.dataset["cds"],
 				},
+				segments: [...group.children].map((child) => [
+					child.localName,
+					child.className,
+					(child as HTMLElement).dataset["cdsSegment"],
+					child.firstElementChild?.localName,
+				]),
 				zoom: [...group.querySelectorAll("button")].map((button) => button.getAttribute("aria-label")),
 				zoomClass: group.querySelector("button")?.className,
 				region:
@@ -207,6 +213,11 @@ describe("DiagramLightbox (upstream c3fde7009 Zr + qr)", () =>
 					className: "relative inline-flex w-fit shrink-0 items-stretch gap-xs",
 					cds: "ButtonGroup",
 				},
+				segments: [
+					["div", "contents", "", "button"],
+					["div", "contents", "", "button"],
+					["div", "contents", "", "button"],
+				],
 				zoom: ["Zoom out", "Reset zoom", "Zoom in"],
 				zoomClass:
 					"flex shrink-0 items-center justify-center text-primary transition-colors hover:bg-fill-ghost-hover stacks:hover:bg-fill-button-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus aspect-square size-8 panels-fine:size-7 rounded-r6",
