@@ -42,10 +42,10 @@ const DEPTH_ZERO_PADDING =
 {
 	paddingInline: 8,
 };
-/** Upstream `nc(1)`: a match row's and the More matches row's depth-1 inline padding. */
-const DEPTH_ONE_PADDING =
+/** Upstream `rj`: a match row's and the More matches row's inline padding, `nc(0)` with 2px less at the start. */
+const MATCH_ROW_PADDING =
 {
-	paddingInlineStart: 20,
+	paddingInlineStart: 6,
 	paddingInlineEnd: 8,
 };
 /**
@@ -53,13 +53,14 @@ const DEPTH_ONE_PADDING =
  * The base's density padding is dropped, since the depth padding is inline.
  */
 const MATCH_ROW_CLASS =
-	"cds-reset flex w-full items-center gap-xs rounded text-body font-normal font-control select-none outline-none relative h-[var(--file-tree-row-h,var(--cds-h-control))] py-0 focus-visible:outline-hidden focus-visible:shadow-focus bg-transparent text-primary hover:bg-fill-ghost-hover data-[pressed]:bg-fill-ghost-hover";
-/** Upstream `XT`: the row's primary button, whose `before:` box makes the whole row clickable. */
-const MATCH_PRIMARY_CLASS =
-	"flex flex-1 min-w-0 items-baseline gap-1 text-start bg-transparent border-0 outline-none hide-focus-ring rounded-r2 before:absolute before:inset-0 before:content-['']";
-/** Upstream `ZT`: a line-number column as wide as `data-widest`, the group's widest line number. */
+	"cds-reset flex w-full items-center gap-xs rounded text-body font-normal font-control select-none outline-none relative h-[var(--file-tree-row-h,var(--cds-h-control))] py-0 focus-visible:outline-hidden focus-visible:shadow-focus bg-transparent text-primary hover:bg-fill-ghost-hover data-[pressed]:bg-fill-ghost-hover group-data-[hover-rests]/file-tree:hover:bg-alpha-0";
+/** Upstream `nj`: the gap between a match row's line number and snippet, and on the More matches row. */
+const MATCH_GAP_CLASS = "gap-1.5";
+/** Upstream `ej` merged with `nj`: the row's primary button, whose `before:` box makes the whole row clickable. */
+const MATCH_PRIMARY_CLASS = `flex flex-1 min-w-0 items-baseline text-start bg-transparent border-0 outline-none hide-focus-ring rounded-r2 before:absolute before:inset-0 before:content-[''] ${MATCH_GAP_CLASS}`;
+/** Upstream `tj`: a line-number column as wide as `data-widest`, the group's widest line number. */
 const LINE_NUMBER_SIZER_CLASS =
-	"min-w-[2.5ch] tabular-nums after:invisible after:block after:h-0 after:overflow-hidden after:content-[attr(data-widest)]";
+	"min-w-4 text-caption tabular-nums after:invisible after:block after:h-0 after:overflow-hidden after:content-[attr(data-widest)]";
 
 /** Upstream `AD`: the query data is a content search result. */
 function isResults(value: unknown): value is Results
@@ -519,7 +520,7 @@ export function ContentSearchResults({
 											handleRowKeyDown(event, index);
 										}}
 										className={MATCH_ROW_CLASS}
-										style={DEPTH_ONE_PADDING}
+										style={MATCH_ROW_PADDING}
 									>
 										<button
 											type="button"
@@ -544,7 +545,7 @@ export function ContentSearchResults({
 											className={MATCH_PRIMARY_CLASS}
 										>
 											<span
-												className={`${LINE_NUMBER_SIZER_CLASS} shrink-0 text-footnote text-muted-as-secondary text-end`}
+												className={`${LINE_NUMBER_SIZER_CLASS} shrink-0 text-secondary text-end`}
 												data-widest={group.maxLine}
 											>
 												{match.line}
@@ -578,8 +579,8 @@ export function ContentSearchResults({
 								id={moreId}
 								aria-hidden
 								data-content-more
-								className="flex items-center gap-1 h-control text-footnote text-muted-as-secondary select-none"
-								style={DEPTH_ONE_PADDING}
+								className={`flex items-center ${MATCH_GAP_CLASS} h-control text-footnote text-secondary select-none`}
+								style={MATCH_ROW_PADDING}
 							>
 								<span
 									className={`${LINE_NUMBER_SIZER_CLASS} shrink-[9999]`}

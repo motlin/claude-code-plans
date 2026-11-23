@@ -1594,19 +1594,19 @@ describe("FilesTree content search", () =>
 					level: "2",
 					treeRow: true,
 					className:
-						"cds-reset flex w-full items-center gap-xs rounded text-body font-normal font-control select-none outline-none relative h-[var(--file-tree-row-h,var(--cds-h-control))] py-0 focus-visible:outline-hidden focus-visible:shadow-focus bg-transparent text-primary hover:bg-fill-ghost-hover data-[pressed]:bg-fill-ghost-hover",
-					style: "padding-inline: 20px 8px;",
+						"cds-reset flex w-full items-center gap-xs rounded text-body font-normal font-control select-none outline-none relative h-[var(--file-tree-row-h,var(--cds-h-control))] py-0 focus-visible:outline-hidden focus-visible:shadow-focus bg-transparent text-primary hover:bg-fill-ghost-hover data-[pressed]:bg-fill-ghost-hover group-data-[hover-rests]/file-tree:hover:bg-alpha-0",
+					style: "padding-inline: 6px 8px;",
 				},
 				primary:
 				{
 					tag: "BUTTON",
 					className:
-						"flex flex-1 min-w-0 items-baseline gap-1 text-start bg-transparent border-0 outline-none hide-focus-ring rounded-r2 before:absolute before:inset-0 before:content-['']",
+						"flex flex-1 min-w-0 items-baseline text-start bg-transparent border-0 outline-none hide-focus-ring rounded-r2 before:absolute before:inset-0 before:content-[''] gap-1.5",
 				},
 				lineNumber:
 				{
 					className:
-						"min-w-[2.5ch] tabular-nums after:invisible after:block after:h-0 after:overflow-hidden after:content-[attr(data-widest)] shrink-0 text-footnote text-muted-as-secondary text-end",
+						"min-w-4 text-caption tabular-nums after:invisible after:block after:h-0 after:overflow-hidden after:content-[attr(data-widest)] shrink-0 text-secondary text-end",
 					widest: "12",
 					text: "4",
 				},
@@ -1640,12 +1640,12 @@ describe("FilesTree content search", () =>
 				more:
 				{
 					hidden: "true",
-					className: "flex items-center gap-1 h-control text-footnote text-muted-as-secondary select-none",
-					style: "padding-inline: 20px 8px;",
+					className: "flex items-center gap-1.5 h-control text-footnote text-secondary select-none",
+					style: "padding-inline: 6px 8px;",
 					spans: [
 						{
 							className:
-								"min-w-[2.5ch] tabular-nums after:invisible after:block after:h-0 after:overflow-hidden after:content-[attr(data-widest)] shrink-[9999]",
+								"min-w-4 text-caption tabular-nums after:invisible after:block after:h-0 after:overflow-hidden after:content-[attr(data-widest)] shrink-[9999]",
 							widest: "12",
 							text: "",
 						},
