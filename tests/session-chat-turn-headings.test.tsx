@@ -231,7 +231,7 @@ describe("SessionChat turn headings", () =>
 			firstAction: "Read by Claude",
 		},
 	])(
-		"names the action reveal for its heading and focuses $firstAction: $expectedHeading",
+		"names the action reveal for its heading, focusing the toolbar root with $firstAction as the stop: $expectedHeading",
 		({record, expectedHeading, firstAction}) =>
 		{
 			const container = renderRecords([record], false);
@@ -260,16 +260,18 @@ describe("SessionChat turn headings", () =>
 						},
 					).textContent,
 					name: reveal.getAttribute("aria-label"),
-					focused: (document.activeElement?.closest("[data-cds-disabled-reason-wrapper]")
-						? document.activeElement.querySelector("button")
-						: document.activeElement
+					focused: document.activeElement?.getAttribute("data-cds"),
+					stop: ((stop) =>
+						stop?.hasAttribute("data-cds-disabled-reason-wrapper") ? stop.querySelector("button") : stop)(
+						document.activeElement?.querySelector<HTMLElement>('[tabindex="0"]'),
 					)?.getAttribute("aria-label"),
 				},
 			).toStrictEqual(
 				{
 					heading: expectedHeading,
 					name: `Show message actions for ${expectedHeading}`,
-					focused: firstAction,
+					focused: "MessageActions",
+					stop: firstAction,
 				},
 			);
 		},

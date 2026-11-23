@@ -11,13 +11,13 @@ import {cdsButtonClass} from "../ui/cds-button";
 import {CDS_BUTTON_DISABLED, CDS_ICON_ONLY_DISABLED} from "../ui/cds-button-disabled";
 import {DisabledReason} from "../ui/disabled-reason";
 import {Icon} from "../ui/icon";
+import {TOOLBAR_FOCUS_RING} from "../ui/toolbar-focus-ring";
 
 /** Upstream `U`: the Changes pane subheader around the bar. */
 const SUBHEADER_CLASS = "epitaxy-panel-subheader shrink-0 bg-alpha-1";
 
 /** Upstream cds `Toolbar` (`vv`) with its root focus ring for when focus parks on it. */
-const TOOLBAR_CLASS =
-	"flex shrink-0 items-center gap-1 px-[var(--cds-toolbar-pad-inline,0px)] pt-[var(--cds-toolbar-pad-block,0.25rem)] pb-[var(--cds-toolbar-pad-block,0.25rem)] outline-none focus-visible:outline-hidden forced-colors:focus-visible:-outline-offset-2 focus-visible:[box-shadow:inset_0_0_0_var(--cds-ring-focus-width,1px)_var(--cds-fill-accent,Highlight)]";
+const TOOLBAR_CLASS = `flex shrink-0 items-center gap-1 px-[var(--cds-toolbar-pad-inline,0px)] pt-[var(--cds-toolbar-pad-block,0.25rem)] pb-[var(--cds-toolbar-pad-block,0.25rem)] ${TOOLBAR_FOCUS_RING}`;
 
 /** The cds Toolbar's `wrap` title row, holding the lead and trail. */
 const WRAP_CLASS =

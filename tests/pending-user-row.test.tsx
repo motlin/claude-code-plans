@@ -98,7 +98,8 @@ describe("HeldUserRow", () =>
 					alwaysVisible: "",
 					size: "xs",
 					tabIndex: "-1",
-					className: "flex items-center select-none",
+					className:
+						"flex items-center select-none focus-visible:rounded outline-none focus-visible:outline-hidden forced-colors:focus-visible:-outline-offset-2 focus-visible:[box-shadow:inset_0_0_0_var(--cds-ring-focus-width,1px)_var(--cds-fill-accent,Highlight)]",
 				},
 				children: ["SPAN", "BUTTON"],
 				statusFirst: true,

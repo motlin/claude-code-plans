@@ -947,24 +947,37 @@ describe("UserMessageActions", () =>
 		).toStrictEqual([]);
 	});
 
-	it("focuses the receipt first after a keyboard reveal, as upstream's first tabbable item", () =>
+	it("keeps the receipt as the stop after a keyboard reveal onto the root, ArrowRight landing on it first", () =>
 	{
 		const {container} = render(
 			<UserMessageActions message={MESSAGE} text="Hi" timestamp={TIMESTAMP} details={[]} readByClaude />,
 		);
 		const hidden = button(container, "Read by Claude").tabIndex;
 		fireEvent.click(showActions(container));
+		const revealed = button(container, "Read by Claude").tabIndex;
+		const rootFocused = document.activeElement === bar(container);
+		const ring = bar(container).className.split(" ").includes("focus-visible:rounded");
+		fireEvent.keyDown(
+			bar(container),
+			{
+				key: "ArrowRight",
+			},
+		);
 		expect(
 			{
 				hidden,
-				revealed: button(container, "Read by Claude").tabIndex,
-				focused: document.activeElement?.getAttribute("aria-label") ?? null,
+				revealed,
+				rootFocused,
+				ring,
+				afterArrow: document.activeElement?.getAttribute("aria-label") ?? null,
 			},
 		).toStrictEqual(
 			{
 				hidden: 0,
 				revealed: 0,
-				focused: "Read by Claude",
+				rootFocused: true,
+				ring: true,
+				afterArrow: "Read by Claude",
 			},
 		);
 	});
@@ -1771,7 +1784,7 @@ describe("message action toolbar sizing and reveal", () =>
 		);
 	});
 
-	it("reveals the bar from Show message actions and focuses Copy", () =>
+	it("reveals the bar from Show message actions onto its ringed root, Copy keeping the stop, and ArrowRight moves to Copy", () =>
 	{
 		const {container} = render(
 			<AssistantMessageActions message={MESSAGE} text="Hello" timestamp={TIMESTAMP} details={[]} />,
@@ -1779,23 +1792,48 @@ describe("message action toolbar sizing and reveal", () =>
 		const show = showActions(container);
 		const showIsSrOnly = show.className.split(" ").includes("sr-only");
 		fireEvent.click(show);
+		const classes = bar(container).className.split(" ");
+		const revealed =
+		{
+			showIsSrOnly,
+			barRevealed: bar(container).hasAttribute("data-revealed"),
+			rootFocused: document.activeElement === bar(container),
+			rootTabIndex: bar(container).tabIndex,
+			copyTabIndex: button(container, "Copy").tabIndex,
+			ring: [
+				"focus-visible:rounded",
+				"outline-none",
+				"focus-visible:outline-hidden",
+				"forced-colors:focus-visible:-outline-offset-2",
+				"focus-visible:[box-shadow:inset_0_0_0_var(--cds-ring-focus-width,1px)_var(--cds-fill-accent,Highlight)]",
+			].filter((c) => !classes.includes(c)),
+		};
+		fireEvent.keyDown(
+			bar(container),
+			{
+				key: "ArrowRight",
+			},
+		);
 
 		expect(
 			{
-				showIsSrOnly,
-				barRevealed: bar(container).hasAttribute("data-revealed"),
-				focused: document.activeElement?.getAttribute("aria-label") ?? null,
+				...revealed,
+				afterArrow: document.activeElement?.getAttribute("aria-label") ?? null,
 			},
 		).toStrictEqual(
 			{
 				showIsSrOnly: true,
 				barRevealed: true,
-				focused: "Copy",
+				rootFocused: true,
+				rootTabIndex: -1,
+				copyTabIndex: 0,
+				ring: [],
+				afterArrow: "Copy",
 			},
 		);
 	});
 
-	it("reveals the bar as soon as Tab lands on the empty sr-only button, focusing Copy", () =>
+	it("reveals the bar as soon as Tab lands on the empty sr-only button, focusing its root", () =>
 	{
 		const {container, getByRole} = render(
 			<AssistantMessageActions message={MESSAGE} text="Hello" timestamp={TIMESTAMP} details={[]} />,
@@ -1814,19 +1852,21 @@ describe("message action toolbar sizing and reveal", () =>
 						},
 					) === show,
 				barRevealed: bar(container).hasAttribute("data-revealed"),
-				focused: document.activeElement?.getAttribute("aria-label") ?? null,
+				rootFocused: document.activeElement === bar(container),
+				copyTabIndex: button(container, "Copy").tabIndex,
 			},
 		).toStrictEqual(
 			{
 				text: "",
 				byRole: true,
 				barRevealed: true,
-				focused: "Copy",
+				rootFocused: true,
+				copyTabIndex: 0,
 			},
 		);
 	});
 
-	it("reveals onto the last focused item, the toolbar's single tab stop", () =>
+	it("reveals onto the root, the last focused item keeping the toolbar's single tab stop", () =>
 	{
 		const {container} = render(
 			withActions(
@@ -1852,7 +1892,17 @@ describe("message action toolbar sizing and reveal", () =>
 			showActions(container).focus();
 		});
 
-		expect(document.activeElement?.getAttribute("aria-label") ?? null).toBe("Pin as chapter");
+		expect(
+			{
+				rootFocused: document.activeElement === bar(container),
+				pinTabIndex: button(container, "Pin as chapter").tabIndex,
+			},
+		).toStrictEqual(
+			{
+				rootFocused: true,
+				pinTabIndex: 0,
+			},
+		);
 	});
 
 	it("always shows the toolbar on coarse-pointer or hover-less devices, without the fade transition", () =>

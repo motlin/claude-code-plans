@@ -5,6 +5,7 @@ import {useRovingToolbar} from "../lib/use-roving-toolbar";
 import {shimmerPhaseDelay} from "../lib/shimmer";
 import {ShimmerText} from "./shimmer-text";
 import {Icon} from "./ui/icon";
+import {MESSAGE_ACTIONS_RING} from "./ui/toolbar-focus-ring";
 import {USER_MESSAGE_CLASS} from "./user-bubble";
 import {UserBubbleBox} from "./user-bubble-box";
 import {USER_PARAGRAPH_CLASS} from "./user-plain-text";
@@ -62,7 +63,7 @@ export function HeldUserRow({
 				role="toolbar"
 				aria-label="Message actions"
 				tabIndex={-1}
-				className="flex items-center select-none"
+				className={`flex items-center select-none ${MESSAGE_ACTIONS_RING}`}
 			>
 				<span
 					data-testid="epitaxy-held-for-host"

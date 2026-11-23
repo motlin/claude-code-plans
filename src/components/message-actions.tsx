@@ -25,6 +25,7 @@ import {CDS_BUTTON_DISABLED, CDS_ICON_ONLY_DISABLED} from "./ui/cds-button-disab
 import {DisabledReason} from "./ui/disabled-reason";
 import {InfoTip} from "./ui/info-tip";
 import {Spinner} from "./ui/spinner";
+import {MESSAGE_ACTIONS_RING} from "./ui/toolbar-focus-ring";
 import {Tooltip} from "./ui/tooltip";
 import {useTimedFlag} from "../hooks/use-timed-flag";
 
@@ -82,7 +83,7 @@ const XS_BAR_SIZE = [
 ].join(" ");
 
 const BAR_CLASS = [
-	`flex items-center gap-0 select-none ${XS_BAR_SIZE}`,
+	`flex items-center gap-0 select-none ${XS_BAR_SIZE} ${MESSAGE_ACTIONS_RING}`,
 	// Upstream's toolbar turns a hovered button's icon primary, except a pressed one, which keeps its accent ink.
 	"[&_button:hover:not([aria-pressed=true]):not(:disabled)]:text-primary",
 	"opacity-0 pointer-events-none",
@@ -452,15 +453,15 @@ function ActionBar({
 	const barElement = useRef<HTMLDivElement | null>(null);
 	const [revealRequest, setRevealRequest] = useState(0);
 
-	// Upstream focuses the roving tab stop, else the first enabled button.
+	// Upstream focuses the toolbar root itself (its ring shows), leaving the roving stop where it was.
 	useEffect(() =>
 	{
 		if (revealRequest === 0) return;
-		const element = barElement.current;
-		const target =
-			element?.querySelector<HTMLElement>('[tabindex="0"]:not([data-base-ui-focus-guard])') ??
-			element?.querySelector<HTMLElement>("button:not(:disabled)");
-		target?.focus();
+		barElement.current?.focus(
+			{
+				focusVisible: true,
+			},
+		);
 	}, [revealRequest]);
 
 	function reveal()
@@ -517,7 +518,7 @@ function ActionBar({
  * a roving toolbar whose reveal globals.css keys to the body's `[data-cds-actions-scope]`, not to the message row.
  * On touch it is always shown, a 24px row of 32px buttons, as upstream's `touch:` sizes.
  */
-const STEP_BAR_CLASS = `flex items-center select-none [&_button:hover:not([aria-pressed=true]):not(:disabled)]:text-primary ${XS_BAR_SIZE}`;
+const STEP_BAR_CLASS = `flex items-center select-none [&_button:hover:not([aria-pressed=true]):not(:disabled)]:text-primary ${XS_BAR_SIZE} ${MESSAGE_ACTIONS_RING}`;
 
 export function StepActions({label, children}: {label: string; children: ReactNode})
 {
@@ -876,7 +877,7 @@ export function WaitingMessageActions({
 			tabIndex={-1}
 			data-testid="user-message-actions"
 			data-size="xs"
-			className={`flex items-center select-none ${XS_BAR_SIZE}`}
+			className={`flex items-center select-none ${XS_BAR_SIZE} ${MESSAGE_ACTIONS_RING}`}
 			onFocus={onFocus}
 			onKeyDown={onKeyDown}
 		>
