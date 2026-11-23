@@ -1860,13 +1860,16 @@ describe("Composer model menu catalog rows (upstream's host transform)", () =>
 						name: line?.firstElementChild?.getAttribute("class"),
 						text: badge.textContent,
 						badge: badge.getAttribute("class"),
+						size: badge.getAttribute("data-size"),
+						inner: badge.firstElementChild?.getAttribute("class"),
 					},
 				];
 			});
 	}
 
+	const BADGE_TEXT = "min-w-0 overflow-x-clip text-ellipsis whitespace-nowrap";
 	const BADGE =
-		"inline-flex items-center gap-1 h-5 whitespace-nowrap rounded-full px-1.5 text-[11px] font-medium min-w-0 truncate bg-alpha-1 text-secondary";
+		"inline-flex items-center gap-1 align-middle h-4 whitespace-nowrap text-[10px] leading-[13px] font-medium rounded-r6 border border-solid border-transparent px-[3px] min-w-0 truncate bg-alpha-1 text-secondary";
 
 	it("badges the settings model's row Default, or Set by admin when managed, and nothing when settings name no model", async () =>
 	{
@@ -1908,19 +1911,23 @@ describe("Composer model menu catalog rows (upstream's host transform)", () =>
 				user: [
 					{
 						row: "claude-opus-5-5",
-						line: "flex min-w-0 items-center gap-1",
+						line: "flex min-w-0 items-center gap-xs",
 						name: "truncate",
 						text: "Default",
 						badge: BADGE,
+						size: "xxs",
+						inner: BADGE_TEXT,
 					},
 				],
 				managed: [
 					{
 						row: "claude-sonnet-5-5",
-						line: "flex min-w-0 items-center gap-1",
+						line: "flex min-w-0 items-center gap-xs",
 						name: "truncate",
 						text: "Set by admin",
 						badge: BADGE,
+						size: "xxs",
+						inner: BADGE_TEXT,
 					},
 				],
 				none: [],
@@ -3072,10 +3079,20 @@ describe("Composer effort submenu", () =>
 						labelClass: item.querySelector("[data-menu-item-label]")?.className,
 						checked: item.getAttribute("aria-checked"),
 					})),
+				line: submenu.querySelector("[data-effort-recommended]")?.parentElement?.className,
 				recommended: submenu.querySelector("[data-effort-recommended]")?.className,
+				recommendedChip:
+				{
+					cds: submenu.querySelector("[data-effort-recommended]")?.getAttribute("data-cds"),
+					size: submenu.querySelector("[data-effort-recommended]")?.getAttribute("data-size"),
+					inner: submenu.querySelector("[data-effort-recommended] > span")?.className,
+				},
 				warning:
 				{
 					className: submenu.querySelector("[data-effort-warning]")?.className,
+					cds: submenu.querySelector("[data-effort-warning]")?.getAttribute("data-cds"),
+					size: submenu.querySelector("[data-effort-warning]")?.getAttribute("data-size"),
+					inner: submenu.querySelector("[data-effort-warning] > span")?.className,
 					text: submenu.querySelector("[data-effort-warning]")?.textContent,
 					icon: submenu.querySelector("[data-effort-warning] svg")?.getAttribute("class"),
 				},
@@ -3131,12 +3148,22 @@ describe("Composer effort submenu", () =>
 						checked: "false",
 					},
 				],
+				line: "flex min-w-0 items-center gap-xs",
 				recommended:
-					"inline-flex items-center gap-1 h-5 whitespace-nowrap rounded-full px-1.5 text-[11px] font-medium bg-alpha-1 text-secondary",
+					"inline-flex items-center gap-1 align-middle h-4 whitespace-nowrap text-[10px] leading-[13px] font-medium rounded-r6 border border-solid border-transparent px-[3px] bg-alpha-1 text-secondary",
+				recommendedChip:
+				{
+					cds: "Badge",
+					size: "xxs",
+					inner: "min-w-0 overflow-x-clip text-ellipsis whitespace-nowrap",
+				},
 				warning:
 				{
 					className:
-						"inline-flex items-center gap-1 h-5 whitespace-nowrap rounded-full px-1.5 text-[11px] font-medium min-w-0 shrink bg-[var(--warning-tint)] text-warning-000",
+						"inline-flex items-center gap-1 align-middle h-4 whitespace-nowrap text-[10px] leading-[13px] font-medium rounded-r6 border border-solid border-transparent px-[3px] min-w-0 shrink bg-[var(--warning-tint)] text-warning-000",
+					cds: "Badge",
+					size: "xxs",
+					inner: "min-w-0 overflow-x-clip text-ellipsis whitespace-nowrap",
 					text: "3.5× or more usage",
 					icon: "lucide lucide-triangle-exclamation-point lucide-alert-triangle lucide-triangle-alert size-3 shrink-0",
 				},

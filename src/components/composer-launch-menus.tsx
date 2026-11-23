@@ -35,7 +35,7 @@ import
 	CHIN_MODEL_NAME_CLASS,
 	CHIN_TRIGGER_CLASS,
 } from "./composer-tokens";
-import {MENU_BADGE_CLASS} from "./ui/badge-classes";
+import {MENU_BADGE_CLASS, MENU_BADGE_TEXT_CLASS} from "./ui/badge-classes";
 import
 {
 	MENU_HEADER_CLASS,
@@ -257,22 +257,29 @@ function fableTooltip(id: string): string | undefined
 function EffortRowLabel({option}: {option: EffortOption})
 {
 	return (
-		<span className="flex min-w-0 items-center gap-1">
+		<span className="flex min-w-0 items-center gap-xs">
 			<span data-menu-item-label="" className="truncate">
 				{effortLevelShortLabels[option.id]}
 			</span>
 			{option.recommended && (
-				<span data-effort-recommended="" className={`${MENU_BADGE_CLASS} bg-alpha-1 text-secondary`}>
-					Recommended
+				<span
+					data-cds="Badge"
+					data-size="xxs"
+					data-effort-recommended=""
+					className={`${MENU_BADGE_CLASS} bg-alpha-1 text-secondary`}
+				>
+					<span className={MENU_BADGE_TEXT_CLASS}>Recommended</span>
 				</span>
 			)}
 			{option.maxWarning && (
 				<span
+					data-cds="Badge"
+					data-size="xxs"
 					data-effort-warning=""
 					className={`${MENU_BADGE_CLASS} min-w-0 shrink bg-[var(--warning-tint)] text-warning-000`}
 				>
 					<TriangleAlert aria-hidden="true" className="size-3 shrink-0" />
-					{MAX_WARNING_MESSAGE}
+					<span className={MENU_BADGE_TEXT_CLASS}>{MAX_WARNING_MESSAGE}</span>
 				</span>
 			)}
 			{!option.maxWarning && option.tooltip !== undefined && (
@@ -286,17 +293,18 @@ function EffortRowLabel({option}: {option: EffortOption})
 function ModelRowLabel({label, badge}: {label: string; badge: string | null})
 {
 	return (
-		<span className="flex min-w-0 items-center gap-1">
+		<span className="flex min-w-0 items-center gap-xs">
 			<span data-menu-item-label="" className="truncate">
 				{label}
 			</span>
 			{badge !== null && (
 				<span
 					data-cds="Badge"
+					data-size="xxs"
 					data-model-default=""
 					className={`${MENU_BADGE_CLASS} min-w-0 truncate bg-alpha-1 text-secondary`}
 				>
-					{badge}
+					<span className={MENU_BADGE_TEXT_CLASS}>{badge}</span>
 				</span>
 			)}
 		</span>

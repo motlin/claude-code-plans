@@ -4,7 +4,7 @@ import {assertNever} from "../lib/assert-never";
 import type {RecoveryAction} from "../lib/api-error-recovery";
 import type {RetryModelItem, RetryModelItems} from "../lib/retry-model-items";
 import {ApprovalActionButton} from "./approval-action-button";
-import {MENU_BADGE_CLASS} from "./ui/badge-classes";
+import {MENU_BADGE_CLASS, MENU_BADGE_TEXT_CLASS} from "./ui/badge-classes";
 import
 {
 	Menu,
@@ -77,9 +77,10 @@ function RetryModelTitle({item, pinned}: {item: RetryModelItem; pinned: boolean}
 			<span className="contents">
 				<span
 					data-cds="Badge"
+					data-size="xxs"
 					className={`${MENU_BADGE_CLASS} min-w-0 truncate bg-alpha-1 text-secondary pointer-events-none`}
 				>
-					{item.badge}
+					<span className={MENU_BADGE_TEXT_CLASS}>{item.badge}</span>
 				</span>
 			</span>
 		</span>
