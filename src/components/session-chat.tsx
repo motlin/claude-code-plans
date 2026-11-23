@@ -8198,10 +8198,12 @@ function ToolCallRow({
 	// An Agent row whose subagent resolves opens the Subagent pane on it rather
 	// than expanding inline, as upstream does.
 	const paneAgentId = isAgent && openSubagent !== null ? call.subagentInfo?.agentId : undefined;
-	// Upstream's settled workflow row is a plain label with no body; only Verbose discloses the call.
+	// Upstream's settled workflow row is a plain label with no body; only Verbose, or a
+	// failed call (to show its error and Input), discloses the call.
 	const isWorkflow = call.name === "Workflow";
 	// Upstream's `GN` always discloses a blocked call, to show why it did not run.
-	const hasBody = call.blocked === true || (!rendersEmptyBody(call) && !(isWorkflow && !verbose));
+	const hasBody =
+		call.blocked === true || (!rendersEmptyBody(call) && !(isWorkflow && !verbose && call.isError !== true));
 	// An artifact card stays visible; a lone one replaces the row (below).
 	const expandable = hasBody && !NON_EXPANDING_TOOLS.has(call.name) && !isArtifactCard(call);
 	const Renderer = getCallRenderer(call);

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import {cleanup, fireEvent, render} from "@testing-library/react";
+import {cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {SessionChat} from "../src/components/session-chat";
 import {processTranscript} from "../src/lib/transcript";
@@ -676,6 +676,91 @@ describe("a clipped label-only row", () =>
 				openText: false,
 				textInRow: true,
 				wrapped: [],
+			},
+		);
+	});
+});
+
+describe("an errored Workflow call", () =>
+{
+	it("discloses its error and Input like upstream's failed TurnStatusStep; a settled one stays label-only", async () =>
+	{
+		const scriptError = "scriptPath must be a script path this tool returned, fabricated";
+		const {lines, toolResultMap} = processTranscript([
+			prompt,
+			...call(
+				{
+					id: "flow-failed",
+					name: "Workflow",
+					input:
+					{
+						scriptPath: "/fabricated/missing-script.js",
+					},
+					result: scriptError,
+					isError: true,
+				},
+			),
+			...call(
+				{
+					id: "flow-done",
+					name: "Workflow",
+					input:
+					{
+						name: "fabricated-workflow",
+						script: "fabricated",
+					},
+					result: "done",
+				},
+			),
+		]);
+		const {container} = render(
+			<SessionChat
+				sessionId="test-session"
+				lines={lines}
+				toolResultMap={toolResultMap}
+				transcriptMode="normal"
+				showTools
+				showThinking={false}
+				shouldScrollToEnd={false}
+			/>,
+		);
+		const toolRows = Array.from(container.querySelectorAll<HTMLElement>("[data-tool-row]"));
+		const state = () =>
+			toolRows.map((row) =>
+			{
+				const toggle = row.querySelector("[data-cds-row-toggle]");
+				const bodyId = toggle?.getAttribute("aria-controls");
+				return {
+					toggle: toggle?.getAttribute("aria-expanded") ?? null,
+					danger: Array.from(row.querySelectorAll(".text-danger"), (el) => el.textContent),
+					label: row.querySelector("[data-cds-row]")?.textContent,
+					body: bodyId == null ? null : (document.getElementById(bodyId)?.textContent ?? null),
+				};
+			});
+		expect(state()).toStrictEqual([
+			{
+				toggle: "false",
+				danger: ["Failed"],
+				label: "Running workflowmissing-scriptFailed",
+				body: null,
+			},
+			{
+				toggle: null,
+				danger: [],
+				label: "Ran workflowfabricated-workflow",
+				body: null,
+			},
+		]);
+		const toggle = toolRows[0]?.querySelector<HTMLElement>("[data-cds-row-toggle]");
+		if (toggle == null) throw new Error("no disclosure toggle");
+		fireEvent.click(toggle);
+		await screen.findByText("Script path");
+		expect(state()[0]).toStrictEqual(
+			{
+				toggle: "true",
+				danger: ["Failed"],
+				label: "Running workflowmissing-scriptFailed",
+				body: `${scriptError}InputScript path/fabricated/missing-script.js`,
 			},
 		);
 	});

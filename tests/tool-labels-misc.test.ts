@@ -487,7 +487,6 @@ describe("misc tool bodies", () =>
 			"SendUserFile",
 			"SendUserMessage",
 			"PushNotification",
-			"Workflow",
 			"LSP",
 		];
 		expect(names.filter((name) => getToolRenderer(name) !== fallback)).toStrictEqual([]);

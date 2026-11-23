@@ -106,6 +106,13 @@ const ReportFindingsRenderer = lazy(async () =>
 	})),
 );
 
+const WorkflowRenderer = lazy(async () =>
+	import("./workflow-renderer").then((m) => (
+	{
+		default: m.WorkflowRenderer,
+	})),
+);
+
 const registry: Record<string, ComponentType<ToolRendererProps>> =
 {
 	Edit: EditRenderer,
@@ -133,6 +140,7 @@ const registry: Record<string, ComponentType<ToolRendererProps>> =
 	ToolSearch: ToolSearchRenderer,
 	ReportFindings: ReportFindingsRenderer,
 	Artifact: ArtifactRenderer,
+	Workflow: WorkflowRenderer,
 	__fallback__: FallbackRenderer,
 };
 
