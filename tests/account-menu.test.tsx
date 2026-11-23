@@ -144,12 +144,15 @@ describe("footer account button", () =>
 				tag: button.tagName,
 				text: button.textContent,
 				hasPopup: button.getAttribute("aria-haspopup"),
+				paintClass: button.querySelector("[data-cds-part=paint]")?.className,
 			},
 		).toStrictEqual(
 			{
 				tag: "BUTTON",
 				text: "CCraig·Max",
 				hasPopup: "menu",
+				paintClass:
+					"absolute inset-0 rounded-[inherit] transition-[background-color] group-hover/btn:bg-fill-button-ghost-hover group-active/btn:bg-fill-button-ghost-hover group-data-[popup-open]/btn:bg-fill-button-ghost-hover",
 			},
 		);
 	});

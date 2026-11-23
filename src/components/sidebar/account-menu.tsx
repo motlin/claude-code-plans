@@ -143,7 +143,7 @@ export function AccountMenu()
 					<span aria-hidden="true" className="absolute inset-0 -z-[1] rounded-[inherit]">
 						<span
 							data-cds-part="paint"
-							className="absolute inset-0 rounded-[inherit] transition-[background-color] group-hover/btn:bg-fill-ghost-hover group-data-[popup-open]/btn:bg-fill-ghost-hover"
+							className="absolute inset-0 rounded-[inherit] transition-[background-color] group-hover/btn:bg-fill-button-ghost-hover group-active/btn:bg-fill-button-ghost-hover group-data-[popup-open]/btn:bg-fill-button-ghost-hover"
 						/>
 					</span>
 					<span className="inline-flex min-w-0 items-center gap-1">
