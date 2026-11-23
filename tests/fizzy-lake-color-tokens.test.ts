@@ -388,7 +388,7 @@ describe("fizzy-lake color tokens (upstream data-cds-fizzy-lake~=color)", () =>
 					"--upstream-text-secondary": "rgb(82 81 78)",
 					"--upstream-text-muted": "#898781",
 					"--upstream-fill-ghost-selected": "rgb(11 11 11 / 0.1)",
-					"--upstream-border": "hsl(0 0% 4% / 0.1)",
+					"--upstream-border": "rgb(11 11 11 / 0.1)",
 					"--upstream-surface-popover": "#fff",
 					"--upstream-fill-danger": "#d03b3b",
 					"--pro-tint": "#785ee81f",
@@ -800,7 +800,7 @@ describe("fizzy-lake color rings (upstream --cds-border = --cds-ring-color)", ()
 			{
 				base:
 				{
-					"--card-outline": "hsl(0 0% 4% / 0.1)",
+					"--card-outline": "rgb(11 11 11 / 0.1)",
 					"--field-ring-shadow": "inset 0 0 0 1px rgb(11 11 11 / 0.1)",
 				},
 				baseDark:

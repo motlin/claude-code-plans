@@ -628,8 +628,8 @@ html[data-interface-font="dyslexic"]
 	--upstream-backdrop: rgb(0 0 0 / 0.4);
 	--panel-lg-shadow:
 		0 0 0 1px rgb(11 11 11 / 0.1), 0 4px 8px 0 rgb(11 11 11 / 0.08), 0 12px 28px -2px rgb(11 11 11 / 0.08);
-	--upstream-fill-control: hsl(0 0% 4% / 0.1);
-	--upstream-fill-ghost-hover: hsl(0 0% 4% / 0.05);
+	--upstream-fill-control: rgb(11 11 11 / 0.1);
+	--upstream-fill-ghost-hover: rgb(11 11 11 / 0.05);
 	/* Upstream .cds-root --cds-bg-neutral / --cds-bg-neutral-hover: alpha-1 / alpha-2 (a row Badge, a row Card's hover). */
 	--upstream-bg-neutral: var(--upstream-alpha-1);
 	--upstream-bg-neutral-hover: var(--upstream-alpha-2);
@@ -643,18 +643,18 @@ html[data-interface-font="dyslexic"]
 	--upstream-fill-ghost-selected: rgb(11 11 11 / 0.1);
 	--palette-selected: var(--upstream-fill-ghost-hover);
 	/* Upstream pane move/resize grips: 20% ink. */
-	--upstream-fill-grip: hsl(0 0% 4% / 0.2);
+	--upstream-fill-grip: rgb(11 11 11 / 0.2);
 	--upstream-fill-primary: hsl(0 0% 4%);
 	--upstream-fill-primary-hover: hsl(60 2% 17%);
 	--upstream-fill-secondary: #ffffff1a;
-	--upstream-fill-secondary-hover: hsl(0 0% 4% / 0.05);
-	--upstream-fill-secondary-ring: hsl(0 0% 4% / 0.1);
+	--upstream-fill-secondary-hover: rgb(11 11 11 / 0.05);
+	--upstream-fill-secondary-ring: rgb(11 11 11 / 0.1);
 	--upstream-text-primary: rgb(11 11 11);
 	--upstream-text-secondary: rgb(82 81 78);
 	--upstream-on-primary: hsl(0 0% 100%);
-	--upstream-border-subtle: hsl(0 0% 4% / 0.06);
-	--upstream-border: hsl(0 0% 4% / 0.1);
-	--upstream-border-strong: hsl(0 0% 4% / 0.2);
+	--upstream-border-subtle: rgb(11 11 11 / 0.06);
+	--upstream-border: rgb(11 11 11 / 0.1);
+	--upstream-border-strong: rgb(11 11 11 / 0.2);
 	/* Upstream's line-mode tile dividers: --cds-fizzy-lake-color-seam (vertical) and --cds-border-line (horizontal), read live 2026-10-30. */
 	--upstream-seam: #0000001a;
 	--upstream-border-line: #0000001f;
@@ -736,16 +736,16 @@ html[data-interface-font="dyslexic"]
 	--upstream-extended-pink: hsl(342 73% 47%);
 
 	/* Upstream claude.ai/code — transparency layers (gray-900 base) */
-	--upstream-t0: hsl(0 0% 4% / 0);
-	--upstream-t1: hsl(0 0% 4% / 0.04);
-	--upstream-t2: hsl(0 0% 4% / 0.06);
-	--upstream-t3: hsl(0 0% 4% / 0.1);
-	--upstream-t4: hsl(0 0% 4% / 0.16);
-	--upstream-t5: hsl(0 0% 4% / 0.25);
-	--upstream-t6: hsl(0 0% 4% / 0.5);
-	--upstream-t7: hsl(0 0% 4% / 0.8);
-	--upstream-t8: hsl(0 0% 4% / 0.9);
-	--upstream-t9: hsl(0 0% 4% / 1);
+	--upstream-t0: rgb(11 11 11 / 0);
+	--upstream-t1: rgb(11 11 11 / 0.04);
+	--upstream-t2: rgb(11 11 11 / 0.06);
+	--upstream-t3: rgb(11 11 11 / 0.1);
+	--upstream-t4: rgb(11 11 11 / 0.16);
+	--upstream-t5: rgb(11 11 11 / 0.25);
+	--upstream-t6: rgb(11 11 11 / 0.5);
+	--upstream-t7: rgb(11 11 11 / 0.8);
+	--upstream-t8: rgb(11 11 11 / 0.9);
+	--upstream-t9: rgb(11 11 11 / 1);
 
 	/* Upstream .cds-root[data-density=comfortable] --cds-radius / --cds-radius-composer. */
 	--upstream-radius: 0.5rem;
@@ -779,7 +779,7 @@ html[data-interface-font="dyslexic"]
 	/* Upstream claude.ai/code — card surfaces. Tool cards are drawn as a
      hairline outline over the page rather than a filled wash; the code cards
      (Read/Edit/Write) additionally sit on the page color. */
-	--card-outline: hsl(0 0% 4% / 0.1);
+	--card-outline: rgb(11 11 11 / 0.1);
 	/* Upstream `--cds-banner-line` (wash-ink 12%): the ring of every neutral Banner card. */
 	--banner-line: #0000001f;
 	/* Upstream `.cds-root` sets `--cds-ring-inner: 0px; --cds-ring-outer: 1px`: light rings sit outside the edge. */

@@ -801,7 +801,7 @@ describe("SessionChat tool card chrome", () =>
 			},
 		).toStrictEqual(
 			{
-				lightOutline: "hsl(0 0% 4% / 0.1)",
+				lightOutline: "rgb(11 11 11 / 0.1)",
 				darkOutline: "hsl(0 0% 100% / 0.1)",
 				lightCodeCardBg: "hsl(60 14% 99%)",
 				darkCodeCardBg: "#151515",

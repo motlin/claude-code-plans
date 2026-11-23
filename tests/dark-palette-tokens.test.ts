@@ -98,7 +98,7 @@ describe("dark palette", () =>
 				light:
 				{
 					"--composer-shadow-idle": "0 4px 20px rgb(0 0 0 / 0.035), 0 0 0 1px rgb(11 11 11 / 0.1)",
-					"--card-outline": "hsl(0 0% 4% / 0.1)",
+					"--card-outline": "rgb(11 11 11 / 0.1)",
 					"--menu-shadow":
 						"0 0 0 1px rgb(11 11 11 / 0.1), 0 8px 24px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.08)",
 					"--sb-selected": "#edece8",

@@ -37,6 +37,7 @@ const UPSTREAM_TOKENS = [
 	"--upstream-fill-secondary-ring",
 	"--upstream-fill-danger",
 	"--upstream-fill-danger-hover",
+	"--upstream-border-strong",
 ] as const;
 
 describe("split-button colour tokens (upstream cds SplitDropdownButton)", () =>
@@ -61,10 +62,11 @@ describe("split-button colour tokens (upstream cds SplitDropdownButton)", () =>
 		expect(tokens(block(":root"), UPSTREAM_TOKENS)).toStrictEqual(
 			{
 				"--upstream-fill-secondary": "#ffffff1a",
-				"--upstream-fill-secondary-hover": "hsl(0 0% 4% / 0.05)",
-				"--upstream-fill-secondary-ring": "hsl(0 0% 4% / 0.1)",
+				"--upstream-fill-secondary-hover": "rgb(11 11 11 / 0.05)",
+				"--upstream-fill-secondary-ring": "rgb(11 11 11 / 0.1)",
 				"--upstream-fill-danger": "#d03b3b",
 				"--upstream-fill-danger-hover": "#e34948",
+				"--upstream-border-strong": "rgb(11 11 11 / 0.2)",
 			},
 		);
 	});
@@ -78,6 +80,7 @@ describe("split-button colour tokens (upstream cds SplitDropdownButton)", () =>
 				"--upstream-fill-secondary-ring": "transparent",
 				"--upstream-fill-danger": "#d03b3b",
 				"--upstream-fill-danger-hover": "#e34948",
+				"--upstream-border-strong": "hsl(0 0% 100% / 0.2)",
 			},
 		);
 	});
