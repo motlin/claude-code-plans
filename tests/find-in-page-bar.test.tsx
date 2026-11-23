@@ -10,7 +10,7 @@ import {endFind, registerFindProvider} from "../src/lib/find-in-page/store";
 const MAC_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36";
 
 const BAR_CLASS =
-	"fixed end-4 top-14 flex items-center gap-1 rounded-lg border-[0.5px] border-strong bg-surface-popover px-2 py-1.5 shadow-lg";
+	"rounded-card bg-surface-2 shadow-panel-sm-cds forced-colors:border forced-colors:border-solid forced-colors:border-[color:CanvasText] fixed end-4 top-14 flex max-w-[calc(100%-var(--spacing)*8)] items-center gap-1 py-1 ps-2 pe-1";
 const INPUT_CLASS =
 	"w-48 min-w-0 border-0 bg-transparent outline-none text-body text-primary placeholder:text-ink-muted hide-focus-ring";
 const STATUS_CLASS = "whitespace-nowrap text-footnote text-muted-as-secondary tabular-nums";
@@ -157,8 +157,14 @@ describe("FindInPage", () =>
 				role: root?.getAttribute("role"),
 				tabIndex: root?.getAttribute("tabindex"),
 				scope: root?.getAttribute("data-find-provider-scope"),
+				cds: root?.getAttribute("data-cds"),
+				surface: root?.getAttribute("data-surface"),
+				overlay: root?.getAttribute("data-find-overlay"),
+				escapeOwner: root?.getAttribute("data-escape-owner"),
+				ownsBareDigits: root?.getAttribute("data-owns-bare-digits"),
 				className: root?.className,
 				zIndex: root?.style.zIndex,
+				pageBg: root?.style.getPropertyValue("--cds-page-bg"),
 				portaled: root?.parentElement?.parentElement === document.body,
 				input:
 				{
@@ -184,8 +190,14 @@ describe("FindInPage", () =>
 				role: "search",
 				tabIndex: "-1",
 				scope: "",
+				cds: "Surface",
+				surface: "panel",
+				overlay: "",
+				escapeOwner: "",
+				ownsBareDigits: "",
 				className: BAR_CLASS,
 				zIndex: "9000",
+				pageBg: "var(--color-surface-2)",
 				portaled: true,
 				input:
 				{

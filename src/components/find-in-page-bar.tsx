@@ -27,8 +27,9 @@ const FIND_DEBOUNCE_MS = 120;
 /** Upstream `ht`. */
 const FIND_BAR_Z_INDEX = 9000;
 
+/** Upstream `RN`: a cds Surface at `elevation:"panel"`. */
 const BAR_CLASS =
-	"fixed end-4 top-14 flex items-center gap-1 rounded-lg border-[0.5px] border-strong bg-surface-popover px-2 py-1.5 shadow-lg";
+	"rounded-card bg-surface-2 shadow-panel-sm-cds forced-colors:border forced-colors:border-solid forced-colors:border-[color:CanvasText] fixed end-4 top-14 flex max-w-[calc(100%-var(--spacing)*8)] items-center gap-1 py-1 ps-2 pe-1";
 const INPUT_CLASS =
 	"w-48 min-w-0 border-0 bg-transparent outline-none text-body text-primary placeholder:text-ink-muted hide-focus-ring";
 const STATUS_CLASS = "whitespace-nowrap text-footnote text-muted-as-secondary tabular-nums";
@@ -363,16 +364,22 @@ function FindInPageBar({
 	return (
 		<div
 			ref={barRef}
+			data-cds="Surface"
+			data-surface="panel"
 			role="search"
 			tabIndex={-1}
 			{...
 			{
 				[FIND_PROVIDER_SCOPE_ATTR]: "",
 			}}
+			data-find-overlay=""
 			data-find-in-page-bar=""
+			data-escape-owner=""
+			data-owns-bare-digits=""
 			className={BAR_CLASS}
 			style={
 			{
+				"--cds-page-bg": "var(--color-surface-2)",
 				zIndex: FIND_BAR_Z_INDEX,
 			}}
 		>
