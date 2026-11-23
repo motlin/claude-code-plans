@@ -25,7 +25,7 @@ describe("focus rings", () =>
 			{
 				offenders,
 				fileResult: readFileSync("src/components/file-search-results.tsx", "utf8").includes(
-					"hover:bg-surface-0 hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus",
+					"hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus",
 				),
 			},
 		).toStrictEqual(

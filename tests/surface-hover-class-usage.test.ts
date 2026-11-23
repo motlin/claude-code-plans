@@ -17,10 +17,13 @@ function sourceFiles(dir: string): string[]
 
 describe("surface hover class usage", () =>
 {
-	it("T3: rows use the exact hover:bg-surface-0 class that the fizzy ghost-hover remap matches", () =>
+	it("T3: rows hover with bg-fill-ghost-hover, not the hover:bg-surface-0 class whose fizzy remap upstream deleted", () =>
 	{
-		const offenders = sourceFiles("src").filter((file) =>
-			/hover:bg-surface-0\/50\b/.test(readFileSync(file, "utf8")),
+		const offenders = sourceFiles("src").flatMap((file) =>
+			(readFileSync(file, "utf8").match(/"[^"\n]*"|'[^'\n]*'|`[^`]*`/g) ?? [])
+				.filter((classes) => /(?<![\w-])hover:bg-surface-0(?![\w/-])/.test(classes))
+				.filter((classes) => !/(?<![\w:-])bg-(?:surface-[0-3]|neutral-30)(?![\w/-])/.test(classes))
+				.map((classes) => `${file}: ${classes}`),
 		);
 		expect(offenders).toStrictEqual([]);
 	});

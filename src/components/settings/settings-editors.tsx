@@ -327,7 +327,7 @@ export function JsonEditor({filename, initialContent, path}: {filename: string; 
 					type="button"
 					onClick={handleFormat}
 					disabled={validationError !== null}
-					className={`flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm transition-colors hover:bg-surface-0 disabled:opacity-50 ${
+					className={`flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm transition-colors hover:bg-fill-ghost-hover disabled:opacity-50 ${
 						formatFeedback ? "text-green-600 dark:text-green-400" : "text-secondary"
 					}`}
 				>
@@ -338,7 +338,7 @@ export function JsonEditor({filename, initialContent, path}: {filename: string; 
 					<button
 						type="button"
 						onClick={handleReset}
-						className="flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm text-secondary transition-colors hover:bg-surface-0"
+						className="flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm text-secondary transition-colors hover:bg-fill-ghost-hover"
 					>
 						<RotateCcw className="h-3.5 w-3.5" />
 						Reset
@@ -633,7 +633,7 @@ function EnvEditor({
 							{
 								handleRemove(entryKey);
 							}}
-							className="rounded p-1 text-t6 hover:bg-surface-0 hover:text-danger-000"
+							className="rounded p-1 text-t6 hover:bg-fill-ghost-hover hover:text-danger-000"
 							title="Remove"
 						>
 							<Trash2 className="h-3.5 w-3.5" />
@@ -676,7 +676,7 @@ function EnvEditor({
 						type="button"
 						onClick={handleAdd}
 						disabled={!newKey.trim()}
-						className="flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-secondary transition-colors hover:bg-surface-0 disabled:opacity-50"
+						className="flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-secondary transition-colors hover:bg-fill-ghost-hover disabled:opacity-50"
 					>
 						<Plus className="h-3 w-3" />
 						Add
@@ -751,7 +751,7 @@ function PermissionListEditor({
 							{
 								handleRemove(index);
 							}}
-							className="rounded p-1 text-t6 hover:bg-surface-0 hover:text-danger-000"
+							className="rounded p-1 text-t6 hover:bg-fill-ghost-hover hover:text-danger-000"
 							title="Remove"
 						>
 							<Trash2 className="h-3.5 w-3.5" />
@@ -778,7 +778,7 @@ function PermissionListEditor({
 						type="button"
 						onClick={handleAdd}
 						disabled={!newEntry.trim()}
-						className="flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-secondary transition-colors hover:bg-surface-0 disabled:opacity-50"
+						className="flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-secondary transition-colors hover:bg-fill-ghost-hover disabled:opacity-50"
 					>
 						<Plus className="h-3 w-3" />
 						Add
@@ -1205,7 +1205,7 @@ function HooksEditor({
 									{
 										handleRemoveEvent(eventName);
 									}}
-									className="rounded p-1 text-t6 hover:bg-surface-0 hover:text-danger-000"
+									className="rounded p-1 text-t6 hover:bg-fill-ghost-hover hover:text-danger-000"
 									title="Remove event"
 								>
 									<Trash2 className="h-3.5 w-3.5" />
@@ -1254,7 +1254,7 @@ function HooksEditor({
 														{
 															handleRemoveMatcher(eventName, matcherIndex);
 														}}
-														className="rounded p-1 text-t6 hover:bg-surface-0 hover:text-danger-000"
+														className="rounded p-1 text-t6 hover:bg-fill-ghost-hover hover:text-danger-000"
 														title="Remove rule"
 													>
 														<Trash2 className="h-3 w-3" />
@@ -1287,7 +1287,7 @@ function HooksEditor({
 																		hookIndex,
 																	);
 																}}
-																className="rounded p-1 text-t6 hover:bg-surface-0 hover:text-danger-000 mt-0.5"
+																className="rounded p-1 text-t6 hover:bg-fill-ghost-hover hover:text-danger-000 mt-0.5"
 																title="Remove command"
 															>
 																<X className="h-3 w-3" />
@@ -1315,7 +1315,7 @@ function HooksEditor({
 										{
 											handleAddMatcher(eventName);
 										}}
-										className="flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-secondary transition-colors hover:bg-surface-0"
+										className="flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-secondary transition-colors hover:bg-fill-ghost-hover"
 									>
 										<Plus className="h-3 w-3" />
 										Add rule
@@ -1347,7 +1347,7 @@ function HooksEditor({
 							type="button"
 							onClick={handleAddEvent}
 							disabled={!newEventName}
-							className="flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-secondary transition-colors hover:bg-surface-0 disabled:opacity-50"
+							className="flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-secondary transition-colors hover:bg-fill-ghost-hover disabled:opacity-50"
 						>
 							<Plus className="h-3 w-3" />
 							Add event
@@ -1433,7 +1433,7 @@ function PluginsEditor({
 								{
 									handleRemove(pluginName);
 								}}
-								className="rounded p-1 text-t6 hover:bg-surface-0 hover:text-danger-000"
+								className="rounded p-1 text-t6 hover:bg-fill-ghost-hover hover:text-danger-000"
 								title="Remove"
 							>
 								<Trash2 className="h-3.5 w-3.5" />
@@ -1461,7 +1461,7 @@ function PluginsEditor({
 						type="button"
 						onClick={handleAdd}
 						disabled={!newPlugin.trim()}
-						className="flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-secondary transition-colors hover:bg-surface-0 disabled:opacity-50"
+						className="flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-secondary transition-colors hover:bg-fill-ghost-hover disabled:opacity-50"
 					>
 						<Plus className="h-3 w-3" />
 						Add
@@ -1546,7 +1546,7 @@ export function StringListEditor({
 							{
 								handleRemove(index);
 							}}
-							className="rounded p-1 text-t6 hover:bg-surface-0 hover:text-danger-000"
+							className="rounded p-1 text-t6 hover:bg-fill-ghost-hover hover:text-danger-000"
 							title="Remove"
 						>
 							<Trash2 className="h-3.5 w-3.5" />
@@ -1573,7 +1573,7 @@ export function StringListEditor({
 						type="button"
 						onClick={handleAdd}
 						disabled={!newEntry.trim()}
-						className="flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-secondary transition-colors hover:bg-surface-0 disabled:opacity-50"
+						className="flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-secondary transition-colors hover:bg-fill-ghost-hover disabled:opacity-50"
 					>
 						<Plus className="h-3 w-3" />
 						Add
@@ -1976,7 +1976,7 @@ export function MarketplacesEditor({
 									{
 										handleRemove(name);
 									}}
-									className="rounded p-1 text-t6 hover:bg-surface-0 hover:text-danger-000"
+									className="rounded p-1 text-t6 hover:bg-fill-ghost-hover hover:text-danger-000"
 									title="Remove marketplace"
 								>
 									<Trash2 className="h-3.5 w-3.5" />
@@ -2127,7 +2127,7 @@ export function MarketplacesEditor({
 						type="button"
 						onClick={handleAdd}
 						disabled={!newName.trim()}
-						className="flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-secondary transition-colors hover:bg-surface-0 disabled:opacity-50"
+						className="flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-secondary transition-colors hover:bg-fill-ghost-hover disabled:opacity-50"
 					>
 						<Plus className="h-3 w-3" />
 						Add
@@ -2388,7 +2388,7 @@ export function FormEditor({filename, initialContent, path}: {filename: string; 
 					<button
 						type="button"
 						onClick={handleReset}
-						className="flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm text-secondary transition-colors hover:bg-surface-0"
+						className="flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm text-secondary transition-colors hover:bg-fill-ghost-hover"
 					>
 						<RotateCcw className="h-3.5 w-3.5" />
 						Reset

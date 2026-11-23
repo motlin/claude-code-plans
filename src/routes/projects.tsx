@@ -45,7 +45,7 @@ function ProjectsPage()
 							{
 								id: project.id,
 							}}
-							className="group block rounded-lg border border-border p-4 transition-colors hover:bg-surface-0"
+							className="group block rounded-lg border border-border p-4 transition-colors hover:bg-fill-ghost-hover"
 						>
 							<div
 								className="truncate font-medium"

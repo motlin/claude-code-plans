@@ -50,7 +50,7 @@ function PlansPage()
 										filename: toMdSlug(plan.filename),
 									}}
 									preload={index < 2 ? "render" : "intent"}
-									className="flex items-center justify-between rounded-md border border-border px-4 py-3 transition-colors hover:bg-surface-0"
+									className="flex items-center justify-between rounded-md border border-border px-4 py-3 transition-colors hover:bg-fill-ghost-hover"
 								>
 									<span className="flex items-center gap-2 text-sm font-medium">
 										{plan.title}

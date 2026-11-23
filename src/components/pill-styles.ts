@@ -4,5 +4,5 @@ const pillBase =
 export const pillStyles =
 {
 	primary: `${pillBase} bg-surface-0 text-secondary hover:bg-fill-control`,
-	outline: `${pillBase} border border-strong text-secondary hover:bg-surface-0`,
+	outline: `${pillBase} border border-strong text-secondary hover:bg-fill-ghost-hover`,
 } as const;

@@ -48,7 +48,9 @@ function SettingsEditPage()
 								setActiveTab("form");
 							}}
 							className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium transition-colors first:rounded-l-md ${
-								activeTab === "form" ? "bg-accent-100 text-white" : "text-secondary hover:bg-surface-0"
+								activeTab === "form"
+									? "bg-accent-100 text-white"
+									: "text-secondary hover:bg-fill-ghost-hover"
 							}`}
 						>
 							<SlidersHorizontal className="h-3.5 w-3.5" />
@@ -61,7 +63,9 @@ function SettingsEditPage()
 								setActiveTab("json");
 							}}
 							className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium transition-colors last:rounded-r-md ${
-								activeTab === "json" ? "bg-accent-100 text-white" : "text-secondary hover:bg-surface-0"
+								activeTab === "json"
+									? "bg-accent-100 text-white"
+									: "text-secondary hover:bg-fill-ghost-hover"
 							}`}
 						>
 							<Code className="h-3.5 w-3.5" />
@@ -70,7 +74,7 @@ function SettingsEditPage()
 					</div>
 					<Link
 						to="/settings"
-						className="flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm text-secondary transition-colors hover:bg-surface-0"
+						className="flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm text-secondary transition-colors hover:bg-fill-ghost-hover"
 					>
 						<X className="h-3.5 w-3.5" />
 						Cancel

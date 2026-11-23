@@ -243,7 +243,7 @@ export function FileSearchResults({initialQuery, onClose, onOpen, onQueryChange}
 					type="button"
 					aria-label="Close file search"
 					onClick={onClose}
-					className="rounded-md p-2 text-t6 hover:bg-surface-0 hover:text-primary"
+					className="rounded-md p-2 text-t6 hover:bg-fill-ghost-hover hover:text-primary"
 				>
 					<X className="h-4 w-4" />
 				</button>
@@ -283,7 +283,7 @@ export function FileSearchResults({initialQuery, onClose, onOpen, onQueryChange}
 									{
 										selectScope(segment.path);
 									}}
-									className="max-w-40 truncate rounded px-1 py-0.5 hover:bg-surface-0 hover:text-primary"
+									className="max-w-40 truncate rounded px-1 py-0.5 hover:bg-fill-ghost-hover hover:text-primary"
 									title={segment.path}
 								>
 									{segment.label}
@@ -412,7 +412,7 @@ function ResultCards({
 									const lineNumber = Number(lineElement?.dataset["lineNumber"] ?? firstLineNumber);
 									onOpen(file.path, lineNumber);
 								}}
-								className="block w-full rounded-lg p-3 text-left transition-colors hover:bg-surface-0 hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
+								className="block w-full rounded-lg p-3 text-left transition-colors hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
 							>
 								<span className="flex items-start justify-between gap-3 pr-8">
 									<span className="min-w-0">
@@ -474,7 +474,7 @@ function ResultCards({
 									{
 										onExpand(file.path);
 									}}
-									className="mx-3 mb-2 flex items-center gap-1 rounded px-1 py-0.5 text-xs text-accent-100 hover:bg-surface-0"
+									className="mx-3 mb-2 flex items-center gap-1 rounded px-1 py-0.5 text-xs text-accent-100 hover:bg-fill-ghost-hover"
 								>
 									{expanded ? (
 										<ChevronDown className="h-3 w-3" />

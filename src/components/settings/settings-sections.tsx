@@ -930,7 +930,7 @@ export function LinkCategoryRulesSection()
 									{
 										moveRule(index, index - 1);
 									}}
-									className="rounded-md border border-border p-1.5 text-secondary transition-colors hover:bg-surface-0 disabled:cursor-not-allowed disabled:opacity-40"
+									className="rounded-md border border-border p-1.5 text-secondary transition-colors hover:bg-fill-ghost-hover disabled:cursor-not-allowed disabled:opacity-40"
 								>
 									<ArrowUp className="h-4 w-4" />
 								</button>
@@ -943,7 +943,7 @@ export function LinkCategoryRulesSection()
 									{
 										moveRule(index, index + 1);
 									}}
-									className="rounded-md border border-border p-1.5 text-secondary transition-colors hover:bg-surface-0 disabled:cursor-not-allowed disabled:opacity-40"
+									className="rounded-md border border-border p-1.5 text-secondary transition-colors hover:bg-fill-ghost-hover disabled:cursor-not-allowed disabled:opacity-40"
 								>
 									<ArrowDown className="h-4 w-4" />
 								</button>
@@ -979,7 +979,7 @@ export function LinkCategoryRulesSection()
 							},
 						]);
 					}}
-					className="mt-3 inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm text-secondary transition-colors hover:bg-surface-0"
+					className="mt-3 inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm text-secondary transition-colors hover:bg-fill-ghost-hover"
 				>
 					<Plus className="h-4 w-4" />
 					Add rule
@@ -1153,7 +1153,7 @@ function IgnoredDirectoriesField({
 							.filter(Boolean),
 					);
 				}}
-				className="mt-2 rounded-md border border-border px-3 py-1.5 text-sm text-secondary transition-colors hover:bg-surface-0 disabled:cursor-wait disabled:opacity-50"
+				className="mt-2 rounded-md border border-border px-3 py-1.5 text-sm text-secondary transition-colors hover:bg-fill-ghost-hover disabled:cursor-wait disabled:opacity-50"
 			>
 				Save ignored directories
 			</button>

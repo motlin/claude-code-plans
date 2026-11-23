@@ -132,7 +132,7 @@ function ProjectSessionsPage()
 										},
 									)
 								}
-								className="flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-[11px] text-secondary transition-colors hover:bg-surface-0"
+								className="flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-[11px] text-secondary transition-colors hover:bg-fill-ghost-hover"
 							>
 								<GitBranch className="h-3 w-3" />
 								{b}

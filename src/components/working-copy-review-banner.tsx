@@ -204,7 +204,7 @@ function OfferedWorkingCopyReviewBanner({capability}: {capability: Capabilities[
 				<button
 					type="button"
 					onClick={() => void cancel(banner)}
-					className="rounded-md border border-strong px-3 py-1.5 text-xs text-secondary hover:bg-surface-0"
+					className="rounded-md border border-strong px-3 py-1.5 text-xs text-secondary hover:bg-fill-ghost-hover"
 				>
 					Cancel
 				</button>

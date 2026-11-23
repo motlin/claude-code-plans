@@ -16,7 +16,7 @@ export function SessionTranscriptLink({sessionId}: {sessionId: string})
 			{
 				id: sessionId,
 			}}
-			className="ml-auto flex size-8 items-center justify-center rounded-md text-t6 transition-colors hover:bg-surface-0 hover:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
+			className="ml-auto flex size-8 items-center justify-center rounded-md text-t6 transition-colors hover:bg-fill-ghost-hover hover:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
 			aria-label={label}
 			title={label}
 		>

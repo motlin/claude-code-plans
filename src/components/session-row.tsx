@@ -50,7 +50,7 @@ export function SessionRow({
 					{
 						startSessionSwitchJourney(event.nativeEvent, session.id, queryClient);
 					}}
-					className="block rounded-md p-2 pr-36 cursor-pointer transition-colors hover:bg-surface-0"
+					className="block rounded-md p-2 pr-36 cursor-pointer transition-colors hover:bg-fill-ghost-hover"
 				>
 					<div
 						className="flex items-center gap-1.5 truncate"

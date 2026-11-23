@@ -282,7 +282,7 @@ export function HookSetup()
 					{
 						setShowJson(!showJson);
 					}}
-					className="rounded-md border border-border px-3 py-1.5 text-sm text-secondary transition-colors hover:bg-surface-0"
+					className="rounded-md border border-border px-3 py-1.5 text-sm text-secondary transition-colors hover:bg-fill-ghost-hover"
 				>
 					{showJson ? "Hide JSON" : "Show JSON"}
 				</button>

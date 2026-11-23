@@ -44,34 +44,18 @@ function missing(rules: readonly string[]): string[]
 	return rules.filter((rule) => !styles.includes(rule));
 }
 
-const SURFACE_N_NOT =
-	':not([class^="bg-"], [class*=" bg-"], .hover\\:drop-shadow-md):not(:where(.focus-visible\\:bg-surface-1:focus-visible, label.focus-within\\:bg-surface-1:focus-within))';
-
-const HOVER_SELECTOR = [
-	`${FZ} .hover\\:bg-surface-0:hover:not(.focus-visible\\:bg-surface-0:focus-visible, .data-\\[popup-open\\]\\:bg-surface-0[data-popup-open], .data-\\[popup-open\\]\\:bg-fill-ghost-hover[data-popup-open], .disabled\\:hover\\:bg-transparent:disabled, .active\\:bg-neutral-30:active, .bg-surface-0, .bg-surface-1, .bg-surface-2, .bg-surface-3, .bg-neutral-30)`,
-	`${FZ} .hover\\:bg-surface-1.hover\\:bg-surface-1:hover${SURFACE_N_NOT}`,
-	`${FZ} .hover\\:bg-surface-2.hover\\:bg-surface-2:hover${SURFACE_N_NOT}`,
-	`${FZ} .hover\\:bg-surface-3.hover\\:bg-surface-3:hover${SURFACE_N_NOT}`,
-	`${FZ} .enabled\\:hover\\:bg-surface-1:enabled:hover${SURFACE_N_NOT}`,
-].join(", ");
-
 const FLOATING_SELECTOR = `${FZ} .bg-surface-3:is(.fixed, .shadow-lg, .shadow-xl, .shadow-2xl, .shadow-panel, .shadow-panel-sm, .shadow-panel-lg, .shadow-popover, .shadow-composer, .shadow-composer-hover, .shadow-composer-focus, .rounded-composer, .rounded-\\[20px\\])`;
 
 describe("fizzy surface hover remaps (upstream shared-styles CPcGcRau)", () =>
 {
-	it("T1: surface hovers paint ghost-hover inside the hover media query, unlayered", () =>
+	/* Removed upstream by shared-styles-Bf7rmMdl, 2026-11-21: rows use hover:bg-fill-ghost-hover directly. */
+	it("T1: surface hovers are not remapped to ghost-hover", () =>
 	{
 		expect(
-			{
-				missing: missing([`${HOVER_SELECTOR} { background-color: var(--upstream-fill-ghost-hover); }`]),
-				atRules: enclosingAtRules(HOVER_SELECTOR),
-			},
-		).toStrictEqual(
-			{
-				missing: [],
-				atRules: ["@media (hover: hover)"],
-			},
-		);
+			[".hover\\:bg-surface-0:hover:not(", ".enabled\\:hover\\:bg-surface-1:enabled:hover"].filter((selector) =>
+				styles.includes(selector),
+			),
+		).toStrictEqual([]);
 	});
 
 	it("T1: never restores the gradient layer removed upstream on 11-04", () =>

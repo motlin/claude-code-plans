@@ -161,7 +161,7 @@ export function SubagentGantt({
 							}}
 							aria-pressed={zoom === z}
 							className={`rounded px-1.5 py-0.5 tabular-nums ${
-								zoom === z ? "bg-accent-000/15 text-accent-100" : "hover:bg-surface-0 text-t6"
+								zoom === z ? "bg-accent-000/15 text-accent-100" : "hover:bg-fill-ghost-hover text-t6"
 							}`}
 						>
 							{z}x

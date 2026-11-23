@@ -87,7 +87,7 @@ const SESSION_PREVIEW = 10;
 const ITEM_PREVIEW = 5;
 
 const ROW_CLASS =
-	"flex items-center justify-between rounded-md border border-border px-4 py-3 no-underline transition-colors hover:bg-surface-0";
+	"flex items-center justify-between rounded-md border border-border px-4 py-3 no-underline transition-colors hover:bg-fill-ghost-hover";
 
 /** One overview section: the list pages' group heading, its rows, and a link to the full section when it holds more. */
 function OverviewSection({

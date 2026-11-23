@@ -1656,8 +1656,9 @@ html[data-interface-font="dyslexic"]
  * Upstream shared-styles (CPcGcRau, 2026-11-06) fizzy color surface remaps;
  * dumps/fizzy-surface-hover-gradient-layers-rules-CPcGcRau-2026-11-06.css.txt. The 11-03
  * `[&>button]:bg-fill-secondary>button` exclusion and the `.bg-surface-3.hover:bg-surface-1` gradient layer were
- * removed upstream on 11-04/05, and the focus-visible/focus-within ghost-selected remap by shared-styles-Bf7rmMdl on
- * 11-21 (dumps/fizzy-surface-hover-gradient-layers-rules-Bf7rmMdl-2026-11-21.css.txt); do not restore them.
+ * removed upstream on 11-04/05, and the focus-visible/focus-within ghost-selected and surface-hover ghost-hover remaps by
+ * shared-styles-Bf7rmMdl on 11-21 (dumps/fizzy-surface-hover-gradient-layers-rules-Bf7rmMdl-2026-11-21.css.txt; rows
+ * use hover:bg-fill-ghost-hover directly); do not restore them.
  *
  * Floating surface-3 (dialogs, the ⌘K palette, the composer card, fixed popovers) takes the popover surface (dark
  * #303030; light is #fff either way). Upstream's `:not(#_)` bump and its legacy bg-000 twin are not needed here. Both
@@ -1682,43 +1683,6 @@ html[data-interface-font="dyslexic"]
 {
 	--upstream-surface-3: var(--upstream-surface-popover);
 	--color-surface-3: var(--upstream-surface-popover);
-}
-
-/* Surface hovers paint a translucent ghost-hover wash instead of an opaque surface fill. */
-@media (hover: hover)
-{
-	:root[data-cds-fizzy-lake~="color"]
-		.hover\:bg-surface-0:hover:not(
-			.focus-visible\:bg-surface-0:focus-visible,
-			.data-\[popup-open\]\:bg-surface-0[data-popup-open],
-			.data-\[popup-open\]\:bg-fill-ghost-hover[data-popup-open],
-			.disabled\:hover\:bg-transparent:disabled,
-			.active\:bg-neutral-30:active,
-			.bg-surface-0,
-			.bg-surface-1,
-			.bg-surface-2,
-			.bg-surface-3,
-			.bg-neutral-30
-		),
-	:root[data-cds-fizzy-lake~="color"]
-		.hover\:bg-surface-1.hover\:bg-surface-1:hover:not([class^="bg-"], [class*=" bg-"], .hover\:drop-shadow-md):not(
-			:where(.focus-visible\:bg-surface-1:focus-visible, label.focus-within\:bg-surface-1:focus-within)
-		),
-	:root[data-cds-fizzy-lake~="color"]
-		.hover\:bg-surface-2.hover\:bg-surface-2:hover:not([class^="bg-"], [class*=" bg-"], .hover\:drop-shadow-md):not(
-			:where(.focus-visible\:bg-surface-1:focus-visible, label.focus-within\:bg-surface-1:focus-within)
-		),
-	:root[data-cds-fizzy-lake~="color"]
-		.hover\:bg-surface-3.hover\:bg-surface-3:hover:not([class^="bg-"], [class*=" bg-"], .hover\:drop-shadow-md):not(
-			:where(.focus-visible\:bg-surface-1:focus-visible, label.focus-within\:bg-surface-1:focus-within)
-		),
-	:root[data-cds-fizzy-lake~="color"]
-		.enabled\:hover\:bg-surface-1:enabled:hover:not([class^="bg-"], [class*=" bg-"], .hover\:drop-shadow-md):not(
-			:where(.focus-visible\:bg-surface-1:focus-visible, label.focus-within\:bg-surface-1:focus-within)
-		)
-	{
-		background-color: var(--upstream-fill-ghost-hover);
-	}
 }
 
 /* Fizzy-lake `type`: upstream's `font-weight: var(--cds-font-weight-header)` on dialog headings and settings

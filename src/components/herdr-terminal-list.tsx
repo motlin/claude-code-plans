@@ -11,7 +11,7 @@ import {HerdrStatusIndicator} from "./herdr-status-indicator";
  * on its own line.
  */
 const PANE_ROW =
-	"grid min-w-0 flex-1 grid-cols-[3.5rem_minmax(0,1fr)_minmax(0,14rem)_5rem] items-center gap-2 rounded-md border border-border p-3 no-underline transition-colors hover:bg-surface-0 hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus max-sm:flex max-sm:flex-wrap";
+	"grid min-w-0 flex-1 grid-cols-[3.5rem_minmax(0,1fr)_minmax(0,14rem)_5rem] items-center gap-2 rounded-md border border-border p-3 no-underline transition-colors hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus max-sm:flex max-sm:flex-wrap";
 
 const KIND_BADGE = "rounded bg-surface-0/60 px-1.5 py-0.5 text-center text-[10px] text-t6";
 

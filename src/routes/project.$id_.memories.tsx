@@ -72,7 +72,7 @@ function ProjectMemoriesPage()
 									project: mem.project,
 									filename: toMdSlug(mem.filename),
 								}}
-								className="flex items-center justify-between rounded-md border border-border px-4 py-3 transition-colors hover:bg-surface-0"
+								className="flex items-center justify-between rounded-md border border-border px-4 py-3 transition-colors hover:bg-fill-ghost-hover"
 							>
 								<span className="text-sm font-medium">{mem.title}</span>
 								<ListItemDate iso={mem.mtime} />

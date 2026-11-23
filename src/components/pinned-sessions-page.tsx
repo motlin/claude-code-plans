@@ -69,7 +69,7 @@ export function PinnedSessionsPage()
 								{
 									id: session.id,
 								}}
-								className="block rounded-md p-2 pr-40 cursor-pointer transition-colors hover:bg-surface-0"
+								className="block rounded-md p-2 pr-40 cursor-pointer transition-colors hover:bg-fill-ghost-hover"
 							>
 								<div
 									className="truncate pr-8"

@@ -140,7 +140,7 @@ function NotificationsPage()
 									{
 										id: notification.sessionId,
 									}}
-									className="block rounded-md border border-border p-3 pr-10 no-underline transition-colors hover:bg-surface-0"
+									className="block rounded-md border border-border p-3 pr-10 no-underline transition-colors hover:bg-fill-ghost-hover"
 								>
 									<div className="flex items-center gap-2">
 										<TypeIcon notificationType={notification.notificationType} />

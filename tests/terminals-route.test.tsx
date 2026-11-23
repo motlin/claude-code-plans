@@ -76,9 +76,9 @@ afterEach(() =>
 const HERDR_ROW_COLUMNS =
 	"grid grid-cols-[2.75rem_minmax(0,1fr)_5rem_8.5rem_2rem_9rem] items-center rounded-md border border-border max-sm:flex max-sm:flex-wrap max-sm:gap-x-2 max-sm:pb-2";
 const HERDR_TERMINAL_COLUMNS =
-	"grid grid-cols-[1.25rem_minmax(0,1fr)] items-center gap-1.5 rounded-md p-3 no-underline transition-colors hover:bg-surface-0 hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus max-sm:order-first max-sm:basis-full max-sm:pb-1";
+	"grid grid-cols-[1.25rem_minmax(0,1fr)] items-center gap-1.5 rounded-md p-3 no-underline transition-colors hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus max-sm:order-first max-sm:basis-full max-sm:pb-1";
 const HERDR_TRANSCRIPT_CELL =
-	"flex size-8 items-center justify-center justify-self-center rounded-md text-t6 transition-colors hover:bg-surface-0 hover:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
+	"flex size-8 items-center justify-center justify-self-center rounded-md text-t6 transition-colors hover:bg-fill-ghost-hover hover:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
 const HERDR_ACTION_CELL = "justify-self-end max-sm:ms-auto";
 
 function placement({
@@ -1644,7 +1644,7 @@ describe("Terminals page tmux rows", () =>
 		).toStrictEqual(
 			{
 				tmuxRowColumns:
-					"grid grid-cols-[0.625rem_2.75rem_2.5rem_minmax(0,1fr)_minmax(0,8rem)_8.5rem_auto] items-center gap-2 rounded-md border border-border p-3 no-underline transition-colors hover:bg-surface-0 max-sm:flex max-sm:flex-wrap",
+					"grid grid-cols-[0.625rem_2.75rem_2.5rem_minmax(0,1fr)_minmax(0,8rem)_8.5rem_auto] items-center gap-2 rounded-md border border-border p-3 no-underline transition-colors hover:bg-fill-ghost-hover max-sm:flex max-sm:flex-wrap",
 				tmuxTitleCell: "truncate text-sm font-medium text-primary max-sm:order-first max-sm:basis-full",
 				tmuxHost: "tmux",
 				tmuxReview: "Needs review · 2 new",
