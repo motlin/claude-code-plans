@@ -5,6 +5,8 @@ import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {MermaidFence} from "../src/components/mermaid-fence";
 import {MermaidPlaceholder} from "../src/components/mermaid-fence-gate";
 import type {MermaidStatus} from "../src/components/mermaid-diagram";
+import {DensityProvider} from "../src/components/ui/density";
+import type {Density} from "../src/components/ui/density-context";
 import
 {
 	createDiagramLightboxStore,
@@ -57,12 +59,14 @@ vi.mock("../src/components/mermaid-diagram", async () =>
 
 const CODE_BLOCK = <div className="markdown-codeblock">source</div>;
 
-function fence(lightbox: DiagramLightboxStore | null = null)
+function fence(lightbox: DiagramLightboxStore | null = null, density: Density = "compact")
 {
 	return render(
-		<DiagramLightboxContext value={lightbox}>
-			<MermaidFence code="graph TD; A-->B" codeBlock={CODE_BLOCK} placeholder={<MermaidPlaceholder />} />
-		</DiagramLightboxContext>,
+		<DensityProvider density={density}>
+			<DiagramLightboxContext value={lightbox}>
+				<MermaidFence code="graph TD; A-->B" codeBlock={CODE_BLOCK} placeholder={<MermaidPlaceholder />} />
+			</DiagramLightboxContext>
+		</DensityProvider>,
 	);
 }
 
@@ -286,9 +290,41 @@ describe("MermaidFence (upstream EpitaxyMermaidFence)", () =>
 				iconOnly: "",
 				cssTooltip: null,
 				className:
-					"inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-r5 border-0 bg-transparent p-0 text-primary hover:bg-fill-ghost-hover stacks:hover:bg-fill-button-ghost-hover [&_svg]:size-4",
+					"inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-r5 border-0 bg-transparent p-0 text-primary hover:bg-fill-ghost-hover stacks:hover:bg-fill-button-ghost-hover",
 				icon: "true",
 				tooltip: "View source",
+			},
+		);
+	});
+
+	it("sizes the toolbar icons as upstream's `auto` Icon: 16px at compact density, 20px at comfortable", () =>
+	{
+		const iconSizes = (density: Density) =>
+		{
+			const {container, unmount} = fence(createDiagramLightboxStore(), density);
+			report("success");
+			const sizes = [...container.querySelectorAll<SVGElement>("[data-placement] button svg")].map((icon) => [
+				icon.style.fontSize,
+				icon.getAttribute("stroke-width"),
+			]);
+			unmount();
+			return sizes;
+		};
+		expect(
+			{
+				compact: iconSizes("compact"),
+				comfortable: iconSizes("comfortable"),
+			},
+		).toStrictEqual(
+			{
+				compact: [
+					["calc(1rem * var(--cds-rem-scale, 1))", "1.875"],
+					["calc(1rem * var(--cds-rem-scale, 1))", "1.875"],
+				],
+				comfortable: [
+					["calc(1.25rem * var(--cds-rem-scale, 1))", "1.5"],
+					["calc(1.25rem * var(--cds-rem-scale, 1))", "1.5"],
+				],
 			},
 		);
 	});

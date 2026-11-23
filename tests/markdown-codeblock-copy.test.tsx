@@ -143,7 +143,7 @@ describe("fenced code block copy button markup", () =>
 		);
 	});
 
-	it("sizes the button like upstream: 24px square, radius 6, 16px icon, shared with the mermaid fence toolbar", () =>
+	it("sizes the button like upstream: 24px square, radius 6, density icon (16px compact, 20px comfortable), shared with the mermaid fence toolbar", () =>
 	{
 		expect(
 			{
@@ -169,8 +169,8 @@ describe("fenced code block copy button markup", () =>
 				},
 				icon:
 				{
-					width: "16px",
-					height: "16px",
+					width: "var(--cds-icon)",
+					height: "var(--cds-icon)",
 				},
 			},
 		);

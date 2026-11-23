@@ -277,10 +277,11 @@
 	cursor: pointer;
 }
 
+/* Upstream Button size base's `auto` icon: --cds-icon, 16px at compact density and 20px at comfortable. */
 .markdown :global(.markdown-code-copy) button svg
 {
-	width: 16px;
-	height: 16px;
+	width: var(--cds-icon);
+	height: var(--cds-icon);
 }
 
 .markdown :global(.markdown-code-copy) button:hover
