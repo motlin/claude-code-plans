@@ -404,7 +404,7 @@ describe("session page stale-compact line", () =>
 			{
 				line: LINE,
 				transcriptRoot:
-					"flex-1 epitaxy-transcript-typography [--chat-turn-gap:calc(var(--spacing)*5)]! compact:[--chat-turn-gap:calc(var(--spacing)*4)]!",
+					"flex-1 epitaxy-transcript-typography [--chat-card-bump:0px] [--chat-turn-gap:calc(var(--spacing)*5)]! compact:[--chat-turn-gap:calc(var(--spacing)*4)]!",
 			},
 		);
 	});

@@ -5,7 +5,6 @@ import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import
 {
-	REVIEW_CARD_CLASS,
 	ReportFindingsCard,
 	type ReportFindingsCardProps,
 	VIEW_IN_CHANGES_CLASS,
@@ -151,7 +150,8 @@ describe("ReportFindingsCard (upstream c3fef5c6f iC/rC)", () =>
 			},
 		).toStrictEqual(
 			{
-				className: REVIEW_CARD_CLASS,
+				className:
+					"my-[var(--chat-card-bump,6px)] flex w-full select-text flex-col gap-1 rounded-lg px-2 py-1 shadow-[inset_0_0_0_1px_var(--color-border)] focus-visible:outline-hidden hide-focus-ring focus-visible:shadow-focus",
 				text: "Code reviewHigh effort, no issues found",
 				group: null,
 				buttons: 0,

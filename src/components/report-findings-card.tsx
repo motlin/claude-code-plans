@@ -33,9 +33,9 @@ import {CDS_BUTTON_DISABLED} from "./ui/cds-button-disabled";
 import {Icon} from "./ui/icon";
 import {PathLabel} from "./ui/path-label";
 
-/** Upstream `iC`'s root: `my-[6px]` + `Nl` (summary card) + the focus ring. */
-export const REVIEW_CARD_CLASS =
-	"my-[6px] flex w-full select-text flex-col gap-1 rounded-lg px-2 py-1 shadow-[inset_0_0_0_1px_var(--color-border)] focus-visible:outline-hidden hide-focus-ring focus-visible:shadow-focus";
+/** Upstream `iC`'s root: `my-[var(--chat-card-bump,6px)]` (0 inside the transcript root, 6px elsewhere) + `Nl` (summary card) + the focus ring. */
+const REVIEW_CARD_CLASS =
+	"my-[var(--chat-card-bump,6px)] flex w-full select-text flex-col gap-1 rounded-lg px-2 py-1 shadow-[inset_0_0_0_1px_var(--color-border)] focus-visible:outline-hidden hide-focus-ring focus-visible:shadow-focus";
 /** Upstream `vl` with `flex-wrap`. */
 const HEADER_CLASS = "-me-0.5 flex min-w-0 items-center gap-1 flex-wrap";
 /** Upstream `Dl`: the hairline under the header, bleeding to the card's inset ring. */
