@@ -86,12 +86,6 @@ export function tildePath(path: string, home: string | null): string
 	return home && (path === home || path.startsWith(`${home}/`)) ? `~${path.slice(home.length)}` : path;
 }
 
-/** Upstream's `iU`: an id over 14 characters shows its first 8 and an ellipsis. */
-export function shortSessionId(id: string): string
-{
-	return id.length > 14 ? `${id.slice(0, 8)}…` : id;
-}
-
 /** Upstream's `Wp`: the catalog name, with a context-window suffix such as `[1m]` as "1M". */
 function modelDisplayName(modelId: string): string
 {
@@ -162,8 +156,7 @@ function sessionRows(sources: StatusSources): StatusRow[]
 				{
 					id: "sessionId",
 					label: "Session ID",
-					value: shortSessionId(sources.sessionId),
-					fullValue: sources.sessionId,
+					value: sources.sessionId,
 					copyable: true,
 				}
 			: null,

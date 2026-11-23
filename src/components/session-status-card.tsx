@@ -62,10 +62,10 @@ export function GhostCopyButton({
 	);
 }
 
-/** Upstream's value class: the session id in mono, other full-valued rows but MCP servers truncated, the rest wrapping. */
+/** Upstream's value class: the session id in mono (its inner span truncates), other full-valued rows but MCP servers truncated, the rest wrapping. */
 function valueClass(row: StatusRow): string
 {
-	if (row.id === "sessionId") return "min-w-0 max-w-full truncate font-mono-ui";
+	if (row.id === "sessionId") return "min-w-0 max-w-full font-mono-ui";
 	return row.fullValue === undefined || row.id === "mcp"
 		? "min-w-0 [overflow-wrap:anywhere]"
 		: "min-w-0 max-w-full truncate";
@@ -90,7 +90,15 @@ function StatusCardRow({
 			<span className="min-w-0 flex items-center justify-end gap-1.5 text-end">
 				<span className="min-w-0 flex flex-col items-end">
 					<span className={valueClass(row)} title={row.fullValue ?? row.value}>
-						{row.value}
+						{row.id === "sessionId" ? (
+							<span className="block truncate [direction:rtl]">
+								<bdi dir="ltr" className="[direction:inherit] [unicode-bidi:plaintext]">
+									{row.value}
+								</bdi>
+							</span>
+						) : (
+							row.value
+						)}
 					</span>
 					{row.hint && (
 						<span className="max-w-full text-muted-as-secondary [overflow-wrap:anywhere]">{row.hint}</span>

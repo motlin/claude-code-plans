@@ -4,7 +4,6 @@ import
 	sanitizeStatusText,
 	sessionStatusGroups,
 	sessionStatusReport,
-	shortSessionId,
 	type StatusSources,
 	tildePath,
 } from "../src/lib/session-status-card";
@@ -101,8 +100,7 @@ describe("sessionStatusGroups", () =>
 					{
 						id: "sessionId",
 						label: "Session ID",
-						value: "8f1c2d3e…",
-						fullValue: SESSION_ID,
+						value: SESSION_ID,
 						copyable: true,
 					},
 				],
@@ -349,7 +347,7 @@ describe("sessionStatusGroups", () =>
 
 describe("status card helpers", () =>
 {
-	it("tilde-shortens only paths at or under home and truncates long session ids", () =>
+	it("tilde-shortens only paths at or under home and sanitizes text", () =>
 	{
 		expect(
 			{
@@ -358,8 +356,6 @@ describe("status card helpers", () =>
 				outside: tildePath("/tmp/x", "/Users/craig"),
 				sibling: tildePath("/Users/craigx", "/Users/craig"),
 				noHome: tildePath("/Users/craig/p", null),
-				longId: shortSessionId(SESSION_ID),
-				fourteen: shortSessionId("abcdefghijklmn"),
 				sanitized: sanitizeStatusText("\tx­\u0007y  "),
 			},
 		).toEqual(
@@ -369,8 +365,6 @@ describe("status card helpers", () =>
 				outside: "/tmp/x",
 				sibling: "/Users/craigx",
 				noHome: "/Users/craig/p",
-				longId: "8f1c2d3e…",
-				fourteen: "abcdefghijklmn",
 				sanitized: "x y",
 			},
 		);
@@ -397,8 +391,7 @@ describe("sessionStatusReport", () =>
 							{
 								id: "sessionId",
 								label: "Session ID",
-								value: "8f1c2d3e…",
-								fullValue: SESSION_ID,
+								value: SESSION_ID,
 								copyable: true,
 							},
 						],
