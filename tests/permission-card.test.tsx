@@ -3710,14 +3710,17 @@ describe("PermissionCard", () =>
 			["1", "export const meta = {name:'n'}\n"],
 			["2", "run()\n"],
 		]);
-		fireEvent.click(
-			screen.getByRole(
-				"button",
-				{
-					name: "background tasks pane",
-				},
-			),
+		const backgroundTasksLink = screen.getByRole(
+			"button",
+			{
+				name: "background tasks pane",
+			},
 		);
+		expect([backgroundTasksLink.className, backgroundTasksLink.getAttribute("data-cds")]).toStrictEqual([
+			"cds-reset text-link inline cursor-pointer",
+			"TextLink",
+		]);
+		fireEvent.click(backgroundTasksLink);
 		expect(open).toHaveBeenCalledTimes(1);
 	});
 

@@ -1399,7 +1399,8 @@ function TokenWarning()
 			) : (
 				<button
 					type="button"
-					className="inline cursor-pointer underline"
+					data-cds="TextLink"
+					className="cds-reset text-link inline cursor-pointer"
 					onClick={() =>
 					{
 						backgroundTasks.open();
