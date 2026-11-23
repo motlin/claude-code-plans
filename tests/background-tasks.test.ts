@@ -732,6 +732,76 @@ describe("extractBackgroundTasks", () =>
 		);
 	});
 
+	it("ignores api-request-blob copies of a launch, before or after its notification, so they never fork the task", () =>
+	{
+		const launch = toolUse(
+			"toolu_bash_blob",
+			"Bash",
+			{
+				command: "pnpm test",
+				description: "Test the fabricated app",
+				run_in_background: true,
+			},
+			"2026-09-28T10:00:00.000Z",
+		);
+		const {timestamp: _timestamp, ...untimed} = launch;
+		const blob: TranscriptRecord =
+		{
+			...untimed,
+			type: "api-request-blob",
+			hash: "fab1blobhash",
+		};
+		const launched = toolResult(
+			"toolu_bash_blob",
+			"Command running in background with ID: bfab1blob.",
+			{
+				backgroundTaskId: "bfab1blob",
+			},
+			"2026-09-28T10:00:01.000Z",
+		);
+		const done = notification(
+			[
+				"<task-id>bfab1blob</task-id>",
+				"<tool-use-id>toolu_bash_blob</tool-use-id>",
+				"<status>completed</status>",
+				'<summary>Background command "Test the fabricated app" completed (exit code 0)</summary>',
+			].join("\n"),
+			"2026-09-28T10:00:08.000Z",
+		);
+		const expected =
+		{
+			running: [],
+			finished: [
+				task(
+					{
+						id: "bfab1blob",
+						toolUseId: "toolu_bash_blob",
+						description: "Test the fabricated app",
+						command: "pnpm test",
+						status: "completed",
+						summary: 'Background command "Test the fabricated app" completed (exit code 0)',
+						startedAt: "2026-09-28T10:00:00.000Z",
+						completedAt: "2026-09-28T10:00:08.000Z",
+					},
+				),
+			],
+		};
+		for (const records of [
+			[launch, launched, blob, done],
+			[launch, launched, done, blob],
+		])
+		{
+			expect(
+				extractBackgroundTasks(
+					records,
+					{
+						sessionActive: true,
+					},
+				),
+			).toStrictEqual(expected);
+		}
+	});
+
 	it("ignores foreground bash calls", () =>
 	{
 		expect(

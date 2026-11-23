@@ -452,6 +452,9 @@ export function extractBackgroundTasks(
 
 	const track = (task: BackgroundTask): Tracked =>
 	{
+		// A re-seen launch is the same task; replacing it would strand the original as running.
+		const known = task.toolUseId === null ? undefined : byToolUseId.get(task.toolUseId);
+		if (known !== undefined) return known;
 		const tracked =
 		{
 			task,
@@ -510,6 +513,8 @@ export function extractBackgroundTasks(
 
 	for (const record of records)
 	{
+		// The CLI's api-request-blob records copy earlier messages without timestamps; the originals already count.
+		if (record["type"] === "api-request-blob") continue;
 		const timestamp = asString(record["timestamp"]);
 		const message = asRecord(record["message"]);
 		const content = message?.["content"];
