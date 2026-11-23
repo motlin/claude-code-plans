@@ -106,6 +106,16 @@ function props(overrides: Partial<ReportFindingsCardProps> = {}): ReportFindings
 	};
 }
 
+function pathLabel(span: Element | null | undefined)
+{
+	return {
+		dir: span?.getAttribute("dir"),
+		title: span?.getAttribute("title"),
+		ariaLabel: span?.getAttribute("aria-label"),
+		pieces: [...(span?.children ?? [])].map((piece) => [piece.textContent, piece.className]),
+	};
+}
+
 function rows(container: HTMLElement)
 {
 	return [...container.querySelectorAll("li")];
@@ -161,6 +171,9 @@ describe("ReportFindingsCard (upstream c3fef5c6f iC/rC)", () =>
 				{
 					label: document.getElementById(list.getAttribute("aria-labelledby") ?? "")?.textContent,
 					title: document.getElementById(list.getAttribute("aria-labelledby") ?? "")?.getAttribute("title"),
+					path: pathLabel(
+						document.getElementById(list.getAttribute("aria-labelledby") ?? "")?.firstElementChild,
+					),
 					header: document
 						.getElementById(list.getAttribute("aria-labelledby") ?? "")
 						?.hasAttribute("data-review-file-header"),
@@ -197,19 +210,46 @@ describe("ReportFindingsCard (upstream c3fef5c6f iC/rC)", () =>
 				lists: [
 					{
 						label: "a/index.ts",
-						title: "src/a/index.ts",
+						title: null,
+						path:
+						{
+							dir: "ltr",
+							title: "src/a/index.ts",
+							ariaLabel: "a/index.ts",
+							pieces: [
+								["a/", "min-w-0 overflow-hidden"],
+								["index.ts", "max-w-full shrink-0 truncate"],
+							],
+						},
 						header: true,
 						rows: 2,
 					},
 					{
 						label: "b/index.ts",
-						title: "src/b/index.ts",
+						title: null,
+						path:
+						{
+							dir: "ltr",
+							title: "src/b/index.ts",
+							ariaLabel: "b/index.ts",
+							pieces: [
+								["b/", "min-w-0 overflow-hidden"],
+								["index.ts", "max-w-full shrink-0 truncate"],
+							],
+						},
 						header: true,
 						rows: 1,
 					},
 					{
 						label: "c.ts",
-						title: "src/c.ts",
+						title: null,
+						path:
+						{
+							dir: "ltr",
+							title: "src/c.ts",
+							ariaLabel: null,
+							pieces: [["c.ts", "min-w-0 truncate"]],
+						},
 						header: true,
 						rows: 1,
 					},
@@ -270,6 +310,8 @@ describe("ReportFindingsCard (upstream c3fef5c6f iC/rC)", () =>
 			body: [...row.querySelectorAll(".whitespace-pre-wrap")].map((node) => node.textContent),
 			location: row.querySelector(".text-footnote.text-secondary")?.textContent,
 			lineClass: row.querySelector(".text-footnote.text-secondary > .shrink-0")?.className,
+			locationTitle: row.querySelector(".text-footnote.text-secondary")?.getAttribute("title"),
+			path: pathLabel(row.querySelector(".text-footnote.text-secondary")?.firstElementChild),
 			viewClass: view.className,
 		};
 		first.unmount();
@@ -287,6 +329,17 @@ describe("ReportFindingsCard (upstream c3fef5c6f iC/rC)", () =>
 				body: ["The first finding is real.", "Alice sees the first failure."],
 				location: "src/a/index.ts:12",
 				lineClass: "shrink-0 font-control text-primary",
+				locationTitle: null,
+				path:
+				{
+					dir: "ltr",
+					title: "src/a/index.ts",
+					ariaLabel: "src/a/index.ts",
+					pieces: [
+						["src/a/", "min-w-0 overflow-hidden"],
+						["index.ts", "max-w-full shrink-0 truncate"],
+					],
+				},
 				viewClass: VIEW_IN_CHANGES_CLASS,
 				remounted: "true",
 				oldLabels: null,

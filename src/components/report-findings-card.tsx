@@ -31,6 +31,7 @@ import type {ClientToolCall} from "./tool-renderers/types";
 import {cdsButtonClass} from "./ui/cds-button";
 import {CDS_BUTTON_DISABLED} from "./ui/cds-button-disabled";
 import {Icon} from "./ui/icon";
+import {PathLabel} from "./ui/path-label";
 
 /** Upstream `iC`'s root: `my-[6px]` + `Nl` (summary card) + the focus ring. */
 export const REVIEW_CARD_CLASS =
@@ -188,8 +189,8 @@ function FindingRow({
 						</span>
 					)}
 					<span className="flex min-w-0 items-center gap-1.5">
-						<span className="flex min-w-0 text-footnote text-secondary" title={location}>
-							<span className="truncate">{finding.file}</span>
+						<span className="flex min-w-0 text-footnote text-secondary">
+							<PathLabel label={finding.file} title={finding.file} />
 							{finding.line !== undefined && (
 								<span className="shrink-0 font-control text-primary">{`:${finding.line}`}</span>
 							)}
@@ -572,9 +573,8 @@ export function ReportFindingsCard({
 									id={`${call.id}-file-${groupIndex}`}
 									className={FILE_HEADER_CLASS}
 									data-review-file-header
-									title={group.file}
 								>
-									<span className="truncate">{group.label}</span>
+									<PathLabel label={group.label} title={group.file} />
 								</div>
 								<ul
 									role="list"
