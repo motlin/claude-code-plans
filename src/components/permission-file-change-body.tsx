@@ -1,6 +1,6 @@
 import {type ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState} from "react";
 
-import {useCodeThemeBackground} from "../hooks/use-code-theme-background";
+import {useCodeThemeBackground, useCodeThemeVars} from "../hooks/use-code-theme-background";
 import {fileContentUrl, FileViewerResponse} from "../lib/api/file";
 import {resolveUrl} from "../lib/api/client";
 import {buildMultiEditHunk, buildPatchFromHunks, buildUnifiedHunk} from "../lib/diff-utils";
@@ -340,11 +340,13 @@ function fileChangeView(name: string, input: Record<string, unknown>, read: File
 
 /**
  * Upstream's `Yx` in a card (`inCard`, `hideFileHeader`): no header, and the change in a 400px Code scroller
- * on the code theme's background, its height reserved up front at 16px a row.
+ * on the code theme's background, its height reserved up front at 16px a row. The body carries the code-theme
+ * vars so selection and find colours inside the diff follow the code theme.
  */
 function FileChangeBody({path, view}: {path: string; view: FileChangeView})
 {
 	const background = useCodeThemeBackground();
+	const themeVars = useCodeThemeVars();
 	const hostStyle = useMemo(
 		() => (
 		{
@@ -353,7 +355,7 @@ function FileChangeBody({path, view}: {path: string; view: FileChangeView})
 		[background],
 	);
 	return (
-		<div data-file-change-body="" className="group/body flex w-full flex-col">
+		<div data-file-change-body="" className="group/body flex w-full flex-col" style={themeVars}>
 			<div
 				// oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- upstream's Code scroller (`Z`) is a tab stop for keyboard scrolling
 				tabIndex={0}
@@ -362,7 +364,8 @@ function FileChangeBody({path, view}: {path: string; view: FileChangeView})
 				className={SCROLLER_CLASS}
 				style={
 				{
-					background,
+					// Upstream's `Yx` scroller: a code fence ground's --code-fence-bg overrides the theme background.
+					background: `var(--code-fence-bg, ${background})`,
 					minHeight: Math.min(view.rows * ROW_RESERVE_PX, SCROLLER_MAX_PX),
 				}}
 			>

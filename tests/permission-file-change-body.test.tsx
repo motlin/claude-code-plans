@@ -6,6 +6,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {encodeFilePath} from "../src/lib/api/file";
 import {PermissionFileChangePreview} from "../src/components/permission-file-change-body";
 import {plainFileChangeParts} from "../src/lib/permission-file-change";
+import {customProperties, DEFAULT_CODE_THEME_VARS} from "./helpers/code-theme-vars";
 
 class FakeResizeObserver
 {
@@ -188,6 +189,22 @@ describe("PermissionFileChangePreview, input only", () =>
 					minHeight: "48px",
 				},
 				note: null,
+			},
+		);
+		const body = container.querySelector<HTMLElement>("[data-file-change-body]")!;
+		await waitFor(() =>
+		{
+			expect(body.style.getPropertyValue("--code-theme-light-bg")).toBe("#ffffff");
+		});
+		expect(
+			{
+				vars: customProperties(body),
+				background: body.querySelector<HTMLElement>("[role=group][aria-label=Code]")!.style.background,
+			},
+		).toStrictEqual(
+			{
+				vars: DEFAULT_CODE_THEME_VARS,
+				background: "var(--code-fence-bg, light-dark(#ffffff, #191919))",
 			},
 		);
 	});

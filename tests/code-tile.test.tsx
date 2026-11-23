@@ -9,6 +9,7 @@ import {CodeTile, CommandCodeTile, CommandFrame} from "../src/components/code-ti
 import {CODE_TILE_CSS, commandNeedsFrame, normalizeTileCode} from "../src/lib/code-tile";
 import {tileLanguage} from "../src/lib/code-tile-language";
 import {DEFAULT_CODE_THEMES} from "../src/lib/code-themes";
+import {customProperties, DEFAULT_CODE_THEME_VARS} from "./helpers/code-theme-vars";
 
 /** Props each pierre `File` received, newest last; the stub draws a bare `diffs-container`, or suspends. */
 const recorded = vi.hoisted(() => (
@@ -142,42 +143,11 @@ describe("CODE_TILE_CSS (upstream `Qc`)", () =>
 /** The tile root's inline background and every custom property it sets. */
 function rootStyle(root: HTMLElement): Record<string, string>
 {
-	const names = Array.from(root.style).filter((name) => name.startsWith("--"));
-	return Object.fromEntries([
-		["background", root.style.background],
-		...names.map((name) => [name, root.style.getPropertyValue(name)]),
-	]);
+	return {
+		background: root.style.background,
+		...customProperties(root),
+	};
 }
-
-/** Upstream c6e73333a `v` for the default claude-light / claude-dark pair. */
-const DEFAULT_CODE_THEME_VARS =
-{
-	background: "var(--code-fence-bg, light-dark(#ffffff, #191919))",
-	"--code-theme-light-bg": "#ffffff",
-	"--code-theme-dark-bg": "#191919",
-	"--code-theme-light-git-modified": "#895503",
-	"--code-theme-light-git-untracked": "#007100",
-	"--code-theme-light-git-added": "#587c0c",
-	"--code-theme-light-git-renamed": "#007100",
-	"--code-theme-light-git-conflict": "#ad0707",
-	"--code-theme-dark-git-modified": "#e2c08d",
-	"--code-theme-dark-git-untracked": "#73c991",
-	"--code-theme-dark-git-added": "#81b88b",
-	"--code-theme-dark-git-renamed": "#73c991",
-	"--code-theme-dark-git-conflict": "#f48771",
-	"--code-theme-bg": "light-dark(#ffffff, #191919)",
-	"--code-theme-light-selection-bg": "#0073e640",
-	"--code-theme-dark-selection-bg": "#0099ff4d",
-	"--cds-code-text-selection-bg": "light-dark(#0073e640, #0099ff4d)",
-	"--code-theme-selection-match-bg": "light-dark(#0073e61a, #0099ff24)",
-	"--code-theme-find-match-bg": "light-dark(#ffd5008c, #ffd5008c)",
-	"--code-theme-find-match-fg": "light-dark(#000000, #000000)",
-	"--code-theme-find-match-border":
-		"light-dark(color-mix(in srgb, currentColor 60%, transparent), color-mix(in srgb, currentColor 60%, transparent))",
-	"--code-theme-find-match-highlight-bg": "light-dark(#ffd50040, #ffd5002e)",
-	"--code-theme-find-match-highlight-fg": "light-dark(#14181f, #eaecf0)",
-	"--code-theme-find-match-highlight-border": "light-dark(transparent, transparent)",
-};
 
 describe("CommandCodeTile (upstream `tl` > `el`)", () =>
 {
@@ -189,7 +159,12 @@ describe("CommandCodeTile (upstream `tl` > `el`)", () =>
 		{
 			expect(root.style.getPropertyValue("--code-theme-light-bg")).toBe("#ffffff");
 		});
-		expect(rootStyle(root)).toStrictEqual(DEFAULT_CODE_THEME_VARS);
+		expect(rootStyle(root)).toStrictEqual(
+			{
+				background: "var(--code-fence-bg, light-dark(#ffffff, #191919))",
+				...DEFAULT_CODE_THEME_VARS,
+			},
+		);
 	});
 
 	it("draws the prompt gutter, the File column and passes upstream's File props", async () =>
