@@ -65,7 +65,11 @@ export const sourceEditorThemeSpec =
 	".cm-activeLineGutter":
 	{
 		backgroundColor: "transparent",
-		color: "inherit",
+		color: "var(--code-theme-fg, var(--color-primary))",
+	},
+	"&.cm-focused .cm-cursor":
+	{
+		borderLeftColor: "var(--code-theme-fg, var(--color-primary))",
 	},
 	".cm-selectionBackground, &.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground":
 	{

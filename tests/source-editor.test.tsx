@@ -56,6 +56,25 @@ describe("SourceEditor read-only", () =>
 		const {container} = render(<SourceEditor value={"a\nb"} readOnly />);
 		const lines = [...container.querySelectorAll(".cm-line")];
 		expect(lines.map((line) => line.classList.contains("cm-activeLine"))).toStrictEqual([true, false]);
+		// Upstream paints the active line number and the focused caret in the editor foreground.
+		expect(
+			{
+				activeLineGutter: sourceEditorThemeSpec[".cm-activeLineGutter"],
+				cursor: sourceEditorThemeSpec["&.cm-focused .cm-cursor"],
+			},
+		).toStrictEqual(
+			{
+				activeLineGutter:
+				{
+					backgroundColor: "transparent",
+					color: "var(--code-theme-fg, var(--color-primary))",
+				},
+				cursor:
+				{
+					borderLeftColor: "var(--code-theme-fg, var(--color-primary))",
+				},
+			},
+		);
 	});
 
 	it("wraps lines with a hanging indent by default and drops both when wordWrap is false", () =>
