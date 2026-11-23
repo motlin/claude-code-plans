@@ -421,7 +421,7 @@ export function GroupSection({
 		},
 	);
 	useSectionFocusRescue(group.key, sectionElement);
-	const [announcement, setAnnouncement] = useState("");
+	const [announcement, announce] = useOverflowAnnouncement();
 	const heldHintId = useId();
 	// Upstream shares one quick-reply hint per section across its Needs input rows.
 	const awaitingHintId = useId();
@@ -629,7 +629,7 @@ export function GroupSection({
 							ariaLabel={`Show ${group.revealCount} more in ${group.label}`}
 							onClick={() =>
 							{
-								setAnnouncement(`Showing ${group.revealCount} more in ${group.label}`);
+								announce(`Showing ${group.revealCount} more in ${group.label}`);
 								onReveal(group.key, extraRevealed + hold.showMoreStep);
 							}}
 							awaiting={group.hiddenAwaiting}
@@ -644,7 +644,7 @@ export function GroupSection({
 								held={showLessHeld ? heldHintId : undefined}
 								onClick={() =>
 								{
-									setAnnouncement(`Showing less in ${group.label}`);
+									announce(`Showing less in ${group.label}`);
 									setShowLessCount((count) => count + 1);
 									onReveal(group.key, showLessFloor);
 								}}
@@ -663,9 +663,10 @@ export function GroupSection({
 							{fetchMore.loading ? "Loading…" : "Show more"}
 						</OverflowRow>
 					)}
-					{(fetchMore !== undefined || group.hiddenCount > 0 || group.canShowLess || announcement !== "") && (
+					{announcement !== null && (
 						<span className="sr-only" role="status">
-							{announcement}
+							{announcement.text}
+							{announcement.nonce % 2 === 1 ? "\u200B" : ""}
 						</span>
 					)}
 				</div>
@@ -919,6 +920,50 @@ function OverflowRow({
 			)}
 		</div>
 	);
+}
+
+/**
+ * Upstream `DN`'s announcement: each one bumps a nonce whose odd values append U+200B, so a repeated
+ * message still changes and is re-announced, and it clears after 4s so the status span unmounts.
+ */
+function useOverflowAnnouncement(): [
+	{
+		text: string;
+		nonce: number;
+	} | null,
+	(text: string) => void,
+]
+{
+	const [announcement, setAnnouncement] = useState<
+	{
+		text: string;
+		nonce: number;
+	} | null>(null);
+	const nonceRef = useRef(0);
+	const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+	useEffect(
+		() => () =>
+		{
+			clearTimeout(timerRef.current);
+		},
+		[],
+	);
+	const announce = useCallback((text: string) =>
+	{
+		nonceRef.current += 1;
+		setAnnouncement(
+			{
+				text,
+				nonce: nonceRef.current,
+			},
+		);
+		clearTimeout(timerRef.current);
+		timerRef.current = setTimeout(() =>
+		{
+			setAnnouncement(null);
+		}, 4000);
+	}, []);
+	return [announcement, announce];
 }
 
 /** Upstream `Ri`'s iconless row recipe with `u3`'s inset and `Yn`'s group gap, for the list-level Load more row. */

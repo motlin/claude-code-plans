@@ -998,154 +998,166 @@ describe("sidebar SessionGroups", () =>
 
 	it("pages Idle 20 rows per Show more click, announcing each page, and folds back to 20 with Show less", async () =>
 	{
-		const {container} = await renderGroups(doneSessions(47));
-		const overflowRows = () =>
-			[...container.querySelectorAll('[data-group-key="state-done"] button[data-row]')].map((button) => (
+		vi.useFakeTimers(
 			{
-				text: button.textContent,
-				label: button.getAttribute("aria-label"),
-				wrapper: `${button.parentElement?.getAttribute("data-row-key")} ${button.parentElement?.className}`,
-			}));
-		const status = () =>
-			container.querySelector('[data-group-key="state-done"] [data-group-rows] > span[role="status"]');
-
-		const showMore = screen.getByRole(
-			"button",
-			{
-				name: "Show 20 more in Idle",
+				shouldAdvanceTime: true,
 			},
 		);
-		expect(
-			{
-				shown: rowTitlesIn(container, "state-done").length,
-				overflow: overflowRows(),
-				roving: showMore.hasAttribute("data-roving-item"),
-				labelClass: showMore.querySelector("span")?.className,
-				leadingSlot: showMore.querySelector(".df-leading-slot"),
-				status:
+		try
+		{
+			const {container} = await renderGroups(doneSessions(47));
+			const overflowRows = () =>
+				[...container.querySelectorAll('[data-group-key="state-done"] button[data-row]')].map((button) => (
 				{
-					className: status()?.className,
-					text: status()?.textContent,
-				},
-			},
-		).toStrictEqual(
-			{
-				shown: 20,
-				overflow: [
-					{
-						text: "Show more",
-						label: "Show 20 more in Idle",
+					text: button.textContent,
+					label: button.getAttribute("aria-label"),
+					wrapper: `${button.parentElement?.getAttribute("data-row-key")} ${button.parentElement?.className}`,
+				}));
+			const status = () =>
+				container.querySelector('[data-group-key="state-done"] [data-group-rows] > span[role="status"]');
 
-						wrapper: "label:showmore:state-done df-drag-shiftable [overflow-anchor:none]",
-					},
-				],
-				roving: true,
-				labelClass: "ps-[var(--sb-iconless-pad)]",
-				leadingSlot: null,
-				status:
-				{
-					className: "sr-only",
-					text: "",
-				},
-			},
-		);
-
-		fireEvent.click(showMore);
-		expect(
-			{
-				shown: rowTitlesIn(container, "state-done").length,
-				overflow: overflowRows(),
-				status: status()?.textContent,
-			},
-		).toStrictEqual(
-			{
-				shown: 40,
-				overflow: [
-					{
-						text: "Show more",
-						label: "Show 7 more in Idle",
-
-						wrapper: "label:showmore:state-done df-drag-shiftable [overflow-anchor:none]",
-					},
-				],
-				status: "Showing 20 more in Idle",
-			},
-		);
-
-		fireEvent.click(
-			screen.getByRole(
+			const showMore = screen.getByRole(
 				"button",
 				{
-					name: "Show 7 more in Idle",
+					name: "Show 20 more in Idle",
 				},
-			),
-			{
-				detail: 2,
-			},
-		);
-		expect(rowTitlesIn(container, "state-done")).toHaveLength(40);
-
-		fireEvent.click(
-			screen.getByRole(
-				"button",
+			);
+			expect(
 				{
-					name: "Show 7 more in Idle",
+					shown: rowTitlesIn(container, "state-done").length,
+					overflow: overflowRows(),
+					roving: showMore.hasAttribute("data-roving-item"),
+					labelClass: showMore.querySelector("span")?.className,
+					leadingSlot: showMore.querySelector(".df-leading-slot"),
+					status: status(),
 				},
-			),
-		);
-		expect(
-			{
-				shown: rowTitlesIn(container, "state-done"),
-				overflow: overflowRows(),
-			},
-		).toStrictEqual(
-			{
-				shown: Array.from(
+			).toStrictEqual(
+				{
+					shown: 20,
+					overflow: [
+						{
+							text: "Show more",
+							label: "Show 20 more in Idle",
+
+							wrapper: "label:showmore:state-done df-drag-shiftable [overflow-anchor:none]",
+						},
+					],
+					roving: true,
+					labelClass: "ps-[var(--sb-iconless-pad)]",
+					leadingSlot: null,
+					status: null,
+				},
+			);
+
+			fireEvent.click(showMore);
+			expect(
+				{
+					shown: rowTitlesIn(container, "state-done").length,
+					overflow: overflowRows(),
+					status: status()?.textContent,
+				},
+			).toStrictEqual(
+				{
+					shown: 40,
+					overflow: [
+						{
+							text: "Show more",
+							label: "Show 7 more in Idle",
+
+							wrapper: "label:showmore:state-done df-drag-shiftable [overflow-anchor:none]",
+						},
+					],
+					status: "Showing 20 more in Idle\u200B",
+				},
+			);
+
+			fireEvent.click(
+				screen.getByRole(
+					"button",
 					{
-						length: 47,
+						name: "Show 7 more in Idle",
 					},
-					(_, index) => `Done ${index}`,
 				),
-				overflow: [
-					{
-						text: "Show less",
-						label: "Show less in Idle",
-
-						wrapper: "label:showmore:state-done df-drag-shiftable [overflow-anchor:none]",
-					},
-				],
-			},
-		);
-
-		fireEvent.click(
-			screen.getByRole(
-				"button",
 				{
-					name: "Show less in Idle",
+					detail: 2,
 				},
-			),
-		);
+			);
+			expect(rowTitlesIn(container, "state-done")).toHaveLength(40);
 
-		expect(
-			{
-				shown: rowTitlesIn(container, "state-done").length,
-				overflow: overflowRows(),
-				status: status()?.textContent,
-			},
-		).toStrictEqual(
-			{
-				shown: 20,
-				overflow: [
+			fireEvent.click(
+				screen.getByRole(
+					"button",
 					{
-						text: "Show more",
-						label: "Show 20 more in Idle",
-
-						wrapper: "label:showmore:state-done df-drag-shiftable [overflow-anchor:none]",
+						name: "Show 7 more in Idle",
 					},
-				],
-				status: "Showing less in Idle",
-			},
-		);
+				),
+			);
+			expect(
+				{
+					shown: rowTitlesIn(container, "state-done"),
+					overflow: overflowRows(),
+					status: status()?.textContent,
+				},
+			).toStrictEqual(
+				{
+					shown: Array.from(
+						{
+							length: 47,
+						},
+						(_, index) => `Done ${index}`,
+					),
+					overflow: [
+						{
+							text: "Show less",
+							label: "Show less in Idle",
+
+							wrapper: "label:showmore:state-done df-drag-shiftable [overflow-anchor:none]",
+						},
+					],
+					status: "Showing 7 more in Idle",
+				},
+			);
+
+			fireEvent.click(
+				screen.getByRole(
+					"button",
+					{
+						name: "Show less in Idle",
+					},
+				),
+			);
+
+			expect(
+				{
+					shown: rowTitlesIn(container, "state-done").length,
+					overflow: overflowRows(),
+					status: status()?.textContent,
+				},
+			).toStrictEqual(
+				{
+					shown: 20,
+					overflow: [
+						{
+							text: "Show more",
+							label: "Show 20 more in Idle",
+
+							wrapper: "label:showmore:state-done df-drag-shiftable [overflow-anchor:none]",
+						},
+					],
+					status: "Showing less in Idle\u200B",
+				},
+			);
+
+			act(() =>
+			{
+				vi.advanceTimersByTime(4000);
+			});
+			expect(status()).toBeNull();
+		}
+		finally
+		{
+			vi.useRealTimers();
+		}
 	});
 
 	it("never hides one row: 21 rows show whole, and 41 rows offer Show 21 more, which reveals them all", async () =>
@@ -1189,7 +1201,7 @@ describe("sidebar SessionGroups", () =>
 		).toStrictEqual(
 			{
 				shown: 41,
-				status: "Showing 21 more in Idle",
+				status: "Showing 21 more in Idle\u200B",
 				showLess: 1,
 			},
 		);
