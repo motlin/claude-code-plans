@@ -121,7 +121,7 @@ const JOINED_LOOKS: Record<
 	{
 		root: `shadow-field-drop ${SECONDARY_RING_CLASS}`,
 		fill: `bg-fill-secondary text-primary font-control-regular hover:bg-fill-secondary-hover aria-expanded:bg-fill-secondary-hover ${CDS_BUTTON_DISABLED_FILL}`,
-		seam: `relative ${SEAM_BASE_CLASS} bg-fill-secondary ${SEAM_FADE_CLASS}`,
+		seam: `relative ${SEAM_BASE_CLASS} bg-fill-secondary ${SEAM_FADE_CLASS} ${SOLID_SEAM_DISABLED_CLASS}`,
 		line: "absolute inset-x-0 inset-y-1/4 bg-border",
 	},
 	danger:

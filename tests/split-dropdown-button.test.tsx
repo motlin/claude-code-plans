@@ -574,7 +574,15 @@ describe("SplitDropdownButton", () =>
 					caret: [...BASE, ...CARET_SEGMENT, ...fill, ...TRANSITION],
 					caretIcon: ["lucide", "lucide-chevron-down", "size-4", "text-ink-muted"],
 					seamHidden: "true",
-					seam: ["relative", "w-px", "shrink-0", "self-stretch", "bg-fill-secondary", ...SEAM_FADE],
+					seam: [
+						"relative",
+						"w-px",
+						"shrink-0",
+						"self-stretch",
+						"bg-fill-secondary",
+						...SEAM_FADE,
+						...SOLID_SEAM_DISABLED,
+					],
 					line: ["absolute", "inset-x-0", "inset-y-1/4", "bg-border"],
 				},
 			);
