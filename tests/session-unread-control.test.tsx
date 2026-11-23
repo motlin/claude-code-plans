@@ -223,7 +223,7 @@ describe("SidebarRowSrText", () =>
 		document.getElementById("live-announcer")?.remove();
 	});
 
-	it("mounts upstream's role-less data-session-status span only while the row has a status, announcing each change politely", () =>
+	it("mounts upstream's role-less data-session-status span only while the row has a status, announcing each change (never the first render) politely, after the title unless the row is selected", () =>
 	{
 		__testing.reset();
 		const shown = (container: HTMLElement) =>
@@ -247,16 +247,27 @@ describe("SidebarRowSrText", () =>
 							],
 			};
 		};
-		const {container, rerender} = render(<SidebarRowSrText session={listItem("blocked")} paneSelected={false} />);
+		const {container, rerender} = render(
+			<SidebarRowSrText session={listItem("blocked")} paneSelected={false} title="Fix the bug" />,
+		);
 		const blocked = shown(container);
-		rerender(<SidebarRowSrText session={listItem("working")} paneSelected={false} />);
+		rerender(<SidebarRowSrText session={listItem("working")} paneSelected={false} title="Fix the bug" />);
 		const working = shown(container);
-		rerender(<SidebarRowSrText session={listItem("done")} paneSelected={false} />);
+		rerender(<SidebarRowSrText session={listItem("working")} paneSelected={false} title="Why?" />);
+		const retitled = shown(container);
+		rerender(<SidebarRowSrText session={listItem("blocked")} paneSelected={false} title="Why?" />);
+		const questionTitle = shown(container);
+		rerender(<SidebarRowSrText session={listItem("working")} paneSelected title="Why?" />);
+		const selected = shown(container);
+		rerender(<SidebarRowSrText session={listItem("done")} paneSelected={false} title="Why?" />);
 
 		expect(
 			{
 				blocked,
 				working,
+				retitled: retitled.live,
+				questionTitle: questionTitle.live,
+				selected: selected.live,
 				done: shown(container),
 			},
 		).toStrictEqual(
@@ -275,8 +286,11 @@ describe("SidebarRowSrText", () =>
 						[null, "", " Running"],
 						[null, null, " alpha · Connected"],
 					],
-					live: ["polite", [["session-status-session-test-100", " Running"]]],
+					live: ["polite", [["session-status-session-test-100", "Fix the bug. Running"]]],
 				},
+				retitled: ["polite", [["session-status-session-test-100", "Fix the bug. Running"]]],
+				questionTitle: ["polite", [["session-status-session-test-100", "Why? Awaiting input"]]],
+				selected: ["polite", [["session-status-session-test-100", "Running"]]],
 				done:
 				{
 					spans: [[null, null, " alpha · Connected"]],

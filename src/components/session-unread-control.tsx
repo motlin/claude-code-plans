@@ -73,14 +73,14 @@ export function SessionRowStatusDot({session, tabIndex}: {session: SessionListIt
 
 const SR_ROW_STATUS_LABELS =
 {
-	working: " Running",
-	awaiting: " Awaiting input",
-	unread: " Unread response",
+	working: "Running",
+	awaiting: "Awaiting input",
+	unread: "Unread response",
 	read: "",
 } satisfies Record<SessionMenuReadState, string>;
 
 /** Upstream `L_` announces an errored row with its error text in place of the live status. */
-const SR_ROW_ERROR_LABEL = ` ${sessionStateKindLabels.error}`;
+const SR_ROW_ERROR_LABEL = sessionStateKindLabels.error;
 
 /**
  * Upstream's sr-only environment text (`Z7a` for a bridge, which every local CLI is): the machine
@@ -208,22 +208,38 @@ function rowAnnounceable(element: HTMLElement): boolean
 	);
 }
 
+/** Upstream `hc`: end a title with a period unless it already ends a sentence. */
+function asSentence(title: string): string
+{
+	return /[\p{Sentence_Terminal}\u2026:]["'\u201D\u2019)\]]*$/u.test(title) ? title : `${title}.`;
+}
+
 /**
  * Upstream's `L_` screen-reader text, rendered inside the row title so it joins the link's
  * accessible name: a status span (" Awaiting input", " Error", " Running", " Unread response"), unmounted
  * when the row has none, and the environment (" herdr · Connected", " claude-code-plans · Offline").
- * Status changes are read through the shared polite announcer, keyed per session.
+ * Status changes (never the first render) are read through the shared polite announcer, keyed per
+ * session, after the row's title unless the row is the selected one (upstream `It`, shared-59).
  */
-export function SidebarRowSrText({session, paneSelected}: {session: SessionListItem; paneSelected: boolean})
+export function SidebarRowSrText({
+	session,
+	paneSelected,
+	title,
+}: {
+	session: SessionListItem;
+	paneSelected: boolean;
+	title?: string;
+})
 {
 	const {unseen, kind, showPrStatus} = useRowIconKind(session, paneSelected);
 	const srClass = "sr-only [[role=tooltip]_&]:hidden";
 	const status =
 		(kind === "error" ? SR_ROW_ERROR_LABEL : SR_ROW_STATUS_LABELS[sessionMenuReadState(session.bucket, unseen)]) ||
 		null;
-	const envRef = useRef<HTMLSpanElement>(null);
+	const statusRef = useRef<HTMLSpanElement>(null);
 	const announced = useRef(status);
 	const key = `session-status-${session.id}`;
+	const spokenTitle = paneSelected ? undefined : title;
 	useEffect(() =>
 	{
 		if (announced.current === status) return;
@@ -233,9 +249,10 @@ export function SidebarRowSrText({session, paneSelected}: {session: SessionListI
 			clearAnnouncement(key);
 			return;
 		}
-		const element = envRef.current;
-		if (element !== null && rowAnnounceable(element)) announce(status, key);
-	}, [status, key]);
+		const element = statusRef.current;
+		if (element !== null && rowAnnounceable(element))
+			announce(spokenTitle ? `${asSentence(spokenTitle)} ${status}` : status, key);
+	}, [status, key, spokenTitle]);
 	useEffect(
 		() => () =>
 		{
@@ -246,11 +263,11 @@ export function SidebarRowSrText({session, paneSelected}: {session: SessionListI
 	return (
 		<>
 			{status !== null && (
-				<span className={srClass} data-find-omitted="" data-session-status="">
-					{status}
+				<span ref={statusRef} className={srClass} data-find-omitted="" data-session-status="">
+					{` ${status}`}
 				</span>
 			)}
-			<span ref={envRef} className={srClass} data-find-omitted="">
+			<span className={srClass} data-find-omitted="">
 				{rowEnvironmentText(session, showPrStatus)}
 			</span>
 		</>

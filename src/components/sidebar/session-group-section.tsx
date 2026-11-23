@@ -1360,7 +1360,7 @@ function SessionRowLink({
 				<FadeLabel text={title} attention={attention} reveal={revealTitle}>
 					{/* Upstream's o_: archived rows get a sr-only " Archived" right after the title, no pill */}
 					{row.archived && <span className="sr-only"> Archived</span>}
-					<SidebarRowSrText session={row.session} paneSelected={selected} />
+					<SidebarRowSrText session={row.session} paneSelected={selected} title={title} />
 				</FadeLabel>
 			)}
 		/>
