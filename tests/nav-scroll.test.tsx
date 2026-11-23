@@ -97,15 +97,15 @@ describe("NavScroll", () =>
 
 describe("NavScroll inset", () =>
 {
-	it("insets its rows 4px from the left and 8px from the right, so a session row spans upstream's 272px (8 to 280)", () =>
+	it("insets its rows 4px from the left and from the right only by what the scrollbar lane leaves of 8px, as upstream does", () =>
 	{
 		const {getByTestId} = render(<NavScroll activeKey={null}>{rows(1, null)}</NavScroll>);
 		const classes = getByTestId("nav-scroll").className.split(" ");
-		expect(classes.filter((name) => /^(-?m[lr]|p[lr])-/.test(name))).toStrictEqual([
+		expect(classes.filter((name) => /^(-?m[lr]|p[lre])-/.test(name))).toStrictEqual([
 			"-ml-1",
 			"-mr-2",
 			"pl-1",
-			"pr-2",
+			"pe-[max(0px,calc(8px-var(--df-nav-scrollbar-lane,0px)))]",
 		]);
 	});
 });

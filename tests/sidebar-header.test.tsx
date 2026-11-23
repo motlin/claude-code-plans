@@ -293,6 +293,59 @@ describe("nav scroll", () =>
 		]);
 	});
 
+	it("writes upstream's --df-nav-scrollbar-lane (offsetWidth - clientWidth) on mount and on each resize", () =>
+	{
+		let clientWidth = 283;
+		const callbacks: ResizeObserverCallback[] = [];
+		Object.defineProperty(
+			HTMLElement.prototype,
+			"offsetWidth",
+			{
+				configurable: true,
+				get: () => 283,
+			},
+		);
+		Object.defineProperty(
+			HTMLElement.prototype,
+			"clientWidth",
+			{
+				configurable: true,
+				get: () => clientWidth,
+			},
+		);
+		Reflect.set(
+			globalThis,
+			"ResizeObserver",
+			class
+			{
+				constructor(callback: ResizeObserverCallback)
+				{
+					callbacks.push(callback);
+				}
+
+				observe(): void
+				{
+				}
+
+				disconnect(): void
+				{
+				}
+			},
+		);
+		const {unmount} = render(
+			<NavScroll>
+				<div>content</div>
+			</NavScroll>,
+		);
+		const scroller = screen.getByTestId("nav-scroll");
+		const lanes = [scroller.style.getPropertyValue("--df-nav-scrollbar-lane")];
+		clientWidth = 272;
+		for (const callback of callbacks) callback([], {} as ResizeObserver);
+		lanes.push(scroller.style.getPropertyValue("--df-nav-scrollbar-lane"));
+		unmount();
+		expect(lanes).toStrictEqual(["0px", "11px"]);
+	});
+
 	it("sets data-scrolled on the parent df-nav-scroll-box only once scrolled more than 2px, like upstream's L$", () =>
 	{
 		render(

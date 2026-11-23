@@ -1014,6 +1014,10 @@ describe("sidebar New row", () =>
 					) & Node.DOCUMENT_POSITION_FOLLOWING,
 				),
 				scrollPaddingTop: scroller.classList.contains("scroll-pt-1"),
+				paddingTokens: ["pb-2", "pe-[max(0px,calc(8px-var(--df-nav-scrollbar-lane,0px)))]"].filter(
+					(token) => !scroller.classList.contains(token),
+				),
+				fixedPr: scroller.classList.contains("pr-2"),
 				keyboardContainer: ["df-nav-scroll-box", "relative", "flex", "flex-1", "flex-col", "min-h-0"].filter(
 					(token) => scroller.closest("[data-sidebar-body]")?.classList.contains(token) !== true,
 				),
@@ -1024,6 +1028,8 @@ describe("sidebar New row", () =>
 				headerFirst: true,
 				newBeforeNav: true,
 				scrollPaddingTop: true,
+				paddingTokens: [],
+				fixedPr: false,
 				keyboardContainer: [],
 			},
 		);

@@ -14,7 +14,8 @@ function revealRow(scroller: HTMLElement, row: HTMLElement): void
 /**
  * The sidebar's scrolling region (upstream `.dframe-nav-scroll`). Once scrolled
  * away from the top it sets `data-scrolled` on its parent `.df-nav-scroll-box`, whose
- * ::after draws upstream's 1px hairline under the header. Like
+ * ::after draws upstream's 1px hairline under the header. Its right padding
+ * tops the measured scrollbar lane up to 8px, as upstream's does. Like
  * upstream, it scrolls the open session's row into view when that session
  * changes, waiting for the row if the list has not rendered it yet.
  */
@@ -55,6 +56,25 @@ export function NavScroll({activeKey = null, children}: {activeKey?: string | nu
 
 	useEffect(() =>
 	{
+		const scroller = ref.current;
+		if (scroller === null) return undefined;
+		// Upstream measures the scrollbar's width so the right padding only tops it up to 8px.
+		const measure = (): void =>
+		{
+			scroller.style.setProperty("--df-nav-scrollbar-lane", `${scroller.offsetWidth - scroller.clientWidth}px`);
+		};
+		measure();
+		if (typeof ResizeObserver === "undefined") return undefined;
+		const observer = new ResizeObserver(measure);
+		observer.observe(scroller);
+		return () =>
+		{
+			observer.disconnect();
+		};
+	}, []);
+
+	useEffect(() =>
+	{
 		ref.current?.parentElement?.toggleAttribute("data-scrolled", scrolled);
 	}, [scrolled]);
 
@@ -67,7 +87,7 @@ export function NavScroll({activeKey = null, children}: {activeKey?: string | nu
 				// Upstream `L$`: `l(scrollTop > 2)`.
 				setScrolled(event.currentTarget.scrollTop > 2);
 			}}
-			className="relative -ml-1 -mr-2 flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto pl-1 pr-2 scroll-pt-1 [scrollbar-gutter:stable] [scrollbar-width:thin]"
+			className="relative -ml-1 -mr-2 flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto pl-1 pb-2 pe-[max(0px,calc(8px-var(--df-nav-scrollbar-lane,0px)))] scroll-pt-1 [scrollbar-gutter:stable] [scrollbar-width:thin]"
 		>
 			{children}
 		</div>
