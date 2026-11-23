@@ -805,75 +805,76 @@ describe("InlinePlanApproval keys (upstream's keyless plan root)", () =>
 		);
 	});
 
-	it("swallows a held Enter/Space and any modified Enter on an accept button, as upstream's `hh`, even inside the arm grace", async () =>
+	it("swallows only a held Enter/Space on a plan button, as upstream's cds Button, and lets a modified Enter through outside a menu, as upstream's `Aq`", async () =>
 	{
 		const {byText} = await renderPlan();
-		const accept = byText("Accept and");
-		const prevented = (init: KeyboardEventInit) => !fireEvent.keyDown(accept, init);
+		const prevented = (target: Element, init: KeyboardEventInit) => !fireEvent.keyDown(target, init);
+		const keys = (target: Element) => (
+		{
+			repeatEnter: prevented(
+				target,
+				{
+					key: "Enter",
+					repeat: true,
+				},
+			),
+			repeatSpace: prevented(
+				target,
+				{
+					key: " ",
+					repeat: true,
+				},
+			),
+			altEnter: prevented(
+				target,
+				{
+					key: "Enter",
+					altKey: true,
+				},
+			),
+			shiftEnter: prevented(
+				target,
+				{
+					key: "Enter",
+					shiftKey: true,
+				},
+			),
+			plainEnter: prevented(
+				target,
+				{
+					key: "Enter",
+				},
+			),
+			plainSpace: prevented(
+				target,
+				{
+					key: " ",
+				},
+			),
+		});
+		const expected =
+		{
+			repeatEnter: true,
+			repeatSpace: true,
+			altEnter: false,
+			shiftEnter: false,
+			plainEnter: false,
+			plainSpace: false,
+		};
 		expect(
 			{
-				repeatEnter: prevented(
-					{
-						key: "Enter",
-						repeat: true,
-					},
-				),
-				repeatSpace: prevented(
-					{
-						key: " ",
-						repeat: true,
-					},
-				),
-				metaEnter: prevented(
-					{
-						key: "Enter",
-						metaKey: true,
-					},
-				),
-				ctrlEnter: prevented(
-					{
-						key: "Enter",
-						ctrlKey: true,
-					},
-				),
-				altEnter: prevented(
-					{
-						key: "Enter",
-						altKey: true,
-					},
-				),
-				shiftEnter: prevented(
-					{
-						key: "Enter",
-						shiftKey: true,
-					},
-				),
-				plainEnter: prevented(
-					{
-						key: "Enter",
-					},
-				),
-				plainSpace: prevented(
-					{
-						key: " ",
-					},
-				),
+				accept: keys(byText("Accept and")),
+				reject: keys(byText("Reject")),
 			},
 		).toStrictEqual(
 			{
-				repeatEnter: true,
-				repeatSpace: true,
-				metaEnter: true,
-				ctrlEnter: true,
-				altEnter: true,
-				shiftEnter: true,
-				plainEnter: false,
-				plainSpace: false,
+				accept: expected,
+				reject: expected,
 			},
 		);
 	});
 
-	it("lets a held Enter through inside a menu within the accept group", async () =>
+	it("swallows a held Enter inside a menu within the accept group, as upstream's `Aq`", async () =>
 	{
 		const {byText} = await renderPlan();
 		const group = byText("Accept and").closest("[data-plan-accept-group]");
@@ -891,7 +892,7 @@ describe("InlinePlanApproval keys (upstream's keyless plan root)", () =>
 					repeat: true,
 				},
 			),
-		).toBe(true);
+		).toBe(false);
 		menu.remove();
 	});
 });

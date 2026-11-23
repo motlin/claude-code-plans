@@ -435,7 +435,7 @@ function PlanApprovalActions({
 						<span
 							data-plan-accept-group=""
 							className="flex flex-wrap justify-end gap-2"
-							onKeyDownCapture={swallowAcceptRepeat}
+							onKeyDownCapture={swallowAcceptMenuKeys}
 						>
 							{/* Upstream's arming group around the accepts, remounted when the read gate flips. */}
 							<span key={String(readHeld)} className="contents" data-approval-allow="">
@@ -492,15 +492,17 @@ function PlanApprovalActions({
 }
 
 /**
- * Upstream's accept-group capture guard (`hh`): a held Enter or Space, or an Enter with any modifier, never
- * reaches a focused accept button's native activation, unless it is inside a menu.
+ * Upstream's accept-group capture guard (`Aq`): a held Enter or Space, or an Enter with any modifier, is
+ * swallowed only inside a menu. Outside one it does nothing; `ApprovalActionButton` swallows a held key
+ * itself, as upstream's cds Button. (`qc.at(target, "menu") !== null` means INSIDE a menu; an earlier read
+ * had this backwards.)
  */
-function swallowAcceptRepeat(event: ReactKeyboardEvent<HTMLElement>)
+function swallowAcceptMenuKeys(event: ReactKeyboardEvent<HTMLElement>)
 {
 	const held = event.repeat && (event.key === "Enter" || event.key === " ");
 	const chord = event.key === "Enter" && (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey);
 	if (!held && !chord) return;
-	if (event.target instanceof Element && event.target.closest('[role="menu"]') !== null) return;
+	if (!(event.target instanceof Element) || event.target.closest('[role="menu"]') === null) return;
 	event.preventDefault();
 	event.stopPropagation();
 }

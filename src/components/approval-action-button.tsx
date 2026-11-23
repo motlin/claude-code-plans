@@ -16,7 +16,8 @@ export type ApprovalActionSize = CdsButtonSize;
 /**
  * An approval card action. `busy` is upstream's busy cds Button: it stays focusable
  * (`aria-busy` + `aria-disabled`, not `disabled`), ignores clicks, hides its label and
- * centres a 12px spinner over it. `busyLabel` (upstream's "Sending…") names it while busy.
+ * centres a 12px spinner over it. `busyLabel` (upstream's "Sending…") names it while busy. Like upstream's cds
+ * Button, it swallows a held (repeat) Enter or Space.
  */
 export function ApprovalActionButton({
 	variant,
@@ -25,6 +26,7 @@ export function ApprovalActionButton({
 	busyLabel,
 	children,
 	onClick,
+	onKeyDown,
 	...props
 }:
 {
@@ -39,6 +41,17 @@ export function ApprovalActionButton({
 			type="button"
 			{...props}
 			onClick={busy ? undefined : onClick}
+			onKeyDown={(event) =>
+			{
+				// Upstream's cds Button: a held Enter or Space never re-activates a focused button.
+				if (event.repeat && (event.key === "Enter" || event.key === " "))
+				{
+					event.preventDefault();
+					event.stopPropagation();
+					return;
+				}
+				onKeyDown?.(event);
+			}}
 			data-approval-variant={variant}
 			{...(size === "sm"
 				?
