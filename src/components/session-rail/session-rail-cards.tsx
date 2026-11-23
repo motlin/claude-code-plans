@@ -81,6 +81,7 @@ import
 	RAIL_ROW_ACTION_CLASS,
 	RailGlyph,
 	RailRow,
+	RailPreviewRows,
 	RailRowContent,
 	ShowMoreButton,
 } from "./rail-row";
@@ -590,26 +591,28 @@ function ConnectorsBody({rows}: {rows: readonly ConnectorRow[]})
 	const shown = showMore.expanded ? rows : rows.slice(0, CONNECTORS_SHOWN);
 	return (
 		<div data-testid="rail-rows" tabIndex={-1} className="flex flex-col outline-none">
-			{shown.map((row, index) => (
-				<Link
-					key={row.id}
-					ref={index === CONNECTORS_SHOWN ? showMore.firstNewRow : undefined}
-					to="/customize/connectors/id/$serverId"
-					params={
-					{
-						serverId: toConnectorSlug(row.id),
-					}}
-					className={RAIL_ROW_ACTION_CLASS}
-				>
-					<RailRowContent
-						// Upstream `EI`: a connector's favicon or letter tile is a "logo".
-						glyph="logo"
-						icon={<ConnectorLetterTile name={row.name} />}
-						label={row.label}
-						{...(row.state === undefined ? {} : CONNECTOR_STATE_HINT[row.state])}
-					/>
-				</Link>
-			))}
+			<RailPreviewRows>
+				{shown.map((row, index) => (
+					<Link
+						key={row.id}
+						ref={index === CONNECTORS_SHOWN ? showMore.firstNewRow : undefined}
+						to="/customize/connectors/id/$serverId"
+						params={
+						{
+							serverId: toConnectorSlug(row.id),
+						}}
+						className={RAIL_ROW_ACTION_CLASS}
+					>
+						<RailRowContent
+							// Upstream `EI`: a connector's favicon or letter tile is a "logo".
+							glyph="logo"
+							icon={<ConnectorLetterTile name={row.name} />}
+							label={row.label}
+							{...(row.state === undefined ? {} : CONNECTOR_STATE_HINT[row.state])}
+						/>
+					</Link>
+				))}
+			</RailPreviewRows>
 			{rows.length > CONNECTORS_SHOWN && <ShowMoreButton state={showMore} />}
 		</div>
 	);
@@ -682,54 +685,60 @@ function OutputsBody({outputs, sessionId}: {outputs: readonly Output[]; sessionI
 	const shown = showMore.expanded ? outputs : outputs.slice(0, OUTPUTS_SHOWN);
 	return (
 		<Rows>
-			{shown.map((output, index) =>
-			{
-				const ref = index === OUTPUTS_SHOWN ? showMore.firstNewRow : undefined;
-				if (output.kind === "artifact")
+			<RailPreviewRows>
+				{shown.map((output, index) =>
 				{
+					const ref = index === OUTPUTS_SHOWN ? showMore.firstNewRow : undefined;
+					if (output.kind === "artifact")
+					{
+						return (
+							<Link
+								key={`artifact:${output.artifact.id}`}
+								ref={ref}
+								to="/artifact/$id"
+								params={
+								{
+									id: output.artifact.id,
+								}}
+								className={RAIL_ROW_ACTION_CLASS}
+							>
+								<RailRowContent
+									glyph="File"
+									icon={<Icon icon={AppWindow} />}
+									label={output.artifact.title}
+								/>
+							</Link>
+						);
+					}
+					const name = basename(output.file.path);
 					return (
-						<Link
-							key={`artifact:${output.artifact.id}`}
+						<button
+							key={`file:${output.file.path}`}
 							ref={ref}
-							to="/artifact/$id"
-							params={
-							{
-								id: output.artifact.id,
-							}}
+							type="button"
+							title={output.file.path}
+							aria-label={`Open ${name} in Files`}
 							className={RAIL_ROW_ACTION_CLASS}
+							onClick={() =>
+							{
+								requestFileOpen(
+									sessionId,
+									{
+										path: output.file.path,
+									},
+								);
+								host.openPane("files");
+							}}
 						>
 							<RailRowContent
 								glyph="File"
-								icon={<Icon icon={AppWindow} />}
-								label={output.artifact.title}
+								icon={<FileTypeIcon fileName={name} size="sm" />}
+								label={name}
 							/>
-						</Link>
+						</button>
 					);
-				}
-				const name = basename(output.file.path);
-				return (
-					<button
-						key={`file:${output.file.path}`}
-						ref={ref}
-						type="button"
-						title={output.file.path}
-						aria-label={`Open ${name} in Files`}
-						className={RAIL_ROW_ACTION_CLASS}
-						onClick={() =>
-						{
-							requestFileOpen(
-								sessionId,
-								{
-									path: output.file.path,
-								},
-							);
-							host.openPane("files");
-						}}
-					>
-						<RailRowContent glyph="File" icon={<FileTypeIcon fileName={name} size="sm" />} label={name} />
-					</button>
-				);
-			})}
+				})}
+			</RailPreviewRows>
 			{outputs.length > OUTPUTS_SHOWN && <ShowMoreButton state={showMore} />}
 		</Rows>
 	);
@@ -855,40 +864,44 @@ function ServersBody({servers}: {servers: readonly DevServer[]})
 	const shown = showMore.expanded ? servers : servers.slice(0, SERVERS_SHOWN);
 	return (
 		<div data-testid="rail-rows" tabIndex={-1} className="flex flex-col outline-none">
-			{shown.map((server, index) =>
-			{
-				const hostLabel = server.url.replace(/^https?:\/\//, "");
-				const label = server.name ?? hostLabel;
-				const icon = <Icon icon={Server} />;
-				// Local adaptation: upstream drops stopped servers; a probe that fails here leaves a row with nothing to open.
-				if (!server.live)
-					return <RailRow key={server.url} glyph="Server" icon={icon} label={label} hint="Not responding" />;
-				return (
-					<a
-						key={server.url}
-						ref={index === SERVERS_SHOWN ? showMore.firstNewRow : undefined}
-						href={server.url}
-						target="_blank"
-						rel="noopener noreferrer"
-						title={server.url}
-						aria-label={`Open ${label} in Browser`}
-						className={`${RAIL_ROW_ACTION_CLASS} flex-1`}
-					>
-						{/* Upstream trails `localhost:<port>` only when the label is something else. */}
-						<RailRowContent
-							glyph="Server"
-							icon={icon}
-							label={label}
-							{...(label === hostLabel
-								? {}
-								:
-									{
-										hint: hostLabel,
-									})}
-						/>
-					</a>
-				);
-			})}
+			<RailPreviewRows>
+				{shown.map((server, index) =>
+				{
+					const hostLabel = server.url.replace(/^https?:\/\//, "");
+					const label = server.name ?? hostLabel;
+					const icon = <Icon icon={Server} />;
+					// Local adaptation: upstream drops stopped servers; a probe that fails here leaves a row with nothing to open.
+					if (!server.live)
+						return (
+							<RailRow key={server.url} glyph="Server" icon={icon} label={label} hint="Not responding" />
+						);
+					return (
+						<a
+							key={server.url}
+							ref={index === SERVERS_SHOWN ? showMore.firstNewRow : undefined}
+							href={server.url}
+							target="_blank"
+							rel="noopener noreferrer"
+							title={server.url}
+							aria-label={`Open ${label} in Browser`}
+							className={`${RAIL_ROW_ACTION_CLASS} flex-1`}
+						>
+							{/* Upstream trails `localhost:<port>` only when the label is something else. */}
+							<RailRowContent
+								glyph="Server"
+								icon={icon}
+								label={label}
+								{...(label === hostLabel
+									? {}
+									:
+										{
+											hint: hostLabel,
+										})}
+							/>
+						</a>
+					);
+				})}
+			</RailPreviewRows>
 			{servers.length > SERVERS_SHOWN && <ShowMoreButton state={showMore} />}
 		</div>
 	);
@@ -1019,65 +1032,67 @@ function BackgroundTasksBody({
 	return (
 		<>
 			<div ref={listRef} data-testid="rail-rows" tabIndex={-1} className="flex flex-col outline-none">
-				{shown.map((task, index) =>
-				{
-					const stopping = stoppingIds.has(task.id);
-					const elapsed =
-						task.startedAt === null ? undefined : formatTaskElapsed(now - Date.parse(task.startedAt));
-					const hint = stopping ? STOPPING_LABEL : elapsed;
-					return (
-						<div
-							key={task.id}
-							data-rail-task-row=""
-							className={`flex min-w-0 items-center${stop === null ? "" : " pe-xs"}`}
-						>
-							<button
-								ref={index === BACKGROUND_TASKS_SHOWN ? showMore.firstNewRow : undefined}
-								type="button"
-								title={task.command ?? task.description}
-								aria-label={`Open ${task.description} in Background tasks`}
-								className={`${RAIL_ROW_ACTION_CLASS} flex-1`}
-								onClick={() =>
-								{
-									open(
-										task.kind === "agent"
-											?
-												{
-													agentId: task.id,
-												}
+				<RailPreviewRows>
+					{shown.map((task, index) =>
+					{
+						const stopping = stoppingIds.has(task.id);
+						const elapsed =
+							task.startedAt === null ? undefined : formatTaskElapsed(now - Date.parse(task.startedAt));
+						const hint = stopping ? STOPPING_LABEL : elapsed;
+						return (
+							<div
+								key={task.id}
+								data-rail-task-row=""
+								className={`flex min-w-0 items-center${stop === null ? "" : " pe-xs"}`}
+							>
+								<button
+									ref={index === BACKGROUND_TASKS_SHOWN ? showMore.firstNewRow : undefined}
+									type="button"
+									title={task.command ?? task.description}
+									aria-label={`Open ${task.description} in Background tasks`}
+									className={`${RAIL_ROW_ACTION_CLASS} flex-1`}
+									onClick={() =>
+									{
+										open(
+											task.kind === "agent"
+												?
+													{
+														agentId: task.id,
+													}
+												:
+													{
+														taskId: task.id,
+													},
+										);
+									}}
+								>
+									<RailRowContent
+										glyph={task.kind === "bash" ? "CommandLine" : "AgentsSimple"}
+										icon={<Icon icon={TASK_ICONS[task.kind]} />}
+										label={task.description}
+										{...(hint === undefined
+											? {}
 											:
 												{
-													taskId: task.id,
-												},
-									);
-								}}
-							>
-								<RailRowContent
-									glyph={task.kind === "bash" ? "CommandLine" : "AgentsSimple"}
-									icon={<Icon icon={TASK_ICONS[task.kind]} />}
-									label={task.description}
-									{...(hint === undefined
-										? {}
-										:
-											{
-												hint,
-											})}
-								/>
-							</button>
-							{stop !== null && (
-								<BackgroundTaskStopButton
-									variant="ghost"
-									busy={stopping}
-									tooltipSide="left"
-									onStop={() =>
-									{
-										stopTask(task);
-									}}
-								/>
-							)}
-						</div>
-					);
-				})}
+													hint,
+												})}
+									/>
+								</button>
+								{stop !== null && (
+									<BackgroundTaskStopButton
+										variant="ghost"
+										busy={stopping}
+										tooltipSide="left"
+										onStop={() =>
+										{
+											stopTask(task);
+										}}
+									/>
+								)}
+							</div>
+						);
+					})}
+				</RailPreviewRows>
 				{tasks.running.length > BACKGROUND_TASKS_SHOWN && <ShowMoreButton state={showMore} />}
 				{tasks.finished.length > 0 && (
 					<button

@@ -414,30 +414,36 @@ function rows(section: string): Array<[string, string | null]>
 			name: new RegExp(`^${section}`),
 		},
 	);
-	return [...within(card).getByTestId("rail-rows").children].map((row) =>
-	{
-		// Upstream's Changes row has no label: its stat button's name and digits stand in.
-		const changesStat = row.querySelector("[data-rail-changes-row] button[aria-label^='Open changes']");
-		if (changesStat !== null)
-			return [changesStat.getAttribute("aria-label") ?? "", hintText(changesStat.querySelector("[dir='ltr']"))];
-		// Upstream's stacked PR row: its title link, then the sub-line's "#N" and stat.
-		const prTitle = row.querySelector("a[target='_blank']");
-		const subLine = row.querySelector(".text-footnote.text-muted-as-secondary");
-		if (prTitle !== null && subLine !== null)
+	// Upstream's preview lists hold their rows in a presentation wrapper; its rows count as the list's own.
+	return [...within(card).getByTestId("rail-rows").children]
+		.flatMap((child) => (child.getAttribute("role") === "presentation" ? [...child.children] : [child]))
+		.map((row) =>
 		{
-			const stat = subLine.querySelector("[dir='ltr']");
+			// Upstream's Changes row has no label: its stat button's name and digits stand in.
+			const changesStat = row.querySelector("[data-rail-changes-row] button[aria-label^='Open changes']");
+			if (changesStat !== null)
+				return [
+					changesStat.getAttribute("aria-label") ?? "",
+					hintText(changesStat.querySelector("[dir='ltr']")),
+				];
+			// Upstream's stacked PR row: its title link, then the sub-line's "#N" and stat.
+			const prTitle = row.querySelector("a[target='_blank']");
+			const subLine = row.querySelector(".text-footnote.text-muted-as-secondary");
+			if (prTitle !== null && subLine !== null)
+			{
+				const stat = subLine.querySelector("[dir='ltr']");
+				return [
+					prTitle.textContent,
+					[subLine.querySelector(".shrink-0")?.textContent, hintText(stat)]
+						.filter((part) => part != null)
+						.join(" "),
+				];
+			}
 			return [
-				prTitle.textContent,
-				[subLine.querySelector(".shrink-0")?.textContent, hintText(stat)]
-					.filter((part) => part != null)
-					.join(" "),
+				row.querySelector("[data-rail-row-label]")?.textContent ?? "",
+				hintText(row.querySelector("[data-rail-row-hint]")),
 			];
-		}
-		return [
-			row.querySelector("[data-rail-row-label]")?.textContent ?? "",
-			hintText(row.querySelector("[data-rail-row-hint]")),
-		];
-	});
+		});
 }
 
 /** Each `data-rail-glyph` in a card, in DOM order: upstream's glyph name per row. */
@@ -5128,6 +5134,51 @@ describe("Connectors card", () =>
 		);
 
 		expect(document.activeElement?.querySelector("[data-rail-row-label]")?.textContent).toBe("Github");
+	});
+
+	it("wraps the rows in upstream's presentation div that swallows a held Enter, and the Show more button in a plain div", async () =>
+	{
+		await renderCards(FULL, withConnectors(FIVE));
+		openConnectors();
+		const list = within(card()).getByTestId("rail-rows");
+		const [rowsWrapper, showMoreWrapper] = [...list.children];
+		const firstRow = rowsWrapper?.firstElementChild;
+		if (firstRow == null) throw new Error("no first connector row");
+
+		expect(
+			{
+				wrappers: [...list.children].map((child) => [
+					child.tagName,
+					child.getAttribute("role"),
+					child.className,
+					[...child.children].map((row) => row.querySelector("[data-rail-row-label]")?.textContent),
+				]),
+				showMoreInPlainDiv: showMoreWrapper?.firstElementChild === showMore(),
+				repeatEnterNotCancelled: fireEvent.keyDown(
+					firstRow,
+					{
+						key: "Enter",
+						repeat: true,
+					},
+				),
+				enterNotCancelled: fireEvent.keyDown(
+					firstRow,
+					{
+						key: "Enter",
+					},
+				),
+			},
+		).toStrictEqual(
+			{
+				wrappers: [
+					["DIV", "presentation", "contents", ["Linear", "Zeta", "Alpha"]],
+					["DIV", null, "", ["Show more"]],
+				],
+				showMoreInPlainDiv: true,
+				repeatEnterNotCancelled: false,
+				enterNotCancelled: true,
+			},
+		);
 	});
 
 	it("still mounts with every server off for the cwd, reading 0 connected", async () =>

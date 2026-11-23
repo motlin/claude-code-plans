@@ -118,8 +118,38 @@ export const RAIL_CARD_CLASS = `group/railcard epitaxy-rail-lined flex shrink-0 
 const SHOW_MORE_CLASS =
 	"flex min-h-8 w-full min-w-0 cursor-pointer items-center rounded px-2 text-start text-body text-muted-as-secondary hover:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
 
-/** Upstream's rail Show more / Show less row. */
+/** Upstream's preview list rows (`ue`): a presentation wrapper whose capture handler swallows a held Enter, so a focused row doesn't re-fire. */
+export function RailPreviewRows({children}: {children: ReactNode})
+{
+	return (
+		<div
+			role="presentation"
+			className="contents"
+			onKeyDownCapture={(event) =>
+			{
+				if (event.key === "Enter" && event.repeat)
+				{
+					event.stopPropagation();
+					event.preventDefault();
+				}
+			}}
+		>
+			{children}
+		</div>
+	);
+}
+
+/** Upstream's rail Show more / Show less row, in the plain div that follows a preview list's rows. */
 export function ShowMoreButton({state}: {state: ShowMoreState})
+{
+	return (
+		<div>
+			<ShowMoreToggle state={state} />
+		</div>
+	);
+}
+
+function ShowMoreToggle({state}: {state: ShowMoreState})
 {
 	return (
 		<button
