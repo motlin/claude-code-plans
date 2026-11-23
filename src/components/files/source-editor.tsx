@@ -15,7 +15,16 @@ import
 	scrollPastEnd,
 } from "@codemirror/view";
 import type {ThemedToken} from "@shikijs/core";
-import {type Ref, useCallback, useEffect, useImperativeHandle, useLayoutEffect, useRef} from "react";
+import
+{
+	type HTMLAttributes,
+	type Ref,
+	useCallback,
+	useEffect,
+	useImperativeHandle,
+	useLayoutEffect,
+	useRef,
+} from "react";
 
 import {type HashLineRange, useLineHash} from "../../hooks/use-line-hash";
 import {createAutoSave, type SaveReason} from "../../lib/source-save";
@@ -103,6 +112,8 @@ export interface SourceEditorProps
 	/** Find in file matches; the active one scrolls into view whenever `nonce` changes. */
 	findHighlight?: FindHighlight | null | undefined;
 	className?: string;
+	/** Extra attributes for the host div that CodeMirror mounts `.cm-editor` into. */
+	hostProps?: HTMLAttributes<HTMLDivElement> & Record<`data-${string}`, string | undefined>;
 }
 
 /**
@@ -178,6 +189,7 @@ export function SourceEditor(props: SourceEditorProps)
 		findHighlight,
 		ariaLabel = "File contents",
 		className,
+		hostProps,
 		ref,
 	} = props;
 	const hostRef = useRef<HTMLDivElement>(null);
@@ -636,5 +648,5 @@ export function SourceEditor(props: SourceEditorProps)
 		);
 	}, [compartments, tabSize]);
 
-	return <div ref={hostRef} className={className} />;
+	return <div {...hostProps} ref={hostRef} className={className} />;
 }

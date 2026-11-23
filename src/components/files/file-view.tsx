@@ -2,6 +2,7 @@ import {useQuery} from "@tanstack/react-query";
 import {Code, Eye, FileX} from "lucide-react";
 import
 {
+	type CSSProperties,
 	type KeyboardEvent,
 	type MouseEvent,
 	type ReactNode,
@@ -55,6 +56,11 @@ import {SUPPRESS_NATIVE_MENU_POPUP_PROPS} from "../../lib/native-context-menu";
  * path token rather than a directory and slug.
  */
 const SIBLING_MD_BASE = "/__file-sibling";
+const VIEWER_HOST_CLASS = "h-full overflow-hidden text-code [&_.cm-editor]:h-full";
+const VIEWER_HOST_STYLE: CSSProperties =
+{
+	contain: "size layout",
+};
 
 export interface FileViewProps
 {
@@ -727,6 +733,13 @@ export function FileView({
 			);
 		}
 		const tabSize = normalizeFileTabSize(settings.filesTabSize);
+		const viewerHostProps =
+		{
+			dir: "ltr",
+			style: VIEWER_HOST_STYLE,
+			"data-file-viewer": "true",
+			"data-find-query": findQuery,
+		};
 		// Upstream's EpitaxyCodeMirrorFile chain; the static Shiki viewer stands in while the editor chunk loads.
 		return (
 			<div
@@ -737,14 +750,9 @@ export function FileView({
 				}}
 			>
 				<div className="relative h-full min-h-0 flex-1">
-					<div
-						dir="ltr"
-						data-file-viewer="true"
-						data-find-query={findQuery}
-						className="h-full overflow-hidden text-code [&_.cm-editor]:h-full"
-					>
-						<Suspense
-							fallback={
+					<Suspense
+						fallback={
+							<div {...viewerHostProps} className={VIEWER_HOST_CLASS}>
 								<FileViewer
 									file={data}
 									wrap={settings.filesWordWrap}
@@ -753,41 +761,43 @@ export function FileView({
 									endLine={endLine}
 									hashNavigation={hashNavigation}
 								/>
-							}
-						>
-							<LazySourceEditor
-								ref={editorRef}
-								className="h-full"
-								value={data.content}
-								readOnly={!editable}
-								autoSave={editable && sourceSave.autoSave}
-								onChange={sourceSave.onChange}
-								onSave={sourceSave.onSave}
-								onDiscard={sourceSave.discard}
-								wordWrap={settings.filesWordWrap}
-								indentGuides={settings.filesIndentGuides}
-								tabSize={tabSize}
-								showWhitespace={settings.filesShowWhitespace}
-								scrollPastEnd={settings.filesScrollPastEnd}
-								tokens={tokens}
-								language={language}
-								line={line}
-								endLine={endLine}
-								hashNavigation={hashNavigation}
-								findHighlight={find.findHighlight}
-								onGoToLine={openGoToLine}
-								onCaretChange={(caretLine, lines) =>
-								{
-									setCaret(
-										{
-											line: caretLine,
-											lines,
-										},
-									);
-								}}
-							/>
-						</Suspense>
-					</div>
+							</div>
+						}
+					>
+						{/* Upstream mounts .cm-editor directly in [data-file-viewer], which contains its size and layout. */}
+						<LazySourceEditor
+							ref={editorRef}
+							className={VIEWER_HOST_CLASS}
+							hostProps={viewerHostProps}
+							value={data.content}
+							readOnly={!editable}
+							autoSave={editable && sourceSave.autoSave}
+							onChange={sourceSave.onChange}
+							onSave={sourceSave.onSave}
+							onDiscard={sourceSave.discard}
+							wordWrap={settings.filesWordWrap}
+							indentGuides={settings.filesIndentGuides}
+							tabSize={tabSize}
+							showWhitespace={settings.filesShowWhitespace}
+							scrollPastEnd={settings.filesScrollPastEnd}
+							tokens={tokens}
+							language={language}
+							line={line}
+							endLine={endLine}
+							hashNavigation={hashNavigation}
+							findHighlight={find.findHighlight}
+							onGoToLine={openGoToLine}
+							onCaretChange={(caretLine, lines) =>
+							{
+								setCaret(
+									{
+										line: caretLine,
+										lines,
+									},
+								);
+							}}
+						/>
+					</Suspense>
 				</div>
 			</div>
 		);
@@ -895,7 +905,10 @@ export function FileView({
 						render={<div ref={viewerRef} />}
 						tabIndex={-1}
 						{...(sourceMode
-							? {}
+							?
+								{
+									role: "group",
+								}
 							:
 								{
 									"data-file-viewer": "true",
