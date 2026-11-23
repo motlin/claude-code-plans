@@ -1069,10 +1069,16 @@ function CoverBlank({artifact}: {artifact: ArtifactSummary})
 }
 
 /**
- * Upstream's thumbnail hue filter (`pe`): spreads a thumbnail's average colour and keeps it only where it is
- * saturated, so the wash tints the cover with the screenshot's dominant hue.
+ * How much of the thumbnail colour upstream's filter keeps: `colour` only where it is saturated, `full` all of it,
+ * and `ground` floods the card colour where saturated and the card grey elsewhere.
  */
-function CoverWashFilter({id}: {id: string})
+type CoverWashStrength = "colour" | "ground" | "full";
+
+/**
+ * Upstream's thumbnail hue filter (`pe`): spreads a thumbnail's average colour and measures its saturation, so the
+ * wash tints the cover with the screenshot's dominant hue.
+ */
+function CoverWashFilter({id, strength}: {id: string; strength: CoverWashStrength})
 {
 	return (
 		<svg aria-hidden="true" className="absolute size-0">
@@ -1088,7 +1094,35 @@ function CoverWashFilter({id}: {id: string})
 					values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  10 10 10 0 -0.8"
 					result="strength"
 				/>
-				<feComposite in="mean" in2="strength" operator="in" />
+				{strength === "ground" && (
+					<>
+						<feFlood
+							style={
+							{
+								floodColor: "var(--card-grey)",
+							}}
+							result="grey"
+						/>
+						<feComposite in="grey" in2="strength" operator="out" result="neutral" />
+						<feFlood
+							style={
+							{
+								floodColor: "var(--card-colour)",
+							}}
+							result="colour"
+						/>
+						<feMerge>
+							<feMergeNode in="colour" />
+							<feMergeNode in="neutral" />
+						</feMerge>
+					</>
+				)}
+				{strength === "colour" && <feComposite in="mean" in2="strength" operator="in" />}
+				{strength === "full" && (
+					<feMerge>
+						<feMergeNode in="mean" />
+					</feMerge>
+				)}
 			</filter>
 		</svg>
 	);
@@ -1098,13 +1132,23 @@ function CoverWashFilter({id}: {id: string})
  * Upstream's cover wash (`Y`): a 4px copy of the loaded thumbnail, filtered into a hue over the cover. It fades only
  * when no thumbnail is expected; otherwise the veil covers its arrival.
  */
-function CoverWash({src, filterId, fades}: {src: string | undefined; filterId: string; fades: boolean})
+function CoverWash({
+	src,
+	filterId,
+	fades,
+	blend = true,
+}: {
+	src: string | undefined;
+	filterId: string;
+	fades: boolean;
+	blend?: boolean;
+})
 {
 	return (
 		<div
 			data-cover-wash={src ?? ""}
 			dir="ltr"
-			className={`pointer-events-none absolute -inset-[8px] z-1 mix-blend-hue ${fades ? "transition-opacity duration-base motion-reduce:transition-none " : ""}${src ? "opacity-100" : "opacity-0"}`}
+			className={`pointer-events-none absolute -inset-[8px] z-1 ${fades ? "transition-opacity duration-base motion-reduce:transition-none " : ""}${blend ? "mix-blend-hue " : ""}${src ? "opacity-100" : "opacity-0"}`}
 			style={
 			{
 				filter: `url(#${filterId})`,
@@ -1119,6 +1163,74 @@ function CoverWash({src, filterId, fades}: {src: string | undefined; filterId: s
 					className="absolute start-0 top-0 size-[4px]"
 				/>
 			)}
+		</div>
+	);
+}
+
+/** Upstream's light card grounds (`M`) for the hues the local covers use, at rest and on hover. */
+const COVER_GROUND: Record<
+	CoverKind,
+	{
+		rest: string;
+		hover: string;
+	}
+> =
+{
+	file:
+	{
+		rest: "#f1f1f1",
+		hover: "#e6e6e6",
+	},
+	document:
+	{
+		rest: "#dfecfd",
+		hover: "#cde1fb",
+	},
+};
+
+/** Upstream's card colour and grey pair (`M.orange`, `M.gray`) that the `ground` filter floods. */
+const COVER_GROUND_VARS =
+{
+	"--card-colour-rest": "#fadac2",
+	"--card-colour-hover": "#f8cbaa",
+	"--card-grey-rest": COVER_GROUND.file.rest,
+	"--card-grey-hover": COVER_GROUND.file.hover,
+} as CSSProperties;
+
+const COVER_GROUND_CLASS =
+	"absolute inset-0 isolate overflow-hidden dark:hidden [--card-colour:var(--card-colour-rest)] [--card-grey:var(--card-grey-rest)] group-hover:[--card-colour:var(--card-colour-hover)] group-hover:[--card-grey:var(--card-grey-hover)] group-has-[:focus-visible]:[--card-colour:var(--card-colour-hover)] group-has-[:focus-visible]:[--card-grey:var(--card-grey-hover)] group-has-[[aria-expanded=true]]:[--card-colour:var(--card-colour-hover)] group-has-[[aria-expanded=true]]:[--card-grey:var(--card-grey-hover)]";
+
+/**
+ * Upstream's light-only card ground (`le`): the hue's flat light colour, deepening on card hover, focus or an open
+ * menu, under the thumbnail washes. A file cover first grounds the wash in the card colour or grey; a Docs cover keeps
+ * only the hue tint. Dark mode hides it in favour of the plain hue wash.
+ */
+function CoverGround({kind, src, fades}: {kind: CoverKind; src: string | undefined; fades: boolean})
+{
+	const groundId = useId();
+	const tintId = useId();
+	const greyNeutral = kind === "file";
+	const {rest, hover} = COVER_GROUND[kind];
+	return (
+		<div
+			className={COVER_GROUND_CLASS}
+			style={
+			{
+				backgroundColor: rest,
+				...COVER_GROUND_VARS,
+			}}
+		>
+			<div
+				className="absolute inset-0 opacity-0 group-hover:opacity-100 group-has-[:focus-visible]:opacity-100 group-has-[[aria-expanded=true]]:opacity-100"
+				style={
+				{
+					backgroundColor: hover,
+				}}
+			/>
+			{greyNeutral && <CoverWashFilter id={groundId} strength="ground" />}
+			{greyNeutral && <CoverWash src={src} filterId={groundId} fades={fades} blend={false} />}
+			<CoverWashFilter id={tintId} strength={greyNeutral ? "full" : "colour"} />
+			<CoverWash src={src} filterId={tintId} fades={fades} />
 		</div>
 	);
 }
@@ -1155,8 +1267,13 @@ function ArtifactCover({artifact, priority}: {artifact: ArtifactSummary; priorit
 			className={`group/cover relative h-full overflow-hidden ${COVER_HUE[kind]} isolate`}
 		>
 			<div className={COVER_SURFACE_WASH} />
-			{thumbnailSrc !== null && <CoverWashFilter id={filterId} />}
-			{thumbnailSrc !== null && <CoverWash src={washSrc} filterId={filterId} fades={!thumbnailExpected} />}
+			{thumbnailSrc !== null && <CoverWashFilter id={filterId} strength="colour" />}
+			{thumbnailSrc !== null && (
+				<div className="hidden dark:contents">
+					<CoverWash src={washSrc} filterId={filterId} fades={!thumbnailExpected} />
+				</div>
+			)}
+			<CoverGround kind={kind} src={washSrc} fades={!thumbnailExpected} />
 			<CoverVeil waiting={thumbnailExpected && washSrc === undefined} />
 			{kind === "document" && (
 				<div

@@ -1332,7 +1332,9 @@ describe("artifacts route", () =>
 									? "hairline"
 									: child.hasAttribute("data-cover-veil")
 										? "veil"
-										: "wash",
+										: child.classList.contains("dark:hidden")
+											? "ground"
+											: "wash",
 				),
 				back: back && [back.getAttribute("dir"), back.getAttribute("class"), back.childElementCount],
 				doodle: doodle && [doodle.getAttribute("class"), doodle.querySelectorAll("g > path").length],
@@ -1348,7 +1350,7 @@ describe("artifacts route", () =>
 			{
 				docs:
 				{
-					layers: ["wash", "veil", "back", "front", "hairline"],
+					layers: ["wash", "ground", "veil", "back", "front", "hairline"],
 					back: [
 						"ltr",
 						"absolute overflow-hidden border border-[color:var(--color-border-line)] bg-white text-primary dark:bg-surface-1 dark:bg-clip-padding after:pointer-events-none after:absolute after:inset-0 after:content-[''] start-[14.15%] top-[11.76%] h-full w-[76.34%] origin-top-left rotate-[2.2deg] rounded-r6 after:bg-gray-900/5 z-2 bg-clip-padding",
@@ -1358,7 +1360,7 @@ describe("artifacts route", () =>
 				},
 				html:
 				{
-					layers: ["wash", "veil", "front", "hairline"],
+					layers: ["wash", "ground", "veil", "front", "hairline"],
 					back: null,
 					doodle: null,
 				},
@@ -4248,24 +4250,35 @@ describe("artifact cover thumbnails", () =>
 						? "back"
 						: child.hasAttribute("data-cover-front")
 							? "front"
-							: child.hasAttribute("data-cover-wash")
-								? "cover wash"
-								: child.hasAttribute("data-cover-veil")
-									? "veil"
-									: child.tagName === "svg"
-										? "wash filter"
-										: child.tagName === "SPAN"
-											? "doodle"
-											: child.classList.contains("h-px")
-												? "hairline"
-												: "surface wash",
+							: child.classList.contains("dark:contents")
+								? "dark cover wash"
+								: child.classList.contains("dark:hidden")
+									? "light ground"
+									: child.hasAttribute("data-cover-veil")
+										? "veil"
+										: child.tagName === "svg"
+											? "wash filter"
+											: child.tagName === "SPAN"
+												? "doodle"
+												: child.classList.contains("h-px")
+													? "hairline"
+													: "surface wash",
 				),
 				back: [back?.getAttribute("dir"), back?.getAttribute("class")],
 				hasImg: cover.matches(":has(img)"),
 			},
 		).toStrictEqual(
 			{
-				layers: ["surface wash", "wash filter", "cover wash", "veil", "back", "front", "hairline"],
+				layers: [
+					"surface wash",
+					"wash filter",
+					"dark cover wash",
+					"light ground",
+					"veil",
+					"back",
+					"front",
+					"hairline",
+				],
 				back: [
 					"ltr",
 					"absolute overflow-hidden border border-[color:var(--color-border-line)] bg-white text-primary dark:bg-surface-1 dark:bg-clip-padding after:pointer-events-none after:absolute after:inset-0 after:content-[''] start-[14.15%] top-[11.76%] h-full w-[76.34%] origin-top-left rotate-[2.2deg] rounded-r6 after:bg-gray-900/5 z-2 bg-clip-padding",
@@ -4275,7 +4288,7 @@ describe("artifact cover thumbnails", () =>
 		);
 	});
 
-	it("fades the single hue wash in under the sheet once the thumbnail loads, and out again on error", async () =>
+	it("fades the hue and ground washes in under the sheet once the thumbnail loads, and out again on error", async () =>
 	{
 		await renderArtifactsPage("/artifacts", true, thumbFor);
 		const cover = coverFor("Asap Ladder Queue");
@@ -4326,7 +4339,7 @@ describe("artifact cover thumbnails", () =>
 				],
 				washClass,
 				placement: [
-					cover.querySelector(":scope > [data-cover-wash]") !== null,
+					cover.querySelector(":scope > .dark\\:contents > [data-cover-wash]") !== null,
 					[...cover.querySelectorAll<HTMLElement>("*")].filter((element) => element.style.maskImage !== "")
 						.length,
 				],
@@ -4344,11 +4357,15 @@ describe("artifact cover thumbnails", () =>
 		).toStrictEqual(
 			{
 				svg: "absolute size-0",
-				filter: ["sRGB", [true], ["one", "tiles", "mean", "above", "below", "spread", "strength", "in"]],
+				filter: [
+					"sRGB",
+					[true, false, false],
+					["one", "tiles", "mean", "above", "below", "spread", "strength", "in"],
+				],
 				washClass: "pointer-events-none absolute -inset-[8px] z-1 mix-blend-hue opacity-0",
 				placement: [true, 0],
-				before: [resting],
-				loaded: [shown],
+				before: [resting, resting, resting],
+				loaded: [shown, shown, shown],
 				veil: [
 					["", veilClass("opacity-100")],
 					[null, veilClass("opacity-0")],
@@ -4356,21 +4373,86 @@ describe("artifact cover thumbnails", () =>
 				],
 				errored:
 				{
-					washes: [resting],
+					washes: [resting, resting, resting],
 					blank: "other",
 				},
 			},
 		);
 	});
 
-	it("draws no wash, filter or img for an artifact without a thumbnail", async () =>
+	it("hides the hue wash in light mode behind upstream's light-only card ground layer", async () =>
+	{
+		await renderArtifactsPage("/artifacts", true, thumbFor);
+		const hover =
+			"group-hover:[--card-colour:var(--card-colour-hover)] group-hover:[--card-grey:var(--card-grey-hover)] group-has-[:focus-visible]:[--card-colour:var(--card-colour-hover)] group-has-[:focus-visible]:[--card-grey:var(--card-grey-hover)] group-has-[[aria-expanded=true]]:[--card-colour:var(--card-colour-hover)] group-has-[[aria-expanded=true]]:[--card-grey:var(--card-grey-hover)]";
+		const describeGround = (name: string) =>
+		{
+			const cover = coverFor(name);
+			fireEvent.load(cover.querySelector("[data-cover-light] > img")!);
+			const ground = cover.querySelector<HTMLElement>(":scope > .dark\\:hidden");
+			const firstWash = cover.querySelector("[data-cover-wash]");
+			return {
+				hueWrapper: firstWash?.parentElement?.getAttribute("class"),
+				ground: [
+					ground?.getAttribute("class"),
+					ground?.style.backgroundColor,
+					ground?.style.getPropertyValue("--card-colour-rest"),
+					ground?.style.getPropertyValue("--card-colour-hover"),
+					ground?.style.getPropertyValue("--card-grey-rest"),
+					ground?.style.getPropertyValue("--card-grey-hover"),
+				],
+				layers: [...(ground?.children ?? [])].map((child) =>
+					child.tagName === "svg"
+						? `filter ${child.querySelector("filter")?.childElementCount}`
+						: child.hasAttribute("data-cover-wash")
+							? `wash ${child.getAttribute("class")}`
+							: `hover ${child.getAttribute("class")} ${(child as HTMLElement).style.backgroundColor}`,
+				),
+			};
+		};
+		const wash = "pointer-events-none absolute -inset-[8px] z-1";
+		const groundClass = `absolute inset-0 isolate overflow-hidden dark:hidden [--card-colour:var(--card-colour-rest)] [--card-grey:var(--card-grey-rest)] ${hover}`;
+		const hoverLayer =
+			"hover absolute inset-0 opacity-0 group-hover:opacity-100 group-has-[:focus-visible]:opacity-100 group-has-[[aria-expanded=true]]:opacity-100";
+
+		expect(
+			{
+				file: describeGround("Asap Ladder Queue"),
+				docs: describeGround("Quarterly plan"),
+			},
+		).toStrictEqual(
+			{
+				file:
+				{
+					hueWrapper: "hidden dark:contents",
+					ground: [groundClass, "rgb(241, 241, 241)", "#fadac2", "#f8cbaa", "#f1f1f1", "#e6e6e6"],
+					layers: [
+						`${hoverLayer} rgb(230, 230, 230)`,
+						"filter 11",
+						`wash ${wash} opacity-100`,
+						"filter 8",
+						`wash ${wash} mix-blend-hue opacity-100`,
+					],
+				},
+				docs:
+				{
+					hueWrapper: "hidden dark:contents",
+					ground: [groundClass, "rgb(223, 236, 253)", "#fadac2", "#f8cbaa", "#f1f1f1", "#e6e6e6"],
+					layers: [`${hoverLayer} rgb(205, 225, 251)`, "filter 8", `wash ${wash} mix-blend-hue opacity-100`],
+				},
+			},
+		);
+	});
+
+	it("draws no hue wash or img for an artifact without a thumbnail, only the light ground's empty washes", async () =>
 	{
 		await renderArtifactsPage("/artifacts", true);
 		const cover = coverFor("Asap Ladder Queue");
 
 		expect(
 			{
-				washes: cover.querySelectorAll("[data-cover-wash]").length,
+				washes: describeWashes(cover),
+				groundWashes: cover.querySelectorAll(":scope > .dark\\:hidden > [data-cover-wash]").length,
 				filters: cover.querySelectorAll(":scope > svg").length,
 				imgs: cover.querySelectorAll("img").length,
 				light: cover.querySelectorAll("[data-cover-light]").length,
@@ -4381,7 +4463,14 @@ describe("artifact cover thumbnails", () =>
 			},
 		).toStrictEqual(
 			{
-				washes: 0,
+				washes: [0, 1].map(() => (
+				{
+					src: "",
+					opacity: ["opacity-0"],
+					img: null,
+					imgSrc: null,
+				})),
+				groundWashes: 2,
 				filters: 0,
 				imgs: 0,
 				light: 0,
