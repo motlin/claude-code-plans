@@ -1534,10 +1534,13 @@ html[data-interface-font="dyslexic"]
  * var(--cds-alpha-5);--cds-fill-field-hover-ring:var(--cds-alpha-6);--cds-text-primary:#000;--cds-text-secondary:
  * #000000bf;--cds-text-muted:#0009;--cds-checkbox-edge:var(--cds-alpha-5);--cds-checkbox-edge-hover:var(--cds-alpha-6);
  * --cds-switch-track:var(--cds-alpha-5);--cds-switch-track-hover:var(--cds-alpha-6);--cds-fizzy-lake-color-composer-ring:
- * #00000080;--cds-fizzy-lake-color-placeholder:#0009;--cds-fizzy-lake-color-plain-secondary:#000000bf;…}}` and its
- * dark twins (dumps/fizzy-contrast-more-tokens-upstream-rules-2026-11-06.css.txt). alpha-N is neutral-900 at N%:
+ * #00000080;--cds-fizzy-lake-color-plain-secondary:#000000bf;…}}` and its dark twins
+ * (dumps/fizzy-contrast-more-tokens-upstream-rules-2026-11-06.css.txt). The text inks now live in upstream
+ * c6a992d55's base `.cds-root` contrast blocks, whose dark twin sets --cds-text-secondary #ffffffe6 and
+ * --cds-text-muted #ffffffad (dumps/fizzy-contrast-more-tokens-live-2026-11-21.txt). alpha-N is neutral-900 at N%:
  * #0b0b0b light, #fff dark under fizzy. --fizzy-lake-color-secondary and --muted-as-secondary follow
- * --upstream-text-secondary. The dark rule restates every value because `.dark`/`:root.dark[…]` would otherwise win.
+ * --upstream-text-secondary; the placeholder follows --upstream-text-muted. The dark rule restates every value
+ * because `.dark`/`:root.dark[…]` would otherwise win.
  */
 @media (prefers-contrast: more)
 {
@@ -1556,15 +1559,14 @@ html[data-interface-font="dyslexic"]
 		--checkbox-edge: #0b0b0b80;
 		--checkbox-edge-hover: #0b0b0b99;
 		--composer-ring: #00000080;
-		--upstream-placeholder: #0009;
 	}
 
 	:root.dark[data-cds-fizzy-lake~="color"]
 	{
-		--upstream-plain-secondary: #ffffffbf;
+		--upstream-plain-secondary: #ffffffe6;
 		--upstream-text-primary: #fff;
-		--upstream-text-secondary: #ffffffbf;
-		--upstream-text-muted: #ffffff91;
+		--upstream-text-secondary: #ffffffe6;
+		--upstream-text-muted: #ffffffad;
 		--field-ring-shadow: inset 0 0 0 1px #ffffff80;
 		--field-hover-shadow: inset 0 0 0 1px #ffffff99;
 		--settings-switch-track: #fff6;
@@ -1574,7 +1576,6 @@ html[data-interface-font="dyslexic"]
 		--checkbox-edge: #ffffff80;
 		--checkbox-edge-hover: #ffffff99;
 		--composer-ring: #ffffff80;
-		--upstream-placeholder: #ffffff91;
 	}
 }
 

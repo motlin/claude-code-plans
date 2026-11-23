@@ -200,7 +200,7 @@ describe("fizzy-lake color tokens (upstream data-cds-fizzy-lake~=color)", () =>
 				},
 				contrastDark:
 				{
-					"--upstream-plain-secondary": "#ffffffbf",
+					"--upstream-plain-secondary": "#ffffffe6",
 				},
 			},
 		);
@@ -634,15 +634,16 @@ describe("fizzy-lake color tokens (upstream data-cds-fizzy-lake~=color)", () =>
 	});
 });
 
-/* Upstream `@media (prefers-contrast:more){.cds-root:is([data-cds-fizzy-lake~=color],…)…}` and its three dark
-   twins (dumps/fizzy-contrast-more-tokens-upstream-rules-2026-11-06.css.txt). alpha-N is neutral-900 at N%:
-   #0b0b0b light, #fff dark under fizzy. */
+/* Upstream c6a992d55 base `.cds-root` `@media (prefers-contrast:more)` blocks and their dark twin
+   (dumps/fizzy-contrast-more-tokens-live-2026-11-21.txt; the rest from the 2026-11-06 fizzy decode). alpha-N is
+   neutral-900 at N%: #0b0b0b light, #fff dark under fizzy. */
 describe("fizzy-lake color tokens under prefers-contrast: more", () =>
 {
 	it("strengthens the text inks; the fizzy secondary and muted-as-secondary follow --upstream-text-secondary", () =>
 	{
 		expect(
 			contrastTokens([
+				"--upstream-plain-secondary",
 				"--upstream-text-primary",
 				"--upstream-text-secondary",
 				"--upstream-text-muted",
@@ -653,6 +654,7 @@ describe("fizzy-lake color tokens under prefers-contrast: more", () =>
 			{
 				light:
 				{
+					"--upstream-plain-secondary": "#000000bf",
 					"--upstream-text-primary": "#000",
 					"--upstream-text-secondary": "#000000bf",
 					"--upstream-text-muted": "#0009",
@@ -661,9 +663,10 @@ describe("fizzy-lake color tokens under prefers-contrast: more", () =>
 				},
 				dark:
 				{
+					"--upstream-plain-secondary": "#ffffffe6",
 					"--upstream-text-primary": "#fff",
-					"--upstream-text-secondary": "#ffffffbf",
-					"--upstream-text-muted": "#ffffff91",
+					"--upstream-text-secondary": "#ffffffe6",
+					"--upstream-text-muted": "#ffffffad",
 					"--fizzy-lake-color-secondary": null,
 					"--muted-as-secondary": null,
 				},
@@ -788,19 +791,19 @@ describe("fizzy-lake color tokens under prefers-contrast: more", () =>
 		);
 	});
 
-	it("strengthens the composer ring and the placeholder", () =>
+	it("strengthens the composer ring; the placeholder follows the strengthened --upstream-text-muted", () =>
 	{
 		expect(contrastTokens(["--composer-ring", "--upstream-placeholder"])).toStrictEqual(
 			{
 				light:
 				{
 					"--composer-ring": "#00000080",
-					"--upstream-placeholder": "#0009",
+					"--upstream-placeholder": null,
 				},
 				dark:
 				{
 					"--composer-ring": "#ffffff80",
-					"--upstream-placeholder": "#ffffff91",
+					"--upstream-placeholder": null,
 				},
 			},
 		);
