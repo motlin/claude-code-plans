@@ -2169,6 +2169,69 @@ describe("settings search", () =>
 			},
 		);
 	});
+
+	it("returns focus to the page's Search button when Clear search or Escape collapses the box", async () =>
+	{
+		await renderAt("/");
+		const toggle = () =>
+			screen.getByRole(
+				"button",
+				{
+					name: "Search page",
+				},
+			);
+
+		fireEvent.click(
+			await screen.findByRole(
+				"button",
+				{
+					name: "Search page",
+				},
+			),
+		);
+		const box = screen.getByRole<HTMLInputElement>("searchbox");
+		box.focus();
+		fireEvent.change(
+			box,
+			{
+				target:
+				{
+					value: "blo",
+				},
+			},
+		);
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Clear search",
+				},
+			),
+		);
+		const afterClear = document.activeElement === toggle();
+
+		fireEvent.click(toggle());
+		const reopened = screen.getByRole<HTMLInputElement>("searchbox");
+		reopened.focus();
+		fireEvent.keyDown(
+			reopened,
+			{
+				key: "Escape",
+			},
+		);
+
+		expect(
+			{
+				afterClear,
+				afterEscape: document.activeElement === toggle(),
+			},
+		).toStrictEqual(
+			{
+				afterClear: true,
+				afterEscape: true,
+			},
+		);
+	});
 });
 
 describe("settings search Customize rows", () =>

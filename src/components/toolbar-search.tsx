@@ -16,7 +16,8 @@ export const TOOLBAR_ICON_BUTTON =
 /**
  * A page toolbar's inline search: an icon button with a "<label> ⌘F" tooltip that expands into a search box,
  * on click or on the page-scoped ⌘F (Ctrl+F elsewhere), which also refocuses an already-open box.
- * Escape or blur with an empty draft collapses it; `onOpenChange` lets the header mark its controls `data-search-open`.
+ * Escape or blur with an empty draft collapses it, and Clear search always does; collapsing via Clear or Escape
+ * returns focus to the toggle button; `onOpenChange` lets the header mark its controls `data-search-open`.
  */
 export function ToolbarSearch({
 	label,
@@ -37,6 +38,8 @@ export function ToolbarSearch({
 	const [draft, setDraft] = useState(search);
 	const [syncedSearch, setSyncedSearch] = useState(search);
 	const inputRef = useRef<HTMLInputElement>(null);
+	/** Set when Clear or Escape collapses the box, so the remounted toggle takes focus back (blur already moved it). */
+	const refocusToggle = useRef(false);
 	const shortcutKeys = useShortcutKeys("page_search").keys;
 
 	if (search !== syncedSearch)
@@ -59,11 +62,30 @@ export function ToolbarSearch({
 		onOpenChange?.(open);
 	}, [open, onOpenChange]);
 
+	function collapseToToggle()
+	{
+		refocusToggle.current = true;
+		setOpen(false);
+	}
+
+	function toggleRef(button: HTMLButtonElement | null)
+	{
+		if (button === null || !refocusToggle.current) return;
+		refocusToggle.current = false;
+		button.focus();
+	}
+
 	if (!open)
 	{
 		return (
 			<Tooltip content={label} shortcut={shortcutKeys}>
-				<button type="button" className={TOOLBAR_ICON_BUTTON} aria-label={label} onClick={expand}>
+				<button
+					type="button"
+					className={TOOLBAR_ICON_BUTTON}
+					aria-label={label}
+					onClick={expand}
+					ref={toggleRef}
+				>
 					<Search aria-hidden="true" />
 				</button>
 			</Tooltip>
@@ -93,7 +115,7 @@ export function ToolbarSearch({
 					}}
 					onKeyDown={(event) =>
 					{
-						if (event.key === "Escape" && draft === "") setOpen(false);
+						if (event.key === "Escape" && draft === "") collapseToToggle();
 					}}
 					onBlur={(event) =>
 					{
@@ -107,7 +129,7 @@ export function ToolbarSearch({
 					{
 						setDraft("");
 						onSearch("");
-						setOpen(false);
+						collapseToToggle();
 					}}
 				/>
 			</div>
