@@ -1,6 +1,5 @@
 import
 {
-	Fragment,
 	useCallback,
 	useEffect,
 	useId,
@@ -74,7 +73,7 @@ import
 	type PersistentAllowKind,
 	type PersistentAllowSave,
 } from "../lib/permission-suggestions";
-import {revealSpoofing, visibleSingleLine} from "../lib/visible-text";
+import {lineDirectionRuns, RTL_SCRIPT_RE, visibleSingleLine} from "../lib/visible-text";
 import {useBackgroundTasksOpener} from "./background-tasks-opener-context";
 import {APPROVAL_ACTION_SHORTCUT_CLASS, ApprovalActionButton} from "./approval-action-button";
 import {APPROVAL_SENDING_LABEL, ApprovalCardShell, ApprovalScrollRegion} from "./approval-card";
@@ -181,7 +180,7 @@ export function PermissionCard({
 	detailLang?: PermissionDetailLang | null;
 	/** Upstream's `clampTitle`: the title value is clamped to two lines. */
 	clampTitle?: boolean;
-	/** Upstream's `detailIsPath`: the detail is a path, drawn left-to-right through `BidiControlLines`. */
+	/** Upstream's `detailIsPath`: the detail is a path, drawn left-to-right through `DetailLines`. */
 	detailIsPath?: boolean;
 	/** Upstream's footnote under the detail ("Keeps running in the background."). */
 	detailNote?: string | null;
@@ -518,7 +517,7 @@ export function PermissionCard({
 
 	const pathDetail = (path: string) => (
 		<div data-permission-detail data-approval-value className={DETAIL_CLASS} dir={detailIsPath ? "ltr" : undefined}>
-			{detailIsPath ? <BidiControlLines text={path} /> : path}
+			{detailIsPath ? <DetailLines text={path} /> : path}
 		</div>
 	);
 	/** Upstream's `a(note)` for a previewed change: the path, grouped with its note when there is one. */
@@ -577,15 +576,21 @@ export function PermissionCard({
 		)
 	) : (
 		<>
-			{detail !== null && (
-				<div data-permission-detail className="flow-root">
-					<div data-approval-value>
-						<div className="contents" dir="ltr">
+			{detail !== null &&
+				// Upstream's `r`: a command with RTL letters is drawn as plain left-to-right lines, not a code tile.
+				(RTL_SCRIPT_RE.test(detail) ? (
+					<div className="flow-root">
+						<div data-permission-detail data-approval-value dir="ltr" className={DETAIL_CLASS}>
+							<DetailLines text={detail} />
+						</div>
+					</div>
+				) : (
+					<div data-permission-detail className="flow-root">
+						<div data-approval-value className="select-text">
 							<CommandCodeTile command={detail} lang={detailLang} />
 						</div>
 					</div>
-				</div>
-			)}
+				))}
 			{detailNote !== null && <p className={DETAIL_NOTE_CLASS}>{detailNote}</p>}
 		</>
 	);
@@ -1128,27 +1133,56 @@ function usePermissionDigitKeys(
 }
 
 /** Upstream's body classes (`epitaxy-code-size` hooks, held at the default size by the card's data-fixed-code-size): the detail block (`Lg`), its footnote (`kg`) and the description line (`Dg`). */
-/** Upstream's bidi-control test (`be`, shared-l-p-m-w-0 `FN`). */
+/** Upstream's `dY`: a bidi control. */
 const BIDI_CONTROL_RE = /\p{Bidi_Control}/u;
 
-/**
- * Upstream's `Np`/`Fp` line renderer for a path or gated command detail: a line holding a bidi control is drawn
- * as a left-to-right isolate-override span with its spoofing characters shown; any other line as itself.
- */
-function BidiControlLines({text}: {text: string})
+/** Upstream's `RG`: text holding RTL letters or a bidi control, which needs its lines laid out one by one. */
+function needsLineLayout(text: string): boolean
 {
-	return text.split("\n").map((line, index) => (
-		// oxlint-disable-next-line react/no-array-index-key -- the lines are fixed for one detail
-		<Fragment key={index}>
-			{index > 0 && "\n"}
-			{BIDI_CONTROL_RE.test(line) ? (
-				<span dir="ltr" className="[unicode-bidi:isolate-override]">
-					{revealSpoofing(line)}
-				</span>
-			) : (
-				line
+	const stripped = text.replaceAll("\uFEFF", "");
+	return RTL_SCRIPT_RE.test(stripped) || BIDI_CONTROL_RE.test(stripped);
+}
+
+/** Upstream's `fv`: a line with RTL letters drawn as a left-to-right isolate-override span of direction runs (`L`). */
+function isolatedLine(line: string): string | ReactElement
+{
+	if (!RTL_SCRIPT_RE.test(line)) return line;
+	return (
+		<span dir="ltr" className="[unicode-bidi:isolate-override]">
+			{lineDirectionRuns(line).map((run, index) =>
+				run.dir === undefined ? (
+					run.text
+				) : (
+					// oxlint-disable-next-line react/no-array-index-key -- the runs are fixed for one line
+					<bdi key={index} dir={run.dir}>
+						{run.text}
+					</bdi>
+				),
 			)}
-		</Fragment>
+		</span>
+	);
+}
+
+/**
+ * Upstream's `VP` with `renderLine: fv` (left-to-right locale), for a path or command detail: one-line text, or
+ * text with no RTL letters or bidi controls, drawn whole; otherwise each line in its own block (`jk`).
+ */
+function DetailLines({text}: {text: string}): string | ReactElement | ReactElement[]
+{
+	if (!(text.includes("\n") && needsLineLayout(text))) return isolatedLine(text);
+	return text.split(/(?<=\n)/u).map((line, index) => (
+		<span
+			// oxlint-disable-next-line react/no-array-index-key -- the lines are fixed for one detail
+			key={index}
+			className={
+				needsLineLayout(line)
+					? "block whitespace-pre-wrap [overflow-wrap:anywhere] [unicode-bidi:inherit]"
+					: "block [unicode-bidi:inherit]"
+			}
+			data-code-line-group=""
+		>
+			{isolatedLine(line)}
+		</span>
 	));
 }
 
@@ -1298,7 +1332,7 @@ function CommandReadGate({
 						}
 					: {})}
 			>
-				<BidiControlLines text={children} />
+				<DetailLines text={children} />
 			</div>
 		</div>
 	);

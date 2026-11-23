@@ -5,7 +5,7 @@ import {asRecord} from "./narrow";
 import {PERMISSION_PROMPT_NOTIFICATION} from "./permission-prompt";
 import {clampRows, inputRows, rowsFitBudget, type PermissionRow} from "./permission-rows";
 import type {PermissionDialogDecision, PersistentAllowKind, PersistentAllowSave} from "./permission-suggestions";
-import {visibleMultiline} from "./visible-text";
+import {visibleMultiline, visibleSingleLine} from "./visible-text";
 import {parseWorkflowMeta} from "./workflow-name";
 import {markerEventsFromRecords} from "./working-marker";
 
@@ -599,12 +599,14 @@ function commandCopy(name: string, input: Record<string, unknown>, detailLang: P
 				: {}),
 		};
 	}
+	// Upstream's `SO(command)`: hidden and spoofing characters shown before the command is drawn.
+	const shown = visibleMultiline(command);
 	return {
 		action: "run this command",
-		detail: command,
+		detail: shown,
 		detailLang,
 		clampTitle: true,
-		...(description === null || description === command
+		...(description === null || description === shown
 			? {}
 			:
 				{
@@ -693,7 +695,8 @@ function fileCopy(action: string, path: string | null): PermissionCopy
 			{
 				action,
 				meta: path.replace(/^.*[\\/]/, ""),
-				detail: path,
+				// Upstream's `ek`: `SO(path, {singleLine: true})`.
+				detail: visibleSingleLine(path),
 				detailIsPath: true,
 			};
 }

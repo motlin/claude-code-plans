@@ -1174,7 +1174,58 @@ describe("permission title copy", () =>
 			label: "Permission request: edit",
 			detail: "/repo/src/evil[U+202E]sts.ts",
 			detailDir: "ltr",
-			isolated: [["[unicode-bidi:isolate-override]", "/repo/src/evil[U+202E]sts.ts"]],
+			isolated: [],
+		},
+		{
+			tool: "Write",
+			input:
+			{
+				file_path: "/repo/\u05E9\u05DC\u05D5\u05DD 1/\u0661\u0662.ts",
+				content: "x",
+			},
+			title: "Allow Claude to write \u0661\u0662.ts?",
+			parts: [
+				[PRIMARY, "write"],
+				[PRIMARY, "\u0661\u0662.ts"],
+			],
+			valueClass: "line-clamp-2",
+			label: "Permission request: write",
+			detail: "/repo/\u05E9\u05DC\u05D5\u05DD 1/\u0661\u0662.ts",
+			detailDir: "ltr",
+			isolated: [
+				[
+					"[unicode-bidi:isolate-override]",
+					'/repo/<bdi dir="rtl">\u05E9\u05DC\u05D5\u05DD</bdi> 1/<bdi dir="ltr">\u0661\u0662</bdi>.ts',
+				],
+			],
+		},
+		{
+			tool: "Bash",
+			input:
+			{
+				command: "echo a\u202Eb",
+			},
+			title: "Allow Claude to run this command?",
+			parts: [[PRIMARY, "run this command"]],
+			valueClass: "line-clamp-2",
+			label: "Permission request: run this command",
+			detail: "$\u00A0echo a[U+202E]b",
+			detailDir: null,
+			isolated: [],
+		},
+		{
+			tool: "Bash",
+			input:
+			{
+				command: "echo \u05E9\u05DC\u05D5\u05DD",
+			},
+			title: "Allow Claude to run this command?",
+			parts: [[PRIMARY, "run this command"]],
+			valueClass: "line-clamp-2",
+			label: "Permission request: run this command",
+			detail: "echo \u05E9\u05DC\u05D5\u05DD",
+			detailDir: "ltr",
+			isolated: [["[unicode-bidi:isolate-override]", 'echo <bdi dir="rtl">\u05E9\u05DC\u05D5\u05DD</bdi>']],
 		},
 	])(
 		"titles $tool $input as upstream does",
@@ -1216,7 +1267,7 @@ describe("permission title copy", () =>
 					detailDir: detailElement?.getAttribute("dir") ?? null,
 					isolated: [...(detailElement?.querySelectorAll("span[dir=ltr]") ?? [])].map((span) => [
 						span.className,
-						span.textContent,
+						span.innerHTML,
 					]),
 				},
 			).toStrictEqual(
@@ -3267,15 +3318,13 @@ describe("PermissionCard", () =>
 				),
 				title: card.querySelector("[data-permission-title]")?.getAttribute("class"),
 				value: card.querySelector("[data-permission-detail]")?.getAttribute("class"),
-				wrapper: card
+				wrapper: card.querySelector("[data-permission-detail] > [data-approval-value]")?.getAttribute("class"),
+				codeCard: card
 					.querySelector("[data-permission-detail] > [data-approval-value] > div")
 					?.getAttribute("class"),
-				wrapperDir: card
+				codeCardDir: card
 					.querySelector("[data-permission-detail] > [data-approval-value] > div")
 					?.getAttribute("dir"),
-				codeCard: card
-					.querySelector("[data-permission-detail] > [data-approval-value] > div > div")
-					?.getAttribute("class"),
 				gutter: card.querySelector("[data-permission-detail] .select-none")?.textContent,
 				gutterHidden: card.querySelector("[data-permission-detail] .select-none")?.getAttribute("aria-hidden"),
 				gutterOmitted: card
@@ -3322,9 +3371,9 @@ describe("PermissionCard", () =>
 				dockLook: [],
 				title: "text-body min-w-0 break-words",
 				value: "flow-root",
-				wrapper: "contents",
-				wrapperDir: "ltr",
+				wrapper: "select-text",
 				codeCard: "epitaxy-diff epitaxy-code-card rounded-lg flex overflow-clip px-md py-xs text-code",
+				codeCardDir: "ltr",
 				pathDetail:
 					"epitaxy-code-size bg-alpha-1 rounded-r4 py-md px-lg text-code text-secondary whitespace-pre-wrap break-words select-text [unicode-bidi:plaintext]",
 				gutter: "$ ",
@@ -7361,19 +7410,34 @@ describe("PermissionCard read gates", () =>
 				},
 			);
 			cleanup();
-			const spoofed = renderCard(
+			const rtlDetail = renderCard(
 				{
 					...COMMAND_CARD,
-					detail: "echo safe\nrm -rf /tmp/\u202Egpj.sh",
+					detail: "echo safe\nrm -rf /tmp/\u05E9\u05DC\u05D5\u05DD.sh",
 				},
 			).container.querySelector("[data-testid=approval-read-detail]")!;
 			expect(
-				[...spoofed.querySelectorAll("span")].map((span) => [
+				[...rtlDetail.querySelectorAll("span")].map((span) => [
 					span.getAttribute("dir"),
 					span.className,
-					span.textContent,
+					span.hasAttribute("data-code-line-group"),
+					span.innerHTML,
 				]),
-			).toStrictEqual([["ltr", "[unicode-bidi:isolate-override]", "rm -rf /tmp/[U+202E]gpj.sh"]]);
+			).toStrictEqual([
+				[null, "block [unicode-bidi:inherit]", true, "echo safe\n"],
+				[
+					null,
+					"block whitespace-pre-wrap [overflow-wrap:anywhere] [unicode-bidi:inherit]",
+					true,
+					'<span dir="ltr" class="[unicode-bidi:isolate-override]">rm -rf /tmp/<bdi dir="rtl">\u05E9\u05DC\u05D5\u05DD</bdi>.sh</span>',
+				],
+				[
+					"ltr",
+					"[unicode-bidi:isolate-override]",
+					false,
+					'rm -rf /tmp/<bdi dir="rtl">\u05E9\u05DC\u05D5\u05DD</bdi>.sh',
+				],
+			]);
 		});
 
 		it("never offers the persistent option, and ⇧⌘⏎ does nothing", () =>

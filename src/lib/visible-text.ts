@@ -195,3 +195,128 @@ export function revealSpoofing(text: string): string
 		revealBlankRuns,
 	);
 }
+
+/** Upstream's `FN` (shared-l-p-m-w-0): a right-to-left script letter. */
+export const RTL_SCRIPT_RE = /[֐-ࣿיִ-﷿ﹰ-﻿\u{10800}-\u{10FFF}\u{1E800}-\u{1EFFF}]/u;
+/** Upstream's `w` (cc87bae22): Arabic digits and number signs, which read left to right inside RTL text. */
+const ARABIC_NUMBER_CLASS = String.raw`؀-؅٠-٩٫٬۝۰-۹࢐࢑࣢\u{10D30}-\u{10D39}\u{10D40}-\u{10D49}\u{10E60}-\u{10E7E}`;
+const RTL_SCRIPT_CLASS = RTL_SCRIPT_RE.source.slice(1, -1);
+/** Upstream's `E`: an RTL letter that isn't an Arabic number. */
+const RTL_LETTER_RE = new RegExp(String.raw`^(?![${ARABIC_NUMBER_CLASS}])[${RTL_SCRIPT_CLASS}]$`, "u");
+/** Upstream's `D`: an Arabic number character. */
+const ARABIC_NUMBER_RE = new RegExp(String.raw`^[${ARABIC_NUMBER_CLASS}]$`, "u");
+/** Upstream's `A` (c2d1aeb56): a combining mark or ZWNJ that clings to the RTL run before it. */
+const CLINGING_MARK_RE = /^(?![ಿೆ\u{11A07}\u{11A08}\u{11C3F}])[\p{Mn}\p{Me}‌]$/u;
+
+export interface DirectionRun
+{
+	text: string;
+	dir?: "ltr" | "rtl";
+}
+
+/** Upstream's `O` (cc87bae22): split a word into runs of RTL letters, Arabic numbers and everything else. */
+function directionRuns(word: string): DirectionRun[]
+{
+	const runs: DirectionRun[] = [];
+	let start = 0;
+	let offset = 0;
+	let dir: DirectionRun["dir"];
+	const flush = (end: number) =>
+	{
+		if (end <= start) return;
+		const text = word.slice(start, end);
+		runs.push(
+			dir === undefined
+				?
+					{
+						text,
+					}
+				:
+					{
+						text,
+						dir,
+					},
+		);
+		start = end;
+	};
+	for (const char of word)
+	{
+		const next = String.fromCodePoint(word.codePointAt(offset + 1) ?? 32);
+		const charDir =
+			(char === " " && dir === "rtl" && RTL_LETTER_RE.test(next)) || RTL_LETTER_RE.test(char)
+				? "rtl"
+				: ARABIC_NUMBER_RE.test(char)
+					? "ltr"
+					: undefined;
+		if (charDir !== dir)
+		{
+			flush(offset);
+			dir = charDir;
+		}
+		offset += char.length;
+	}
+	flush(offset);
+	return runs;
+}
+
+/** Upstream's `j`: the leading marks of `text` that cling to an RTL run. */
+function clingingMarks(text: string): string
+{
+	let length = 0;
+	for (const char of text)
+	{
+		if (!CLINGING_MARK_RE.test(char)) break;
+		length += char.length;
+	}
+	return text.slice(0, length);
+}
+
+/** Upstream's `M`: neutral runs merged, and marks after an RTL run folded into it. */
+function mergeRuns(runs: readonly DirectionRun[]): DirectionRun[]
+{
+	const merged: DirectionRun[] = [];
+	for (const run of runs)
+	{
+		const last = merged.at(-1);
+		if (last !== undefined && last.dir === undefined && run.dir === undefined)
+		{
+			last.text += run.text;
+			continue;
+		}
+		if (last?.dir !== "rtl" || run.dir === "ltr")
+		{
+			merged.push(
+				{
+					...run,
+				},
+			);
+			continue;
+		}
+		const folded = run.dir === "rtl" ? run.text : clingingMarks(run.text);
+		last.text += folded;
+		if (folded.length < run.text.length)
+			merged.push(
+				{
+					text: run.text.slice(folded.length),
+				},
+			);
+	}
+	return merged;
+}
+
+/** Upstream's `N` (c2d1aeb56 `_bH`): a line's direction runs, split word by word so spaces stay neutral. */
+export function lineDirectionRuns(line: string): DirectionRun[]
+{
+	return mergeRuns(
+		line.split(" ").flatMap((word, index) =>
+			index === 0
+				? directionRuns(word)
+				: [
+						{
+							text: " ",
+						},
+						...directionRuns(word),
+					],
+		),
+	);
+}
