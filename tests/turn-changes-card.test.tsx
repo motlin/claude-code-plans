@@ -1826,7 +1826,7 @@ describe("SessionChat end-of-turn card", () =>
 		expect(cards).toStrictEqual([
 			{
 				entry: "5",
-				text: "Edited 2 filescache.ts2 additions, 1 deletion+2−1index.ts1 addition, 0 deletions+1−0See all3 additions, 1 deletion+3−1",
+				text: "Edited 2 filescache.ts2 additions, 1 deletion+2−1index.ts1 addition, 0 deletions+1See all3 additions, 1 deletion+3−1",
 			},
 		]);
 	});
@@ -2135,6 +2135,7 @@ describe("TurnChangesCard", () =>
 				trailing: trailing.className.split(" "),
 				trailingParts: Array.from(trailing.children, (child) => [child.className, child.textContent]),
 				chevrons: card.querySelectorAll(".lucide-chevron-right, [data-chevron]").length,
+				stats: trailing.querySelector(".tabular-nums")?.className,
 			};
 			unmount();
 			return result;
@@ -2158,6 +2159,7 @@ describe("TurnChangesCard", () =>
 						["flex items-center gap-2.5", "1 addition, 1 deletion+1\u22121"],
 					],
 					chevrons: 0,
+					stats: "tabular-nums [font-feature-settings:'case'] flex shrink-0 items-center gap-0.5",
 				},
 				multi:
 				{
@@ -2167,6 +2169,7 @@ describe("TurnChangesCard", () =>
 					trailing: TRAILING,
 					trailingParts: [["flex items-center gap-2.5", "1 addition, 1 deletion+1\u22121"]],
 					chevrons: 0,
+					stats: "tabular-nums [font-feature-settings:'case'] flex shrink-0 items-center gap-0.5 text-body",
 				},
 			},
 		);
@@ -2247,7 +2250,7 @@ describe("TurnChangesCard", () =>
 			/>,
 		);
 		expect(container.querySelector("[data-turn-changes-card]")?.textContent).toBe(
-			"Edited 2 filesa.ts1,234 additions, 5 deletions+1234\u22125b.ts1 addition, 0 deletions+1\u22120See all1,235 additions, 5 deletions+1235\u22125",
+			"Edited 2 filesa.ts1,234 additions, 5 deletions+1234\u22125b.ts1 addition, 0 deletions+1See all1,235 additions, 5 deletions+1235\u22125",
 		);
 	});
 
@@ -3042,7 +3045,7 @@ describe("TurnChangesCard stats a11y and folder hints", () =>
 		expect(screen.getAllByRole("listitem").map(stats)).toStrictEqual([
 			[
 				["sr-only", null, "1 addition, 0 deletions"],
-				["contents", "true", "+1−0"],
+				["contents", "true", "+1"],
 			],
 			[
 				["sr-only", null, "2 additions, 1 deletion"],

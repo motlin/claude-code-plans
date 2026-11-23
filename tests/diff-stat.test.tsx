@@ -34,6 +34,19 @@ describe("DiffStat", () =>
 			'<span dir="ltr" class="tabular-nums [font-feature-settings:&#x27;case&#x27;]"><span class="sr-only">0 additions, 0 deletions</span><span aria-hidden="true" class="contents"><span class="text-git-added">+0</span><span class="text-git-removed">−0</span></span></span>',
 		]);
 	});
+	it("hides the zero side with hideZeroSide like upstream tt, drawing both when both are 0", () =>
+	{
+		const root = '<span dir="ltr" class="tabular-nums [font-feature-settings:&#x27;case&#x27;]">';
+		expect([
+			renderToStaticMarkup(<DiffStat added={51} removed={0} hideZeroSide />),
+			renderToStaticMarkup(<DiffStat added={0} removed={4} hideZeroSide />),
+			renderToStaticMarkup(<DiffStat added={0} removed={0} hideZeroSide />),
+		]).toStrictEqual([
+			`${root}<span class="sr-only">51 additions, 0 deletions</span><span aria-hidden="true" class="contents"><span class="text-git-added">+51</span></span></span>`,
+			`${root}<span class="sr-only">0 additions, 4 deletions</span><span aria-hidden="true" class="contents"><span class="text-git-removed">−4</span></span></span>`,
+			`${root}<span class="sr-only">0 additions, 0 deletions</span><span aria-hidden="true" class="contents"><span class="text-git-added">+0</span><span class="text-git-removed">−0</span></span></span>`,
+		]);
+	});
 });
 
 describe("PrDiffStat", () =>

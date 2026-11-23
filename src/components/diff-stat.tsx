@@ -32,6 +32,8 @@ interface DiffStatProps
 	added: number;
 	removed: number;
 	className?: string | undefined;
+	/** Upstream `tt` `hideZeroSide`: draw only the non-zero side (both when both are 0); the sr line keeps both. */
+	hideZeroSide?: boolean | undefined;
 }
 
 /**
@@ -44,6 +46,7 @@ function DiffStatView({
 	shownAdded,
 	shownRemoved,
 	className,
+	hideZeroSide = false,
 }: DiffStatProps &
 {
 	shownAdded: number;
@@ -54,23 +57,34 @@ function DiffStatView({
 		<span dir="ltr" className={className === undefined ? DIFF_STAT_CLASS : `${DIFF_STAT_CLASS} ${className}`}>
 			<span className="sr-only">{srCounts(added, removed)}</span>
 			<span aria-hidden="true" className="contents">
-				<span className="text-git-added">+{visibleNumberFormat.format(shownAdded)}</span>
-				<span className="text-git-removed">−{visibleNumberFormat.format(shownRemoved)}</span>
+				{(!hideZeroSide || added !== 0 || removed === 0) && (
+					<span className="text-git-added">+{visibleNumberFormat.format(shownAdded)}</span>
+				)}
+				{(!hideZeroSide || removed !== 0 || added === 0) && (
+					<span className="text-git-removed">−{visibleNumberFormat.format(shownRemoved)}</span>
+				)}
 			</span>
 		</span>
 	);
 }
 
 /** Upstream's static `$e`: settled stats (turn changes card, settled tool rows). */
-export function DiffStat({added, removed, className}: DiffStatProps)
+export function DiffStat({added, removed, className, hideZeroSide}: DiffStatProps)
 {
 	return (
-		<DiffStatView added={added} removed={removed} shownAdded={added} shownRemoved={removed} className={className} />
+		<DiffStatView
+			added={added}
+			removed={removed}
+			shownAdded={added}
+			shownRemoved={removed}
+			className={className}
+			hideZeroSide={hideZeroSide}
+		/>
 	);
 }
 
 /** Upstream's `Qe`: live stats whose visible digits ease to each new count (two independent tweens). */
-export function AnimatedDiffStat({added, removed, className}: DiffStatProps)
+export function AnimatedDiffStat({added, removed, className, hideZeroSide}: DiffStatProps)
 {
 	const shownAdded = useCountTween(added);
 	const shownRemoved = useCountTween(removed);
@@ -81,6 +95,7 @@ export function AnimatedDiffStat({added, removed, className}: DiffStatProps)
 			shownAdded={shownAdded}
 			shownRemoved={shownRemoved}
 			className={className}
+			hideZeroSide={hideZeroSide}
 		/>
 	);
 }

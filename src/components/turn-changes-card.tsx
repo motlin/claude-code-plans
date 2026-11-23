@@ -263,13 +263,24 @@ function RowLabel({icon, path, folderHint}: {icon: ReactNode; path: string; fold
 }
 
 /** The row's right side: upstream's pass-through group holding Undo (when offered) and the stats. */
-function RowTrailing({added, removed, undo}: {added: number; removed: number; undo?: ReactNode})
+function RowTrailing({
+	added,
+	removed,
+	undo,
+	statsClass = ROW_STATS_CLASS,
+}: {
+	added: number;
+	removed: number;
+	undo?: ReactNode;
+	/** Upstream `bQ seeAllForm`: a single-file card's row takes the See-all stat class (no text-body). */
+	statsClass?: string;
+})
 {
 	return (
 		<span className={TRAILING_CLASS}>
 			{undo !== undefined && <span className="pointer-events-auto flex items-center gap-1">{undo}</span>}
 			<span className="flex items-center gap-2.5">
-				<DiffStat added={added} removed={removed} className={ROW_STATS_CLASS} />
+				<DiffStat added={added} removed={removed} className={statsClass} hideZeroSide />
 			</span>
 		</span>
 	);
@@ -378,6 +389,7 @@ export function TurnChangesCard({
 						<RowTrailing
 							added={soleFile.added}
 							removed={soleFile.removed}
+							statsClass={SEE_ALL_STATS_CLASS}
 							undo={
 								offersUndo ? (
 									<UndoButton
@@ -402,7 +414,12 @@ export function TurnChangesCard({
 				<span className="min-w-0 truncate text-primary">{toggles && expanded ? "Show less" : "See all"}</span>
 			</span>
 			<span className="relative flex shrink-0">
-				<DiffStat added={changes.added} removed={changes.removed} className={SEE_ALL_STATS_CLASS} />
+				<DiffStat
+					added={changes.added}
+					removed={changes.removed}
+					className={SEE_ALL_STATS_CLASS}
+					hideZeroSide
+				/>
 			</span>
 		</>
 	);
