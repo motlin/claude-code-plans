@@ -686,7 +686,9 @@ export const UserRecordSchema = z
 			classifierMetaLines: z.string().optional(),
 			serverClassifierContext: ServerClassifierContextSchema.optional(),
 			permissionDecision: PermissionDecisionSchema.optional(),
-			// Notifications marked read alongside this tool_result; messages has only ever been observed empty.
+			// Validated-only: notifications marked read alongside this tool_result. messages has only ever been
+			// observed empty and claude.ai/code renders nothing for it; z.never() turns the first non-empty
+			// entry into strict-test drift, which is the cue to reconsider showing it.
 			notificationsRead: z
 				.object(
 					{
