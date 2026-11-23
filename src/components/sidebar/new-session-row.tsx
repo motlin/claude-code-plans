@@ -59,10 +59,8 @@ export function NewSessionRow()
 				aria-keyshortcuts={shortcut.ariaKeyShortcuts}
 				className={`mt-1 ${NAV_ROW_CLASS}`}
 			>
-				<span className="df-leading-slot [--sb-icon:16px]">
-					<span className="df-new-icon-circle">
-						<Icon name="Add" size="sm" />
-					</span>
+				<span className="df-leading-slot">
+					<Icon name="Add" size="auto" />
 				</span>
 				<span className="min-w-0 flex-1 truncate">New</span>
 				<Shortcut keys={shortcut.keys} variant="text" hidden className={NAV_ROW_HINT_CLASS} />

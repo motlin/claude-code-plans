@@ -172,28 +172,19 @@ describe("app chrome design tokens", () =>
 		);
 	});
 
-	it("fills the unselected New circle with upstream's web neutral-150 in dark, clearing it only when selected", () =>
+	it("draws no New-row icon circle: upstream's stylesheets have no rule containing new-icon", () =>
 	{
 		const styles = readFileSync("src/styles/globals.css", "utf8");
-		const light = styles.slice(ruleStart(styles, ":root"), ruleStart(styles, ".dark"));
-		const dark = styles.slice(ruleStart(styles, ".dark"));
-		const token = (block: string, name: string) => block.match(new RegExp(`${name}:\\s*([^;]+);`))?.[1] ?? null;
-		const transparentCircleSelectors = [
-			...styles.matchAll(/([^{}]*\.df-new-icon-circle[^{}]*)\{\s*background-color:\s*transparent;/g),
-		].map(([, selectors]) => selectors?.trim());
 
 		expect(
 			{
-				light: token(light, "--sb-new-circle"),
-				dark: token(dark, "--sb-new-circle"),
-				transparentCircleSelectors,
+				circleRules: styles.includes("new-icon"),
+				circleToken: styles.includes("--sb-new-circle"),
 			},
 		).toStrictEqual(
 			{
-				light: "#eae9e4",
-				// Measured on claude.ai/code: [data-mode=dark] --cds-neutral-150 -> --cds-gray-750.
-				dark: "#2c2c2a",
-				transparentCircleSelectors: ['.df-nav-row[data-selected="focused"] .df-new-icon-circle'],
+				circleRules: false,
+				circleToken: false,
 			},
 		);
 	});

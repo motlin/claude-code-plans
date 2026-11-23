@@ -1,4 +1,4 @@
-import {Ellipsis, Folder, Plus} from "lucide-react";
+import {Ellipsis, Folder} from "lucide-react";
 import {useState} from "react";
 import {useAppMounted} from "../lib/app-mounted";
 import {DEFAULT_VISIBLE_NAV_SECTIONS} from "../lib/nav-sections";
@@ -299,10 +299,8 @@ export function AppShellFallback({
 
 	const newRowContents = (
 		<>
-			<span className="df-leading-slot [--sb-icon:16px]">
-				<span className="df-new-icon-circle">
-					<Plus aria-hidden="true" />
-				</span>
+			<span className="df-leading-slot">
+				<Icon name="Add" size="auto" />
 			</span>
 			<span className="min-w-0 flex-1 truncate">New</span>
 		</>

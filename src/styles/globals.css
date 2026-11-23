@@ -918,7 +918,6 @@ html[data-interface-font="dyslexic"]
 	/* Upstream .dframe-sidebar --df-selected = --cds-fill-ghost-selected (#0000001a light), translucent like dark */
 	--sb-selected: var(--upstream-fill-ghost-selected);
 	/* Unselected New circle: upstream's web --cds-neutral-70 */
-	--sb-new-circle: #eae9e4;
 	/* Session rows: upstream selects them lighter than nav rows in dark. */
 	--sb-session-selected: var(--sb-selected);
 	--sb-bg: color-mix(in srgb, var(--upstream-surface-0) 50%, var(--upstream-surface-1));
@@ -998,7 +997,6 @@ html[data-interface-font="dyslexic"]
 	--sb-hover: hsl(0 0% 100% / 0.075);
 	--sb-selected: hsl(0 0% 100% / 0.15);
 	/* Upstream's web dark --cds-neutral-150 (--cds-gray-750) */
-	--sb-new-circle: #2c2c2a;
 	--sb-session-selected: hsl(0 0% 100% / 0.075);
 	--sb-bg: #111;
 	--df-shadow-lifted: 0 0 0 1px #ffffff1a, 0 1px 3px #0000004d, 0 8px 20px #0000004d;
@@ -5938,30 +5936,6 @@ html[data-reduce-motion="true"] [data-cds="SkeletonGroup"][data-hold="delayed"]
 	.df-nav-row[data-selected="focused"] .df-leading-slot
 	{
 		color: var(--upstream-text-primary);
-	}
-
-	.df-new-icon-circle
-	{
-		display: flex;
-		width: 22px;
-		height: 22px;
-		align-items: center;
-		justify-content: center;
-		border-radius: calc(infinity * 1px);
-		background-color: var(--sb-new-circle);
-	}
-
-	@media (hover: hover)
-	{
-		.df-nav-row:hover .df-new-icon-circle
-		{
-			background-color: color-mix(in oklab, var(--upstream-text-muted) 25%, transparent);
-		}
-	}
-
-	.df-nav-row[data-selected="focused"] .df-new-icon-circle
-	{
-		background-color: transparent;
 	}
 }
 

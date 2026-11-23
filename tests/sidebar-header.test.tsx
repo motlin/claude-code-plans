@@ -143,6 +143,12 @@ describe("sidebar header", () =>
 				titlebarMb: header.classList.contains("-mb-1"),
 				spacer: header.nextElementSibling?.outerHTML,
 				newRowMt: newRow.classList.contains("mt-1"),
+				newIcon: [
+					newRow.querySelector(":scope > .df-leading-slot > svg")?.getAttribute("data-cds"),
+					newRow.querySelector<SVGElement>(":scope > .df-leading-slot > svg")?.style.fontSize,
+					newRow.querySelector(":scope > .df-leading-slot > svg")?.getAttribute("stroke-width"),
+				],
+				newCircle: newRow.querySelector(".df-new-icon-circle"),
 			},
 		).toStrictEqual(
 			{
@@ -150,6 +156,9 @@ describe("sidebar header", () =>
 				titlebarMb: true,
 				spacer: '<div aria-hidden="true" class="h-1 shrink-0"></div>',
 				newRowMt: true,
+				// Upstream: a bare Add Icon in .df-leading-slot at auto (20px in the comfortable sidebar), no circle.
+				newIcon: ["Icon", "calc(1.25rem * var(--cds-rem-scale, 1))", "1.5"],
+				newCircle: null,
 			},
 		);
 		expect(header.firstElementChild?.contains(toggle)).toBe(true);
