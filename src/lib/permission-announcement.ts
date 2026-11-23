@@ -16,7 +16,7 @@ export const ROWS_UNVOICED = "Some of what was sent can’t be read out here. It
 
 /** Upstream's token warning (eFJU0S) with its `<link>` tags stripped. */
 export const TOKEN_WARNING_SPOKEN =
-	"Dynamic workflows run many subagents in parallel and can use a lot of your usage limit. Stop them any time from the tasks pane.";
+	"Dynamic workflows run many subagents in parallel and can use a lot of your usage limit. Stop them any time from the background tasks pane.";
 
 function collapse(text: string): string
 {

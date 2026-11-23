@@ -194,7 +194,30 @@ describe("permissionAnnouncement, as upstream's Jy/qy/Yy", () =>
 			),
 		).toBe(`Permission requested: run the workflow, deploy. Ship it. ${TOKEN_WARNING_SPOKEN}`);
 		expect(TOKEN_WARNING_SPOKEN).toBe(
-			"Dynamic workflows run many subagents in parallel and can use a lot of your usage limit. Stop them any time from the tasks pane.",
+			"Dynamic workflows run many subagents in parallel and can use a lot of your usage limit. Stop them any time from the background tasks pane.",
+		);
+		expect(
+			permissionAnnouncement(
+				{
+					title:
+					{
+						action: "run the workflow",
+						meta: "ok-ping",
+					},
+					detail: null,
+					description: "Single agent that replies ok without using tools",
+					folds: [
+						{
+							label: "Script",
+							text: 'agent("reply ok")',
+							lined: true,
+						},
+					],
+					tokenWarning: true,
+				},
+			),
+		).toBe(
+			"Permission requested: run the workflow, ok-ping. 1 of 1, Script. Single agent that replies ok without using tools. Dynamic workflows run many subagents in parallel and can use a lot of your usage limit. Stop them any time from the background tasks pane.",
 		);
 	});
 
