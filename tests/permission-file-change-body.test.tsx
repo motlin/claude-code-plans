@@ -8,10 +8,41 @@ import {PermissionFileChangePreview} from "../src/components/permission-file-cha
 import {plainFileChangeParts} from "../src/lib/permission-file-change";
 import {customProperties, DEFAULT_CODE_THEME_VARS} from "./helpers/code-theme-vars";
 
-// The first test asserts the scroller before the code themes load, but use-code-theme-background caches loaded
-// themes per module. This call routes the file to the module-reset project (scripts/vitest-isolation.ts), so it
-// starts with none of an earlier file's themes loaded.
-vi.resetModules();
+// The first test asserts the scroller before the code themes load. A loaded theme is a cached import, so the load
+// otherwise finishes a few scheduler ticks after the diff mounts, and a read that lands after it (findByRole drains
+// a macrotask before it returns) sees the loaded colours. So loadCodeTheme waits on a hold the test releases itself.
+// Mocking also routes the file to the module-reset project (scripts/vitest-isolation.ts), so it starts with none of
+// an earlier file's themes cached in use-code-theme-background.
+const themeLoads = vi.hoisted(() => (
+{
+	hold: Promise.resolve(),
+	release: () =>
+	{
+	},
+}));
+
+vi.mock("../src/lib/code-themes", async (importOriginal) =>
+{
+	const original = await importOriginal<typeof import("../src/lib/code-themes")>();
+	return {
+		...original,
+		loadCodeTheme: async (id: Parameters<typeof original.loadCodeTheme>[0]) =>
+		{
+			await themeLoads.hold;
+			return original.loadCodeTheme(id);
+		},
+	};
+});
+
+/** Holds every code theme load until the returned release is called. */
+function holdThemeLoads(): () => void
+{
+	themeLoads.hold = new Promise((resolve) =>
+	{
+		themeLoads.release = resolve;
+	});
+	return themeLoads.release;
+}
 
 class FakeResizeObserver
 {
@@ -68,6 +99,9 @@ afterEach(() =>
 {
 	cleanup();
 	vi.unstubAllGlobals();
+	// A test that failed before releasing its hold would otherwise leave every later load pending.
+	themeLoads.release();
+	themeLoads.hold = Promise.resolve();
 });
 
 /** Draws the path, and the note when there is one, as the card's `drawDetail` does. */
@@ -161,6 +195,7 @@ describe("PermissionFileChangePreview, input only", () =>
 	it("draws an Edit's old → new diff without line numbers in upstream's 400px Code scroller", async () =>
 	{
 		serveFile(404);
+		const releaseThemes = holdThemeLoads();
 		const {container} = preview(
 			"Edit",
 			{
@@ -182,6 +217,7 @@ describe("PermissionFileChangePreview, input only", () =>
 		).toBe(
 			"var(--code-fence-bg, light-dark(var(--code-theme-light-bg, var(--upstream-alpha-1)), var(--code-theme-dark-bg, var(--upstream-alpha-1))))",
 		);
+		releaseThemes();
 		expect(await diffMarkup(container)).toStrictEqual(
 			{
 				rows: ["context:a", "change-deletion:b", "change-addition:c"],
