@@ -896,7 +896,7 @@ function OverflowRow({
 		</button>
 	);
 	// Upstream wraps the row in a `label:showmore:<groupKey>` drag-shiftable div, and a held row's button
-	// in a lazy 350ms inline-end multiline tooltip (`JJ`) that stays open on click.
+	// in a lazy 350ms inline-end disabled-reason tooltip (`JJ`) that stays open on click.
 	return (
 		<div data-row-key={rowKey} className="df-drag-shiftable [overflow-anchor:none]">
 			{held === undefined ? (
@@ -906,7 +906,7 @@ function OverflowRow({
 					<Tooltip
 						content={HELD_REASON}
 						side="right"
-						multiline
+						variant="reason"
 						closeOnClick={false}
 						delay={350}
 						className="flex w-full"

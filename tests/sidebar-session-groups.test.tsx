@@ -1567,8 +1567,20 @@ describe("sidebar SessionGroups", () =>
 		expect(rowTitlesIn(container, "state-done")).toHaveLength(47);
 
 		fireEvent.pointerEnter(showLess.parentElement ?? showLess);
-		expect((await screen.findByRole("tooltip")).textContent).toBe(
-			"Something open or selected is near the end of this list.",
+		const tooltip = await screen.findByRole("tooltip");
+		const tooltipClasses = tooltip.className.split(/\s+/);
+		expect(
+			{
+				text: tooltip.textContent,
+				present: ["py-1.5", "max-w-[240px]", "flex-col"].filter((token) => !tooltipClasses.includes(token)),
+				absent: ["py-[3px]", "whitespace-pre-line"].filter((token) => tooltipClasses.includes(token)),
+			},
+		).toStrictEqual(
+			{
+				text: "Something open or selected is near the end of this list.",
+				present: [],
+				absent: [],
+			},
 		);
 	});
 
