@@ -2574,7 +2574,7 @@ describe("AttachedContextChips quote rows", () =>
 					"outline-none",
 					"pointer-coarse:pointer-events-none",
 					"pointer-events-auto",
-					"px-sm",
+					"px-[calc(var(--cds-pad-sm)-1px)]",
 					"rounded-badge-outline",
 					"text-caption",
 					"text-secondary",
