@@ -6,6 +6,7 @@ import {DEFAULT_SIDEBAR_STATE} from "../lib/sidebar-store";
 import {getVisibleNavItems, navItems} from "./sidebar/navigation";
 import {SidebarToggleIcon} from "./sidebar/primitives";
 import {SearchRowContents} from "./sidebar/sidebar-search-field";
+import {Icon} from "./ui/icon";
 import {NAV_ROW_CLASS as LIVE_NAV_ROW_CLASS} from "./sidebar/new-session-row";
 import {useShortcutKeys} from "../hooks/use-shortcut";
 import {ROW_CLASS as SESSION_ROW_CLASS} from "./sidebar/session-group-section";
@@ -82,7 +83,7 @@ function FallbackComposer({
 				<div className={COMPOSER_EDITOR_ROW_CLASS}>
 					<div className="absolute left-0 bottom-0 flex min-h-7 items-center">
 						<span data-fallback-add="" className={ADD_BUTTON_CLASS}>
-							<Plus data-fallback-chin-readout="" aria-hidden="true" className="size-[18px]" />
+							<Icon name="Add" size="auto" data-fallback-chin-readout="" />
 						</span>
 					</div>
 					<span data-fallback-placeholder="" className="block py-1 pl-1 text-[14px]/[20px] text-placeholder">

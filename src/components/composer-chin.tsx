@@ -1,5 +1,5 @@
 import {useQuery} from "@tanstack/react-query";
-import {ArrowRight, Plus, SquareSlash} from "lucide-react";
+import {ArrowRight, SquareSlash} from "lucide-react";
 import
 {
 	lazy,
@@ -343,7 +343,7 @@ export const ComposerAddMenu = memo(function ComposerAddMenu({
 		<Menu onOpenChangeComplete={slashAfterClose.onOpenChangeComplete}>
 			<Tooltip content="Add" side="top" suppressAfterPopup>
 				<MenuTrigger aria-label="Add" className={ADD_BUTTON_CLASS}>
-					<Plus className={`size-[18px] ${CHIN_ICON_INK_CLASS}`} aria-hidden="true" />
+					<Icon name="Add" size="auto" className={CHIN_ICON_INK_CLASS} />
 				</MenuTrigger>
 			</Tooltip>
 			<MenuContent side="top" sideOffset={6} finalFocus={slashAfterClose.finalFocus}>

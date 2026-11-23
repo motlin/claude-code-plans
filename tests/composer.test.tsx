@@ -941,11 +941,17 @@ describe("Composer", () =>
 				{
 					lead: add.className.split(" ").slice(0, 2),
 					icon: add.querySelector("svg")?.getAttribute("class"),
+					box: [
+						add.querySelector("svg")?.getAttribute("data-cds"),
+						add.querySelector("svg")?.style.fontSize,
+						add.querySelector("svg")?.getAttribute("stroke-width"),
+					],
 				},
 			).toStrictEqual(
 				{
 					lead: ["cds-reset", "group/btn"],
-					icon: "lucide lucide-plus size-[18px] text-secondary-control group-hover/btn:text-primary group-aria-pressed/btn:text-upstream-accent group-hover/btn:group-aria-pressed/btn:text-upstream-accent",
+					icon: "lucide lucide-plus text-secondary-control group-hover/btn:text-primary group-aria-pressed/btn:text-upstream-accent group-hover/btn:group-aria-pressed/btn:text-upstream-accent",
+					box: ["Icon", "calc(1.25rem * var(--cds-rem-scale, 1))", "1.5"],
 				},
 			);
 		});
@@ -997,7 +1003,6 @@ describe("Composer", () =>
 				{
 					card: pick(card, ["rounded-composer", "p-2", "rounded-card", "p-2.5"]),
 					add: pick(add, ["size-7", "h-6", "w-6"]),
-					addIcon: pick(add.querySelector("svg"), ["size-[18px]", "size-4"]),
 					addSlot: pick(add.closest("[data-composer-add]"), ["min-h-7"]),
 					spacer: pick(document.querySelector("[data-send-spacer] > span"), ["size-7"]),
 					editor:
@@ -1026,7 +1031,6 @@ describe("Composer", () =>
 				{
 					card: ["rounded-composer", "p-2"],
 					add: ["size-7"],
-					addIcon: ["size-[18px]"],
 					addSlot: ["min-h-7"],
 					spacer: ["size-7"],
 					editor:

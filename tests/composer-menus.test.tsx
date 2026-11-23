@@ -4161,7 +4161,7 @@ describe("Composer chin tooltips and contrast", () =>
 		}
 	});
 
-	it("reads every chin control in control ink (secondary with fizzy color off), with r4 corners and an 18px +", () =>
+	it("reads every chin control in control ink (secondary with fizzy color off), with r4 corners and an auto cds Icon + (16px sm in the compact column)", () =>
 	{
 		renderComposer();
 		const classes = (element: Element | null) => element?.getAttribute("class")?.split(" ") ?? [];
@@ -4186,7 +4186,11 @@ describe("Composer chin tooltips and contrast", () =>
 		expect(
 			{
 				add: pick(add),
-				plusIcon: classes(add.querySelector("svg")).filter((name) => name.startsWith("size-")),
+				plusIcon: [
+					add.querySelector("svg")?.getAttribute("data-cds"),
+					add.querySelector<SVGElement>("svg")?.style.fontSize,
+					add.querySelector("svg")?.getAttribute("stroke-width"),
+				],
 				mode: pick(document.querySelector("[data-chin-mode]")),
 				model: pick(
 					screen.getByRole(
@@ -4205,7 +4209,7 @@ describe("Composer chin tooltips and contrast", () =>
 					radius: ["rounded-r5"],
 					type: ["text-body"],
 				},
-				plusIcon: ["size-[18px]"],
+				plusIcon: ["Icon", "calc(1rem * var(--cds-rem-scale, 1))", "1.875"],
 				mode:
 				{
 					ink: ["text-secondary-control"],
