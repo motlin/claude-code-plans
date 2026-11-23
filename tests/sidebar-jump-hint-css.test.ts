@@ -33,7 +33,7 @@ describe("sidebar jump-hint CSS", () =>
 		).toStrictEqual(
 			{
 				trailingSlot:
-					"inset-inline-start: auto; inset-inline-end: calc(var(--sb-row-ctl-inset, (var(--sb-row-h) - var(--sb-row-ctl)) / 2) + (var(--sb-row-ctl) - 16px) / 2);",
+					"inset-inline-start: auto; inset-inline-end: calc(var(--sb-row-ctl-inset, (var(--sb-row-h) - var(--sb-row-ctl)) / 2) + (var(--sb-row-ctl) - 1rem * var(--cds-rem-scale, 1)) / 2);",
 				describedRow:
 					"top: calc(var(--sb-row-h) / 2 + var(--sb-described-tuck) / 2 - var(--sb-described-trim, 0px));",
 				hiddenMarks: "visibility: hidden;",

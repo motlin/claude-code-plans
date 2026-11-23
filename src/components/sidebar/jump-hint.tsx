@@ -12,7 +12,7 @@ export function JumpHint({rowKey}: {rowKey: string})
 	return (
 		<kbd
 			aria-hidden="true"
-			className="df-jump-hint pointer-events-none absolute top-[calc(var(--sb-row-h)/2)] -translate-y-1/2 start-[calc(var(--sb-row-px)+var(--sb-rail-shift,0px)+(var(--sb-leading-slot)-16px)/2)] flex h-4 min-w-4 items-center justify-center rounded-r2 border-[0.5px] bg-surface-1 px-[3px] font-sans text-[10px] font-medium leading-none text-secondary"
+			className="df-jump-hint pointer-events-none absolute top-[calc(var(--sb-row-h)/2)] -translate-y-1/2 start-[calc(var(--sb-row-px)+var(--sb-rail-shift,0px)+(var(--sb-leading-slot)-1rem*var(--cds-rem-scale,1))/2)] flex h-4 min-w-4 items-center justify-center rounded-r2 border-[0.5px] bg-surface-1 px-[3px] font-sans text-[length:calc(0.625rem*var(--cds-rem-scale,1))] font-medium leading-none text-primary"
 		>
 			{digit}
 		</kbd>

@@ -6599,7 +6599,7 @@ html[data-reduce-motion="true"] [data-cds="SkeletonGroup"][data-hold="delayed"]
 {
 	inset-inline-start: auto;
 	inset-inline-end: calc(var(--sb-row-ctl-inset, (var(--sb-row-h) - var(--sb-row-ctl)) / 2) + (var(--sb-row-ctl) -
-		16px) / 2);
+		1rem * var(--cds-rem-scale, 1)) / 2);
 }
 
 /* A two-line described row centres the keycap on its title line. */
