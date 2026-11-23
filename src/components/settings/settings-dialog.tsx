@@ -111,7 +111,7 @@ function navRowWarmers(row: SettingsNavRow)
 
 /** Upstream's row base `MV` (comfortable: h-list-row 32, gap-sm 12, px-sm 8, rounded 8) with the shadow-focus pair. */
 const NAV_ROW_CLASS =
-	"hit-row hit-row-main flex h-8 w-full items-center gap-3 rounded-r6 px-2 text-start text-body focus-visible:outline-hidden not-dark:focus-visible:shadow-[inset_0_0_0_1px_#fcfcfb,0_0_0_1px_#257de0,0_0_6px_1px_#cde2fb] dark:focus-visible:shadow-[inset_0_0_0_1px_rgb(21_21_21),0_0_0_1px_rgb(37_125_224),0_0_6px_1px_rgb(24_79_149/0.6)]";
+	"hit-row hit-row-main flex h-8 w-full items-center gap-3 rounded-r6 px-2 text-start text-body focus-visible:outline-hidden not-dark:focus-visible:shadow-[inset_0_0_0_1px_#fcfcfb,0_0_0_1px_#257de0,0_0_6px_1px_color-mix(in_srgb,#257de0_12%,transparent)] dark:focus-visible:shadow-[inset_0_0_0_1px_rgb(21_21_21),0_0_0_1px_rgb(37_125_224),0_0_6px_1px_rgb(24_79_149/0.6)]";
 
 /** Upstream S6's classes: `MV`, `pe-xs` unless the row stands for customize sections (`Ko`), then `Mc(active)`. */
 function navRowClass(row: SettingsNavRow, selected: boolean): string

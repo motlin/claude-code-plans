@@ -637,7 +637,7 @@ describe("SettingsDialog", () =>
 			"text-start",
 			"text-body",
 			"focus-visible:outline-hidden",
-			"not-dark:focus-visible:shadow-[inset_0_0_0_1px_#fcfcfb,0_0_0_1px_#257de0,0_0_6px_1px_#cde2fb]",
+			"not-dark:focus-visible:shadow-[inset_0_0_0_1px_#fcfcfb,0_0_0_1px_#257de0,0_0_6px_1px_color-mix(in_srgb,#257de0_12%,transparent)]",
 			"dark:focus-visible:shadow-[inset_0_0_0_1px_rgb(21_21_21),0_0_0_1px_rgb(37_125_224),0_0_6px_1px_rgb(24_79_149/0.6)]",
 		];
 		const rest = ["text-secondary-control", "hover:bg-fill-ghost-hover", "hover:text-primary"];

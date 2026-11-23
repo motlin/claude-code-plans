@@ -277,7 +277,8 @@ describe("upstream base focus ring", () =>
 describe("upstream focus shadow tokens", () =>
 {
 	const css = readFileSync("src/styles/globals.css", "utf8");
-	const values = (name: string) => [...css.matchAll(new RegExp(`${name}:\\s*([^;]+);`, "g"))].map((m) => m[1]);
+	const values = (name: string) =>
+		[...css.matchAll(new RegExp(`${name}:\\s*([^;]+);`, "g"))].map((m) => m[1]?.replace(/\s+/g, " "));
 
 	it("defines --focus-shadow and --focus-shadow-danger with upstream's inner page ring in light and dark", () =>
 	{
@@ -290,7 +291,7 @@ describe("upstream focus shadow tokens", () =>
 		).toStrictEqual(
 			{
 				focus: [
-					"inset 0 0 0 1px var(--upstream-page), 0 0 0 1px #257de0, 0 0 6px 1px #cde2fb",
+					"inset 0 0 0 1px var(--upstream-page), 0 0 0 1px #257de0, 0 0 6px 1px color-mix(in srgb, #257de0 12%, transparent)",
 					"inset 0 0 0 1px var(--upstream-page), 0 0 0 1px #257de0, 0 0 6px 1px rgb(23 87 172 / 0.6)",
 				],
 				danger: [
