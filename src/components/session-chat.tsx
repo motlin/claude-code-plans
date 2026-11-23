@@ -202,6 +202,7 @@ import {stickyPromptText} from "../lib/sticky-prompt";
 import {StickyPromptOverlay, type StickyPromptCandidate} from "./sticky-prompt-overlay";
 import {TranscriptOverlayHostContext} from "./transcript-overlay-host-context";
 import {TranscriptTailContext} from "./transcript-tail-context";
+import {TurnWorkingContext} from "./turn-working-context";
 import {TailActionsPortal} from "./tail-actions-portal";
 import {TranscriptLastRowContext} from "./tail-actions-context";
 import
@@ -7722,6 +7723,13 @@ const LIVE_KEY_HOLD =
 	settleMs: LABEL_HOLD_DEFAULT_MS,
 };
 
+/** A turn-held key the turn has just stopped holding: it settles at once. */
+const LIVE_KEY_RELEASE =
+{
+	minMs: 0,
+	settleMs: 0,
+};
+
 function ToolCallSection({
 	calls,
 	sessionId,
@@ -7752,15 +7760,31 @@ function ToolCallSection({
 	// oxlint-disable-next-line unicorn/prefer-array-find -- findLast is not in the ES2022 lib
 	const liveCall = backgroundCalls.findLast(isPendingToolCall);
 	const liveKey = liveCall?.id ?? SETTLED_LIVE_KEY;
+	// The group's newest call that ran, which the live key holds on while the turn still works.
+	const [lastRan, setLastRan] = useState(liveCall?.id);
+	if (liveCall !== undefined && liveCall.id !== lastRan) setLastRan(liveCall.id);
+	// Upstream `QS` never releases the held key while the turn is live and its last step is a tool (`V`).
+	const turnWorking = useContext(TurnWorkingContext);
+	const lastRow = useContext(TranscriptLastRowContext);
+	const turnStepLive = turnWorking && lastRow;
+	const turnHeldKey =
+		liveCall === undefined && turnStepLive && backgroundCalls.some((c) => c.id === lastRan) ? lastRan : undefined;
+	const [wasTurnHeld, setWasTurnHeld] = useState(false);
+	if ((turnHeldKey !== undefined) !== wasTurnHeld) setWasTurnHeld(turnHeldKey !== undefined);
+	const shownTarget = turnHeldKey ?? liveKey;
 	const live = useMemo(
 		() => (
 		{
-			key: liveKey,
+			key: shownTarget,
 			lone: loneTarget,
 		}),
-		[liveKey, loneTarget],
+		[shownTarget, loneTarget],
 	);
-	const held = useHeldLabel(live, liveKey, LIVE_KEY_HOLD);
+	const held = useHeldLabel(
+		live,
+		shownTarget,
+		wasTurnHeld && shownTarget === SETTLED_LIVE_KEY ? LIVE_KEY_RELEASE : LIVE_KEY_HOLD,
+	);
 	// The finished call the live key still holds on; upstream keeps its words only while it completed (`cP`).
 	const heldCall =
 		held.key === liveKey

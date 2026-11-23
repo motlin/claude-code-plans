@@ -3,6 +3,7 @@
 import {act, cleanup, fireEvent, render, waitFor} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {SessionChat} from "../src/components/session-chat";
+import {TurnWorkingContext} from "../src/components/turn-working-context";
 import {processTranscript} from "../src/lib/transcript";
 
 vi.mock("../src/components/settings-context", () => (
@@ -466,6 +467,27 @@ describe("busy same-target run row (upstream mergeLiveLoneStep)", () =>
 			const held = rowParts(container);
 			advance(1);
 			expect([finished, held, rowParts(container)]).toStrictEqual([
+				["Editing", "a.ts"],
+				["Editing", "a.ts"],
+				["Edited", "a.ts"],
+			]);
+		});
+
+		it("keeps a finished member's present tense while the turn works, then settles at once when it stops", () =>
+		{
+			const working = (calls: Call[], live: boolean) => (
+				<TurnWorkingContext.Provider value={live}>{chat(calls)}</TurnWorkingContext.Provider>
+			);
+			const {container, rerender} = render(working([edit("e1", "a", "b"), pendingEdit("e2")], true));
+			rerender(working([edit("e1", "a", "b"), edit("e2", "c", "d")], true));
+			const finished = rowParts(container);
+			advance(649);
+			const held = rowParts(container);
+			advance(4351);
+			const gap = rowParts(container);
+			rerender(working([edit("e1", "a", "b"), edit("e2", "c", "d")], false));
+			expect([finished, held, gap, rowParts(container)]).toStrictEqual([
+				["Editing", "a.ts"],
 				["Editing", "a.ts"],
 				["Editing", "a.ts"],
 				["Edited", "a.ts"],
