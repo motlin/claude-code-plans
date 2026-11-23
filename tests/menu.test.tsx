@@ -1015,7 +1015,8 @@ describe("Menu", () =>
 		});
 
 		const trailing = "flex shrink-0 items-center gap-1.5 ms-3 h-[1lh] self-start";
-		const checkSlot = "flex size-4 shrink-0 items-center justify-center pointer-coarse:-me-1";
+		const checkSlot =
+			"flex size-4 shrink-0 items-center justify-center -my-[max(0px,calc((var(--cds-icon)_-_1lh)/2))] pointer-coarse:-me-1";
 		const digit = (text: string) => (
 		{
 			cds: "Shortcut",
@@ -1070,8 +1071,18 @@ describe("Menu", () =>
 		);
 		await flush();
 
-		expect(screen.getByRole("menuitemradio").querySelector("[data-menu-item-trailing]")?.className).toBe(
-			"flex shrink-0 items-center gap-2 ms-4 h-[1lh] self-start",
+		const trailing = screen.getByRole("menuitemradio").querySelector("[data-menu-item-trailing]");
+		expect(
+			{
+				trailing: trailing?.className,
+				checkSlot: trailing?.firstElementChild?.getAttribute("class"),
+			},
+		).toStrictEqual(
+			{
+				trailing: "flex shrink-0 items-center gap-2 ms-4 h-[1lh] self-start",
+				checkSlot:
+					"flex size-5 shrink-0 items-center justify-center -my-[max(0px,calc((var(--cds-icon)_-_1lh)/2))] pointer-coarse:-me-1",
+			},
 		);
 	});
 

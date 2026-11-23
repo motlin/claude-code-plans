@@ -129,7 +129,8 @@ const DESCRIPTION_CLASS = "break-words text-footnote text-[var(--menu-muted)]";
 const TRAILING_CLASS = "ml-auto flex shrink-0 items-center gap-1";
 /** Pins a two-line row's keycap and check to its first line. */
 const FIRST_LINE_TRAILING_CLASS = `${TRAILING_CLASS} h-[1lh] self-start`;
-const DIGIT_CHECK_SLOT_CLASS = "flex size-4 shrink-0 items-center justify-center pointer-coarse:-me-1";
+/* Upstream's size-icon check slot, pulled out of a line shorter than the icon so the row height holds. */
+const DIGIT_CHECK_SLOT_MY_CLASS = "-my-[max(0px,calc((var(--cds-icon)_-_1lh)/2))]";
 const CHECK_SLOT_CLASS = "-mr-1 flex size-icon shrink-0 items-center justify-center";
 /** Upstream's checked tick: a regular-weight `size-icon` Check Icon (16px compact, 20px comfortable) in fill-accent ink. */
 const CHECK_ICON = <Icon name="Check" size="auto" className="text-fill-accent" />;
@@ -1017,7 +1018,7 @@ function DigitTrailing({accelerator}: {accelerator: string})
 		<span data-menu-item-trailing="" className={sizing.digitTrailing}>
 			<BaseMenu.RadioItemIndicator
 				keepMounted
-				className={DIGIT_CHECK_SLOT_CLASS}
+				className={`flex ${sizing.iconBox} shrink-0 items-center justify-center ${DIGIT_CHECK_SLOT_MY_CLASS} pointer-coarse:-me-1`}
 				render={(slotProps, {checked}) => <span {...slotProps}>{checked && CHECK_ICON}</span>}
 			/>
 			<Shortcut keys={accelerator} variant="text" className={menuHintClass(accelerator)} />
