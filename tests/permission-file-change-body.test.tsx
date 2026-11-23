@@ -798,9 +798,10 @@ describe("PermissionFileChangePreview, read from disk", () =>
 			},
 			"Replaces every match in the file.",
 		);
-		expect((await screen.findByTestId("approval-detail-note")).textContent).toBe(
-			"Replaces all 3 matches in the file.",
-		);
+		await waitFor(() =>
+		{
+			expect(screen.getByTestId("approval-detail-note").textContent).toBe("Replaces all 3 matches in the file.");
+		});
 	});
 
 	it("says a Write replaces the existing file only until its disk diff is drawn", async () =>
