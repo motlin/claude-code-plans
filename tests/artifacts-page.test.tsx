@@ -1330,7 +1330,9 @@ describe("artifacts route", () =>
 								? "doodle"
 								: child.classList.contains("h-px")
 									? "hairline"
-									: "wash",
+									: child.hasAttribute("data-cover-veil")
+										? "veil"
+										: "wash",
 				),
 				back: back && [back.getAttribute("dir"), back.getAttribute("class"), back.childElementCount],
 				doodle: doodle && [doodle.getAttribute("class"), doodle.querySelectorAll("g > path").length],
@@ -1346,7 +1348,7 @@ describe("artifacts route", () =>
 			{
 				docs:
 				{
-					layers: ["wash", "back", "front", "hairline"],
+					layers: ["wash", "veil", "back", "front", "hairline"],
 					back: [
 						"ltr",
 						"absolute overflow-hidden border border-[color:var(--color-border-line)] bg-white text-primary dark:bg-surface-1 dark:bg-clip-padding after:pointer-events-none after:absolute after:inset-0 after:content-[''] start-[14.15%] top-[11.76%] h-full w-[76.34%] origin-top-left rotate-[2.2deg] rounded-r6 after:bg-gray-900/5 z-2 bg-clip-padding",
@@ -1356,7 +1358,7 @@ describe("artifacts route", () =>
 				},
 				html:
 				{
-					layers: ["wash", "front", "hairline"],
+					layers: ["wash", "veil", "front", "hairline"],
 					back: null,
 					doodle: null,
 				},
@@ -4248,20 +4250,22 @@ describe("artifact cover thumbnails", () =>
 							? "front"
 							: child.hasAttribute("data-cover-wash")
 								? "cover wash"
-								: child.tagName === "svg"
-									? "wash filter"
-									: child.tagName === "SPAN"
-										? "doodle"
-										: child.classList.contains("h-px")
-											? "hairline"
-											: "surface wash",
+								: child.hasAttribute("data-cover-veil")
+									? "veil"
+									: child.tagName === "svg"
+										? "wash filter"
+										: child.tagName === "SPAN"
+											? "doodle"
+											: child.classList.contains("h-px")
+												? "hairline"
+												: "surface wash",
 				),
 				back: [back?.getAttribute("dir"), back?.getAttribute("class")],
 				hasImg: cover.matches(":has(img)"),
 			},
 		).toStrictEqual(
 			{
-				layers: ["surface wash", "wash filter", "cover wash", "back", "front", "hairline"],
+				layers: ["surface wash", "wash filter", "cover wash", "veil", "back", "front", "hairline"],
 				back: [
 					"ltr",
 					"absolute overflow-hidden border border-[color:var(--color-border-line)] bg-white text-primary dark:bg-surface-1 dark:bg-clip-padding after:pointer-events-none after:absolute after:inset-0 after:content-[''] start-[14.15%] top-[11.76%] h-full w-[76.34%] origin-top-left rotate-[2.2deg] rounded-r6 after:bg-gray-900/5 z-2 bg-clip-padding",
@@ -4279,9 +4283,19 @@ describe("artifact cover thumbnails", () =>
 		const src = new URL(cover.querySelector("[data-cover-light] > img")?.getAttribute("src") ?? "", location.href)
 			.href;
 		const filter = cover.querySelector(":scope > svg > filter");
+		const describeVeil = () =>
+		{
+			const veil = cover.querySelector<HTMLElement>(":scope > [data-cover-veil]");
+			return [veil?.dataset["coverWaiting"] ?? null, veil?.getAttribute("class")];
+		};
+		const veilClass = (opacity: string) =>
+			`pointer-events-none absolute inset-0 bg-gray-100 transition-opacity duration-base motion-reduce:transition-none dark:bg-gray-700 ${opacity} z-1`;
+		const washClass = cover.querySelector("[data-cover-wash]")?.getAttribute("class");
 		const before = describeWashes(cover);
+		const veilBefore = describeVeil();
 		fireEvent.load(cover.querySelector("[data-cover-light] > img")!);
 		const loaded = describeWashes(cover);
+		const veilLoaded = describeVeil();
 		fireEvent.error(cover.querySelector("[data-cover-light] > img")!);
 
 		const resting =
@@ -4310,7 +4324,7 @@ describe("artifact cover thumbnails", () =>
 						(child) => child.getAttribute("result") ?? child.getAttribute("operator"),
 					),
 				],
-				washClass: cover.querySelector("[data-cover-wash]")?.getAttribute("class"),
+				washClass,
 				placement: [
 					cover.querySelector(":scope > [data-cover-wash]") !== null,
 					[...cover.querySelectorAll<HTMLElement>("*")].filter((element) => element.style.maskImage !== "")
@@ -4318,6 +4332,7 @@ describe("artifact cover thumbnails", () =>
 				],
 				before,
 				loaded,
+				veil: [veilBefore, veilLoaded, describeVeil()],
 				errored:
 				{
 					washes: describeWashes(cover),
@@ -4330,11 +4345,15 @@ describe("artifact cover thumbnails", () =>
 			{
 				svg: "absolute size-0",
 				filter: ["sRGB", [true], ["one", "tiles", "mean", "above", "below", "spread", "strength", "in"]],
-				washClass:
-					"pointer-events-none absolute -inset-[8px] z-1 mix-blend-hue transition-opacity duration-base motion-reduce:transition-none opacity-0",
+				washClass: "pointer-events-none absolute -inset-[8px] z-1 mix-blend-hue opacity-0",
 				placement: [true, 0],
 				before: [resting],
 				loaded: [shown],
+				veil: [
+					["", veilClass("opacity-100")],
+					[null, veilClass("opacity-0")],
+					[null, veilClass("opacity-0")],
+				],
 				errored:
 				{
 					washes: [resting],
@@ -4355,6 +4374,10 @@ describe("artifact cover thumbnails", () =>
 				filters: cover.querySelectorAll(":scope > svg").length,
 				imgs: cover.querySelectorAll("img").length,
 				light: cover.querySelectorAll("[data-cover-light]").length,
+				veil: [...cover.querySelectorAll<HTMLElement>(":scope > [data-cover-veil]")].map((veil) => [
+					veil.dataset["coverWaiting"] ?? null,
+					veil.getAttribute("class"),
+				]),
 			},
 		).toStrictEqual(
 			{
@@ -4362,6 +4385,12 @@ describe("artifact cover thumbnails", () =>
 				filters: 0,
 				imgs: 0,
 				light: 0,
+				veil: [
+					[
+						null,
+						"pointer-events-none absolute inset-0 bg-gray-100 transition-opacity duration-base motion-reduce:transition-none dark:bg-gray-700 opacity-0 z-1",
+					],
+				],
 			},
 		);
 	});

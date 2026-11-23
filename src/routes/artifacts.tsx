@@ -1094,14 +1094,17 @@ function CoverWashFilter({id}: {id: string})
 	);
 }
 
-/** Upstream's cover wash (`Y`): a 4px copy of the loaded thumbnail, filtered into a hue that fades in over the cover. */
-function CoverWash({src, filterId}: {src: string | undefined; filterId: string})
+/**
+ * Upstream's cover wash (`Y`): a 4px copy of the loaded thumbnail, filtered into a hue over the cover. It fades only
+ * when no thumbnail is expected; otherwise the veil covers its arrival.
+ */
+function CoverWash({src, filterId, fades}: {src: string | undefined; filterId: string; fades: boolean})
 {
 	return (
 		<div
 			data-cover-wash={src ?? ""}
 			dir="ltr"
-			className={`pointer-events-none absolute -inset-[8px] z-1 mix-blend-hue transition-opacity duration-base motion-reduce:transition-none ${src ? "opacity-100" : "opacity-0"}`}
+			className={`pointer-events-none absolute -inset-[8px] z-1 mix-blend-hue ${fades ? "transition-opacity duration-base motion-reduce:transition-none " : ""}${src ? "opacity-100" : "opacity-0"}`}
 			style={
 			{
 				filter: `url(#${filterId})`,
@@ -1120,6 +1123,18 @@ function CoverWash({src, filterId}: {src: string | undefined; filterId: string})
 	);
 }
 
+/** Upstream's cover veil: a flat grey sheet over the washes while the thumbnail loads, fading out once it settles. */
+function CoverVeil({waiting}: {waiting: boolean})
+{
+	return (
+		<div
+			data-cover-veil=""
+			data-cover-waiting={waiting ? "" : undefined}
+			className={`pointer-events-none absolute inset-0 bg-gray-100 transition-opacity duration-base motion-reduce:transition-none dark:bg-gray-700 ${waiting ? "opacity-100" : "opacity-0"} z-1`}
+		/>
+	);
+}
+
 /**
  * Upstream's card cover (`Ae`): a tinted wash with a floating front sheet and a 1px bottom hairline. The sheet shows
  * the artifact's screenshot when it has one, falling back to the blank drawing when it fails to load. A Docs cover
@@ -1130,7 +1145,9 @@ function ArtifactCover({artifact, priority}: {artifact: ArtifactSummary; priorit
 	const kind = coverKind(artifact.kind);
 	const filterId = useId();
 	const [washSrc, setWashSrc] = useState<string>();
+	const [erroredSrc, setErroredSrc] = useState<string | null>(null);
 	const thumbnailSrc = artifact.thumbnailUrl;
+	const thumbnailExpected = thumbnailSrc !== null && erroredSrc !== thumbnailSrc;
 	const blank = <CoverBlank artifact={artifact} />;
 	return (
 		<div
@@ -1139,7 +1156,8 @@ function ArtifactCover({artifact, priority}: {artifact: ArtifactSummary; priorit
 		>
 			<div className={COVER_SURFACE_WASH} />
 			{thumbnailSrc !== null && <CoverWashFilter id={filterId} />}
-			{thumbnailSrc !== null && <CoverWash src={washSrc} filterId={filterId} />}
+			{thumbnailSrc !== null && <CoverWash src={washSrc} filterId={filterId} fades={!thumbnailExpected} />}
+			<CoverVeil waiting={thumbnailExpected && washSrc === undefined} />
 			{kind === "document" && (
 				<div
 					data-cover-back=""
@@ -1154,7 +1172,9 @@ function ArtifactCover({artifact, priority}: {artifact: ArtifactSummary; priorit
 						? undefined
 						: (event) =>
 							{
-								if (event.target instanceof HTMLImageElement) setWashSrc(event.target.src);
+								if (!(event.target instanceof HTMLImageElement)) return;
+								setWashSrc(event.target.src);
+								setErroredSrc(null);
 							}
 				}
 				className={`${COVER_SHEET} isolate inset-x-0 mx-auto ${COVER_FRONT_SIZE} z-2 bg-clip-padding ${COVER_FRONT_CROP[kind]} rounded-lg ${COVER_FRONT_FINISH[kind]}`}
@@ -1169,6 +1189,7 @@ function ArtifactCover({artifact, priority}: {artifact: ArtifactSummary; priorit
 							onError={() =>
 							{
 								setWashSrc(undefined);
+								setErroredSrc(thumbnailSrc);
 							}}
 							imgClassName={COVER_THUMB_IMG[kind]}
 							loading={priority ? "eager" : "lazy"}
