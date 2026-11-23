@@ -2,6 +2,7 @@
 
 import {lazy, type ReactNode} from "react";
 import {act, cleanup, fireEvent, render, screen, within} from "@testing-library/react";
+import {createBrowserHistory} from "@tanstack/react-router";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {registerPane} from "../src/components/panes/pane-registry";
@@ -21,6 +22,7 @@ import {SettingsProvider} from "../src/components/settings-provider";
 import {TitlebarHiddenCountContext} from "../src/components/titlebar-fold-context";
 import {SessionPaneControls} from "../src/components/view-options-menu";
 import type {PaneKind} from "../src/lib/pane-layout";
+import {trackHardLoadLocation} from "../src/lib/hard-load-location";
 import {PHONE_SHEET_QUERY} from "../src/lib/use-phone-sheet";
 import
 {
@@ -903,22 +905,27 @@ describe("session rail fit by chat-panel width", () =>
 				),
 			};
 		};
+		// Unlabelled until the delayed reveal's fade-in ends.
 		const expected =
 		{
-			status: "Loading session details",
+			status: "",
 			holds: ["delayed", "delayed"],
 			reasons: [null, null],
 		};
 		setSessionRailShown(true);
 		tileWidth = 1200;
+		// The router's history, as the app tracks it; no Navigation API (jsdom, like Safari, has none).
+		const history = createBrowserHistory();
+		const loadedPath = window.location.pathname;
+		trackHardLoadLocation(history);
 		// The hard-loaded document's own location hands off from the route frame: shown at once.
 		const first = renderFitSession(pending);
 		await settle();
 		const hardLoad = skeleton(document.querySelector("[data-epitaxy-rail-column]"));
 		first.unmount();
-		// A later SPA navigation to another session holds the skeleton back.
-		const loadedPath = window.location.pathname;
-		window.history.pushState(null, "", "/session/other-session");
+		// An SPA navigation away and back to the hard-loaded location, with no render in between, still holds it back.
+		history.push("/session/other-session");
+		history.push(loadedPath);
 		const {unmount} = renderFitSession(pending);
 		await settle();
 		const docked = skeleton(document.querySelector("[data-epitaxy-rail-column]"));
@@ -930,7 +937,7 @@ describe("session rail fit by chat-panel width", () =>
 		await raiseByKeyboard();
 
 		const raised = skeleton(raisedOverlay());
-		window.history.replaceState(null, "", loadedPath);
+		history.destroy();
 
 		expect(
 			{

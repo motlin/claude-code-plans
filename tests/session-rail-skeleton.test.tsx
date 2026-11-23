@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import {cleanup, render, screen} from "@testing-library/react";
+import {cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, describe, expect, it} from "vite-plus/test";
 
 import {SessionRailSkeleton} from "../src/components/session-rail/session-rail-skeleton";
@@ -37,6 +37,28 @@ const CARD_RING =
 	"rounded-r7 shadow-[0_0_0_1px_var(--color-border)] dark:shadow-[inset_0_0_0_1px_var(--color-border)] [[data-session-rail-flat]_&]:rounded-none [[data-session-rail-flat]_&]:shadow-none";
 const GROUP = "flex flex-col gap-2 py-2 px-3";
 const BAR = "max-w-full rounded bg-[var(--skeleton-base)]";
+
+/**
+ * jsdom has no AnimationEvent, so React listens for the prefixed `webkitAnimationEnd` and fireEvent drops
+ * `animationName`; build the event by hand.
+ */
+function animationEnd(target: Element, animationName: string)
+{
+	const event = new Event(
+		"webkitAnimationEnd",
+		{
+			bubbles: true,
+		},
+	);
+	Object.defineProperty(
+		event,
+		"animationName",
+		{
+			value: animationName,
+		},
+	);
+	fireEvent(target, event);
+}
 
 describe("session rail skeleton", () =>
 {
@@ -78,7 +100,7 @@ describe("session rail skeleton", () =>
 		);
 	});
 
-	it("holds both groups back for upstream's delayed reveal, and shows them at once for a handoff", () =>
+	it("holds both groups back for upstream's delayed reveal, marking and labelling them as its fade-in ends", () =>
 	{
 		const holds = (container: HTMLElement) =>
 			[...container.querySelectorAll("[data-skeleton-group]")].map((group) => (
@@ -86,28 +108,67 @@ describe("session rail skeleton", () =>
 				hold: group.getAttribute("data-hold"),
 				reason: group.getAttribute("data-hold-reason"),
 				shown: group.getAttribute("data-shown"),
+				label: group.querySelector("[data-skeleton-label]")?.textContent ?? null,
 			}));
-		const delayed = holds(render(<SessionRailSkeleton hold="delayed" />).container);
+		const {container} = render(<SessionRailSkeleton hold="delayed" />);
+		const delayed = holds(container);
+		const groups = [...container.querySelectorAll("[data-skeleton-group]")];
+		// A bar's own animation ending, or another animation on the group, is not the reveal.
+		animationEnd(groups[0]!.querySelector("[data-skeleton]")!, "placeholder-reveal");
+		animationEnd(groups[0]!, "skeleton-breathe");
+		const unrelated = holds(container);
+		for (const group of groups) animationEnd(group, "placeholder-reveal");
+		const revealed = holds(container);
 		cleanup();
 		const handoff = holds(render(<SessionRailSkeleton hold="none" holdReason="handoff" />).container);
+		const hidden =
+		{
+			hold: "delayed",
+			reason: null,
+			shown: null,
+		};
 
 		expect(
 			{
 				delayed,
+				unrelated,
+				revealed,
 				handoff,
 			},
 		).toStrictEqual(
 			{
 				delayed: [
 					{
+						...hidden,
+						label: "",
+					},
+					{
+						...hidden,
+						label: null,
+					},
+				],
+				unrelated: [
+					{
+						...hidden,
+						label: "",
+					},
+					{
+						...hidden,
+						label: null,
+					},
+				],
+				revealed: [
+					{
 						hold: "delayed",
 						reason: null,
-						shown: null,
+						shown: "",
+						label: "Loading session details",
 					},
 					{
 						hold: "delayed",
 						reason: null,
-						shown: null,
+						shown: "",
+						label: null,
 					},
 				],
 				handoff: [
@@ -115,11 +176,13 @@ describe("session rail skeleton", () =>
 						hold: "none",
 						reason: "handoff",
 						shown: "",
+						label: "Loading session details",
 					},
 					{
 						hold: "none",
 						reason: "handoff",
 						shown: "",
+						label: null,
 					},
 				],
 			},

@@ -5,6 +5,7 @@ import {routeTree} from "./routeTree.gen";
 import {shouldRetryQuery} from "./lib/query-retry";
 import {DefaultErrorComponent} from "./routes/__root";
 import {installStaleChunkReload} from "./lib/stale-chunk-reload";
+import {trackHardLoadLocation} from "./lib/hard-load-location";
 
 // Before hydration, so a tab left open across a redeploy recovers from its first stale lazy chunk.
 if (typeof window !== "undefined") installStaleChunkReload(window);
@@ -38,6 +39,9 @@ export function getRouter()
 			},
 		},
 	);
+
+	// From the router's own history, before hydration or any lazily loaded route chunk could navigate away.
+	if (typeof window !== "undefined") trackHardLoadLocation(router.history);
 
 	setupRouterSsrQueryIntegration(
 		{

@@ -1,3 +1,5 @@
+import type {RouterHistory} from "@tanstack/react-router";
+
 /**
  * Whether the page is still on the location the document was hard-loaded at, standing in for upstream's
  * `t7` WeakSet of router states that showed the route frame: a skeleton drawn there hands off from that
@@ -9,45 +11,25 @@ function locationKey(url: {pathname: string; search: string}): string
 	return url.pathname + url.search;
 }
 
-/** `undefined` until captured; `null` once the page has navigated away. */
+/** `undefined` until tracking starts; `null` once the page has navigated away. */
 let initial: string | null | undefined;
 
-/** Records the current location as the hard-loaded one. The root route calls this at boot. */
-export function captureHardLoadLocation(): void
+/**
+ * Records the router history's current location as the hard-loaded one and forgets it on the first navigation
+ * elsewhere. The history sees every push, replace and back/forward, so this needs no Navigation API (Safari has none).
+ */
+export function trackHardLoadLocation(history: Pick<RouterHistory, "location" | "subscribe">): void
 {
-	if (typeof window === "undefined" || initial !== undefined) return;
-	initial = locationKey(window.location);
-	const forget = () =>
+	if (initial !== undefined) return;
+	initial = locationKey(history.location);
+	history.subscribe(({location}) =>
 	{
-		if (initial !== locationKey(window.location)) initial = null;
-	};
-	window.addEventListener("popstate", forget);
-	// Navigation API (where present) also sees the router's pushState navigations.
-	const navigation = (
-		window as
-		{
-			navigation?: EventTarget;
-		}
-	).navigation;
-	navigation?.addEventListener("navigate", (event) =>
-	{
-		const destination = (
-			event as Event &
-			{
-				destination?:
-				{
-					url: string;
-				};
-			}
-		).destination;
-		if (destination !== undefined && locationKey(new URL(destination.url)) !== initial) initial = null;
+		if (locationKey(location) !== initial) initial = null;
 	});
 }
 
+/** True until tracking has seen a navigation away, including before tracking starts (the server render). */
 export function onHardLoadLocation(): boolean
 {
-	if (typeof window === "undefined") return true;
-	captureHardLoadLocation();
-	if (initial !== locationKey(window.location)) initial = null;
 	return initial !== null;
 }

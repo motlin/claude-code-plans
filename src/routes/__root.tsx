@@ -20,7 +20,6 @@ import {NotFoundContent} from "../components/not-found-content";
 import {CRASH_RELOAD_STUCK_MS, RouteCrashRecovering, RouteCrashScreen} from "../components/route-crash-screen";
 import {AppShellFallback} from "../components/app-shell-fallback";
 import {useMarkAppMounted} from "../lib/app-mounted";
-import {captureHardLoadLocation} from "../lib/hard-load-location";
 import {FIZZY_LAKE_ATTRIBUTE, FIZZY_LAKE_FLAT_LOOK} from "../lib/fizzy-lake";
 import {isStaleChunkError, reloadForStaleChunk} from "../lib/stale-chunk-reload";
 import {getShellChinLabels} from "../lib/shell-chin-store";
@@ -63,9 +62,6 @@ import {startLaunchJourneys} from "../lib/perf/field-journeys";
 import {installPaletteFocusOrigin} from "../lib/palette-focus-origin";
 import {installVisualViewportHeight} from "../lib/visual-viewport-height";
 import {installViewportHeightAttributes} from "../lib/viewport-height-attributes";
-
-// At boot, before any lazily loaded route chunk could navigate away.
-captureHardLoadLocation();
 
 export const Route = createRootRouteWithContext<
 {

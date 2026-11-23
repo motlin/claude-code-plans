@@ -1,4 +1,4 @@
-import type {ReactNode} from "react";
+import {type ReactNode, useState} from "react";
 
 import {RAIL_CARD_RING_CLASS} from "./rail-row";
 
@@ -43,6 +43,8 @@ function CardGroup({
 	children: ReactNode;
 })
 {
+	// Upstream marks an unheld group shown at once; a delayed one gets data-shown and its label when the fade-in ends.
+	const [shown, setShown] = useState(hold === "none");
 	return (
 		<div
 			data-skeleton-group=""
@@ -50,8 +52,12 @@ function CardGroup({
 			data-motion="wave"
 			data-hold={hold}
 			data-hold-reason={holdReason}
-			// Upstream sets data-shown at once for an unheld group; a delayed one only gets it when the reveal ends.
-			data-shown={hold === "none" ? "" : undefined}
+			data-shown={shown ? "" : undefined}
+			onAnimationEnd={(event) =>
+			{
+				if (event.animationName === "placeholder-reveal" && event.target === event.currentTarget)
+					setShown(true);
+			}}
 			{...(label === undefined
 				?
 					{
@@ -65,7 +71,7 @@ function CardGroup({
 		>
 			{label !== undefined && (
 				<span className="sr-only" data-skeleton-label="true">
-					{label}
+					{shown ? label : ""}
 				</span>
 			)}
 			<div aria-hidden="true" className="contents">
