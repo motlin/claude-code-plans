@@ -3,9 +3,9 @@ import {useId} from "react";
 import type {ApprovalPresentation} from "../lib/approval-presentation";
 import type {QueuedApproval} from "../lib/approval-queue";
 import {runningToolLabel, runningToolLabelText} from "../lib/tool-labels";
-import {CARET_MOTION, LABEL_CLIP, ROW_CLASS, TOGGLE_STRETCHED} from "./thinking-step";
-import {CARET_STYLE, TURN_STATUS_ROW_STYLE} from "./turn-status-row-geometry";
-import {Icon} from "./ui/icon";
+import {LABEL_CLIP, ROW_CLASS, TOGGLE_STRETCHED} from "./thinking-step";
+import {TURN_STATUS_ROW_STYLE} from "./turn-status-row-geometry";
+import {DisclosureCaret} from "./ui/disclosure-caret";
 
 /**
  * A queued request's row label: a tool's (or question's) running label as its approval wait words it, else its name.
@@ -61,12 +61,7 @@ function QueuedStep({item}: {item: QueuedApproval})
 					className={TOGGLE_STRETCHED}
 				>
 					<span aria-hidden="true" className="inline-flex h-[1lh] items-center justify-center text-secondary">
-						<Icon
-							name="CaretDownSmall"
-							customSize={12}
-							style={CARET_STYLE}
-							className={`${CARET_MOTION} -rotate-90 page-rtl:rotate-90`}
-						/>
+						<DisclosureCaret open={false} customSize={12} />
 					</span>
 				</button>
 			</div>

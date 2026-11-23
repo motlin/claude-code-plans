@@ -9,14 +9,8 @@ import {turnStatusSwapKey} from "../lib/working-marker";
 import {ProseMarkdown} from "./file-refs";
 import {StepActions} from "./message-actions";
 import {ShimmerText} from "./shimmer-text";
-import
-{
-	CARET_STYLE,
-	TURN_STATUS_ROW_GEOMETRY,
-	TURN_STATUS_ROW_PAD_Y,
-	TURN_STATUS_ROW_STYLE,
-} from "./turn-status-row-geometry";
-import {Icon} from "./ui/icon";
+import {TURN_STATUS_ROW_GEOMETRY, TURN_STATUS_ROW_PAD_Y, TURN_STATUS_ROW_STYLE} from "./turn-status-row-geometry";
+import {DisclosureCaret} from "./ui/disclosure-caret";
 import {MorphSlot} from "./ui/morph-slot";
 
 /*
@@ -39,8 +33,6 @@ const TOGGLE_BASE =
 export const TOGGLE_STRETCHED = `${TOGGLE_BASE} static justify-center after:absolute after:inset-0 after:rounded after:content-[''] after:transition-shadow after:duration-[60ms] focus-visible:after:[box-shadow:inset_0_0_0_1px_var(--cds-fill-accent)]`;
 
 export const TOGGLE_UNSTRETCHED = `${TOGGLE_BASE} min-w-[1lh] justify-end rounded transition-shadow duration-[60ms] focus-visible:shadow-focus`;
-
-export const CARET_MOTION = "transition-transform duration-[60ms] motion-reduce:transition-none";
 
 const PANEL_CLASS =
 	"break-words ease-[cubic-bezier(0.165,0.84,0.44,1)] motion-reduce:transition-none data-[starting-style]:[clip-path:inset(-8px_-100vw_0_-100vw)] data-[ending-style]:[clip-path:inset(-8px_-100vw_0_-100vw)] data-[animating]:[clip-path:inset(-8px_-100vw_0_-100vw)] data-[starting-style]:contain-layout data-[ending-style]:contain-layout data-[animating]:contain-layout [--cds-disclosure-panel-height:var(--collapsible-panel-height)] h-auto overflow-visible transition-none duration-0 data-[ending-style]:h-auto data-[starting-style]:h-auto";
@@ -185,13 +177,7 @@ export function ThinkingStep({text, open, onOpenChange, live = false, title, act
 						aria-hidden="true"
 						className={`inline-flex h-[1lh] items-center justify-center ${open ? "text-secondary" : `${restInk} group-hover/step:text-secondary group-has-[:focus-visible]/step:text-secondary`}`}
 					>
-						<Icon
-							name="CaretDownSmall"
-							customSize={12}
-							data-open={open ? "" : undefined}
-							style={CARET_STYLE}
-							className={open ? CARET_MOTION : `${CARET_MOTION} -rotate-90 page-rtl:rotate-90`}
-						/>
+						<DisclosureCaret open={open} customSize={12} />
 					</span>
 				</BaseCollapsible.Trigger>
 				{inPlace && panel}

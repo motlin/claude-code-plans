@@ -9,6 +9,7 @@ import {useState} from "react";
 import {hookNoticeText} from "../lib/hook-notice-copy";
 import {cutUnterminatedPrivateKey, maskAndCap, stripDisplayControls} from "../lib/secret-mask";
 import type {HookNotice} from "../lib/transcript";
+import {DisclosureCaret} from "./ui/disclosure-caret";
 import {Icon} from "./ui/icon";
 
 function WarningIcon()
@@ -90,13 +91,7 @@ export function HookNoticeRow({notices, verbose}: {notices: readonly HookNotice[
 				{hasWarning && <WarningIcon />}
 				<span className="min-w-0 truncate text-body text-secondary group-hover/tool:text-primary">{label}</span>
 				<span className="shrink-0 text-secondary group-hover/tool:text-primary">
-					{/* Upstream's duration-fast is the local duration-[60ms] (ui/collapsible-classes.ts). */}
-					<Icon
-						name="CaretRightFilled"
-						customSize={14}
-						rotate={expanded ? 90 : 0}
-						className="transition-transform duration-[60ms] motion-reduce:transition-none"
-					/>
+					<DisclosureCaret open={expanded} customSize={14} />
 				</span>
 			</button>
 			{(expanded || mounted) && (

@@ -216,6 +216,52 @@ describe("HookNoticeRow", () =>
 		);
 	});
 
+	it("draws upstream's rS CaretDownSmall caret, turned -90deg while closed", () =>
+	{
+		function caret(container: HTMLElement)
+		{
+			const svg = container.querySelector("button span.truncate + span > svg");
+			const style = svg?.getAttribute("style") ?? "";
+			return {
+				span: svg?.parentElement?.className,
+				path: svg?.querySelector("path")?.getAttribute("d"),
+				size: `${svg?.getAttribute("width")} @ ${(svg as SVGElement | null)?.style.fontSize}`,
+				open: svg?.getAttribute("data-open"),
+				className: svg?.getAttribute("class"),
+				contain: style.includes("contain: layout paint"),
+				// jsdom's CSSStyleDeclaration drops `translate`, so the 0.5px nudge is checked live, not here.
+				pointerEvents: style.includes("pointer-events: none"),
+				rotateVar: style.includes("--cds-icon-rotate"),
+			};
+		}
+		const motion = "transition-transform duration-[60ms] motion-reduce:transition-none";
+		const shared =
+		{
+			span: "shrink-0 text-secondary group-hover/tool:text-primary",
+			path: "M7.8 9.9 12 14.1l4.2-4.2",
+			size: "1em @ calc(0.875rem * var(--cds-rem-scale, 1))",
+			contain: true,
+			pointerEvents: true,
+			rotateVar: false,
+		};
+		const closed = render(<HookNoticeRow notices={[NOTICE]} verbose={false} />);
+		const closedCaret = caret(closed.container);
+		cleanup();
+		const opened = render(<HookNoticeRow notices={[WARNING]} verbose={false} />);
+		expect([closedCaret, caret(opened.container)]).toStrictEqual([
+			{
+				...shared,
+				open: null,
+				className: `${motion} -rotate-90 page-rtl:rotate-90`,
+			},
+			{
+				...shared,
+				open: "",
+				className: motion,
+			},
+		]);
+	});
+
 	it("draws a lone recap collapsed and words it as Recap: in the body", () =>
 	{
 		const recap: HookNotice =
