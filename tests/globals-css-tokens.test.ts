@@ -136,6 +136,30 @@ describe("alpha-1 and alpha-2 tokens (upstream --cds-alpha-1/2, neutral-900 at 5
 	});
 });
 
+describe("fill-primary token (upstream --cds-fill-primary, neutral-900)", () =>
+{
+	it("defines the light and dark values", () =>
+	{
+		expect(
+			{
+				light: tokens(block(":root"), ["--upstream-fill-primary"]),
+				dark: tokens(block(".dark"), ["--upstream-fill-primary"]),
+			},
+		).toStrictEqual(
+			{
+				light:
+				{
+					"--upstream-fill-primary": "#0b0b0b",
+				},
+				dark:
+				{
+					"--upstream-fill-primary": "#fff",
+				},
+			},
+		);
+	});
+});
+
 describe("brand accent tokens (upstream --brand-100 / --oncolor-100)", () =>
 {
 	const UPSTREAM_BRAND_TOKENS = ["--upstream-brand-100", "--upstream-oncolor-100"] as const;
