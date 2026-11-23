@@ -87,6 +87,13 @@
 	white-space: normal;
 }
 
+/* A failed diagram's note sits inside the fence, out of reach of the top-level margin reset; upstream
+   gives it no block margin, leaving the fence's gap-xs as the only space above the code. */
+.markdown :global([data-mermaid-fence]) p[role="note"]
+{
+	margin-block: 0;
+}
+
 .markdown ul
 {
 	list-style-type: disc;

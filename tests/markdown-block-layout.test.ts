@@ -80,11 +80,23 @@ describe("markdown block layout", () =>
 		);
 	});
 
-	it("zeroes the block margins of every top-level block except hr", () =>
+	it("zeroes the block margins of every top-level block except hr, and of a failed diagram's nested note like upstream", () =>
 	{
-		expect(ruleDeclarations(markdownCss, ".markdown > :not(hr)")).toStrictEqual(
+		expect(
 			{
-				"margin-block": "0",
+				topLevel: ruleDeclarations(markdownCss, ".markdown > :not(hr)"),
+				mermaidNote: ruleDeclarations(markdownCss, '.markdown :global([data-mermaid-fence]) p[role="note"]'),
+			},
+		).toStrictEqual(
+			{
+				topLevel:
+				{
+					"margin-block": "0",
+				},
+				mermaidNote:
+				{
+					"margin-block": "0",
+				},
 			},
 		);
 	});
