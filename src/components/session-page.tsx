@@ -2237,6 +2237,7 @@ function SessionView({
 						held: cardHeld,
 						onEditRetry: hardBlockEditRetry.onEditRetry,
 						editRetryBusyFor: hardBlockEditRetry.busyFor,
+						sessionModel: lastAssistantModelFromRecords(transcript.records),
 					}
 				: null,
 		[latestBlock, transcript.records, hiddenUuids, cardHeld, hardBlockEditRetry],

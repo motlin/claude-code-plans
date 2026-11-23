@@ -606,6 +606,7 @@ describe("ApiErrorCard", () =>
 				held: false,
 				onEditRetry: () => true,
 				editRetryBusyFor: null,
+				sessionModel: null,
 			},
 		);
 		expect(

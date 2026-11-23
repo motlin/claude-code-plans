@@ -51,7 +51,8 @@ export function MessageBlockedCard({
 	const [choice, setChoice] = useState(() => hardBlockOpenMemory.get(uuid));
 	const open = choice ?? live;
 	if (block === null) return fallback;
-	const model = block.model ?? "";
+	// Upstream `kS`: `u?.model ?? (newest ? sessionModel : undefined) ?? ""`.
+	const model = block.model ?? (newest ? host.sessionModel : null) ?? "";
 	const onEditRetry = host.onEditRetry;
 	const canEditRetry = live && onEditRetry !== undefined && block.hasMessage;
 	const toggle = (next: boolean) =>

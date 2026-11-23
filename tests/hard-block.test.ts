@@ -84,6 +84,30 @@ describe("latestHardBlock", () =>
 		);
 	});
 
+	it("names the turn's earlier real model when the refusal row itself is synthetic", () =>
+	{
+		const synthetic = reply("r1", "refusal");
+		synthetic["message"] =
+		{
+			...(synthetic["message"] as Rec),
+			model: "<synthetic>",
+		};
+		const earlier = reply("a1", "tool_use");
+		earlier["message"] =
+		{
+			...(earlier["message"] as Rec),
+			model: "claude-sonnet-5-5",
+		};
+		const records = [prompt("p0"), reply("a0"), prompt("p1", "write it"), earlier, toolResult("t1"), synthetic];
+		expect(latestHardBlock(records, NOT_IN_FLIGHT)).toStrictEqual(
+			{
+				uuid: "r1",
+				model: "claude-sonnet-5-5",
+				hasMessage: true,
+			},
+		);
+	});
+
 	it("skips system rows and tool results between the prompt and the refusal", () =>
 	{
 		const records = [

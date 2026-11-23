@@ -29,7 +29,7 @@ function isRecord(value: unknown): value is Record<string, unknown>
 	return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function refusalModel(record: RawRecord): string | null
+function recordModel(record: RawRecord): string | null
 {
 	const message = record["message"];
 	if (!isRecord(message)) return null;
@@ -45,7 +45,8 @@ function stopReason(record: RawRecord): unknown
 
 /**
  * Port of upstream's `Ui`: walks back from `from`, skipping sidechain and `hidden` records, to the last
- * real prompt. The newest main-chain assistant record on the way must be a refusal.
+ * real prompt. The newest main-chain assistant record on the way must be a refusal. A synthetic refusal
+ * row names no model, so the turn's newest older real assistant row supplies it, as upstream's `s ??=`.
  */
 function scan(records: readonly RawRecord[], from: number, hidden: ReadonlySet<string>): HardBlock | null
 {
@@ -62,12 +63,17 @@ function scan(records: readonly RawRecord[], from: number, hidden: ReadonlySet<s
 			promptUuid = typeof uuid === "string" ? uuid : undefined;
 			break;
 		}
-		if (block !== null || record["type"] !== "assistant") continue;
+		if (record["type"] !== "assistant") continue;
+		if (block !== null)
+		{
+			block.model ??= recordModel(record);
+			continue;
+		}
 		if (stopReason(record) !== "refusal" || typeof uuid !== "string") return null;
 		block =
 		{
 			uuid,
-			model: refusalModel(record),
+			model: recordModel(record),
 		};
 	}
 	if (block === null) return null;

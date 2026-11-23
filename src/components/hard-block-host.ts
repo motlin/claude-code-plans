@@ -14,6 +14,8 @@ export interface HardBlockHost
 	/** Starts Edit and retry for a card; true when a rewind started. Undefined when the session can't rewind. */
 	onEditRetry: ((uuid: string) => boolean) | undefined;
 	editRetryBusyFor: string | null;
+	/** Upstream `Fc`'s `sessionModel`: names the model on the newest card when its turn has none. */
+	sessionModel: string | null;
 }
 
 /** Published by the session page while HARD_BLOCK_CARDS is on; null draws the legacy card. */

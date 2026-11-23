@@ -36,6 +36,7 @@ function host(overrides: Partial<HardBlockHost> = {}): HardBlockHost
 		held: false,
 		onEditRetry: vi.fn<(uuid: string) => boolean>(() => true),
 		editRetryBusyFor: null,
+		sessionModel: null,
 		...overrides,
 	};
 }
@@ -134,6 +135,34 @@ describe("MessageBlockedCard", () =>
 				buttons: ["Message blocked"],
 			},
 		);
+	});
+
+	it("names the session model on the newest card when its block has none, but not on an older card", () =>
+	{
+		const body = (uuid: string) =>
+		{
+			const view = card(
+				host(
+					{
+						latest:
+						{
+							...BLOCK,
+							model: null,
+						},
+						sessionModel: "claude-sonnet-5-5",
+					},
+				),
+				uuid,
+			);
+			if (uuid === "r0") fireEvent.click(disclosure());
+			const text = document.querySelector('[data-testid="hard-block-card"] p')?.textContent;
+			view.unmount();
+			return text;
+		};
+		expect([body("r1"), body("r0")]).toStrictEqual([
+			"Sonnet 5.5’s safeguards flagged this message. This sometimes happens with safe, normal conversations.",
+			"This model's safeguards flagged this message. This sometimes happens with safe, normal conversations.",
+		]);
 	});
 
 	it("draws the legacy card when no block matches the row", () =>
