@@ -73,7 +73,8 @@ describe("GoToLineBar", () =>
 						},
 					),
 				),
-				root: document.querySelector("[data-pane-editor]")?.className.split(" ").slice(0, 1),
+				root: document.querySelector("[data-pane-editor]")?.className,
+				toolbar: toolbarShape(),
 			},
 		).toStrictEqual(
 			{
@@ -89,7 +90,14 @@ describe("GoToLineBar", () =>
 				{
 					"aria-keyshortcuts": "Escape",
 				},
-				root: ["epitaxy-panel-subheader"],
+				root: "epitaxy-panel-subheader shrink-0 bg-alpha-1",
+				toolbar:
+				{
+					inPaneEditor: true,
+					cds: "Toolbar",
+					closeIsDirectChild: true,
+					closeCds: ["Button", "", ""],
+				},
 			},
 		);
 	});
@@ -154,6 +162,32 @@ describe("GoToLineBar", () =>
 		expect(onClose.mock.calls).toStrictEqual([[false]]);
 	});
 });
+
+function toolbarShape()
+{
+	const toolbar = screen.getByRole(
+		"toolbar",
+		{
+			name: "Go to line controls",
+		},
+	);
+	const close = screen.getByRole(
+		"button",
+		{
+			name: "Close go to line bar",
+		},
+	);
+	return {
+		inPaneEditor: toolbar.parentElement?.hasAttribute("data-pane-editor"),
+		cds: toolbar.dataset["cds"],
+		closeIsDirectChild: close.parentElement === toolbar,
+		closeCds: [
+			close.dataset["cds"],
+			close.getAttribute("data-cds-ghost"),
+			close.getAttribute("data-cds-icon-only"),
+		],
+	};
+}
 
 function attributes(element: Element): Record<string, string | null>
 {

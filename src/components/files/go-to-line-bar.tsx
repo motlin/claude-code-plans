@@ -5,6 +5,13 @@ import {Icon} from "../ui/icon";
 import {Field, TextInput} from "../ui/text-input";
 import {Tooltip} from "../ui/tooltip";
 
+/** Upstream's panel subheader around the bar: no padding of its own. */
+const SUBHEADER_CLASS = "epitaxy-panel-subheader shrink-0 bg-alpha-1";
+
+/** Upstream cds `Toolbar`: the panels' comfortable pads make it 44px tall with 8px padding and a 4px gap. */
+const TOOLBAR_CLASS =
+	"flex shrink-0 items-center gap-1 px-[var(--cds-toolbar-pad-inline,0px)] pt-[var(--cds-toolbar-pad-block,0.25rem)] pb-[var(--cds-toolbar-pad-block,0.25rem)]";
+
 /* Upstream's ghost icon-only close button at the control height. */
 const CLOSE_BUTTON =
 	"flex size-[var(--cds-h-control)] shrink-0 cursor-pointer items-center justify-center rounded-[var(--upstream-radius)] text-primary hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
@@ -68,7 +75,7 @@ export function GoToLineBar({caret, onGo, onClose, focusRequest = 0}: GoToLineBa
 		// oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- keeps focus in the input when the bar's chrome is pressed
 		<div
 			data-pane-editor="true"
-			className="epitaxy-panel-subheader flex h-auto min-h-[calc(var(--cds-h-control)+2*var(--cds-toolbar-pad-block,0.5rem))] shrink-0 items-center gap-[4px] bg-alpha-1 px-sm py-[var(--cds-toolbar-pad-block,0.5rem)]"
+			className={SUBHEADER_CLASS}
 			onMouseDown={(event) =>
 			{
 				if (event.target !== inputRef.current) event.preventDefault();
@@ -78,38 +85,49 @@ export function GoToLineBar({caret, onGo, onClose, focusRequest = 0}: GoToLineBa
 				if (!event.currentTarget.contains(event.relatedTarget)) onClose(false);
 			}}
 		>
-			<Field className="min-w-0 flex-1" invalid={invalid}>
-				<TextInput
-					ref={inputRef}
-					aria-label="Go to line"
-					placeholder="Line, or line:column"
-					autoComplete="off"
-					spellCheck={false}
-					value={text}
-					onChange={(event) =>
-					{
-						setText(event.target.value);
-					}}
-					onKeyDown={handleKeyDown}
-				/>
-			</Field>
-			<span aria-live="polite" className="text-footnote text-muted-as-secondary tabular-nums">
-				{invalid ? `Type a line number from 1 to ${caret.lines}` : `Line ${caret.line} of ${caret.lines}`}
-			</span>
-			<Tooltip content="Close" shortcut="esc">
-				<button
-					type="button"
-					aria-label="Close go to line bar"
-					aria-keyshortcuts="Escape"
-					onClick={() =>
-					{
-						onClose(true);
-					}}
-					className={CLOSE_BUTTON}
-				>
-					<Icon name="X" size="sm" />
-				</button>
-			</Tooltip>
+			<div role="toolbar" aria-label="Go to line controls" data-cds="Toolbar" className={TOOLBAR_CLASS}>
+				<div className="flex min-w-0 flex-1 items-center gap-1 self-stretch">
+					<div className="flex min-w-0 flex-1 items-center gap-[4px] min-h-control">
+						<Field className="min-w-0 flex-1" invalid={invalid}>
+							<TextInput
+								ref={inputRef}
+								aria-label="Go to line"
+								placeholder="Line, or line:column"
+								autoComplete="off"
+								spellCheck={false}
+								value={text}
+								onChange={(event) =>
+								{
+									setText(event.target.value);
+								}}
+								onKeyDown={handleKeyDown}
+							/>
+						</Field>
+						<span aria-live="polite" className="text-footnote text-muted-as-secondary tabular-nums">
+							{invalid
+								? `Type a line number from 1 to ${caret.lines}`
+								: `Line ${caret.line} of ${caret.lines}`}
+						</span>
+					</div>
+				</div>
+				<Tooltip content="Close" shortcut="esc" triggerIsChild>
+					<button
+						type="button"
+						data-cds="Button"
+						data-cds-ghost=""
+						data-cds-icon-only=""
+						aria-label="Close go to line bar"
+						aria-keyshortcuts="Escape"
+						onClick={() =>
+						{
+							onClose(true);
+						}}
+						className={CLOSE_BUTTON}
+					>
+						<Icon name="X" size="sm" />
+					</button>
+				</Tooltip>
+			</div>
 		</div>
 	);
 }
