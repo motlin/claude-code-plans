@@ -848,6 +848,10 @@ describe("Composer", () =>
 						(child) => child.getAttribute("data-testid") ?? child.className,
 					),
 					modelSlot: screen.getByTestId("environment-bar-model").className,
+					modelGroup: Array.from(
+						screen.getByTestId("environment-bar-model").children,
+						(child) => child.className,
+					),
 					modelWrapper: model.parentElement?.closest(`[class="${SLOT}"]`) !== null,
 					mode: screen.getByTestId("environment-bar-mode").className,
 					ringSlot: screen
@@ -868,6 +872,7 @@ describe("Composer", () =>
 					pickers: "flex grow items-center justify-end gap-x-1",
 					order: ["environment-bar-model", "environment-bar-mode", SLOT],
 					modelSlot: "flex items-center gap-1 empty:hidden",
+					modelGroup: [SLOT, "flex empty:hidden"],
 					modelWrapper: true,
 					mode: `${SLOT} shrink-0`,
 					ringSlot: SLOT,

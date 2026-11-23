@@ -661,6 +661,8 @@ export const ComposerChin = memo(function ComposerChin({
 				<div ref={pickersRef} className={ENVIRONMENT_PICKERS_CLASS}>
 					<div data-testid="environment-bar-model" className="flex items-center gap-1 empty:hidden">
 						<div className={ENVIRONMENT_SLOT_CLASS}>{modelMenu}</div>
+						{/* Upstream's second model-group slot, empty here. */}
+						<div className="flex empty:hidden" />
 					</div>
 					<div
 						ref={attachModeSlot}
