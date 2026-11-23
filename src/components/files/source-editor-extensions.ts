@@ -129,7 +129,7 @@ export const sourceEditorThemeSpec =
 		".cm-fold-open":
 		{
 			opacity: 0,
-			transition: "opacity var(--cds-dur-base, 150ms) ease-out",
+			transition: "opacity var(--cds-dur-base, 150ms) var(--cds-ease-out)",
 		},
 		".cm-gutters:hover .cm-fold-open":
 		{

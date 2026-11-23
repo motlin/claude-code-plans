@@ -509,6 +509,20 @@ describe("SourceEditor folding", () =>
 	it("folds markdown headings from the gutter chevron and unfolds from the placeholder", () =>
 	{
 		const {container} = render(<SourceEditor value={"# A\nx\n## B\ny"} readOnly language="markdown" />);
+		// Upstream fades the hover-revealed chevron on its --cds-ease-out curve.
+		expect(sourceEditorThemeSpec["@media (hover: hover) and (pointer: fine)"]).toStrictEqual(
+			{
+				".cm-fold-open":
+				{
+					opacity: 0,
+					transition: "opacity var(--cds-dur-base, 150ms) var(--cds-ease-out)",
+				},
+				".cm-gutters:hover .cm-fold-open":
+				{
+					opacity: 1,
+				},
+			},
+		);
 		const markers = [...container.querySelectorAll(".cm-fold-open")].map((marker) => [
 			marker.getAttribute("title"),
 			marker.querySelector("svg path")?.getAttribute("d"),
