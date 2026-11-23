@@ -166,6 +166,8 @@ describe("AttachedContextChips cds tiles", () =>
 				],
 				card: [
 					"[--card-ring-color:var(--upstream-border-strong)]",
+					"[--ring-inner:var(--sb-field-hairline)]",
+					"[--ring-outer:0px]",
 					"after:absolute",
 					"after:content-['']",
 					"after:inset-0",

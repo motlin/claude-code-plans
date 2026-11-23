@@ -4,9 +4,9 @@
 export const TILE_CLASS =
 	"group/tile relative isolate size-[7.5rem] shrink-0 rounded-r7 outline-none focus-visible:shadow-focus";
 
-/** Upstream's xs Card: a hairline border-strong ring that turns into the focus ring for a focused CardLink. */
+/** Upstream's xs Card: an inset one-device-pixel border-strong ring that turns into the focus ring for a focused CardLink. */
 export const CARD_CLASS =
-	"group/card relative isolate flex flex-col rounded-card-xs after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] after:shadow-card-ring after:content-[''] has-[[data-cds=CardLink]:focus-visible]:after:shadow-focus size-full [--card-ring-color:var(--upstream-border-strong)]";
+	"group/card relative isolate flex flex-col rounded-card-xs after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] after:shadow-card-ring after:content-[''] has-[[data-cds=CardLink]:focus-visible]:after:shadow-focus size-full [--card-ring-color:var(--upstream-border-strong)] [--ring-inner:var(--sb-field-hairline)] [--ring-outer:0px]";
 
 export const CARD_FILL_CLASS =
 	"cds-card-fill pointer-events-none absolute inset-0 -z-[1] m-0 rounded-[inherit] bg-surface-3 shadow-field-drop";

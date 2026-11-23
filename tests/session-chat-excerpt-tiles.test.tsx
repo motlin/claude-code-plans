@@ -314,6 +314,13 @@ describe("SessionChat user row diff comment tiles", () =>
 			{
 				findOmitted: row?.getAttribute("data-find-omitted"),
 				tiles: Array.from(row?.querySelectorAll("[data-cds=MessageAttachmentsQuote]") ?? []).map(tileSummary),
+				missingCardClasses: [
+					"rounded-card-xs",
+					"[--ring-inner:var(--sb-field-hairline)]",
+					"[--ring-outer:0px]",
+				].filter(
+					(name) => row?.querySelector("[data-cds=Card][data-size=xs]")?.classList.contains(name) !== true,
+				),
 				bubbleHasComments: bubble?.textContent.includes("In `"),
 				bubbleText: bubble?.textContent,
 			},
@@ -329,6 +336,7 @@ describe("SessionChat user row diff comment tiles", () =>
 						"component-file-name.tsx:120",
 					),
 				],
+				missingCardClasses: [],
 				bubbleHasComments: false,
 				bubbleText:
 					"[upstream-sync test] Reply with only the word ok. Do nothing else: no tools, no files, no commands.\n\nThanks",

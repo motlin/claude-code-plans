@@ -440,8 +440,8 @@ html[data-interface-font="dyslexic"]
 	--radius-card: calc(var(--upstream-radius) + 0.25rem);
 	/* Upstream cds rounded-chip (DiffIndicator, xs Badge): 4.5px */
 	--radius-chip: 4.5px;
-	/* Upstream cds xs Card (the composer attachment tile): 9px inside the 10px tile */
-	--radius-card-xs: 9px;
+	/* Upstream cds xs Card (composer and sent attachment tiles): rounded-card under [data-size=xs], .375rem + .25rem = 10px */
+	--radius-card-xs: 10px;
 	/* Upstream stacks (fizzy colour) outline Badge, e.g. the composer Quote row's xs With reply badge: 9px */
 	--radius-badge-outline: 9px;
 	/* Upstream claude.ai/code — size sm Button (hover card option chips) */
