@@ -27,7 +27,7 @@ import
 	subscribeMermaidLoad,
 } from "../lib/mermaid-gate";
 import {RenderErrorBoundary} from "./render-error-boundary";
-import {Skeleton} from "./ui/skeleton";
+import {Skeleton, SkeletonGroup} from "./ui/skeleton";
 
 /**
  * Upstream's `code_mermaid_fence` lazy entry: the fence, its renderer, the sanitizer and the theme load on the
@@ -52,9 +52,11 @@ export function MermaidPlaceholder()
 {
 	return (
 		<div data-testid="epitaxy-mermaid-fence-placeholder">
-			<div className="rounded-[var(--msg-block-radius,0.5rem)] border-0.5 border p-4">
-				<Skeleton className="h-[88px] w-full rounded-md" />
-			</div>
+			<SkeletonGroup hold="delayed" status>
+				<div className="rounded-[var(--msg-block-radius,0.5rem)] border-0.5 border p-4">
+					<Skeleton decorative className="h-[88px] w-full rounded-md" />
+				</div>
+			</SkeletonGroup>
 		</div>
 	);
 }

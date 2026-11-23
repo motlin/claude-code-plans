@@ -139,7 +139,7 @@ describe("MermaidFence (upstream EpitaxyMermaidFence)", () =>
 				className: root.className,
 				busy: root.getAttribute("aria-busy"),
 				layers: layers(container),
-				placeholder: placeholder?.innerHTML.replace(/<span class="sr-only">Loading<\/span>/, ""),
+				placeholder: placeholder?.innerHTML,
 				toolbar: container.querySelector("[data-placement]"),
 			},
 		).toStrictEqual(
@@ -165,7 +165,7 @@ describe("MermaidFence (upstream EpitaxyMermaidFence)", () =>
 						holds: "diagram",
 					},
 				],
-				placeholder: `<div class="rounded-[var(--msg-block-radius,0.5rem)] border-0.5 border p-4"><div data-cds="Skeleton" role="status" class="relative max-w-full overflow-hidden bg-[var(--skeleton-base)] after:absolute after:inset-0 after:animate-[shimmer_2s_linear_infinite] after:bg-[linear-gradient(90deg,transparent,var(--skeleton-sheen),transparent)] motion-reduce:after:hidden h-[88px] w-full rounded-md"></div></div>`,
+				placeholder: `<div data-cds="SkeletonGroup" data-motion="wave" data-hold="delayed" role="status"><span class="sr-only" data-skeleton-label="true"></span><div aria-hidden="true" class="contents"><div class="rounded-[var(--msg-block-radius,0.5rem)] border-0.5 border p-4"><div data-cds="Skeleton" class="max-w-full rounded bg-[var(--skeleton-base)] h-[88px] w-full rounded-md"></div></div></div></div>`,
 				toolbar: null,
 			},
 		);

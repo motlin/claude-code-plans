@@ -46,16 +46,20 @@ export function Skeleton({
 }
 
 /**
- * Upstream's decorative cds SkeletonGroup (`$n`): no role or label, its children hidden from assistive tech.
+ * Upstream's cds SkeletonGroup. The default is decorative (`$n`): no role or label, its children hidden from
+ * assistive tech. `status` is upstream's labelled group: the group itself is the `role=status` region with an empty
+ * sr-only `data-skeleton-label` span, and only its bars are hidden.
  * `hold="delayed"` fades the group in after `--placeholder-reveal-delay` (0.5s); `"none"` shows it at once.
  */
 export function SkeletonGroup({
 	hold,
 	holdReason,
+	status = false,
 	children,
 }: {
 	hold: "delayed" | "none";
 	holdReason?: string;
+	status?: boolean;
 	children: ReactNode;
 })
 {
@@ -65,8 +69,10 @@ export function SkeletonGroup({
 			data-motion="wave"
 			data-hold={hold}
 			data-hold-reason={holdReason}
-			aria-hidden="true"
+			role={status ? "status" : undefined}
+			aria-hidden={status ? undefined : "true"}
 		>
+			{status ? <span className="sr-only" data-skeleton-label="true" /> : null}
 			<div aria-hidden="true" className="contents">
 				{children}
 			</div>
