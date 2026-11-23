@@ -61,7 +61,7 @@ interface FileRefProps
 	 */
 	document?: boolean | undefined;
 	/**
-	 * Upstream's "diagram" markdown context (assistant transcript text, document prose): mermaid fences draw as diagrams
+	 * Upstream's "diagram" markdown context (assistant transcript text, the Files-pane preview): mermaid fences draw as diagrams
 	 * instead of code blocks.
 	 */
 	diagrams?: boolean | undefined;

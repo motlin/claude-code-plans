@@ -179,23 +179,13 @@ describe("which markdown surfaces draw mermaid (upstream's diagram vs code conte
 		expect(transcriptFences(records)).toStrictEqual([]);
 	});
 
-	it("draws plan documents with a lightbox store, as upstream's document prose does", () =>
-	{
-		const {container} = render(<MarkdownView markdown={FENCE} document />);
-		expect(
-			[...container.querySelectorAll<HTMLElement>("[data-testid=island]")].map((island) => [
-				island.textContent,
-				island.dataset["lightbox"],
-			]),
-		).toStrictEqual([["graph TD; A-->B", "store"]]);
-	});
-
-	it("keeps prose markdown, plans and memories as code unless asked", () =>
+	it("keeps prose markdown, plan documents and memories as code, as upstream's Plan pane does", () =>
 	{
 		const {container} = render(
 			<>
 				<ProseMarkdown markdown={FENCE} />
 				<MarkdownView markdown={FENCE} />
+				<MarkdownView markdown={FENCE} document />
 			</>,
 		);
 		expect(
@@ -206,7 +196,7 @@ describe("which markdown surfaces draw mermaid (upstream's diagram vs code conte
 		).toStrictEqual(
 			{
 				fences: 0,
-				codeBlocks: 2,
+				codeBlocks: 3,
 			},
 		);
 	});
