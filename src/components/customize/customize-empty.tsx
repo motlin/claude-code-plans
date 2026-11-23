@@ -11,10 +11,10 @@ export function CustomizeWarningNotice({message, action}: {message: ReactNode; a
 	return (
 		<div
 			role="alert"
-			className="flex items-start gap-2 rounded-card bg-[var(--upstream-bg-warning)] px-3 py-3 text-body text-upstream-warning shadow-[inset_0_0_0_1px_var(--upstream-border-warning)]"
+			className="flex items-start gap-xs rounded-card bg-[var(--upstream-bg-warning)] px-lg py-md text-body text-upstream-warning shadow-[inset_0_0_0_1px_var(--upstream-border-warning)]"
 		>
 			<Icon name="Warning" customSize={20} />
-			<div className="flex min-w-0 flex-1 flex-wrap items-start gap-x-3 gap-y-2">
+			<div className="flex min-w-0 flex-1 flex-wrap items-start gap-x-md gap-y-sm">
 				<div className="max-w-full min-w-0 flex-auto">{message}</div>
 				{action}
 			</div>

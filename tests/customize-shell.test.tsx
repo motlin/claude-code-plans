@@ -2226,7 +2226,14 @@ describe("UnifiedSearchResults", () =>
 				},
 				alert:
 				{
-					classes: expect.arrayContaining(["flex", "items-start", "gap-2", "rounded-card", "px-3", "py-3"]),
+					classes: expect.arrayContaining([
+						"flex",
+						"items-start",
+						"gap-xs",
+						"rounded-card",
+						"px-lg",
+						"py-md",
+					]),
 					text: "Couldn\u2019t finish searching.Retry",
 				},
 				yours: 1,
@@ -4039,6 +4046,8 @@ describe("customize first-run card in the dialog", () =>
 			button: within(notice).getByRole("button").textContent,
 			skeleton: screen.queryByTestId("customize-section-skeleton"),
 			ring: notice.className.split(" ").filter((name) => name.startsWith("shadow-")),
+			spacing: notice.className.split(" ").filter((name) => /^(px|py|gap)-/.test(name)),
+			wrapperSpacing: notice.children[1]?.className.split(" ").filter((name) => name.startsWith("gap-")),
 		};
 		fireEvent.click(
 			within(notice).getByRole(
@@ -4064,6 +4073,8 @@ describe("customize first-run card in the dialog", () =>
 					button: "Try again",
 					skeleton: null,
 					ring: ["shadow-[inset_0_0_0_1px_var(--upstream-border-warning)]"],
+					spacing: ["gap-xs", "px-lg", "py-md"],
+					wrapperSpacing: ["gap-x-md", "gap-y-sm"],
 				},
 				pluginReads: 2,
 				alert: null,
