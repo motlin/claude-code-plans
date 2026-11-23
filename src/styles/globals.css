@@ -4118,7 +4118,7 @@ main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-reg
 /* Upstream --cds-gray-450. */
 .dark [data-cds="ShimmerText"][data-shimmering="true"][data-variant="strong"]
 {
-	--cds-shimmer-text-peak: #7b7974;
+	--cds-shimmer-text-peak: #797979;
 }
 
 [data-cds="ShimmerText"][data-shimmering="true"]:not([data-shimmer-mode="fallback"])

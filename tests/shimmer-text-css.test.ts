@@ -55,7 +55,7 @@ describe("ShimmerText CSS", () =>
 					"--cds-shimmer-text-ink: var(--upstream-text-muted); --cds-shimmer-text-peak: color-mix(in srgb, var(--upstream-text-muted) 30%, white);",
 				muted: "--cds-shimmer-text-ink: var(--upstream-text-muted); --cds-shimmer-text-peak: color-mix(in srgb, var(--upstream-text-muted) 30%, white);",
 				strong: "--cds-shimmer-text-ink: var(--upstream-text-primary); --cds-shimmer-text-peak: color-mix(in srgb, var(--upstream-text-primary) 45%, white); --cds-shimmer-text-band-stops: var(--cds-shimmer-text-bell-band-stops); --cds-shimmer-text-keyframes: cds-shimmer-text-band-strong; --cds-shimmer-text-keyframes-rtl: cds-shimmer-text-band-strong-rtl;",
-				strongDark: "--cds-shimmer-text-peak: #7b7974;",
+				strongDark: "--cds-shimmer-text-peak: #797979;",
 			},
 		);
 	});
