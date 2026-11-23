@@ -1,5 +1,5 @@
 import {useQuery} from "@tanstack/react-query";
-import {Gauge, X} from "lucide-react";
+import {X} from "lucide-react";
 import {usageQueryOptions} from "../lib/api/usage";
 import type {MouseEvent, ReactElement, ReactNode} from "react";
 import {useNow} from "../hooks/use-now";
@@ -16,8 +16,10 @@ import {useUsageBandDismissals, writeUsageBandDismissal} from "../lib/usage-pace
 /**
  * Upstream's band shell (`uc`): an icon slot, a wrapping body whose words put the headline and
  * detail on one baseline 10px apart (the detail wrapping under it on a narrow dock), and an
- * optional Dismiss slot. Live region `polite`, centred on the first line via `1lh`. The exceeded
- * band inks its icon and headline `danger`; the detail is always muted. Under a notice region the
+ * optional Dismiss slot. Live region `polite`, centred on the first line via `1lh`. Its sm cds
+ * UsageGauge glyph is Middle in `text-muted-as-secondary` for the approaching and on-pace bands
+ * (upstream kind `approaching`) and High in `text-danger` for the exceeded band, which also inks
+ * its headline danger; the detail is always muted. Under a notice region the
  * band draws as a cds Banner card instead: a cds UsageGauge glyph (Middle approaching, High reached) and
  * a `text-muted-as-secondary` detail.
  */
@@ -72,7 +74,13 @@ function UsageBandShell({
 	}
 	return (
 		<BandShell
-			icon={<Gauge className={`size-4 ${danger ? "text-danger-000" : "text-ink-muted"}`} aria-hidden="true" />}
+			icon={
+				<Icon
+					name={danger ? "UsageGaugeHigh" : "UsageGaugeMiddle"}
+					size="sm"
+					className={danger ? "text-danger" : "text-muted-as-secondary"}
+				/>
+			}
 			{...(actions === undefined
 				? {}
 				:

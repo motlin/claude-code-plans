@@ -467,6 +467,14 @@ describe("UsagePaceBand", () =>
 				ariaLive: band.getAttribute("aria-live"),
 				band: band.className,
 				icon: band.firstElementChild?.className,
+				glyph:
+				{
+					className: band.firstElementChild?.firstElementChild?.getAttribute("class"),
+					size: band.firstElementChild?.firstElementChild?.getAttribute("style"),
+					paths: [...(band.firstElementChild?.querySelectorAll("path") ?? [])].map((path) =>
+						path.getAttribute("d"),
+					),
+				},
 				body: words?.parentElement?.parentElement?.className,
 				wordsWrapper: words?.parentElement?.className,
 				words: words?.className,
@@ -480,6 +488,12 @@ describe("UsagePaceBand", () =>
 				ariaLive: "polite",
 				band: "flex gap-[5px] w-full min-h-[40px] p-[8px] rounded-r7 bg-alpha-1 items-start py-[calc((40px-1lh)/2)] text-body usage-band-enter",
 				icon: "flex h-[1lh] shrink-0 items-center",
+				glyph:
+				{
+					className: "text-muted-as-secondary",
+					size: "flex-shrink: 0; font-size: calc(1rem * var(--cds-rem-scale, 1));",
+					paths: USAGE_GAUGE_MIDDLE,
+				},
 				body: "flex min-w-0 flex-1 flex-wrap gap-x-[8px] gap-y-[8px] items-start",
 				wordsWrapper: "min-w-0 max-w-full flex-auto",
 				words: "flex flex-wrap items-baseline gap-x-2.5 gap-y-0.75",
@@ -559,6 +573,9 @@ describe("usage limit reached", () =>
 				{
 					text: band.textContent,
 					icon: band.firstElementChild?.firstElementChild?.getAttribute("class"),
+					glyph: [...(band.firstElementChild?.querySelectorAll("path") ?? [])].map((path) =>
+						path.getAttribute("d"),
+					),
 					headline: headline.className,
 					detail: detail.parentElement?.className,
 					dismiss: screen.queryByRole(
@@ -571,7 +588,8 @@ describe("usage limit reached", () =>
 			).toStrictEqual(
 				{
 					text: "Weekly limit reachedResets at 6:00 PM",
-					icon: "lucide lucide-gauge size-4 text-danger-000",
+					icon: "text-danger",
+					glyph: USAGE_GAUGE_HIGH,
 					headline: "min-w-0 text-danger-000",
 					detail: "min-w-0 text-ink-muted",
 					dismiss: null,
@@ -748,8 +766,14 @@ describe("usage limit band with held messages", () =>
 	});
 });
 
-/* The UsageGauge glyphs' shared dial; the needle points up (Middle) or toward the red end (High). */
-const USAGE_GAUGE_ARC = "M3.34 19a10 10 0 1 1 17.32 0";
+/*
+ * The UsageGauge glyphs' shared dial, redrawn as strokes on upstream's measured geometry: a 266° arc and a hub
+ * at (12, 13.2); the needle points up (Middle) or 30° below horizontal toward the dial's high end (High).
+ */
+const USAGE_GAUGE_ARC = "M5.94 19.66a8.86 8.86 0 1 1 12.12 0";
+const USAGE_GAUGE_HUB = "M13.15 13.2a1.15 1.15 0 1 1-2.3 0 1.15 1.15 0 0 1 2.3 0Z";
+const USAGE_GAUGE_MIDDLE = [USAGE_GAUGE_ARC, "M12 13.2V8.86", USAGE_GAUGE_HUB];
+const USAGE_GAUGE_HIGH = [USAGE_GAUGE_ARC, "m12 13.2 3.76 2.17", USAGE_GAUGE_HUB];
 
 const BANNER_CLASS =
 	"flex items-start gap-xs py-[calc(var(--cds-pad-md)+2px)] font-sans text-body font-normal break-words px-md rounded-composer bg-page shadow-[inset_0_0_0_1px_var(--banner-line)] text-primary @container";
@@ -829,7 +853,7 @@ describe("usage band as a notice card", () =>
 					iconSlot: "flex min-h-[1lh] shrink-0 items-center ms-[4px] -me-[4px] text-secondary",
 					icon: null,
 					gauge: "usage-limit-card-gauge",
-					glyph: [USAGE_GAUGE_ARC, "m12 14 5.2-2.6"],
+					glyph: USAGE_GAUGE_HIGH,
 					body: "flex min-w-0 flex-wrap items-start gap-y-sm gap-x-md flex-1 ms-[4px]",
 					content: "max-w-full min-w-0 flex-auto [text-wrap:pretty]",
 					words:
@@ -901,7 +925,7 @@ describe("usage band as a notice card", () =>
 		).toStrictEqual(
 			{
 				testId: "usage-limit-approaching-card",
-				gauge: [USAGE_GAUGE_ARC, "M12 14V8"],
+				gauge: USAGE_GAUGE_MIDDLE,
 				detail: "min-w-0 text-muted-as-secondary",
 				text: "On pace to hit your weekly limit early29% used · Resets Tue, Oct 6, 4:00 AM",
 				lastChild: true,

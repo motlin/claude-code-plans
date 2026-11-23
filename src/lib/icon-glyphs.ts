@@ -296,7 +296,11 @@ function Reorder({strokeWidth, ...props}: GlyphProps)
 	);
 }
 
-/** Upstream's `UsageGauge*` dial: lucide Gauge's arc with the needle at the level the name gives. */
+/**
+ * Upstream's `UsageGauge*` dial, redrawn as strokes on the Anthropicons glyphs' measured geometry (U+E12F/U+E130,
+ * re-measured 2026-11-23): a 266° arc of radius 8.86 open at the bottom, a filled hub at (12, 13.2), and a 4.34-long
+ * needle at the angle the name gives. The font's own outlines are not copied: it carries no redistribution license.
+ */
 function usageGauge(needle: string)
 {
 	return function UsageGauge({strokeWidth, ...props}: GlyphProps)
@@ -315,7 +319,7 @@ function usageGauge(needle: string)
 			createElement(
 				"path",
 				{
-					d: "M3.34 19a10 10 0 1 1 17.32 0",
+					d: "M5.94 19.66a8.86 8.86 0 1 1 12.12 0",
 				},
 			),
 			createElement(
@@ -324,15 +328,23 @@ function usageGauge(needle: string)
 					d: needle,
 				},
 			),
+			createElement(
+				"path",
+				{
+					d: "M13.15 13.2a1.15 1.15 0 1 1-2.3 0 1.15 1.15 0 0 1 2.3 0Z",
+					fill: "currentColor",
+					stroke: "none",
+				},
+			),
 		);
 	};
 }
 
 /** Upstream's `UsageGaugeMiddle` (approaching a limit): the needle straight up. */
-const UsageGaugeMiddle = usageGauge("M12 14V8");
+const UsageGaugeMiddle = usageGauge("M12 13.2V8.86");
 
-/** Upstream's `UsageGaugeHigh` (limit reached): the needle swung toward the dial's high end. */
-const UsageGaugeHigh = usageGauge("m12 14 5.2-2.6");
+/** Upstream's `UsageGaugeHigh` (limit reached): the needle 30° below horizontal, toward the dial's high end. */
+const UsageGaugeHigh = usageGauge("m12 13.2 3.76 2.17");
 
 export const DRAWN_GLYPHS =
 {
