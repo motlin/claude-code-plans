@@ -272,42 +272,72 @@ describe("nav scroll", () =>
 		]);
 	});
 
-	it("sets data-scrolled only once scrolled more than 2px, like upstream's L$", () =>
+	it("sets data-scrolled on the parent df-nav-scroll-box only once scrolled more than 2px, like upstream's L$", () =>
 	{
 		render(
-			<NavScroll>
-				<div>content</div>
-			</NavScroll>,
+			<div className="df-nav-scroll-box">
+				<NavScroll>
+					<div>content</div>
+				</NavScroll>
+			</div>,
 		);
 		const scroller = screen.getByTestId("nav-scroll");
-		expect(scroller.hasAttribute("data-scrolled")).toBe(false);
-
-		act(() =>
+		const box = scroller.parentElement!;
+		const states:
 		{
-			scroller.scrollTop = 2;
-			fireEvent.scroll(scroller);
-		});
-		expect(scroller.hasAttribute("data-scrolled")).toBe(false);
-
-		act(() =>
+			box: boolean;
+			scroller: boolean;
+		}[] = [];
+		const record = (): void =>
 		{
-			scroller.scrollTop = 3;
-			fireEvent.scroll(scroller);
-		});
-		expect(scroller.hasAttribute("data-scrolled")).toBe(true);
-
-		act(() =>
+			states.push(
+				{
+					box: box.hasAttribute("data-scrolled"),
+					scroller: scroller.hasAttribute("data-scrolled"),
+				},
+			);
+		};
+		record();
+		for (const top of [2, 3, 40, 0])
 		{
-			scroller.scrollTop = 40;
-			fireEvent.scroll(scroller);
-		});
-		expect(scroller.hasAttribute("data-scrolled")).toBe(true);
-
-		act(() =>
-		{
-			scroller.scrollTop = 0;
-			fireEvent.scroll(scroller);
-		});
-		expect(scroller.hasAttribute("data-scrolled")).toBe(false);
+			act(() =>
+			{
+				scroller.scrollTop = top;
+				fireEvent.scroll(scroller);
+			});
+			record();
+		}
+		expect(
+			{
+				states,
+				maskTokens: scroller.className.split(" ").filter((token) => token.includes("mask-image")),
+			},
+		).toStrictEqual(
+			{
+				states: [
+					{
+						box: false,
+						scroller: false,
+					},
+					{
+						box: false,
+						scroller: false,
+					},
+					{
+						box: true,
+						scroller: false,
+					},
+					{
+						box: true,
+						scroller: false,
+					},
+					{
+						box: false,
+						scroller: false,
+					},
+				],
+				maskTokens: [],
+			},
+		);
 	});
 });

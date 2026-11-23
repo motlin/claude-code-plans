@@ -13,7 +13,8 @@ function revealRow(scroller: HTMLElement, row: HTMLElement): void
 
 /**
  * The sidebar's scrolling region (upstream `.dframe-nav-scroll`). Once scrolled
- * away from the top it sets `data-scrolled`, which fades the top 12px out. Like
+ * away from the top it sets `data-scrolled` on its parent `.df-nav-scroll-box`, whose
+ * ::after draws upstream's 1px hairline under the header. Like
  * upstream, it scrolls the open session's row into view when that session
  * changes, waiting for the row if the list has not rendered it yet.
  */
@@ -52,17 +53,21 @@ export function NavScroll({activeKey = null, children}: {activeKey?: string | nu
 		};
 	}, [activeKey]);
 
+	useEffect(() =>
+	{
+		ref.current?.parentElement?.toggleAttribute("data-scrolled", scrolled);
+	}, [scrolled]);
+
 	return (
 		<div
 			ref={ref}
 			data-testid="nav-scroll"
-			data-scrolled={scrolled ? "" : undefined}
 			onScroll={(event) =>
 			{
 				// Upstream `L$`: `l(scrollTop > 2)`.
 				setScrolled(event.currentTarget.scrollTop > 2);
 			}}
-			className="relative -ml-1 -mr-2 flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto pl-1 pr-2 scroll-pt-1 [scrollbar-gutter:stable] [scrollbar-width:thin] data-[scrolled]:[mask-image:linear-gradient(transparent_0px,#000_12px)]"
+			className="relative -ml-1 -mr-2 flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto pl-1 pr-2 scroll-pt-1 [scrollbar-gutter:stable] [scrollbar-width:thin]"
 		>
 			{children}
 		</div>

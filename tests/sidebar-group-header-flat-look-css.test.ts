@@ -45,6 +45,15 @@ function missing(rules: readonly string[]): string[]
 
 describe("sidebar group header flat-look CSS", () =>
 {
+	it("draws upstream's scrolled hairline above the nav scroll box instead of a mask fade", () =>
+	{
+		expect(
+			missing([
+				'.df-nav-scroll-box[data-scrolled]::after { content: ""; border-block-end: 1px solid var(--color-border-line); pointer-events: none; position: absolute; inset-block-end: 100%; inset-inline: -8px; }',
+			]),
+		).toStrictEqual([]);
+	});
+
 	it("remaps the label's muted and secondary inks to primary in the hub-rail sidebar, keeping the mark's own inks", () =>
 	{
 		expect(

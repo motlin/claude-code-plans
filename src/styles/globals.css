@@ -6271,6 +6271,20 @@ html[data-reduce-motion="true"] [data-cds="SkeletonGroup"][data-hold="delayed"]
 }
 
 /*
+ * Upstream's scrolled sidebar (shared-styles-B5uSiZmZ `div.df-nav-scroll-box[data-scrolled]:after`): once the
+ * nav scroller leaves the top, a 1px border-line hairline sits just above the box, under the header.
+ */
+.df-nav-scroll-box[data-scrolled]::after
+{
+	content: "";
+	border-block-end: 1px solid var(--color-border-line);
+	pointer-events: none;
+	position: absolute;
+	inset-block-end: 100%;
+	inset-inline: -8px;
+}
+
+/*
  * Upstream's web sidebar headings (c6a992d55; the fizzy-lake `color` gate dropped between
  * shared-styles-BM0lMNTW and -B2jCwgFx): a group label's muted and secondary inks read as primary,
  * which is the .9 ink measured live on header hover, while its custom group mark keeps the sidebar's
