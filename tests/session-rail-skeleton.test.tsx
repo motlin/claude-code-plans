@@ -78,12 +78,51 @@ describe("session rail skeleton", () =>
 		);
 	});
 
-	it("holds both groups back for upstream's delayed reveal", () =>
+	it("holds both groups back for upstream's delayed reveal, and shows them at once for a handoff", () =>
 	{
-		const {container} = render(<SessionRailSkeleton hold="delayed" />);
+		const holds = (container: HTMLElement) =>
+			[...container.querySelectorAll("[data-skeleton-group]")].map((group) => (
+			{
+				hold: group.getAttribute("data-hold"),
+				reason: group.getAttribute("data-hold-reason"),
+				shown: group.getAttribute("data-shown"),
+			}));
+		const delayed = holds(render(<SessionRailSkeleton hold="delayed" />).container);
+		cleanup();
+		const handoff = holds(render(<SessionRailSkeleton hold="none" holdReason="handoff" />).container);
 
 		expect(
-			[...container.querySelectorAll("[data-skeleton-group]")].map((group) => group.getAttribute("data-hold")),
-		).toStrictEqual(["delayed", "delayed"]);
+			{
+				delayed,
+				handoff,
+			},
+		).toStrictEqual(
+			{
+				delayed: [
+					{
+						hold: "delayed",
+						reason: null,
+						shown: null,
+					},
+					{
+						hold: "delayed",
+						reason: null,
+						shown: null,
+					},
+				],
+				handoff: [
+					{
+						hold: "none",
+						reason: "handoff",
+						shown: "",
+					},
+					{
+						hold: "none",
+						reason: "handoff",
+						shown: "",
+					},
+				],
+			},
+		);
 	});
 });

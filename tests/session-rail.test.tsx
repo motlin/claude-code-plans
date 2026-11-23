@@ -898,15 +898,27 @@ describe("session rail fit by chat-panel width", () =>
 				holds: [...(root?.querySelectorAll("[data-skeleton-group]") ?? [])].map((group) =>
 					group.getAttribute("data-hold"),
 				),
+				reasons: [...(root?.querySelectorAll("[data-skeleton-group]") ?? [])].map((group) =>
+					group.getAttribute("data-hold-reason"),
+				),
 			};
 		};
 		const expected =
 		{
 			status: "Loading session details",
 			holds: ["delayed", "delayed"],
+			reasons: [null, null],
 		};
 		setSessionRailShown(true);
 		tileWidth = 1200;
+		// The hard-loaded document's own location hands off from the route frame: shown at once.
+		const first = renderFitSession(pending);
+		await settle();
+		const hardLoad = skeleton(document.querySelector("[data-epitaxy-rail-column]"));
+		first.unmount();
+		// A later SPA navigation to another session holds the skeleton back.
+		const loadedPath = window.location.pathname;
+		window.history.pushState(null, "", "/session/other-session");
 		const {unmount} = renderFitSession(pending);
 		await settle();
 		const docked = skeleton(document.querySelector("[data-epitaxy-rail-column]"));
@@ -917,13 +929,23 @@ describe("session rail fit by chat-panel width", () =>
 		await settle();
 		await raiseByKeyboard();
 
+		const raised = skeleton(raisedOverlay());
+		window.history.replaceState(null, "", loadedPath);
+
 		expect(
 			{
+				hardLoad,
 				docked,
-				raised: skeleton(raisedOverlay()),
+				raised,
 			},
 		).toStrictEqual(
 			{
+				hardLoad:
+				{
+					status: "Loading session details",
+					holds: ["none", "none"],
+					reasons: ["handoff", "handoff"],
+				},
 				docked: expected,
 				raised: expected,
 			},

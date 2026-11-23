@@ -14,6 +14,7 @@ import
 } from "react";
 
 import {forwardWheel} from "../../lib/forward-wheel";
+import {onHardLoadLocation} from "../../lib/hard-load-location";
 import {useRailFirstCardStyle, useRailRaiseRequest} from "../../lib/session-rail-store";
 import {usePhoneSheet} from "../../lib/use-phone-sheet";
 import {TITLEBAR_ICON_BUTTON_CLASS} from "../titlebar-classes";
@@ -181,8 +182,21 @@ export function SessionRailSlot({sessionId, render}: {sessionId?: string; render
 			style={firstCardStyle}
 			className="absolute top-0 -bottom-[var(--tiles-padding,0px)] md:-bottom-[calc(var(--tiles-padding,0px)-var(--spacing)*0.75)] flex w-[var(--session-rail-w,17.5rem)] flex-col end-[var(--session-rail-end)] border-s border-seam bg-surface-2 [&>*]:w-full"
 		>
-			<Suspense fallback={<SessionRailSkeleton hold="delayed" />}>{render()}</Suspense>
+			<Suspense fallback={<RailFallback />}>{render()}</Suspense>
 		</div>
+	);
+}
+
+/**
+ * Upstream's rail fallback (shared-20 `fn`): on the hard-loaded location it takes over from the route frame and
+ * shows at once (hold none, reason handoff); after an SPA navigation it waits for the delayed reveal.
+ */
+function RailFallback()
+{
+	return onHardLoadLocation() ? (
+		<SessionRailSkeleton hold="none" holdReason="handoff" />
+	) : (
+		<SessionRailSkeleton hold="delayed" />
 	);
 }
 
@@ -308,7 +322,7 @@ function RailOverlay({ref, id, render}: {ref: RefObject<HTMLDivElement | null>; 
 				className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-card border border-border bg-surface-1 p-2 shadow-panel-md transition-opacity duration-200 ease-[cubic-bezier(0.165,0.84,0.44,1)] motion-reduce:transition-none starting:opacity-0"
 			>
 				<RailAsideClassContext.Provider value="h-full w-full rounded-[inherit]">
-					<Suspense fallback={<SessionRailSkeleton hold="delayed" />}>{render()}</Suspense>
+					<Suspense fallback={<RailFallback />}>{render()}</Suspense>
 				</RailAsideClassContext.Provider>
 			</div>
 		</div>
