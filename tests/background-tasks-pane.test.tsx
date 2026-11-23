@@ -10,6 +10,7 @@ import {PaneHostContext, type PaneHostApi} from "../src/components/panes/pane-ho
 import {resetStoppingTasks, useBackgroundTaskStop} from "../src/hooks/use-background-task-stop";
 import type {BackgroundTask, BackgroundTaskGroups} from "../src/lib/background-tasks";
 import {requestBackgroundTaskFocus, setTaskRowsOpen} from "../src/lib/background-task-focus";
+import {iconFontSize} from "../src/lib/icon-sizes";
 import {defaultPaneLayout} from "../src/lib/pane-layout";
 import {takePendingSubagentFocus} from "../src/lib/subagent-focus-requests";
 
@@ -1481,6 +1482,7 @@ describe("BackgroundTasksList per-row Stop", () =>
 				description: document.getElementById(button.getAttribute("aria-describedby") ?? "")?.textContent,
 				row: button.closest("[data-task-id]")?.getAttribute("data-task-id"),
 				busy: button.getAttribute("aria-busy"),
+				glyph: button.querySelector<SVGElement>("[data-cds=Icon]")?.style.fontSize,
 			})),
 		).toStrictEqual([
 			{
@@ -1488,6 +1490,7 @@ describe("BackgroundTasksList per-row Stop", () =>
 				description: "Serve the fabricated app",
 				row: "bfab1serve",
 				busy: null,
+				glyph: iconFontSize(16),
 			},
 			{
 				// The agent row's opener is not a button, so upstream sets no data-task-stop on its slot.
@@ -1495,6 +1498,7 @@ describe("BackgroundTasksList per-row Stop", () =>
 				description: "Review the fabricated diff",
 				row: "afab1review",
 				busy: null,
+				glyph: iconFontSize(16),
 			},
 		]);
 	});

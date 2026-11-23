@@ -36,6 +36,7 @@ import type {CompactActionState} from "../src/lib/compact-action";
 import type {ContextBreakdown} from "../src/lib/context-breakdown";
 import {prefillEmptyVerdict, registerComposer} from "../src/lib/context-attach";
 import {toConnectorSlug} from "../src/lib/customize/mcp-tool-permissions";
+import {iconFontSize} from "../src/lib/icon-sizes";
 import {RAIL_NO_CONNECTORS_KEY} from "../src/lib/rail-no-connectors";
 import {DEFAULT_RAIL_SECTIONS_STATE, RAIL_SECTIONS_STORAGE_KEY} from "../src/lib/session-rail-store";
 import {installLocalStorage} from "./fake-storage";
@@ -2992,17 +2993,20 @@ describe("Background tasks card", () =>
 					row: button.closest("[data-rail-task-row]")?.className,
 					before: button.closest("[data-rail-task-row]")?.firstElementChild?.getAttribute("aria-label"),
 					ghost: button.className.includes("hover:bg-fill-ghost-hover"),
+					glyph: button.querySelector<SVGElement>("[data-cds=Icon]")?.style.fontSize,
 				})),
 			).toStrictEqual([
 				{
 					row: "flex min-w-0 items-center pe-xs",
 					before: "Open Task 1 in Background tasks",
 					ghost: true,
+					glyph: iconFontSize(16),
 				},
 				{
 					row: "flex min-w-0 items-center pe-xs",
 					before: "Open Task 2 in Background tasks",
 					ghost: true,
+					glyph: iconFontSize(16),
 				},
 			]);
 		});

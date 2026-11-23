@@ -12,7 +12,7 @@ const STOP_TASK_LABEL = "Stop this task";
 export const STOPPING_LABEL = "Stopping…";
 
 /**
- * Upstream's per-task Stop: a cds Button, size xs, iconOnly with the StopFilled glyph, `shrink-0`, busy while
+ * Upstream's per-task Stop: a cds Button, size xs, iconOnly with the StopFilled glyph at sm (16px), `shrink-0`, busy while
  * the stop is in flight. The pane draws it secondary, the rail ghost with its tooltip on the inline-start side.
  * A double-click stops once (`detail <= 1`), and the press never reaches the row around it.
  */
@@ -54,7 +54,7 @@ export function BackgroundTaskStopButton({
 				className={`${cdsButtonClass(variant, "xs")} aspect-square shrink-0 !px-0 ${CDS_ICON_ONLY_DISABLED}`}
 			>
 				<span className={busy ? "opacity-0" : undefined}>
-					<Icon name="StopFilled" />
+					<Icon name="StopFilled" size="sm" />
 				</span>
 				{busy && (
 					<span aria-hidden="true" className="absolute inset-0 grid place-items-center">
