@@ -133,7 +133,7 @@ describe("root consumer and per-weight axis re-declaration (T2)", () =>
 		{
 			normal: ":where(.dark) :is(.font-normal, .font-control-regular)",
 			medium: ":where(.dark) :is(.font-medium, .font-control)",
-			semibold: ":where(.dark) .font-semibold",
+			semibold: ":where(.dark) :is(.font-semibold, .text-body-semibold)",
 			bold: ":where(.dark) .font-bold",
 			bInWeight: ":where(.dark) :is(.font-normal, .font-medium, .font-semibold) :is(b, strong)",
 			bareB: ':where(.dark) :is(b, strong):where(:not([class*="font"]))',

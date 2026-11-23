@@ -288,11 +288,11 @@ describe("ChapterHeading", () =>
 
 describe("text-body-semibold utility", () =>
 {
-	it("defines upstream's text-body at weight 600", () =>
+	it("defines upstream's text-body at the header weight, 600 without the type flag", () =>
 	{
 		const styles = readFileSync("src/styles/globals.css", "utf8").replaceAll(/\s+/g, " ");
 		expect(styles).toContain(
-			"--text-body-semibold: var(--upstream-text-body); --text-body-semibold--line-height: var(--upstream-leading-body); --text-body-semibold--font-weight: 600;",
+			"--text-body-semibold: var(--upstream-text-body); --text-body-semibold--line-height: var(--upstream-leading-body); --text-body-semibold--font-weight: var(--font-weight-header, 600);",
 		);
 		expect(styles).toContain(
 			'.epitaxy-transcript-typography [data-cds="AssistantMessage"] .epitaxy-chapter-title { margin-bottom: calc(-1 * var(--cds-pad-md)); }',
