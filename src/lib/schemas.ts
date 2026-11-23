@@ -684,6 +684,15 @@ export const UserRecordSchema = z
 			classifierMetaLines: z.string().optional(),
 			serverClassifierContext: ServerClassifierContextSchema.optional(),
 			permissionDecision: PermissionDecisionSchema.optional(),
+			// Notifications marked read alongside this tool_result; messages has only ever been observed empty.
+			notificationsRead: z
+				.object(
+					{
+						messages: z.array(z.never()),
+					},
+				)
+				.strict()
+				.optional(),
 			mcpCallNotReadOnly: McpCallNotReadOnlySchema.optional(),
 			// Whether the Bash call answered by this tool_result ran inside the sandbox.
 			sandboxed: z.boolean().optional(),
