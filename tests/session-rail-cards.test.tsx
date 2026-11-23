@@ -2143,11 +2143,11 @@ describe("cards from local data", () =>
 				},
 				{
 					...final,
-					visible: "+1,083−8",
+					visible: "+1083−8",
 				},
 				{
 					...final,
-					visible: "+1,220−8",
+					visible: "+1220−8",
 				},
 			]);
 		});

@@ -2,6 +2,13 @@ import {useCountTween} from "../hooks/use-count-tween";
 import {pluralize} from "../lib/pluralize";
 
 const numberFormat = new Intl.NumberFormat("en-US");
+/** Upstream `Qe = {useGrouping: false}`: the visible digits read "+1220", only the sr line groups. */
+const visibleNumberFormat = new Intl.NumberFormat(
+	"en-US",
+	{
+		useGrouping: false,
+	},
+);
 const unitList = new Intl.ListFormat(
 	"en-US",
 	{
@@ -28,7 +35,7 @@ interface DiffStatProps
 }
 
 /**
- * Upstream's `et`: the sr-only line reads the real counts; the visible "+n −n" (grouped, U+2212) is hidden from the
+ * Upstream's `et`: the sr-only line reads the real counts; the visible "+n −n" (ungrouped, U+2212) is hidden from the
  * a11y tree and may show tweened numbers. Its order is pinned left-to-right.
  */
 function DiffStatView({
@@ -47,8 +54,8 @@ function DiffStatView({
 		<span dir="ltr" className={className === undefined ? DIFF_STAT_CLASS : `${DIFF_STAT_CLASS} ${className}`}>
 			<span className="sr-only">{srCounts(added, removed)}</span>
 			<span aria-hidden="true" className="contents">
-				<span className="text-git-added">+{numberFormat.format(shownAdded)}</span>
-				<span className="text-git-removed">−{numberFormat.format(shownRemoved)}</span>
+				<span className="text-git-added">+{visibleNumberFormat.format(shownAdded)}</span>
+				<span className="text-git-removed">−{visibleNumberFormat.format(shownRemoved)}</span>
 			</span>
 		</span>
 	);

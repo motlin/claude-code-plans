@@ -2226,7 +2226,7 @@ describe("TurnChangesCard", () =>
 		);
 	});
 
-	it("groups the stat digits and the sr counts (upstream formatNumber)", () =>
+	it("groups only the sr counts, leaving the stat digits ungrouped (upstream useGrouping:false)", () =>
 	{
 		const {container} = render(
 			<TurnChangesCard
@@ -2247,7 +2247,7 @@ describe("TurnChangesCard", () =>
 			/>,
 		);
 		expect(container.querySelector("[data-turn-changes-card]")?.textContent).toBe(
-			"Edited 2 filesa.ts1,234 additions, 5 deletions+1,234\u22125b.ts1 addition, 0 deletions+1\u22120See all1,235 additions, 5 deletions+1,235\u22125",
+			"Edited 2 filesa.ts1,234 additions, 5 deletions+1234\u22125b.ts1 addition, 0 deletions+1\u22120See all1,235 additions, 5 deletions+1235\u22125",
 		);
 	});
 

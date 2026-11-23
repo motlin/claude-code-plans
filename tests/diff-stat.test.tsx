@@ -20,7 +20,7 @@ describe("DiffStat", () =>
 	it("renders upstream's et block with grouped digits and a real-count sr line", () =>
 	{
 		expect(renderToStaticMarkup(<DiffStat added={1234} removed={5} className="flex" />)).toStrictEqual(
-			'<span dir="ltr" class="tabular-nums [font-feature-settings:&#x27;case&#x27;] flex"><span class="sr-only">1,234 additions, 5 deletions</span><span aria-hidden="true" class="contents"><span class="text-git-added">+1,234</span><span class="text-git-removed">−5</span></span></span>',
+			'<span dir="ltr" class="tabular-nums [font-feature-settings:&#x27;case&#x27;] flex"><span class="sr-only">1,234 additions, 5 deletions</span><span aria-hidden="true" class="contents"><span class="text-git-added">+1234</span><span class="text-git-removed">−5</span></span></span>',
 		);
 	});
 
