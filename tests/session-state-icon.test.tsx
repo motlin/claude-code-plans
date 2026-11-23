@@ -9,9 +9,9 @@ afterEach(cleanup);
 
 const DOT_WRAPPER = "flex min-h-3.5 min-w-3.5 shrink-0 items-center justify-center";
 const PULSE_CLASS =
-	"block size-[calc(0.375rem*var(--cds-rem-scale,1))] rounded-full stacks:[--cds-text-primary:var(--cds-fizzy-lake-color-solid-primary)] stacks:[--cds-text-secondary:var(--cds-fizzy-lake-color-solid-secondary)] stacks:[--cds-text-muted:var(--cds-fizzy-lake-color-solid-muted)] forced-colors:!bg-[color:CanvasText]";
+	"block size-[calc(0.375rem*var(--cds-rem-scale,1))] rounded-full [--cds-text-primary:var(--cds-solid-primary)] [--cds-text-secondary:var(--cds-solid-secondary)] [--cds-text-muted:var(--cds-solid-muted)] forced-colors:!bg-[color:CanvasText]";
 const RUNNING_PULSE = (label: string) =>
-	`<span role="status" aria-label="${label}" class="${DOT_WRAPPER}"><span class="status-dot contents [--cds-page-bg:transparent]" data-kind="running"><span data-cds="Pulse" class="${PULSE_CLASS} df-tab-dot-running" style="background: var(--cds-text-muted); box-shadow: 0 0 0 0.5px var(--cds-page-bg);"></span></span></span>`;
+	`<span role="status" aria-label="${label}" class="${DOT_WRAPPER}"><span class="status-dot contents [--cds-page-bg:transparent]" data-kind="running"><span data-cds="Pulse" class="${PULSE_CLASS} df-tab-dot-running" style="background: var(--cds-text-muted); box-shadow: 0 0 0 0.5px var(--cds-ground, var(--cds-page-bg));"></span></span></span>`;
 
 function markup(element: React.ReactElement): string
 {
@@ -23,11 +23,11 @@ describe("SessionStateIcon", () =>
 	it("renders awaiting as a static --cds-fill-warning Pulse in a ring-off contents wrapper", () =>
 	{
 		expect(markup(<SessionStateIcon kind="awaiting" />)).toBe(
-			`<span role="status" aria-label="Awaiting input" class="${DOT_WRAPPER}"><span class="status-dot contents [--cds-page-bg:transparent]" data-kind="awaiting"><span data-cds="Pulse" class="${PULSE_CLASS}" style="background: var(--cds-fill-warning); box-shadow: 0 0 0 0.5px var(--cds-page-bg);"></span></span></span>`,
+			`<span role="status" aria-label="Awaiting input" class="${DOT_WRAPPER}"><span class="status-dot contents [--cds-page-bg:transparent]" data-kind="awaiting"><span data-cds="Pulse" class="${PULSE_CLASS}" style="background: var(--cds-fill-warning); box-shadow: 0 0 0 0.5px var(--cds-ground, var(--cds-page-bg));"></span></span></span>`,
 		);
 	});
 
-	it("renders running as upstream's blinking df-tab-dot-running Pulse in --cds-text-muted, remapped to the solid muted ink under fizzy colour", () =>
+	it("renders running as upstream's blinking df-tab-dot-running Pulse in --cds-text-muted, remapped to the solid muted ink", () =>
 	{
 		expect(markup(<SessionStateIcon kind="running" />)).toBe(RUNNING_PULSE("Running"));
 	});
@@ -35,7 +35,7 @@ describe("SessionStateIcon", () =>
 	it("renders ready as a static --cds-fill-accent Pulse", () =>
 	{
 		expect(markup(<SessionStateIcon kind="ready" />)).toBe(
-			`<span role="status" aria-label="Ready" class="${DOT_WRAPPER}"><span class="status-dot contents [--cds-page-bg:transparent]" data-kind="ready"><span data-cds="Pulse" class="${PULSE_CLASS}" style="background: var(--cds-fill-accent); box-shadow: 0 0 0 0.5px var(--cds-page-bg);"></span></span></span>`,
+			`<span role="status" aria-label="Ready" class="${DOT_WRAPPER}"><span class="status-dot contents [--cds-page-bg:transparent]" data-kind="ready"><span data-cds="Pulse" class="${PULSE_CLASS}" style="background: var(--cds-fill-accent); box-shadow: 0 0 0 0.5px var(--cds-ground, var(--cds-page-bg));"></span></span></span>`,
 		);
 	});
 

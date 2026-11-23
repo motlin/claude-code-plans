@@ -19,9 +19,9 @@ function dot(element: React.ReactElement)
 
 /** Upstream's `_A`: every Pulse carries the fizzy-colour text remaps, before its motion and forced-colors classes. */
 const STACKS = [
-	"stacks:[--cds-text-primary:var(--cds-fizzy-lake-color-solid-primary)]",
-	"stacks:[--cds-text-secondary:var(--cds-fizzy-lake-color-solid-secondary)]",
-	"stacks:[--cds-text-muted:var(--cds-fizzy-lake-color-solid-muted)]",
+	"[--cds-text-primary:var(--cds-solid-primary)]",
+	"[--cds-text-secondary:var(--cds-solid-secondary)]",
+	"[--cds-text-muted:var(--cds-solid-muted)]",
 ];
 const BASE = ["block", "size-[calc(0.375rem*var(--cds-rem-scale,1))]", "rounded-full", ...STACKS];
 
@@ -34,7 +34,7 @@ describe("Pulse (upstream ba)", () =>
 				tag: "SPAN",
 				cds: "Pulse",
 				className: [...BASE, "motion-safe:animate-pulse", "forced-colors:!bg-[color:CanvasText]"],
-				style: "background: var(--cds-fill-accent); box-shadow: 0 0 0 0.5px var(--cds-page-bg);",
+				style: "background: var(--cds-fill-accent); box-shadow: 0 0 0 0.5px var(--cds-ground, var(--cds-page-bg));",
 			},
 		);
 	});
@@ -46,7 +46,7 @@ describe("Pulse (upstream ba)", () =>
 				tag: "SPAN",
 				cds: "Pulse",
 				className: [...BASE, "forced-colors:!bg-[color:CanvasText]"],
-				style: "background: var(--cds-fill-warning); box-shadow: 0 0 0 0.5px var(--cds-page-bg);",
+				style: "background: var(--cds-fill-warning); box-shadow: 0 0 0 0.5px var(--cds-ground, var(--cds-page-bg));",
 			},
 		);
 	});
@@ -63,7 +63,7 @@ describe("Pulse (upstream ba)", () =>
 					"forced-colors:border-solid",
 					"forced-colors:border-[color:CanvasText]",
 				],
-				style: "box-shadow: inset 0 0 0 1px var(--cds-text-muted), 0 0 0 0.5px var(--cds-page-bg);",
+				style: "box-shadow: inset 0 0 0 1px var(--cds-text-muted), 0 0 0 0.5px var(--cds-ground, var(--cds-page-bg));",
 			},
 		);
 	});

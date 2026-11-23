@@ -5,15 +5,16 @@ type DataAttributes =
 	[key: `data-${string}`]: string | undefined;
 };
 
-const PULSE_STACKS_CLASS =
-	"stacks:[--cds-text-primary:var(--cds-fizzy-lake-color-solid-primary)] stacks:[--cds-text-secondary:var(--cds-fizzy-lake-color-solid-secondary)] stacks:[--cds-text-muted:var(--cds-fizzy-lake-color-solid-muted)]";
+const PULSE_SOLID_TEXT_CLASS =
+	"[--cds-text-primary:var(--cds-solid-primary)] [--cds-text-secondary:var(--cds-solid-secondary)] [--cds-text-muted:var(--cds-solid-muted)]";
 
 /**
  * Upstream cds Pulse (`ba`): a 6px status dot painted inline in `color`, ringed 0.5px in
- * `--cds-page-bg` to lift it off what is under it (wrappers set that to transparent). `animate`
- * pulses it under motion-safe:; `hollow` draws an inset 1px ring instead of a fill. Like upstream's
- * `_A`, every dot carries the `stacks:` text remaps to the fizzy solid inks, so a `color` that reads
- * one of them (the running dot's `--cds-text-muted`) takes the solid ink under fizzy colour.
+ * `--cds-ground`, falling back to `--cds-page-bg`, to lift it off what is under it (wrappers set
+ * the page bg to transparent). `animate` pulses it under motion-safe:; `hollow` draws an inset 1px
+ * ring instead of a fill. Like upstream, every dot unconditionally remaps the text inks to the
+ * `--cds-solid-*` inks, so a `color` that reads one of them (the running dot's `--cds-text-muted`)
+ * takes the solid ink.
  */
 export function Pulse({
 	color = "var(--cds-fill-accent)",
@@ -32,7 +33,7 @@ export function Pulse({
 {
 	const classes = [
 		"block size-[calc(0.375rem*var(--cds-rem-scale,1))] rounded-full",
-		PULSE_STACKS_CLASS,
+		PULSE_SOLID_TEXT_CLASS,
 		animate ? "motion-safe:animate-pulse" : null,
 		hollow
 			? "forced-colors:border forced-colors:border-solid forced-colors:border-[color:CanvasText]"
@@ -42,12 +43,12 @@ export function Pulse({
 	const style: CSSProperties = hollow
 		?
 			{
-				boxShadow: `inset 0 0 0 1px ${color}, 0 0 0 0.5px var(--cds-page-bg)`,
+				boxShadow: `inset 0 0 0 1px ${color}, 0 0 0 0.5px var(--cds-ground, var(--cds-page-bg))`,
 			}
 		:
 			{
 				background: color,
-				boxShadow: "0 0 0 0.5px var(--cds-page-bg)",
+				boxShadow: "0 0 0 0.5px var(--cds-ground, var(--cds-page-bg))",
 			};
 	return <span {...rest} data-cds="Pulse" className={classes.filter(Boolean).join(" ")} style={style} />;
 }

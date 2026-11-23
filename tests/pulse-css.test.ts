@@ -16,8 +16,8 @@ function token(source: string, name: string): string | null
 	return source.match(new RegExp(`^\\s*${name}:\\s*([^;]+);`, "m"))?.[1] ?? null;
 }
 
-/** Upstream's fizzy-colour solid inks (--cds-gray-900/600/400 light, 50/200 dark), which every Pulse's `stacks:` remaps read. */
-function fizzySolidInks()
+/** Upstream's --cds-solid-* inks (--cds-gray-900/600/400 light, 50/200 dark), which every Pulse's text remaps read. */
+function solidInks()
 {
 	const block = (selector: string) =>
 	{
@@ -26,13 +26,14 @@ function fizzySolidInks()
 	};
 	const inks = (source: string) => (
 	{
-		primary: token(source, "--cds-fizzy-lake-color-solid-primary"),
-		secondary: token(source, "--cds-fizzy-lake-color-solid-secondary"),
-		muted: token(source, "--cds-fizzy-lake-color-solid-muted"),
+		primary: token(source, "--cds-solid-primary"),
+		secondary: token(source, "--cds-solid-secondary"),
+		muted: token(source, "--cds-solid-muted"),
 	});
 	return {
-		light: inks(block(':root[data-cds-fizzy-lake~="color"]')),
-		dark: inks(block(':root.dark[data-cds-fizzy-lake~="color"]')),
+		light: inks(block(":root")),
+		dark: inks(block(".dark")),
+		fizzyLeftovers: styles.includes("--cds-fizzy-lake-color-solid-"),
 	};
 }
 
@@ -101,8 +102,8 @@ describe("Pulse / indicator slot CSS", () =>
 				),
 				osReducedMotion: styles.includes("@media (prefers-reduced-motion: reduce)\n{\n\t.df-tab-dot-running,"),
 				legacyRule: styles.includes('.status-dot[data-kind="running"]'),
-				fizzySolid: fizzySolidInks(),
-				remap: await compile("stacks:[--cds-text-muted:var(--cds-fizzy-lake-color-solid-muted)]"),
+				solid: solidInks(),
+				remap: await compile("[--cds-text-muted:var(--cds-solid-muted)]"),
 			},
 		).toStrictEqual(
 			{
@@ -110,7 +111,7 @@ describe("Pulse / indicator slot CSS", () =>
 				keyframes: true,
 				osReducedMotion: true,
 				legacyRule: false,
-				fizzySolid:
+				solid:
 				{
 					light:
 					{
@@ -124,8 +125,9 @@ describe("Pulse / indicator slot CSS", () =>
 						secondary: "#c2c2c2",
 						muted: null,
 					},
+					fizzyLeftovers: false,
 				},
-				remap: '@media (forced-colors: none) { .stacks\\:\\[--cds-text-muted\\:var\\(--cds-fizzy-lake-color-solid-muted\\)\\]:where([data-cds-fizzy-lake~="color"], [data-cds-fizzy-lake~="color"] *):not(:where([data-cds-theme], [data-cds-theme] *)) { --cds-text-muted: var(--cds-fizzy-lake-color-solid-muted); } }',
+				remap: ".\\[--cds-text-muted\\:var\\(--cds-solid-muted\\)\\] { --cds-text-muted: var(--cds-solid-muted); }",
 			},
 		);
 	});

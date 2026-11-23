@@ -273,8 +273,8 @@ async function awaitRequest(): Promise<PendingSearch>
 	return request;
 }
 
-const ACCENT_DOT = "background: var(--cds-fill-accent); box-shadow: 0 0 0 0.5px var(--cds-page-bg);";
-const BRAND_DOT = "background: var(--cds-fill-brand); box-shadow: 0 0 0 0.5px var(--cds-page-bg);";
+const ACCENT_DOT = "background: var(--cds-fill-accent); box-shadow: 0 0 0 0.5px var(--cds-ground, var(--cds-page-bg));";
+const BRAND_DOT = "background: var(--cds-fill-brand); box-shadow: 0 0 0 0.5px var(--cds-ground, var(--cds-page-bg));";
 
 describe("⌘K palette live search", () =>
 {
@@ -664,15 +664,15 @@ describe("⌘K palette live search", () =>
 							"block",
 							"size-[calc(0.375rem*var(--cds-rem-scale,1))]",
 							"rounded-full",
-							"stacks:[--cds-text-primary:var(--cds-fizzy-lake-color-solid-primary)]",
-							"stacks:[--cds-text-secondary:var(--cds-fizzy-lake-color-solid-secondary)]",
-							"stacks:[--cds-text-muted:var(--cds-fizzy-lake-color-solid-muted)]",
+							"[--cds-text-primary:var(--cds-solid-primary)]",
+							"[--cds-text-secondary:var(--cds-solid-secondary)]",
+							"[--cds-text-muted:var(--cds-solid-muted)]",
 							"forced-colors:!bg-[color:CanvasText]",
 							"absolute",
 							"-top-px",
 							"-end-px",
 						],
-						style: "background: var(--cds-fill-accent); box-shadow: 0 0 0 0.5px var(--cds-page-bg);",
+						style: "background: var(--cds-fill-accent); box-shadow: 0 0 0 0.5px var(--cds-ground, var(--cds-page-bg));",
 						wrapper: "relative shrink-0 [--cds-page-bg:transparent]",
 					},
 					meta: "Just now",
@@ -687,15 +687,15 @@ describe("⌘K palette live search", () =>
 							"block",
 							"size-[calc(0.375rem*var(--cds-rem-scale,1))]",
 							"rounded-full",
-							"stacks:[--cds-text-primary:var(--cds-fizzy-lake-color-solid-primary)]",
-							"stacks:[--cds-text-secondary:var(--cds-fizzy-lake-color-solid-secondary)]",
-							"stacks:[--cds-text-muted:var(--cds-fizzy-lake-color-solid-muted)]",
+							"[--cds-text-primary:var(--cds-solid-primary)]",
+							"[--cds-text-secondary:var(--cds-solid-secondary)]",
+							"[--cds-text-muted:var(--cds-solid-muted)]",
 							"forced-colors:!bg-[color:CanvasText]",
 							"absolute",
 							"-top-px",
 							"-end-px",
 						],
-						style: "background: var(--cds-fill-brand); box-shadow: 0 0 0 0.5px var(--cds-page-bg);",
+						style: "background: var(--cds-fill-brand); box-shadow: 0 0 0 0.5px var(--cds-ground, var(--cds-page-bg));",
 						wrapper: "relative shrink-0 [--cds-page-bg:transparent]",
 					},
 					meta: "Just now",
