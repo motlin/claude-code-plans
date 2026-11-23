@@ -2617,7 +2617,7 @@ describe("cards from local data", () =>
 			screen.getByRole(
 				"button",
 				{
-					name: "Open Run the dev server in Background tasks",
+					name: "Open Run the dev server in background tasks",
 				},
 			),
 		);
@@ -2730,7 +2730,7 @@ describe("Background tasks card", () =>
 					screen.getByRole(
 						"button",
 						{
-							name: "Open Task 1 in Background tasks",
+							name: "Open Task 1 in background tasks",
 						},
 					),
 				),
@@ -2825,10 +2825,10 @@ describe("Background tasks card", () =>
 			},
 		);
 
-		expect(document.activeElement?.getAttribute("aria-label")).toBe("Open Task 5 in Background tasks");
+		expect(document.activeElement?.getAttribute("aria-label")).toBe("Open Task 5 in background tasks");
 	});
 
-	it("labels each row as opening it in Background tasks", async () =>
+	it("labels each row as opening it in background tasks", async () =>
 	{
 		await renderCards(withTasks([runningTask(1)]));
 
@@ -2848,7 +2848,7 @@ describe("Background tasks card", () =>
 					},
 				)
 				.map((row) => row.getAttribute("aria-label")),
-		).toStrictEqual(["Open Task 1 in Background tasks"]);
+		).toStrictEqual(["Open Task 1 in background tasks"]);
 	});
 
 	it("shows how long a running task has run", async () =>
@@ -2893,7 +2893,7 @@ describe("Background tasks card", () =>
 			screen.getByRole(
 				"button",
 				{
-					name: "Open Task 1 in Background tasks",
+					name: "Open Task 1 in background tasks",
 				},
 			),
 		);
@@ -2901,7 +2901,7 @@ describe("Background tasks card", () =>
 			screen.getByRole(
 				"button",
 				{
-					name: "Open Review the diff in Background tasks",
+					name: "Open Review the diff in background tasks",
 				},
 			),
 		);
@@ -2999,14 +2999,14 @@ describe("Background tasks card", () =>
 			).toStrictEqual([
 				{
 					row: "flex min-w-0 items-center pe-xs",
-					before: "Open Task 1 in Background tasks",
+					before: "Open Task 1 in background tasks",
 					ghost: true,
 					flush: true,
 					glyph: iconFontSize(16),
 				},
 				{
 					row: "flex min-w-0 items-center pe-xs",
-					before: "Open Task 2 in Background tasks",
+					before: "Open Task 2 in background tasks",
 					ghost: true,
 					flush: true,
 					glyph: iconFontSize(16),

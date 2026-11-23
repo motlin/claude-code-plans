@@ -1049,7 +1049,7 @@ function BackgroundTasksBody({
 									ref={index === BACKGROUND_TASKS_SHOWN ? showMore.firstNewRow : undefined}
 									type="button"
 									title={task.command ?? task.description}
-									aria-label={`Open ${task.description} in Background tasks`}
+									aria-label={`Open ${task.description} in background tasks`}
 									className={`${RAIL_ROW_ACTION_CLASS} flex-1`}
 									onClick={() =>
 									{
