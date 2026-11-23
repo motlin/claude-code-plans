@@ -103,12 +103,26 @@ describe("ColdResumeNotice", () =>
 		expect(atomic?.querySelector("span.text-muted-as-secondary")?.textContent).toBe(
 			"Idle 26 hours. Resuming will use about 16% of your 5-hour limit.",
 		);
-		const group = banner.querySelector("div.flex.min-w-0.flex-wrap.items-center.gap-xs");
-		expect([...(group?.querySelectorAll("button") ?? [])].map((button) => button.textContent)).toStrictEqual([
-			"Resume here",
-			"New session",
-			"Compact",
+		// Upstream q0 renders no element: the cds Buttons are the action span's own children, each tip trigger
+		// is its button, and the hidden describing span follows it.
+		const actionSpan = banner.querySelector('span[data-cds-part="action"]')!;
+		expect(
+			Array.from(actionSpan.children).map(
+				(element) =>
+					element.tagName +
+					(element instanceof HTMLElement && element.hidden ? ":hidden" : "") +
+					(element.hasAttribute("data-base-ui-tooltip-trigger") ? ":trigger" : "") +
+					(element.tagName === "BUTTON" ? `=${element.textContent}` : ""),
+			),
+		).toStrictEqual([
+			"BUTTON=Resume here",
+			"BUTTON:trigger=New session",
+			"SPAN:hidden",
+			"BUTTON:trigger=Compact",
+			"SPAN:hidden",
 		]);
+		// Inline, the card shows NoticeBanner's neutral default Info icon.
+		expect(banner.children[0]?.querySelector('[data-cds="Icon"]')).not.toBeNull();
 		const newSession = screen.getByRole(
 			"button",
 			{

@@ -2,9 +2,12 @@ import
 {
 	cloneElement,
 	type CSSProperties,
+	type FocusEvent,
+	type MouseEvent,
 	type PointerEvent,
 	type ReactElement,
 	type ReactNode,
+	type Ref,
 	useCallback,
 	useEffect,
 	useId,
@@ -130,6 +133,7 @@ export function Tooltip({
 	sideOffset = 4,
 	maxWidth,
 	lineClamp = false,
+	triggerIsChild = false,
 	className,
 	style,
 	children,
@@ -203,14 +207,16 @@ export function Tooltip({
 	sideOffset?: 4 | 8;
 	/** Overrides the box's max width, e.g. `max-w-[360px]` for a multiline @ mention path. */
 	maxWidth?: string | undefined;
+	/**
+	 * Make the child itself the trigger (Base UI's trigger with no wrapper): no anchor span, the hover and focus
+	 * handlers and `data-base-ui-tooltip-trigger` go on the child, which must forward its ref, and the tip is
+	 * portalled. For upstream rows whose cds Buttons are direct children of their container.
+	 */
+	triggerIsChild?: boolean;
 	className?: string;
 	/** Inline style for the anchor, e.g. a StackedMeter segment's position and width. */
 	style?: CSSProperties | undefined;
-	children: ReactElement<
-	{
-		"aria-describedby"?: string;
-		"data-popup-open"?: string;
-	}>;
+	children: ReactElement<TriggerChildProps>;
 })
 {
 	const secondaryRows: readonly TooltipRow[] =
@@ -224,14 +230,14 @@ export function Tooltip({
 	{
 		hideRef.current();
 	});
-	const portal = placeOver !== undefined || (portalProp ?? inheritedPortal);
+	const portal = triggerIsChild || placeOver !== undefined || (portalProp ?? inheritedPortal);
 	const id = useId();
 	const [hovered, setHovered] = useState(false);
 	const open = hovered || forceOpen;
 	/** Upstream's `data-instant="focus"`: the tip opened at once because keyboard focus arrived. */
 	const [openedByFocus, setOpenedByFocus] = useState(false);
 	const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-	const anchorRef = useRef<HTMLSpanElement>(null);
+	const anchorRef = useRef<HTMLElement>(null);
 	const tipRef = useRef<HTMLSpanElement>(null);
 	/** Upstream's `an({immediate: true})`: hug the wrapped text before placement measures the tip. */
 	const fitTip = useLazyShrinkwrap(
@@ -379,7 +385,7 @@ export function Tooltip({
 		else timer.current = setTimeout(reveal, openDelay);
 	}
 
-	function trackPointer(event: PointerEvent<HTMLSpanElement>)
+	function trackPointer(event: PointerEvent<HTMLElement>)
 	{
 		setCursorY(event.clientY);
 	}
@@ -479,78 +485,143 @@ export function Tooltip({
 		</span>
 	);
 
+	const handlers: TriggerHandlers =
+	{
+		onPointerEnter: (event) =>
+		{
+			// Upstream's cds Tooltip never starts its open timer for a touch pointer.
+			if (event.pointerType === "touch") return;
+			if (trackCursor === "y") trackPointer(event);
+			show();
+		},
+		onPointerMove: trackCursor === "y" ? trackPointer : undefined,
+		onPointerLeave: leave,
+		onPointerDown: () =>
+		{
+			pointerPressed.current = true;
+		},
+		onFocus: () =>
+		{
+			if (!pointerPressed.current) show(0, true);
+		},
+		onBlur: () =>
+		{
+			pointerPressed.current = false;
+			leave();
+		},
+		onClick: closeOnClick
+			? hide
+			: openOnClick
+				? () =>
+					{
+						show(0);
+					}
+				: undefined,
+	};
+	const describe = open && variant !== "reason";
+	const childProps: Partial<TriggerChildProps> =
+	{
+		...(describe
+			?
+				{
+					"aria-describedby": [children.props["aria-describedby"], id].filter(Boolean).join(" "),
+				}
+			: {}),
+		...(open && markOpen
+			?
+				{
+					"data-popup-open": "",
+				}
+			: {}),
+	};
+	const tip =
+		open &&
+		(portal ? (
+			<ViewportPortal>
+				<span className="pointer-events-none fixed z-[140]" style={anchorBox}>
+					{tipElement}
+				</span>
+			</ViewportPortal>
+		) : (
+			tipElement
+		));
+
+	if (triggerIsChild)
+	{
+		return (
+			<>
+				{cloneElement(
+					children,
+					{
+						...childProps,
+						...composeHandlers(children.props, handlers),
+						"data-base-ui-tooltip-trigger": "",
+						ref: anchorRef,
+					},
+				)}
+				{tip}
+			</>
+		);
+	}
+
 	return (
 		// oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- closes the tooltip on click; focus and blur already open and close it from the keyboard
-		<span
-			ref={anchorRef}
-			className={anchorClass(className)}
-			style={style}
-			onPointerEnter={(event) =>
-			{
-				// Upstream's cds Tooltip never starts its open timer for a touch pointer.
-				if (event.pointerType === "touch") return;
-				if (trackCursor === "y") trackPointer(event);
-				show();
-			}}
-			onPointerMove={trackCursor === "y" ? trackPointer : undefined}
-			onPointerLeave={leave}
-			onPointerDown={() =>
-			{
-				pointerPressed.current = true;
-			}}
-			onFocus={() =>
-			{
-				if (!pointerPressed.current) show(0, true);
-			}}
-			onBlur={() =>
-			{
-				pointerPressed.current = false;
-				leave();
-			}}
-			onClick={
-				closeOnClick
-					? hide
-					: openOnClick
-						? () =>
-							{
-								show(0);
-							}
-						: undefined
-			}
-		>
-			{open && (variant !== "reason" || markOpen)
-				? cloneElement(
-						children,
-						{
-							...(variant === "reason"
-								? {}
-								:
-									{
-										"aria-describedby": [children.props["aria-describedby"], id]
-											.filter(Boolean)
-											.join(" "),
-									}),
-							...(markOpen
-								?
-									{
-										"data-popup-open": "",
-									}
-								: {}),
-						},
-					)
-				: children}
-			{open &&
-				(portal ? (
-					<ViewportPortal>
-						<span className="pointer-events-none fixed z-[140]" style={anchorBox}>
-							{tipElement}
-						</span>
-					</ViewportPortal>
-				) : (
-					tipElement
-				))}
+		<span ref={anchorRef} className={anchorClass(className)} style={style} {...handlers}>
+			{describe || (open && markOpen) ? cloneElement(children, childProps) : children}
+			{tip}
 		</span>
 	);
+}
+
+type TriggerHandlers =
+{
+	onPointerEnter: (event: PointerEvent<HTMLElement>) => void;
+	onPointerMove: ((event: PointerEvent<HTMLElement>) => void) | undefined;
+	onPointerLeave: () => void;
+	onPointerDown: () => void;
+	onFocus: () => void;
+	onBlur: () => void;
+	onClick: (() => void) | undefined;
+};
+
+/** The props Tooltip sets on its child: always the description and open mark, and every trigger prop for `triggerIsChild`. */
+type TriggerChildProps =
+{
+	"aria-describedby"?: string;
+	"data-popup-open"?: string;
+	"data-base-ui-tooltip-trigger"?: string;
+	ref?: Ref<HTMLElement>;
+	onPointerEnter?: (event: PointerEvent<HTMLElement>) => void;
+	onPointerMove?: (event: PointerEvent<HTMLElement>) => void;
+	onPointerLeave?: (event: PointerEvent<HTMLElement>) => void;
+	onPointerDown?: (event: PointerEvent<HTMLElement>) => void;
+	onFocus?: (event: FocusEvent<HTMLElement>) => void;
+	onBlur?: (event: FocusEvent<HTMLElement>) => void;
+	onClick?: (event: MouseEvent<HTMLElement>) => void;
+};
+
+/** Runs the child's own handler, then the tooltip's. */
+function chain<E>(own: ((event: E) => void) | undefined, mine: ((event: E) => void) | undefined): (event: E) => void
+{
+	return (event) =>
+	{
+		own?.(event);
+		mine?.(event);
+	};
+}
+
+/** The child's own trigger handlers composed with the tooltip's. */
+function composeHandlers(own: TriggerChildProps, handlers: TriggerHandlers): TriggerChildProps
+{
+	return {
+		onPointerEnter: chain(own.onPointerEnter, handlers.onPointerEnter),
+		onPointerMove: chain(own.onPointerMove, handlers.onPointerMove),
+		onPointerLeave: chain(own.onPointerLeave, handlers.onPointerLeave),
+		onPointerDown: chain(own.onPointerDown, handlers.onPointerDown),
+		onFocus: chain(own.onFocus, handlers.onFocus),
+		onBlur: chain(own.onBlur, handlers.onBlur),
+		onClick: chain(own.onClick, handlers.onClick),
+	};
 }
 
 /**

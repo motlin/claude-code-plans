@@ -449,23 +449,22 @@ describe("NoticeBanner CTA wrap measurement", () =>
 		);
 	});
 
-	it("adds the stacked panels top padding and body end margin when there is no Dismiss", () =>
+	it("adds the stacked panels top padding and body end margin when there is no Dismiss, and hides the default icon", () =>
 	{
 		const {layout} = stubLayout();
 		layout.actionDrop = 30;
-		const metrics = actionMetrics(
-			<NoticeBanner icon={<Gauge />} action={<button type="button">A</button>}>
-				Notice
-			</NoticeBanner>,
-		);
+		// No icon prop: upstream `ah`'s neutral default glyph, which it drops when stacked.
+		const metrics = actionMetrics(<NoticeBanner action={<button type="button">A</button>}>Notice</NoticeBanner>);
 		expect(
 			{
+				iconSlot: metrics.iconSlot,
 				root: metrics.root,
 				body: metrics.body,
 				action: metrics.bodyChildren[1],
 			},
 		).toStrictEqual(
 			{
+				iconSlot: null,
 				root: `${LEAD} py-[calc(var(--cds-pad-md)+2px)] font-sans text-body font-normal break-words px-md pt-[calc(var(--cds-pad-md)-2px)] rounded-composer ${FIZZY_SURFACE}`,
 				body: "flex min-w-0 flex-wrap items-start gap-y-xs gap-x-md flex-1 me-[2px] ms-[4px]",
 				action: `span.flex shrink-0 items-center gap-xs flex-wrap max-w-full ${ACTION_CHILD_BUTTONS} basis-full -me-[2px]`,

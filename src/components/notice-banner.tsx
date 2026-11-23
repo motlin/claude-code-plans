@@ -2,6 +2,7 @@ import {X} from "lucide-react";
 import {type ReactNode, useLayoutEffect, useRef, useState} from "react";
 
 import {CDS_GHOST_HOVER} from "./ui/cds-button";
+import {Icon} from "./ui/icon";
 import {NOTICE_SURFACE_CLASS} from "./notice-banner-classes";
 
 /* Upstream's cds spacing, verbatim; the CSS density scope picks the values. */
@@ -162,8 +163,8 @@ function useCtaLayout(hasAction: boolean, calibrated: boolean)
  * `keyline` defaults to `glyph`, the local composer having a leading "+" button; `keyline={null}` is
  * the uncalibrated Banner outside the composer (`px-lg`, `rounded-card`, `!py-lg`, the `b9` end margin). The region's list is the live region, so the card's role defaults to `none`,
  * which (like `ah`) renders no role attribute.
- * `data-cta-layout` is measured (`inline` / `wrapped` / keyline `stacked`). Upstream hides only its default
- * variant glyph when stacked; every local card passes its icon (or `null`), so the slot never hides.
+ * `data-cta-layout` is measured (`inline` / `wrapped` / keyline `stacked`). Omitting `icon` gives upstream's
+ * neutral default Info glyph, which (like `ah`) hides when stacked; a passed icon stays, and `null` has no slot.
  */
 export function NoticeBanner({
 	icon,
@@ -174,7 +175,8 @@ export function NoticeBanner({
 	"data-testid": testId,
 	children,
 }: {
-	icon: ReactNode;
+	/** Omitted: the neutral default glyph, hidden when stacked. */
+	icon?: ReactNode;
 	action?: ReactNode;
 	onDismiss?: () => void;
 	keyline?: ComposerKeyline | null;
@@ -188,6 +190,8 @@ export function NoticeBanner({
 	const {rootRef, textRef, actionRef, layout} = useCtaLayout(hasAction, keyline !== null);
 	const dismiss = keyline === null ? UNCALIBRATED_END : KEYLINE_END;
 	const iconOffset = keyline === null ? "" : " ms-[4px] -me-[4px]";
+	// Upstream `ah`: `r !== null && (!stacked || iconPassed || variant !== "neutral")`.
+	const glyph = icon === undefined ? layout === "stacked" ? null : <Icon name="Info" size="auto" /> : icon;
 	return (
 		<div
 			ref={rootRef}
@@ -202,9 +206,9 @@ export function NoticeBanner({
 			role={role === "none" ? undefined : role}
 			className={`${rootClass(keyline, layout, dismissible)} ${NOTICE_SURFACE_CLASS} @container`}
 		>
-			{icon !== null && (
+			{glyph !== null && (
 				// Upstream `Se.neutral` is `text-secondary`.
-				<span className={`flex min-h-[1lh] shrink-0 items-center${iconOffset} text-secondary`}>{icon}</span>
+				<span className={`flex min-h-[1lh] shrink-0 items-center${iconOffset} text-secondary`}>{glyph}</span>
 			)}
 			<div className={bodyClass(keyline, layout, dismissible)}>
 				<div ref={textRef} className={hasAction ? TEXT_WITH_ACTION : TEXT_ALONE}>

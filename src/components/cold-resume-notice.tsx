@@ -11,7 +11,6 @@ import
 import {ApprovalActionButton} from "./approval-action-button";
 import {useComposerNotice} from "./composer-notice-context";
 import {NoticeBanner} from "./notice-banner";
-import {Icon} from "./ui/icon";
 import {Tooltip} from "./ui/tooltip";
 
 /** Upstream's minute check: a focused idle tab crosses the 2h boundary without any event. */
@@ -59,7 +58,7 @@ function TippedAction({label, tip, onClick}: {label: string; tip: string; onClic
 	const tipId = useId();
 	return (
 		<>
-			<Tooltip content={tip}>
+			<Tooltip content={tip} triggerIsChild>
 				<ApprovalActionButton variant="secondary" aria-describedby={tipId} onClick={onClick}>
 					{label}
 				</ApprovalActionButton>
@@ -169,14 +168,13 @@ export function ColdResumeNotice({
 			id: `${sessionId}:${answeredSince}`,
 			content: (
 				<NoticeBanner
-					icon={<Icon name="Info" size="auto" />}
 					data-testid="cold-resume-card"
 					onDismiss={() =>
 					{
 						answer(answeredSince);
 					}}
 					action={
-						<div className="flex min-w-0 flex-wrap items-center gap-xs">
+						<>
 							<ApprovalActionButton
 								variant="secondary"
 								onClick={() =>
@@ -207,7 +205,7 @@ export function ColdResumeNotice({
 									}}
 								/>
 							)}
-						</div>
+						</>
 					}
 				>
 					<span aria-atomic="true" className="flex flex-col">

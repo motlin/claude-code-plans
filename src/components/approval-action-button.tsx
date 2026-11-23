@@ -1,4 +1,4 @@
-import type {ButtonHTMLAttributes} from "react";
+import type {ButtonHTMLAttributes, Ref} from "react";
 
 import {type CdsButtonSize, type CdsButtonVariant, cdsButtonClass} from "./ui/cds-button";
 import {Spinner} from "./ui/spinner";
@@ -34,6 +34,8 @@ export function ApprovalActionButton({
 	size?: ApprovalActionSize;
 	busy?: boolean;
 	busyLabel?: string;
+	/** A Tooltip `triggerIsChild` anchors on the button itself. */
+	ref?: Ref<HTMLButtonElement>;
 } & Omit<ButtonHTMLAttributes<HTMLButtonElement>, "className" | "type" | "aria-busy" | "aria-disabled">)
 {
 	return (
