@@ -3266,14 +3266,14 @@ describe("Context card", () =>
 	});
 
 	it.each([
-		[74.4, "bg-fill-accent"],
-		[74.5, "bg-usage-warning forced-colors:bg-[color:Highlight]"],
-		[89, "bg-usage-warning forced-colors:bg-[color:Highlight]"],
-		[89.5, "bg-usage-danger"],
-		[100, "bg-usage-danger"],
+		[74.4, "bg-fill-accent", "74%"],
+		[74.5, "bg-usage-warning forced-colors:bg-[color:Highlight]", "75%"],
+		[89, "bg-usage-warning forced-colors:bg-[color:Highlight]", "89%"],
+		[89.5, "bg-usage-danger", "90%"],
+		[100, "bg-usage-danger", "100%"],
 	])(
-		"tones the window-only bar at %s percent with %s, picked by the rounded percent (upstream `G`)",
-		async (contextPercent, fill) =>
+		"tones the window-only bar at %s percent with %s and fills it to the rounded %s (upstream `G`, `le`)",
+		async (contextPercent, fill, width) =>
 		{
 			const inputs = contextInputs(null);
 			await renderCards(
@@ -3296,11 +3296,13 @@ describe("Context card", () =>
 				{
 					bar: bar.className,
 					fill: bar.firstElementChild?.className,
+					width: (bar.firstElementChild as HTMLElement | null)?.style.width,
 				},
 			).toStrictEqual(
 				{
 					bar: "h-[4px] rounded-full overflow-hidden forced-color-adjust-none forced-colors:!bg-[color:Canvas] forced-colors:outline forced-colors:outline-[color:CanvasText]",
 					fill: `h-full ${fill} transition-[width]`,
+					width,
 				},
 			);
 		},

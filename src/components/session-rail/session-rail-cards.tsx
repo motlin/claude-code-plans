@@ -519,11 +519,11 @@ function contextCard(inputs: SessionRailInputs, connectors: readonly McpServerSu
 				aria-valuemax={100}
 			>
 				<div
-					// Upstream tones the rounded `ru` percent.
+					// Upstream tones and sizes the fill by the rounded `ru` percent.
 					className={`h-full ${usageFillClass(rounded)} transition-[width]`}
 					style={
 					{
-						width: `${percent}%`,
+						width: `${rounded}%`,
 					}}
 				/>
 			</div>,
