@@ -40,6 +40,7 @@ export function DialogPopup({
 	triggerRef,
 	restoreFocus,
 	unstyled = false,
+	className,
 	...props
 }: DialogPopupProps)
 {
@@ -72,10 +73,28 @@ export function DialogPopup({
 			{...overlayAttrs}
 			{...(unstyled ? {} : popup)}
 			{...props}
+			className={unstyled ? className : withPageBg(className)}
 			ref={mergedRef}
 			finalFocus={finalFocus ?? gatedFinalFocus}
 		/>
 	);
+}
+
+/*
+ * Upstream's Dialog portal container sets `--cds-page-bg: var(--cds-surface-popover)`, so page-coloured
+ * surfaces inside a styled dialog (the sticky header band's `bg-page`) match the popup instead of the page.
+ */
+const PAGE_BG_CLASS = "[--color-page:var(--color-surface-popover)]";
+
+function withPageBg(className: DialogPopupProps["className"]): DialogPopupProps["className"]
+{
+	if (typeof className === "function") return (state) => prependPageBg(className(state));
+	return prependPageBg(className);
+}
+
+function prependPageBg(className: string | undefined): string
+{
+	return className === undefined ? PAGE_BG_CLASS : `${PAGE_BG_CLASS} ${className}`;
 }
 
 /** Upstream's cds `AlertDialog.Popup` (`wV` + `E9`'s `Eo(open)`): the overlay marker and the `Eo` final focus. */

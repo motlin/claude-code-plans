@@ -16,12 +16,12 @@ afterEach(() =>
 	restore = undefined;
 });
 
-function popupFor(ref?: React.Ref<HTMLDivElement>, panelsOff = false)
+function popupFor(ref?: React.Ref<HTMLDivElement>, panelsOff = false, unstyled = false)
 {
 	const node = (
 		<Dialog.Root open>
 			<Dialog.Portal>
-				<DialogPopup aria-label="p" className="c" ref={ref}>
+				<DialogPopup aria-label="p" className="c" ref={ref} unstyled={unstyled}>
 					x
 				</DialogPopup>
 			</Dialog.Portal>
@@ -56,7 +56,7 @@ describe("DialogPopup (upstream styled cds Dialog.Popup js + lZ)", () =>
 				cds: "Dialog",
 				fizzy: "",
 				tall: "",
-				className: "c",
+				className: "[--color-page:var(--color-surface-popover)] c",
 				ref: true,
 			},
 		);
@@ -83,6 +83,28 @@ describe("DialogPopup (upstream styled cds Dialog.Popup js + lZ)", () =>
 				cds: "Dialog",
 				fizzy: null,
 				tall: null,
+			},
+		);
+	});
+
+	it("leaves the unstyled popup without markers or the page-bg override", async () =>
+	{
+		popupFor(undefined, false, true);
+		const popup = await screen.findByRole(
+			"dialog",
+			{
+				name: "p",
+			},
+		);
+		expect(
+			{
+				cds: popup.getAttribute("data-cds"),
+				className: popup.className,
+			},
+		).toStrictEqual(
+			{
+				cds: null,
+				className: "c",
 			},
 		);
 	});
