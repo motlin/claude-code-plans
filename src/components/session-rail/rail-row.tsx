@@ -17,7 +17,7 @@ export const ENVIRONMENT_MENU_BUTTON_CLASS =
 /** Upstream's trailing state spans (Connectors' "Off" and "Authenticate"): a footnote without tabular digits. */
 const HINT_TONE_CLASS =
 {
-	muted: "shrink-0 text-footnote text-ink-muted",
+	muted: "shrink-0 text-footnote text-muted-as-secondary",
 	warning: "shrink-0 text-footnote text-warning",
 } as const;
 
@@ -116,7 +116,7 @@ export const RAIL_CARD_CLASS = `group/railcard epitaxy-rail-lined flex shrink-0 
 
 /** Upstream's rail Show more / Show less toggle. */
 const SHOW_MORE_CLASS =
-	"flex min-h-8 w-full min-w-0 cursor-pointer items-center rounded px-2 text-start text-body text-ink-muted hover:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
+	"flex min-h-8 w-full min-w-0 cursor-pointer items-center rounded px-2 text-start text-body text-muted-as-secondary hover:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
 
 /** Upstream's rail Show more / Show less row. */
 export function ShowMoreButton({state}: {state: ShowMoreState})

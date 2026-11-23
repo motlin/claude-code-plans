@@ -2663,8 +2663,8 @@ describe("Background tasks card", () =>
 	{
 		await renderCards(withTasks(SIX));
 		const picked = (element: Element | null | undefined) =>
-			["min-h-8", "min-h-6.5", "gap-2.5", "px-2", "px-1"].filter((each) =>
-				element?.className.split(" ").includes(each),
+			["min-h-8", "min-h-6.5", "gap-2.5", "px-2", "px-1", "text-ink-muted", "text-muted-as-secondary"].filter(
+				(each) => element?.className.split(" ").includes(each),
 			);
 
 		expect(
@@ -2689,7 +2689,7 @@ describe("Background tasks card", () =>
 		).toStrictEqual(
 			{
 				row: ["min-h-8", "gap-2.5", "px-2"],
-				showMore: ["min-h-8", "px-2"],
+				showMore: ["min-h-8", "px-2", "text-muted-as-secondary"],
 			},
 		);
 	});
@@ -5108,7 +5108,7 @@ describe("Connectors card", () =>
 				hints: [
 					["Authenticate", "shrink-0 text-footnote text-warning"],
 					["Authenticate", "shrink-0 text-footnote text-warning"],
-					["Off", "shrink-0 text-footnote text-ink-muted"],
+					["Off", "shrink-0 text-footnote text-muted-as-secondary"],
 				],
 				titles: 0,
 				manage: null,
