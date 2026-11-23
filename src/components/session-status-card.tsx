@@ -16,6 +16,7 @@ import
 } from "../lib/session-status-card";
 import {useDensity} from "./ui/density-context";
 import {Icon} from "./ui/icon";
+import {PathLabel} from "./ui/path-label";
 import {Tooltip} from "./ui/tooltip";
 
 /** How long a copy button shows "Copied" with a check. */
@@ -62,10 +63,14 @@ export function GhostCopyButton({
 	);
 }
 
-/** Upstream's value class: the session id in mono (its inner span truncates), other full-valued rows but MCP servers truncated, the rest wrapping. */
+/**
+ * Upstream's value class: the session id in mono (its inner span truncates), the folder as a flex row for its
+ * clipping path, other full-valued rows but MCP servers truncated, the rest wrapping.
+ */
 function valueClass(row: StatusRow): string
 {
 	if (row.id === "sessionId") return "min-w-0 max-w-full font-mono-ui";
+	if (row.id === "folder" && row.fullValue !== undefined) return "flex min-w-0 max-w-full";
 	return row.fullValue === undefined || row.id === "mcp"
 		? "min-w-0 [overflow-wrap:anywhere]"
 		: "min-w-0 max-w-full truncate";
@@ -96,6 +101,8 @@ function StatusCardRow({
 									{row.value}
 								</bdi>
 							</span>
+						) : row.id === "folder" && row.fullValue !== undefined ? (
+							<PathLabel label={row.value} />
 						) : (
 							row.value
 						)}

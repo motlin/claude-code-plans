@@ -4,7 +4,7 @@ import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {SessionStatusCard} from "../src/components/session-status-card";
 import {DensityContext} from "../src/components/ui/density-context";
-import type {StatusGroup} from "../src/lib/session-status-card";
+import type {StatusGroup, StatusRow} from "../src/lib/session-status-card";
 
 const SESSION_ID = "8f1c2d3e-4b5a-4c6d-8e7f-001122334455";
 
@@ -246,6 +246,103 @@ describe("SessionStatusCard", () =>
 				calls: 1,
 			},
 		);
+	});
+
+	it("clips the folder path's directory and keeps its basename, or truncates a slashless value whole", () =>
+	{
+		const folderRow = (value: string, fullValue: string): StatusRow => (
+		{
+			id: "folder",
+			label: "Folder",
+			value,
+			fullValue,
+		});
+		render(
+			<SessionStatusCard
+				groups={[
+					{
+						id: "environment",
+						label: "Environment",
+						rows: [
+							folderRow("~/projects/claude-code-plans", "/Users/me/projects/claude-code-plans"),
+							folderRow("scratch", "/scratch"),
+						],
+					},
+				]}
+			/>,
+		);
+		const shape = (el: Element): unknown => (
+		{
+			tag: el.tagName,
+			className: el.className,
+			title: el.getAttribute("title"),
+			dir: el.getAttribute("dir"),
+			ariaLabel: el.getAttribute("aria-label"),
+			children: el.children.length > 0 ? [...el.children].map(shape) : el.textContent,
+		});
+
+		expect([...card().querySelectorAll(".flex.items-baseline [title]")].map(shape)).toStrictEqual([
+			{
+				tag: "SPAN",
+				className: "flex min-w-0 max-w-full",
+				title: "/Users/me/projects/claude-code-plans",
+				dir: null,
+				ariaLabel: null,
+				children: [
+					{
+						tag: "SPAN",
+						className: "relative flex min-w-0 overflow-hidden whitespace-nowrap",
+						title: null,
+						dir: "ltr",
+						ariaLabel: "~/projects/claude-code-plans",
+						children: [
+							{
+								tag: "SPAN",
+								className: "min-w-0 overflow-hidden",
+								title: null,
+								dir: null,
+								ariaLabel: null,
+								children: "~/projects/",
+							},
+							{
+								tag: "SPAN",
+								className: "max-w-full shrink-0 truncate",
+								title: null,
+								dir: null,
+								ariaLabel: null,
+								children: "claude-code-plans",
+							},
+						],
+					},
+				],
+			},
+			{
+				tag: "SPAN",
+				className: "flex min-w-0 max-w-full",
+				title: "/scratch",
+				dir: null,
+				ariaLabel: null,
+				children: [
+					{
+						tag: "SPAN",
+						className: "relative flex min-w-0 overflow-hidden whitespace-nowrap",
+						title: null,
+						dir: "ltr",
+						ariaLabel: null,
+						children: [
+							{
+								tag: "SPAN",
+								className: "min-w-0 truncate",
+								title: null,
+								dir: null,
+								ariaLabel: null,
+								children: "scratch",
+							},
+						],
+					},
+				],
+			},
+		]);
 	});
 
 	it("shows Loading session info… and no Copy button before any group arrives", () =>
