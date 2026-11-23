@@ -99,6 +99,10 @@ describe("CODE_TILE_CSS (upstream `Qc`)", () =>
 					'[data-line] span[style*="-font-weight"]{font-weight:var(--code-font-skip-dark,var(--diffs-token-dark-font-weight,inherit)) var(--code-font-skip-light,var(--diffs-token-light-font-weight,inherit))}',
 				),
 				noFontStyle: CODE_TILE_CSS.includes("-font-style"),
+				noHover: CODE_TILE_CSS.includes("[data-line]:hover"),
+				bidiLast: CODE_TILE_CSS.endsWith(
+					'span[style*="-font-weight"]{font-variation-settings:var(--code-font-skip-dark,var(--code-font-dark-axes,inherit)) var(--code-font-skip-light,var(--code-font-light-axes,inherit))}[data-line] { unicode-bidi: var(--epitaxy-file-line-bidi, revert); }',
+				),
 			},
 		).toStrictEqual(
 			{
@@ -108,6 +112,8 @@ describe("CODE_TILE_CSS (upstream `Qc`)", () =>
 				mono: true,
 				weight: true,
 				noFontStyle: false,
+				noHover: false,
+				bidiLast: true,
 			},
 		);
 	});
