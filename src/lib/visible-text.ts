@@ -24,6 +24,9 @@ const LOOKALIKE_RE = /\[(?=U\+[0-9A-F]{4,6}(?:\u00D7[0-9]+)?\])|\\(?=u[0-9a-f]{4
 const CONTROL_RE = /[\u0000-\u0008\u000B-\u001F\u007F-\u009F]/gu;
 /** Default-ignorable and format characters: zero-width, bidi controls, soft hyphen, tags. */
 const IGNORABLE_RE = /[\p{Default_Ignorable_Code_Point}\p{Cf}]/gu;
+/** Upstream's `Vr` (`emojiStyle`): as `IGNORABLE_RE`, but U+FE0F kept after a pictograph it turns into an emoji. */
+const IGNORABLE_EMOJI_STYLE_RE =
+	/(?<!(?![\p{Emoji_Presentation}\p{Cn}])\p{Extended_Pictographic})\uFE0F|(?!\uFE0F)[\p{Default_Ignorable_Code_Point}\p{Cf}]/gu;
 /** Surrogates, unassigned and private-use code points. */
 const UNASSIGNED_RE = /[\p{Cs}\p{Cn}\p{Co}]/gu;
 /** Spaces other than the plain space, and blank-looking characters. */
@@ -31,12 +34,12 @@ const ODD_SPACE_RE = /(?! )\p{Zs}|[\u2800\uFFFC\u{1D159}\u{13441}\u{13442}\u{169
 const SEPARATOR_RE = /[\u2028\u2029]/gu;
 const LINE_RE = /[\t\n]/gu;
 
-function hiddenChars(text: string): string
+function hiddenChars(text: string, emojiStyle: boolean): string
 {
 	return text
 		.replace(SEPARATOR_RE, codePointTag)
 		.replace(CONTROL_RE, codePointTag)
-		.replace(IGNORABLE_RE, codePointTag)
+		.replace(emojiStyle ? IGNORABLE_EMOJI_STYLE_RE : IGNORABLE_RE, codePointTag)
 		.replace(UNASSIGNED_RE, codePointTag)
 		.replace(ODD_SPACE_RE, codePointTag);
 }
@@ -44,17 +47,26 @@ function hiddenChars(text: string): string
 /**
  * Text with every invisible, bidi and control character shown as `[U+XXXX]`, keeping tabs and newlines, as
  * upstream's `SO(text)` (shared-18) does for a permission card's folded text (`bn`).
- * A `\uXXXX` escape keeps its backslash only when it names a character that would show as itself.
+ * A `\uXXXX` escape keeps its backslash only when it names a character that would show as itself. With `emojiStyle`
+ * (upstream's `{emojiStyle: true}`), a U+FE0F that makes a pictograph an emoji is kept.
  */
-export function visibleMultiline(text: string): string
+export function visibleMultiline(
+	text: string,
+	{
+		emojiStyle = false,
+	}:
+	{
+		emojiStyle?: boolean;
+	} = {},
+): string
 {
 	const unspoofed = text.replace(LOOKALIKE_RE, (match, offset: number) =>
 	{
 		if (match !== "\\") return codePointTag(match);
 		const named = String.fromCodePoint(Number.parseInt(text.slice(offset + 2, offset + 6), 16));
-		return hiddenChars(named) === named && !/[\t\n]/u.test(named) ? match : codePointTag(match);
+		return hiddenChars(named, emojiStyle) === named && !/[\t\n]/u.test(named) ? match : codePointTag(match);
 	});
-	return hiddenChars(unspoofed);
+	return hiddenChars(unspoofed, emojiStyle);
 }
 
 /**

@@ -64,6 +64,7 @@ import
 } from "../lib/read-gate";
 import type {PermissionDialogShape} from "../lib/herdr/permission-screen";
 import {allowMenuItems, AUTO_SWITCH_DESCRIPTION, AUTO_SWITCH_LABEL} from "../lib/permission-auto-switch";
+import {FILE_CHANGE_TOO_LARGE_NOTE} from "../lib/permission-file-change";
 import type {PermissionRow} from "../lib/permission-rows";
 import {toAriaKeyShortcuts} from "../lib/shortcuts/format";
 import
@@ -688,7 +689,7 @@ export function PermissionCard({
 						{persistentAllow !== null && persistentAllowSaves !== null && (
 							<AlwaysAllowSaves saves={persistentAllowSaves} />
 						)}
-						{fileChange === "too_large" && <p className={TOO_LARGE_CLASS}>{FILE_CHANGE_TOO_LARGE}</p>}
+						{fileChange === "too_large" && <p className={TOO_LARGE_CLASS}>{FILE_CHANGE_TOO_LARGE_NOTE}</p>}
 						{tokenWarning && <TokenWarning />}
 						{rowsTrail &&
 							hasRows &&
@@ -1155,8 +1156,6 @@ const DETAIL_CLASS =
 	"epitaxy-code-size bg-alpha-1 rounded-r4 py-md px-lg text-code text-secondary whitespace-pre-wrap break-words select-text [unicode-bidi:plaintext]";
 /** Upstream's `U` paragraph (`gy`) for a change over the preview cap. */
 const TOO_LARGE_CLASS = "text-body text-secondary select-text break-words";
-const FILE_CHANGE_TOO_LARGE =
-	"Preview unavailable — this change is too large to show here (over 200,000 characters). The full change appears in the conversation after it runs.";
 const DETAIL_NOTE_CLASS = "text-footnote text-muted-as-secondary select-text break-words [unicode-bidi:plaintext]";
 const DESCRIPTION_CLASS =
 	"text-body text-secondary select-text break-words max-h-[calc(3*var(--text-body--line-height))] overflow-y-auto scroll-fade-size-[calc(1*var(--text-body--line-height))] [unicode-bidi:plaintext]";

@@ -320,6 +320,29 @@ export function lineEndingsMayChange(name: string, input: Record<string, unknown
 	});
 }
 
+/** Upstream's `R2` (shared-18): some edit's old and new text differ only in their line endings. */
+export function changesOnlyLineEndings(input: Record<string, unknown>): boolean
+{
+	const edits: unknown[] = Array.isArray(input["edits"]) ? input["edits"] : [input];
+	return edits.some((edit) =>
+	{
+		const record = asRecord(edit);
+		if (record === undefined) return false;
+		const oldString = stringField(record, "old_string");
+		const newString = stringField(record, "new_string");
+		return (
+			oldString !== undefined &&
+			newString !== undefined &&
+			oldString !== newString &&
+			diffText(oldString) === diffText(newString)
+		);
+	});
+}
+
+/** Upstream's `hS`/`gy` (kHNf/0): read and shown instead of a change over the preview cap. */
+export const FILE_CHANGE_TOO_LARGE_NOTE =
+	"Preview unavailable — this change is too large to show here (over 200,000 characters). The full change appears in the conversation after it runs.";
+
 /** Upstream's `Zv` (and `{...Zv, unreadable}`): a preview whose file was not read, or could not be. */
 export function unreadFileChange(
 	kind: "none" | "unreadable",

@@ -84,8 +84,138 @@ describe("permissionAnnouncement, as upstream's Jy/qy/Yy", () =>
 			),
 		]).toStrictEqual([
 			"Permission requested: edit. /r/a.ts, a.ts",
-			"Permission requested: edit. /r/a.ts, a.ts. May also change line endings.",
-			"Permission requested: edit. /r/a.ts, a.ts",
+			"Permission requested: edit. /r/a.ts, a.ts. Writes: a b. May also change line endings.",
+			"Permission requested: edit. /r/a.ts, a.ts. Writes: a b",
+		]);
+	});
+
+	it("reads what a previewed Write, Edit or MultiEdit writes, removes and adds, as upstream's mS", () =>
+	{
+		const fileCard = (
+			toolName: string,
+			toolInput: Record<string, unknown>,
+			fileChange: "preview" | "too_large" = "preview",
+		) =>
+			permissionAnnouncement(
+				{
+					title:
+					{
+						action: "edit",
+						meta: "a.ts",
+					},
+					detail: "/r/a.ts",
+					description: "Tidy up",
+					rows: [
+						{
+							label: "Mode",
+							value: "fast",
+						},
+					],
+					fileChange,
+					toolName,
+					toolInput,
+				},
+			);
+		expect([
+			fileCard(
+				"Write",
+				{
+					file_path: "/r/a.ts",
+					content: "one\n  two \u200B\u2764\uFE0F",
+				},
+			),
+			fileCard(
+				"Write",
+				{
+					file_path: "/r/a.ts",
+					content: "",
+				},
+			),
+			fileCard(
+				"Write",
+				{
+					file_path: "/r/a.ts",
+					content: "x".repeat(151),
+				},
+			),
+			fileCard(
+				"Edit",
+				{
+					file_path: "/r/a.ts",
+					old_string: "a\r\nb",
+					new_string: "c",
+				},
+			),
+			fileCard(
+				"Edit",
+				{
+					file_path: "/r/a.ts",
+					old_string: "a\r\nb",
+					new_string: "a\nb",
+				},
+			),
+			fileCard(
+				"Edit",
+				{
+					file_path: "/r/a.ts",
+					old_string: "gone",
+					new_string: "",
+				},
+			),
+			fileCard(
+				"MultiEdit",
+				{
+					file_path: "/r/a.ts",
+					edits: [
+						{
+							old_string: "a",
+							new_string: "b",
+						},
+						{
+							old_string: "c",
+							new_string: "d",
+						},
+					],
+				},
+			),
+			fileCard(
+				"MultiEdit",
+				{
+					file_path: "/r/a.ts",
+					edits: [
+						{
+							old_string: "a",
+							new_string: "b",
+						},
+						{
+							old_string: "c",
+							new_string: "d",
+						},
+						{
+							old_string: "e",
+							new_string: "f",
+						},
+					],
+				},
+			),
+			fileCard(
+				"Write",
+				{
+					file_path: "/r/a.ts",
+					content: "big",
+				},
+				"too_large",
+			),
+		]).toStrictEqual([
+			"Permission requested: edit. /r/a.ts, a.ts. Tidy up. Writes: one two [U+200B]\u2764\uFE0F. 1 of 1, Mode: fast",
+			"Permission requested: edit. /r/a.ts, a.ts. Tidy up. 1 of 1, Mode: fast",
+			`Permission requested: edit. /r/a.ts, a.ts. Tidy up. Writes: ${"x".repeat(150)}, truncated. 1 of 1, Mode: fast`,
+			"Permission requested: edit. /r/a.ts, a.ts. Tidy up. Removes: a b. Adds: c. 1 of 1, Mode: fast",
+			"Permission requested: edit. /r/a.ts, a.ts. Tidy up. Removes: a[U+000D] b. Adds: a b. 1 of 1, Mode: fast",
+			"Permission requested: edit. /r/a.ts, a.ts. Tidy up. Removes: gone. 1 of 1, Mode: fast",
+			"Permission requested: edit. /r/a.ts, a.ts. Tidy up. Removes: a. Adds: b. and 1 more edit in this file. 1 of 1, Mode: fast",
+			"Permission requested: edit. /r/a.ts, a.ts. Tidy up. Removes: a. Adds: b. and 2 more edits in this file. 1 of 1, Mode: fast",
+			"Permission requested: edit. /r/a.ts, a.ts. Tidy up. Preview unavailable \u2014 this change is too large to show here (over 200,000 characters). The full change appears in the conversation after it runs.. 1 of 1, Mode: fast",
 		]);
 	});
 

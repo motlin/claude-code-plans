@@ -4,8 +4,16 @@
  */
 
 import type {PendingPermission, PermissionFold} from "./permission-card";
-import {LINE_ENDINGS_MAY_CHANGE_NOTE, lineEndingsMayChange} from "./permission-file-change";
+import {asRecord} from "./narrow";
+import
+{
+	changesOnlyLineEndings,
+	FILE_CHANGE_TOO_LARGE_NOTE,
+	LINE_ENDINGS_MAY_CHANGE_NOTE,
+	lineEndingsMayChange,
+} from "./permission-file-change";
 import type {PermissionRow} from "./permission-rows";
+import {visibleMultiline} from "./visible-text";
 
 /** Upstream's `Cb`: the most code points a capped part reads before it is cut. */
 const SPOKEN_MAX = 150;
@@ -140,15 +148,41 @@ function rowsVoice(rows: readonly PermissionRow[], unvoiced: boolean): string | 
 	return read.join(". ");
 }
 
-/** Upstream's `mS` closing part: a previewed change without its file may change line endings. */
-function fileChangeVoice(p: PermissionAnnouncementInput): string | undefined
+/**
+ * Upstream's `mS`: a previewed Write says what it writes, an Edit (or a MultiEdit's first edit) what it removes and
+ * adds and how many more edits follow, then whether line endings may change; a change too large to preview says so.
+ * Each text is capped, its CRLFs read as LFs unless an edit only changes line endings (`Jn`).
+ */
+function fileChangeVoice(p: PermissionAnnouncementInput): (string | undefined)[]
 {
-	return p.fileChange === "preview" &&
-		p.toolName !== undefined &&
-		p.toolInput !== undefined &&
-		lineEndingsMayChange(p.toolName, p.toolInput)
-		? LINE_ENDINGS_MAY_CHANGE_NOTE
-		: undefined;
+	if (p.fileChange === "too_large") return [FILE_CHANGE_TOO_LARGE_NOTE];
+	const name = p.toolName;
+	const input = p.toolInput;
+	if (p.fileChange !== "preview" || name === undefined || input === undefined) return [];
+	const spoken = (text: unknown) =>
+		typeof text === "string" && text !== ""
+			? spokenCap(
+					visibleMultiline(
+						changesOnlyLineEndings(input) ? text : text.replaceAll("\r\n", "\n"),
+						{
+							emojiStyle: true,
+						},
+					),
+				)
+			: undefined;
+	const labelled = (label: string, text: string | undefined) =>
+		text === undefined ? undefined : `${label}: ${text}`;
+	const lineEndings = lineEndingsMayChange(name, input) ? LINE_ENDINGS_MAY_CHANGE_NOTE : undefined;
+	if (name === "Write") return [labelled("Writes", spoken(input["content"])), lineEndings];
+	const edits: unknown[] = name === "Edit" ? [input] : Array.isArray(input["edits"]) ? input["edits"] : [];
+	const first = asRecord(edits[0]);
+	const more = edits.length - 1;
+	return [
+		labelled("Removes", spoken(first?.["old_string"])),
+		labelled("Adds", spoken(first?.["new_string"])),
+		more > 0 ? `and ${more} more ${more === 1 ? "edit" : "edits"} in this file` : undefined,
+		lineEndings,
+	];
 }
 
 /** Upstream's `Jy`: the lead sentence, then each non-blank part as "{announcement}. {extra}" in upstream's order. */
@@ -174,10 +208,11 @@ export function permissionAnnouncement(p: PermissionAnnouncementInput): string
 			text: p.description,
 			capped: true,
 		},
+		...fileChangeVoice(p).map((text) => (
 		{
-			text: fileChangeVoice(p),
+			text,
 			capped: false,
-		},
+		})),
 		{
 			text: trail ? undefined : rows,
 			capped: false,
