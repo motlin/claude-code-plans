@@ -1,8 +1,10 @@
 /**
- * Upstream's approval conversation cap fitter (claude.ai/code chunk c2d1aeb56 `z`, decoded in
- * `.llm/upstream-sync/dumps/approval-conversation-cap-fit-decode-2026-11-10.txt`): an in-flow tool card at the end
- * of the conversation caps its height to what the transcript scroller can show, never below its chrome plus a body
- * floor, and pulls up the tail space under it. Pure DOM; `hooks/use-approval-conversation-cap.ts` drives it.
+ * Upstream's approval conversation cap fitter (claude.ai/code chunk c2d1aeb56 `K`, saved in
+ * `.llm/upstream-sync/dumps/approval-conversation-cap-fit-shell-c2d1aeb56-e2B12FFf-2026-11-21.js.txt`): an in-flow
+ * tool card at the end of the conversation caps its height to what the transcript scroller can show, never below its
+ * chrome plus a body floor, and pulls up the tail space under it. Pure DOM; `hooks/use-approval-conversation-cap.ts`
+ * drives it. Upstream also ends the content at the closest `[data-rocksteady-sizer]` and adds a
+ * `[data-end-hold-lowered]` ancestor's `--end-hold-room`; local has neither surface, so both are left out.
  */
 import {APPROVAL_READ_ROWS_ATTR, inset} from "./read-gate";
 
@@ -19,10 +21,23 @@ const BODY_FLOOR = 34;
 /** Upstream `j` (`.epitaxy-approval-body`), the local body attribute. */
 export const APPROVAL_BODY_SELECTOR = "[data-approval-card-body]";
 
-/** Upstream `M`. */
+/** Upstream `R`. */
 export function capValue(room: number, floor: number): string
 {
-	return `max(min(60vh, ${room}px), ${floor}px)`;
+	return `max(min(max(60vh, calc(22.5rem * var(--cds-rem-scale, 1))), ${room}px), ${floor}px)`;
+}
+
+/** Upstream `z`: floors `value`, but holds `previous` through a 1px rise so the cap doesn't flicker. */
+function roundDown(value: number, previous: number): number
+{
+	const rounded = Math.floor(value + 0.05);
+	return rounded === previous + 1 ? previous : rounded;
+}
+
+/** Upstream `B`: ceils `value`, but holds `previous` through a 1px drop. */
+function roundUp(value: number, previous: number): number
+{
+	return -roundDown(-value, -previous);
 }
 
 /** Upstream shared-0 `ve`: a CSS length in px, 0 for `auto`, empty or anything unparsable. */
@@ -125,11 +140,13 @@ export interface ConversationCapFitter
 {
 	/** The scroller's direct child that holds the card, which the driver also observes. */
 	column: Element;
+	/** The card's flow box parent, which the driver also observes. */
+	parent: Element;
 	measure: () => void;
 }
 
 /**
- * Upstream `z`'s measure: writes or removes the cap and the end reclaim on `card.style`. Two clipped measures in a
+ * Upstream `K`'s measure: writes or removes the cap and the end reclaim on `card.style`. Two clipped measures in a
  * row under a cap make it stop capping for the fitter's lifetime.
  */
 export function createConversationCapFitter(
@@ -141,8 +158,11 @@ export function createConversationCapFitter(
 	const flow = flowBox(card, win);
 	let column = flow;
 	while (column.parentElement !== null && column.parentElement !== scroller) column = column.parentElement;
+	const parent = flow.parentElement ?? flow;
 	let gaveUp = false;
 	let wasOver = false;
+	let previousRoom = Number.NaN;
+	let previousFloor = Number.NaN;
 	const measure = () =>
 	{
 		const scrollerStyle = win.getComputedStyle(scroller);
@@ -155,14 +175,16 @@ export function createConversationCapFitter(
 			scroller.getBoundingClientRect().top + scroller.clientTop + scroller.scrollHeight - scroller.scrollTop;
 		const spare = Math.max(0, contentEnd - after - px(scrollerStyle.scrollPaddingBottom));
 		const reclaim = lastVisible(flow, scroller, after, win)
-			? Math.min(RECLAIM_CAP, Math.max(0, Math.floor(spare - GAP)))
+			? Math.min(RECLAIM_CAP, Math.max(0, roundDown(spare - GAP, reclaimNow)))
 			: 0;
-		const room = Math.floor(
+		const room = roundDown(
 			scroller.clientHeight -
 				px(scrollerStyle.scrollPaddingTop) -
 				px(scrollerStyle.scrollPaddingBottom) -
 				(spare - reclaim),
+			previousRoom,
 		);
+		previousRoom = room;
 		const body = card.querySelector(APPROVAL_BODY_SELECTOR);
 		const lastBottom = card.lastElementChild?.getBoundingClientRect().bottom ?? box.bottom;
 		const chrome =
@@ -176,8 +198,9 @@ export function createConversationCapFitter(
 		const over = capped && lastBottom > box.bottom + 1;
 		if (over && wasOver) gaveUp = true;
 		wasOver = over;
-		const floor = Math.ceil(chrome + bodyFloor);
-		const atEnd = lastVisible(flow.parentElement ?? flow, scroller, after, win);
+		const floor = roundUp(chrome + bodyFloor, previousFloor);
+		previousFloor = floor;
+		const atEnd = lastVisible(parent, scroller, after, win);
 		if (reclaim > 0) card.style.setProperty(APPROVAL_RECLAIM_VAR, `${reclaim}px`);
 		else card.style.removeProperty(APPROVAL_RECLAIM_VAR);
 		if (!gaveUp && room > 0 && atEnd && Number.isFinite(floor))
@@ -186,6 +209,7 @@ export function createConversationCapFitter(
 	};
 	return {
 		column,
+		parent,
 		measure,
 	};
 }

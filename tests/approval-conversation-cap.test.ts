@@ -186,7 +186,7 @@ function fixture({
 	};
 }
 
-describe("createConversationCapFitter (upstream c2d1aeb56 `z`)", () =>
+describe("createConversationCapFitter (upstream c2d1aeb56 `K`)", () =>
 {
 	it("caps a trailing card to the scroller's room and reclaims all but 8px of the 15px under it", () =>
 	{
@@ -201,12 +201,12 @@ describe("createConversationCapFitter (upstream c2d1aeb56 `z`)", () =>
 			{
 				first:
 				{
-					cap: "max(min(60vh, 792px), 134px)",
+					cap: "max(min(max(60vh, calc(22.5rem * var(--cds-rem-scale, 1))), 792px), 134px)",
 					reclaim: "7px",
 				},
 				again:
 				{
-					cap: "max(min(60vh, 792px), 134px)",
+					cap: "max(min(max(60vh, calc(22.5rem * var(--cds-rem-scale, 1))), 792px), 134px)",
 					reclaim: "7px",
 				},
 				column: true,
@@ -224,8 +224,40 @@ describe("createConversationCapFitter (upstream c2d1aeb56 `z`)", () =>
 			).measure(),
 		).toStrictEqual(
 			{
-				cap: "max(min(60vh, 740px), 134px)",
+				cap: "max(min(max(60vh, calc(22.5rem * var(--cds-rem-scale, 1))), 740px), 134px)",
 				reclaim: "40px",
+			},
+		);
+	});
+
+	it("holds the room through a 1px growth and the floor through a 1px shrink, as upstream's `z`/`B` hysteresis", () =>
+	{
+		const {scroller, body, measure} = fixture();
+		const cap = () => measure().cap.replace("max(min(max(60vh, calc(22.5rem * var(--cds-rem-scale, 1))), ", "");
+		const first = cap();
+		setNumber(scroller, "clientHeight", 801);
+		const roomUpOne = cap();
+		setNumber(scroller, "clientHeight", 802);
+		const roomUpTwo = cap();
+		setNumber(body, "clientHeight", 201);
+		const floorDownOne = cap();
+		setNumber(body, "clientHeight", 202);
+		const floorDownTwo = cap();
+		expect(
+			{
+				first,
+				roomUpOne,
+				roomUpTwo,
+				floorDownOne,
+				floorDownTwo,
+			},
+		).toStrictEqual(
+			{
+				first: "792px), 134px)",
+				roomUpOne: "792px), 134px)",
+				roomUpTwo: "794px), 134px)",
+				floorDownOne: "794px), 134px)",
+				floorDownTwo: "794px), 132px)",
 			},
 		);
 	});
@@ -260,7 +292,7 @@ describe("createConversationCapFitter (upstream c2d1aeb56 `z`)", () =>
 		).toStrictEqual(
 			{
 				column: true,
-				cap: "max(min(60vh, 792px), 334px)",
+				cap: "max(min(max(60vh, calc(22.5rem * var(--cds-rem-scale, 1))), 792px), 334px)",
 				reclaim: "7px",
 			},
 		);
@@ -292,7 +324,7 @@ describe("createConversationCapFitter (upstream c2d1aeb56 `z`)", () =>
 		}));
 		expect(measure()).toStrictEqual(
 			{
-				cap: "max(min(60vh, 785px), 134px)",
+				cap: "max(min(max(60vh, calc(22.5rem * var(--cds-rem-scale, 1))), 785px), 134px)",
 				reclaim: "",
 			},
 		);
@@ -338,15 +370,15 @@ describe("createConversationCapFitter (upstream c2d1aeb56 `z`)", () =>
 		});
 		expect(results).toStrictEqual([
 			{
-				cap: "max(min(60vh, 792px), 134px)",
+				cap: "max(min(max(60vh, calc(22.5rem * var(--cds-rem-scale, 1))), 792px), 134px)",
 				reclaim: "27px",
 			},
 			{
-				cap: "max(min(60vh, 792px), 134px)",
+				cap: "max(min(max(60vh, calc(22.5rem * var(--cds-rem-scale, 1))), 792px), 134px)",
 				reclaim: "7px",
 			},
 			{
-				cap: "max(min(60vh, 792px), 134px)",
+				cap: "max(min(max(60vh, calc(22.5rem * var(--cds-rem-scale, 1))), 792px), 134px)",
 				reclaim: "7px",
 			},
 		]);
@@ -378,7 +410,7 @@ describe("createConversationCapFitter (upstream c2d1aeb56 `z`)", () =>
 			{
 				unordered:
 				{
-					cap: "max(min(60vh, 792px), 134px)",
+					cap: "max(min(max(60vh, calc(22.5rem * var(--cds-rem-scale, 1))), 792px), 134px)",
 					reclaim: "7px",
 				},
 				ordered:
@@ -425,12 +457,12 @@ describe("createConversationCapFitter (upstream c2d1aeb56 `z`)", () =>
 			{
 				fits:
 				{
-					cap: "max(min(60vh, 792px), 134px)",
+					cap: "max(min(max(60vh, calc(22.5rem * var(--cds-rem-scale, 1))), 792px), 134px)",
 					reclaim: "7px",
 				},
 				clippedOnce:
 				{
-					cap: "max(min(60vh, 792px), 151px)",
+					cap: "max(min(max(60vh, calc(22.5rem * var(--cds-rem-scale, 1))), 792px), 151px)",
 					reclaim: "7px",
 				},
 				clippedTwice:
@@ -499,12 +531,12 @@ describe("createConversationCapFitter (upstream c2d1aeb56 `z`)", () =>
 			{
 				rowsFloor:
 				{
-					cap: "max(min(60vh, 792px), 167px)",
+					cap: "max(min(max(60vh, calc(22.5rem * var(--cds-rem-scale, 1))), 792px), 167px)",
 					reclaim: "7px",
 				},
 				minHeight:
 				{
-					cap: "max(min(60vh, 792px), 191px)",
+					cap: "max(min(max(60vh, calc(22.5rem * var(--cds-rem-scale, 1))), 792px), 191px)",
 					reclaim: "7px",
 				},
 			},
@@ -524,14 +556,14 @@ describe("createConversationCapFitter (upstream c2d1aeb56 `z`)", () =>
 		);
 		expect(measure()).toStrictEqual(
 			{
-				cap: "max(min(60vh, 679px), 134px)",
+				cap: "max(min(max(60vh, calc(22.5rem * var(--cds-rem-scale, 1))), 679px), 134px)",
 				reclaim: "",
 			},
 		);
 	});
 
-	it("formats the cap as upstream's `M`", () =>
+	it("formats the cap as upstream's `R`", () =>
 	{
-		expect(capValue(612, 187)).toBe("max(min(60vh, 612px), 187px)");
+		expect(capValue(612, 187)).toBe("max(min(max(60vh, calc(22.5rem * var(--cds-rem-scale, 1))), 612px), 187px)");
 	});
 });

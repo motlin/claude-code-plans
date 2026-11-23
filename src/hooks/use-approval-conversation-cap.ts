@@ -13,9 +13,9 @@ import {maybe, nearestScroller, windowOf} from "../lib/read-gate";
 const SCROLLER_RETRIES = 5;
 
 /**
- * Upstream's conversation cap driver (c2d1aeb56 `B`): while `on`, finds the card's scroller (waiting up to five
- * frames for one), measures, and measures again whenever the scroller, its child holding the card, or the card body
- * resizes. Turning off or unmounting disconnects and removes both properties from the card.
+ * Upstream's conversation cap driver (c2d1aeb56 `q`): while `on`, finds the card's scroller (waiting up to five
+ * frames for one), measures, and measures again whenever the scroller, its child holding the card, the card's
+ * parent, or the card body resizes. Turning off or unmounting disconnects and removes both properties from the card.
  */
 export function useApprovalConversationCap(ref: RefObject<HTMLElement | null>, on: boolean): void
 {
@@ -47,6 +47,7 @@ export function useApprovalConversationCap(ref: RefObject<HTMLElement | null>, o
 			const observer = Resize === undefined ? undefined : new Resize(fitter.measure);
 			observer?.observe(scroller);
 			observer?.observe(fitter.column);
+			observer?.observe(fitter.parent);
 			const body = card.querySelector(APPROVAL_BODY_SELECTOR);
 			if (body !== null) observer?.observe(body);
 			stop = () =>

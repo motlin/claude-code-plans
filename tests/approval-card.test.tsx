@@ -711,7 +711,7 @@ describe("approval scroll region (upstream c2d1aeb56 scroller)", () =>
 	});
 });
 
-describe("approval conversation cap (upstream c2d1aeb56 `B`)", () =>
+describe("approval conversation cap (upstream c2d1aeb56 `q`)", () =>
 {
 	it("compiles the in-flow tool card's cap and end reclaim from the fitter's properties", async () =>
 	{
@@ -851,9 +851,10 @@ describe("approval conversation cap (upstream c2d1aeb56 `B`)", () =>
 		).toStrictEqual(
 			{
 				mounted: "",
-				tall: "max(min(60vh, 800px), 34px)",
-				short: "max(min(60vh, 600px), 34px)",
-				observed: ["scroller", "column", "body"],
+				tall: "max(min(max(60vh, calc(22.5rem * var(--cds-rem-scale, 1))), 800px), 34px)",
+				short: "max(min(max(60vh, calc(22.5rem * var(--cds-rem-scale, 1))), 600px), 34px)",
+				// The card's parent is also the scroller's child holding it, so upstream `K` observes it twice.
+				observed: ["scroller", "column", "column", "body"],
 				afterUnmount: ["", ""],
 				disconnected: [true],
 			},
@@ -879,7 +880,7 @@ describe("approval conversation cap (upstream c2d1aeb56 `B`)", () =>
 			},
 		).toStrictEqual(
 			{
-				inline: "max(min(60vh, 800px), 34px)",
+				inline: "max(min(max(60vh, calc(22.5rem * var(--cds-rem-scale, 1))), 800px), 34px)",
 				sameRoot: true,
 				docked: "",
 				fitters: [true],
