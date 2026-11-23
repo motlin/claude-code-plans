@@ -1005,13 +1005,13 @@ describe("sidebar session families", () =>
 					"ps-[calc(var(--sb-row-px)+var(--sb-row-indent,0px)+var(--sb-iconless-pad,calc((var(--sb-leading-slot)-var(--sb-icon))/2)))]",
 					"text-start",
 					"text-[length:var(--sb-group-font)]",
-					"text-secondary",
-					"hover:text-primary",
+					"text-primary",
+					"hover:bg-[var(--sb-hover)]",
 					"hide-focus-ring",
 					"focus-visible:outline-hidden",
 					"focus-visible:shadow-[inset_0_0_0_1px_var(--color-accent-100),0_0_6px_0_color-mix(in_srgb,var(--color-accent-100)_20%,transparent)]",
 				],
-				painted: [],
+				painted: ["hover:bg-[var(--sb-hover)]"],
 			},
 		);
 	});

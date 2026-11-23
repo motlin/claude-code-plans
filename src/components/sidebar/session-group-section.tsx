@@ -1207,7 +1207,7 @@ function FamilyStub({
 			{
 				event.stopPropagation();
 			}}
-			className="df-family-stub hit-row [--cds-hit-gap-y:7px] hit-row-main flex h-[var(--sb-row-h)] w-full min-w-0 items-center rounded-[var(--sb-radius)] pe-[var(--sb-row-px)] ps-[calc(var(--sb-row-px)+var(--sb-row-indent,0px)+var(--sb-iconless-pad,calc((var(--sb-leading-slot)-var(--sb-icon))/2)))] text-start text-[length:var(--sb-group-font)] text-secondary hover:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--color-accent-100),0_0_6px_0_color-mix(in_srgb,var(--color-accent-100)_20%,transparent)]"
+			className="df-family-stub hit-row [--cds-hit-gap-y:7px] hit-row-main flex h-[var(--sb-row-h)] w-full min-w-0 items-center rounded-[var(--sb-radius)] pe-[var(--sb-row-px)] ps-[calc(var(--sb-row-px)+var(--sb-row-indent,0px)+var(--sb-iconless-pad,calc((var(--sb-leading-slot)-var(--sb-icon))/2)))] text-start text-[length:var(--sb-group-font)] text-primary hover:bg-[var(--sb-hover)] hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--color-accent-100),0_0_6px_0_color-mix(in_srgb,var(--color-accent-100)_20%,transparent)]"
 		>
 			<span className="df-fade-truncate flex items-center whitespace-nowrap">
 				<span data-row-label="" className="min-w-0">
