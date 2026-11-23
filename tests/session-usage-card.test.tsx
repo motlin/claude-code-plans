@@ -56,6 +56,7 @@ afterEach(() =>
 {
 	cleanup();
 	vi.useRealTimers();
+	vi.restoreAllMocks();
 });
 
 function renderCard(props: Partial<SessionUsageCardProps> = {})
@@ -445,6 +446,12 @@ function chipRows(): string[][]
 	return [...rows].map((row) => [...row.children].map((chip) => chip.textContent));
 }
 
+/** The grid's tabindex, role and label: upstream makes it a labelled tab stop only while it overflows sideways. */
+function scrollStop(grid: HTMLElement): (string | null)[]
+{
+	return [grid.getAttribute("tabindex"), grid.getAttribute("role"), grid.getAttribute("aria-label")];
+}
+
 function breakdown():
 {
 	columns: string;
@@ -571,12 +578,14 @@ describe("SessionUsageCard session section", () =>
 			{
 				wrapper: grid.parentElement?.className,
 				grid: grid.className,
+				scrollStop: scrollStop(grid),
 				modelHeader: [modelHeader.className, modelHeader.firstElementChild?.className],
 			},
 		).toStrictEqual(
 			{
 				wrapper: "rounded has-[>:focus-visible]:shadow-focus has-[>:focus-visible]:outline-hidden",
 				grid: "grid items-center overflow-x-auto scroll-fade-x whitespace-nowrap tabular-nums focus-visible:outline-hidden gap-x-xs gap-y-0.75 text-footnote",
+				scrollStop: [null, null, null],
 				modelHeader: [
 					"min-w-11 pb-0.5 text-end text-muted-as-secondary",
 					"block min-w-0 overflow-x-clip text-ellipsis whitespace-nowrap",
@@ -604,6 +613,9 @@ describe("SessionUsageCard session section", () =>
 
 	it("adds a Total column for two models sorted by tokens, and a Cost row with – for a model without cost", () =>
 	{
+		// Wider than its box by more than upstream's 3px slack, so the grid becomes a labelled tab stop.
+		vi.spyOn(HTMLElement.prototype, "scrollWidth", "get").mockReturnValue(404);
+		vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(400);
 		renderCard(
 			{
 				usage: NO_PLAN,
@@ -676,6 +688,11 @@ describe("SessionUsageCard session section", () =>
 				],
 			},
 		);
+		expect(scrollStop(screen.getByText("Breakdown").parentElement!)).toStrictEqual([
+			"0",
+			"group",
+			"Table, scrolls sideways",
+		]);
 	});
 
 	it("notes inaccurate costs when the cost-state saw an unknown model", () =>

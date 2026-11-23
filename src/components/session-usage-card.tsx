@@ -2,6 +2,7 @@ import {useQuery, useQueryClient} from "@tanstack/react-query";
 import {useNavigate} from "@tanstack/react-router";
 import {type ReactNode, useContext, useEffect, useId, useRef, useState} from "react";
 
+import {useIsOverflowing} from "../hooks/use-is-overflowing";
 import {useTimedFlag} from "../hooks/use-timed-flag";
 import {sessionQueryKeys, sessionUsageStatsQueryOptions} from "../lib/api/sessions";
 import {usageQueryOptions} from "../lib/api/usage";
@@ -371,56 +372,79 @@ function SessionSection({
 				)}
 			</div>
 			{hasTokens && (
-				<div className="rounded has-[>:focus-visible]:shadow-focus has-[>:focus-visible]:outline-hidden">
-					<div
-						className="grid items-center overflow-x-auto scroll-fade-x whitespace-nowrap tabular-nums focus-visible:outline-hidden gap-x-xs gap-y-0.75 text-footnote"
-						style={
-						{
-							gridTemplateColumns: `max-content repeat(${columns}, 1fr)`,
-						}}
-					>
-						<span className="pb-0.5 text-footnote text-primary">Breakdown</span>
-						{models.map((row) => (
-							<span key={row.model} className="min-w-11 pb-0.5 text-end text-muted-as-secondary">
-								<span className={ELLIPSIS}>{modelName(row.model)}</span>
-							</span>
-						))}
-						{totalColumn && <span className="pb-0.5 text-end text-muted-as-secondary">Total</span>}
-						{RULE}
-						{BREAKDOWN_ROWS.map((breakdown) => (
-							<BreakdownRow key={breakdown.key} label={breakdown.label}>
-								{models.map((row) => (
-									<span key={row.model} className="text-end text-muted-as-secondary">
-										{formatTokensShort(breakdown.pick(row))}
-									</span>
-								))}
-								{totalColumn && (
-									<span className="text-end text-muted-as-secondary">
-										{formatTokensShort(breakdown.pick(totals))}
-									</span>
-								)}
-							</BreakdownRow>
-						))}
-						{costRow && (
-							<BreakdownRow label="Cost">
-								{models.map((row) => (
-									<span key={row.model} className="text-end text-muted-as-secondary">
-										{costOf(row.model) > 0 ? USD.format(costOf(row.model)) : NO_COST}
-									</span>
-								))}
-								{totalColumn && (
-									<span className="text-end text-muted-as-secondary">{USD.format(totalCost)}</span>
-								)}
-							</BreakdownRow>
-						)}
-					</div>
-				</div>
+				<ScrollGrid columns={columns} contentKey={models.map((row) => row.model).join()}>
+					<span className="pb-0.5 text-footnote text-primary">Breakdown</span>
+					{models.map((row) => (
+						<span key={row.model} className="min-w-11 pb-0.5 text-end text-muted-as-secondary">
+							<span className={ELLIPSIS}>{modelName(row.model)}</span>
+						</span>
+					))}
+					{totalColumn && <span className="pb-0.5 text-end text-muted-as-secondary">Total</span>}
+					{RULE}
+					{BREAKDOWN_ROWS.map((breakdown) => (
+						<BreakdownRow key={breakdown.key} label={breakdown.label}>
+							{models.map((row) => (
+								<span key={row.model} className="text-end text-muted-as-secondary">
+									{formatTokensShort(breakdown.pick(row))}
+								</span>
+							))}
+							{totalColumn && (
+								<span className="text-end text-muted-as-secondary">
+									{formatTokensShort(breakdown.pick(totals))}
+								</span>
+							)}
+						</BreakdownRow>
+					))}
+					{costRow && (
+						<BreakdownRow label="Cost">
+							{models.map((row) => (
+								<span key={row.model} className="text-end text-muted-as-secondary">
+									{costOf(row.model) > 0 ? USD.format(costOf(row.model)) : NO_COST}
+								</span>
+							))}
+							{totalColumn && (
+								<span className="text-end text-muted-as-secondary">{USD.format(totalCost)}</span>
+							)}
+						</BreakdownRow>
+					)}
+				</ScrollGrid>
 			)}
 			{unknownCost && (
 				<span className="text-footnote text-muted-as-secondary">
 					Costs may be inaccurate due to usage of unknown models.
 				</span>
 			)}
+		</div>
+	);
+}
+
+/**
+ * Upstream's sideways-scrolling table grid (cdf950184 `_wn`): a focus-ring wrapper around a `max-content` label column
+ * and `columns` equal value columns. While its content overflows by more than 3px it becomes a tab stop, a group
+ * labelled "Table, scrolls sideways", so keyboard users can scroll it.
+ */
+function ScrollGrid({columns, contentKey, children}: {columns: number; contentKey: string; children: ReactNode})
+{
+	const [grid, setGrid] = useState<HTMLDivElement | null>(null);
+	const overflowing = useIsOverflowing(grid, contentKey, 3);
+	return (
+		<div className="rounded has-[>:focus-visible]:shadow-focus has-[>:focus-visible]:outline-hidden">
+			<div
+				ref={setGrid}
+				className="grid items-center overflow-x-auto scroll-fade-x whitespace-nowrap tabular-nums focus-visible:outline-hidden gap-x-xs gap-y-0.75 text-footnote"
+				style={
+				{
+					gridTemplateColumns: `max-content repeat(${columns}, 1fr)`,
+				}}
+				{...(overflowing &&
+				{
+					tabIndex: 0,
+					role: "group",
+					"aria-label": "Table, scrolls sideways",
+				})}
+			>
+				{children}
+			</div>
 		</div>
 	);
 }
