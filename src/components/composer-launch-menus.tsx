@@ -161,7 +161,6 @@ export function ModeMenu({
 									?
 										{
 											disabled: true,
-											disabledReason: item.disabledReason,
 										}
 									: {})}
 								{...(bar || item.disabled === true

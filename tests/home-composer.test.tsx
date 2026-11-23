@@ -3246,7 +3246,8 @@ describe("HomeComposer", () =>
 					row.getAttribute("aria-checked"),
 					row.getAttribute("aria-disabled") ?? "false",
 				]);
-				const reason = document.getElementById(autoRow.getAttribute("aria-describedby") ?? "")?.textContent;
+				const reason = autoRow.querySelector(".text-footnote")?.textContent;
+				const describedBy = autoRow.hasAttribute("aria-describedby");
 				fireEvent.keyDown(
 					screen.getByRole("menu"),
 					{
@@ -3286,6 +3287,7 @@ describe("HomeComposer", () =>
 						toast,
 						menuRows,
 						reason,
+						describedBy,
 						restoredReadout,
 						toastsAfterSecondDemotion,
 						launch: launchBody(launchCalls[0]),
@@ -3301,6 +3303,7 @@ describe("HomeComposer", () =>
 							["Auto", "false", "true"],
 						],
 						reason: "Requires Claude 4.6 or newer",
+						describedBy: false,
 						restoredReadout: "Auto",
 						toastsAfterSecondDemotion: [DEMOTED],
 						launch:

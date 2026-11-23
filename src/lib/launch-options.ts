@@ -99,9 +99,11 @@ export interface ModeMenuItem
 	warning: boolean;
 	/** Upstream's inline mode badge: the settings default (`ar`) or the Recommended Auto row (`or`). */
 	badge?: "default" | "recommended";
-	/** A row on show but not on offer (upstream's `{disabled: true, tooltip}` permission item), with why. */
+	/**
+	 * A row on show but not on offer (upstream's `{disabled: true, tooltip}` permission item). The classic menu renders
+	 * a disabled item's tooltip as its description line, so the why lives in `description`.
+	 */
 	disabled?: true;
-	disabledReason?: string;
 }
 
 /** What the Mode menu's badges read: the settings default mode, and whether Auto may be recommended. */
@@ -154,7 +156,8 @@ export function autoModeLockNote(model: string): string | null
  * rows carry upstream's `or(ar(rows, n === r ? -1 : n), r)`: Recommended on Auto when it isn't current, and Default on
  * the settings default mode's row unless that is the Recommended row. Upstream's other Recommended gates (a model
  * that requires auto, a CLI too old to switch modes, the managed mode ceiling) have no local data. With an
- * `autoLockNote` (`autoModeLockNote`), Auto leaves the offered rows and is appended last, disabled, with the note.
+ * `autoLockNote` (`autoModeLockNote`), Auto leaves the offered rows and is appended last, disabled, with the note as
+ * its description line.
  */
 export function modeMenuItems(
 	bypassPermissionsAllowed: boolean,
@@ -185,8 +188,8 @@ export function modeMenuItems(
 		rows.push(
 			{
 				...modeMenuItem("auto"),
+				description: autoLockNote,
 				disabled: true,
-				disabledReason: autoLockNote,
 			},
 		);
 	}

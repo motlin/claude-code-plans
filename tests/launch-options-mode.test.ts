@@ -205,10 +205,9 @@ describe("modeMenuItems badges (upstream's ar/or over the permission rows)", () 
 				{
 					id: "auto",
 					label: "Auto",
-					description: "Claude handles permission decisions",
+					description: note,
 					warning: false,
 					disabled: true,
-					disabledReason: note,
 				},
 			},
 		);
