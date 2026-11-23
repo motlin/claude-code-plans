@@ -588,9 +588,10 @@ export function MermaidFence({
 			{toolbarShown && (
 				<div
 					data-placement={corner ? "corner" : "row"}
+					dir={corner ? "ltr" : undefined}
 					className={
 						corner
-							? "absolute right-1.75 top-1.25 flex gap-0.5"
+							? "absolute end-1.75 top-1.25 flex gap-0.5"
 							: "relative order-first flex justify-end gap-0.5"
 					}
 				>

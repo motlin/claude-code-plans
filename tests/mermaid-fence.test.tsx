@@ -74,6 +74,7 @@ function toolbarOf(container: HTMLElement)
 		:
 			{
 				placement: toolbar.dataset["placement"],
+				dir: toolbar.getAttribute("dir"),
 				className: toolbar.className,
 				buttons: [...toolbar.querySelectorAll("button")].map((button) => [
 					button.dataset["testid"],
@@ -223,6 +224,7 @@ describe("MermaidFence (upstream EpitaxyMermaidFence)", () =>
 				toolbar:
 				{
 					placement: toolbar?.dataset["placement"],
+					dir: toolbar?.getAttribute("dir"),
 					className: toolbar?.className,
 					buttons: [...(toolbar?.querySelectorAll("button") ?? [])].map((button) => [
 						button.dataset["testid"],
@@ -243,7 +245,8 @@ describe("MermaidFence (upstream EpitaxyMermaidFence)", () =>
 				toolbar:
 				{
 					placement: "corner",
-					className: "absolute right-1.75 top-1.25 flex gap-0.5",
+					dir: "ltr",
+					className: "absolute end-1.75 top-1.25 flex gap-0.5",
 					buttons: [["epitaxy-mermaid-fence-view", "View source"]],
 				},
 			},
@@ -476,6 +479,7 @@ describe("MermaidFence (upstream EpitaxyMermaidFence)", () =>
 			expect(toolbarOf(container)).toStrictEqual(
 				{
 					placement: "row",
+					dir: null,
 					className: "relative order-first flex justify-end gap-0.5",
 					buttons: [
 						["epitaxy-mermaid-fence-expand", "Expand diagram"],
@@ -535,6 +539,7 @@ describe("MermaidFence (upstream EpitaxyMermaidFence)", () =>
 					viewingSource:
 					{
 						placement: "row",
+						dir: null,
 						className: "relative order-first flex justify-end gap-0.5",
 						buttons: [["epitaxy-mermaid-fence-view", "Preview"]],
 					},
