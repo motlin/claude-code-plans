@@ -5866,6 +5866,16 @@ html[data-reduce-motion="true"] [data-cds="SkeletonGroup"][data-hold="delayed"]
 	margin-inline-end: 0;
 }
 
+/* Upstream's title row pe (shared-41 `uh`) is --titlebar-end-inset + --rail-row-end - .5rem, which in line mode is the
+   chat panel's --rail-row-lane: the transcript's per-edge scrollbar lane (11px classic, 0 overlay), published on the
+   tile by useScrollGutterVar. Card mode and phone keep the header's own pe-4 sm:pe-3. */
+[data-tiles-line]
+	[data-session-tile]:is([data-chat-gutter-start], [data-chat-gutter-end])
+	[data-transcript-sticky-header]
+{
+	padding-inline-end: var(--rail-row-lane, 0px);
+}
+
 [data-tiles-line] [data-session-tile] [data-transcript-sticky-header]::before
 {
 	content: "";

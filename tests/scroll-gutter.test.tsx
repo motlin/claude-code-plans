@@ -15,20 +15,35 @@ afterEach(() =>
 
 function Scroller()
 {
+	const laneRef = useRef<HTMLDivElement>(null);
 	const ref = useRef<HTMLDivElement>(null);
-	useScrollGutterVar(ref);
-	return <div ref={ref} data-testid="scroller" />;
+	useScrollGutterVar(ref, laneRef);
+	return (
+		<div ref={laneRef} data-testid="tile">
+			<div ref={ref} data-testid="scroller" />
+		</div>
+	);
 }
 
 describe("scroll gutter", () =>
 {
-	it("publishes each edge's scrollbar gutter as --scroll-gutter", () =>
+	it("publishes each edge's scrollbar gutter as --scroll-gutter, and on the tile as --rail-row-lane for the titlebar", () =>
 	{
 		vi.spyOn(HTMLElement.prototype, "offsetWidth", "get").mockReturnValue(752);
 		vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(730);
 		const {getByTestId} = render(<Scroller />);
 
-		expect(getByTestId("scroller").style.getPropertyValue("--scroll-gutter")).toBe("11px");
+		expect(
+			{
+				scroller: getByTestId("scroller").style.getPropertyValue("--scroll-gutter"),
+				tile: getByTestId("tile").style.getPropertyValue("--rail-row-lane"),
+			},
+		).toStrictEqual(
+			{
+				scroller: "11px",
+				tile: "11px",
+			},
+		);
 	});
 
 	it("sizes the dock column from the tile's full width, not the gutter-inset scrollport, as upstream's dock sits outside it", () =>

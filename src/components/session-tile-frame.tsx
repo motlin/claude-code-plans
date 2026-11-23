@@ -71,7 +71,17 @@ export function SessionTileFrame({
 	const [overlayHost, setOverlayHost] = useState<HTMLDivElement | null>(null);
 	const pendingRendered = useRef<(() => void) | undefined>(undefined);
 	const scrollerRef = useRef<HTMLDivElement>(null);
-	useScrollGutterVar(scrollerRef);
+	const tileNodeRef = useRef<HTMLDivElement>(null);
+	const setTileNode = useCallback(
+		(node: HTMLDivElement | null) =>
+		{
+			tileNodeRef.current = node;
+			if (typeof tileRef === "function") tileRef(node);
+			else if (tileRef) tileRef.current = node;
+		},
+		[tileRef],
+	);
+	useScrollGutterVar(scrollerRef, tileNodeRef);
 	const geometryReady = useRef<string | undefined>(undefined);
 	const restoredHost = useRef<
 	{
@@ -167,7 +177,7 @@ export function SessionTileFrame({
 
 	return (
 		<div
-			ref={tileRef}
+			ref={setTileNode}
 			data-session-tile
 			className={SESSION_TILE_CLASS}
 			{...gutterAttributes}

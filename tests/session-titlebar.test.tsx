@@ -2,6 +2,7 @@
 
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {createMemoryHistory, createRootRoute, createRouter, RouterProvider} from "@tanstack/react-router";
+import {readFileSync} from "node:fs";
 import {act, cleanup, fireEvent, render, screen, within} from "@testing-library/react";
 import type {ReactNode} from "react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
@@ -22,6 +23,7 @@ import {topLeftClearance} from "../src/lib/top-left-clearance";
 import {herdrPanesQueryOptions} from "../src/lib/api/herdr";
 import {sessionOpenInQueryOptions, type SessionDetailData} from "../src/lib/api/sessions";
 import {__unreadStoreTesting} from "../src/lib/unread-store";
+import {ruleDeclarations} from "./markdown-css";
 
 const SESSION_ID = "8f0c2c7e-1111-4222-8333-944445555666";
 const PARENT_ID = "0a1b2c3d-1111-4222-8333-944445555666";
@@ -645,6 +647,12 @@ describe("SessionTitlebar chrome", () =>
 				repositoryPill: titlebar.querySelector("[data-origin-pill='repository']"),
 				headerBorder: headerClasses.filter((name) => /^border(-|$)/.test(name)),
 				headerBottomPadding: headerClasses.filter((name) => /^(pb|py|p)-/.test(name)),
+				headerEndPadding: headerClasses.filter((name) => /^(sm:)?pe-/.test(name)),
+				// Upstream's title row pe in line mode is --rail-row-end, the transcript's per-edge scrollbar lane.
+				lineGutterEndPadding: ruleDeclarations(
+					readFileSync("src/styles/globals.css", "utf8").replace(/\s+/g, " "),
+					"[data-tiles-line] [data-session-tile]:is([data-chat-gutter-start], [data-chat-gutter-end]) [data-transcript-sticky-header]",
+				),
 			},
 		).toStrictEqual(
 			{
@@ -652,6 +660,11 @@ describe("SessionTitlebar chrome", () =>
 				repositoryPill: null,
 				headerBorder: [],
 				headerBottomPadding: [],
+				headerEndPadding: ["pe-4", "sm:pe-3"],
+				lineGutterEndPadding:
+				{
+					"padding-inline-end": "var(--rail-row-lane, 0px)",
+				},
 			},
 		);
 	});
