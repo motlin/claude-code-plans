@@ -44,7 +44,9 @@ const SECTION_HEADING = "flex min-h-5 items-center text-footnote text-muted-as-s
 /** Upstream `IC`: a task's rounded fill-card piece. */
 const PIECE = "relative flex min-w-0 flex-col rounded-t-[10px] rounded-b-[10px] bg-fill-card";
 /** Upstream `RC.first`: the 44px row around the 36px opener. */
-const ROW = "group/row relative flex h-11 min-w-0 items-center px-1.5";
+const ROW = "group/row relative flex h-11 min-w-0 items-center px-1.5 scroll-mb-24";
+/** Upstream's list item around each task: the first one clears the sticky heading when scrolled to. */
+const LIST_ITEM = "first:scroll-mt-7";
 /** Upstream `zC` + `text-body`: the opener's box, at the row's `--task-step` indent. */
 const OPENER =
 	"flex h-9 w-full min-w-0 items-center gap-g5 rounded ps-[calc(var(--task-step,0)*1.25rem+0.375rem)] pe-1.5 text-start text-body comfortable:gap-g6";
@@ -357,6 +359,7 @@ function BackgroundTaskRow({
 		<div className="flex min-w-0 flex-col gap-0.5">
 			<div data-task-piece="" className={PIECE}>
 				<div
+					data-task-line=""
 					className={ROW}
 					style={
 					{
@@ -507,34 +510,40 @@ function TaskCards({
 	const allShown = shown.length === tasks.length;
 	return (
 		<div ref={listRef} data-task-list="" className={`@container flex flex-col ${GAP_XS}`}>
-			{shown.map((task) =>
-			{
-				if (task.kind === "workflow")
+			<div role="list" className={`@container flex flex-col ${GAP_XS}`}>
+				{shown.map((task) =>
 				{
+					if (task.kind === "workflow")
+					{
+						return (
+							<div key={task.id} role="listitem" className={LIST_ITEM}>
+								<div data-task-id={task.id} className="contents">
+									<WorkflowTaskCard task={task} run={runOf(task, workflowRuns)} />
+								</div>
+							</div>
+						);
+					}
+					const expanded = openRows.get(task.id) === true;
 					return (
-						<div key={task.id} data-task-id={task.id} className="contents">
-							<WorkflowTaskCard task={task} run={runOf(task, workflowRuns)} />
+						<div key={task.id} role="listitem" className={LIST_ITEM}>
+							<div data-task-id={task.id} className="contents">
+								<BackgroundTaskRow
+									task={task}
+									sessionId={sessionId}
+									inRunning={inRunning}
+									expanded={expanded}
+									onToggle={() =>
+									{
+										setRowOpen(task.id, !expanded);
+									}}
+									stop={stop}
+									stopping={stoppingIds.has(task.id)}
+								/>
+							</div>
 						</div>
 					);
-				}
-				const expanded = openRows.get(task.id) === true;
-				return (
-					<div key={task.id} data-task-id={task.id} className="contents">
-						<BackgroundTaskRow
-							task={task}
-							sessionId={sessionId}
-							inRunning={inRunning}
-							expanded={expanded}
-							onToggle={() =>
-							{
-								setRowOpen(task.id, !expanded);
-							}}
-							stop={stop}
-							stopping={stoppingIds.has(task.id)}
-						/>
-					</div>
-				);
-			})}
+				})}
+			</div>
 			{tasks.length > LIST_PAGE && (
 				<button
 					// A fresh button per label, like upstream's Show more / Show less pair.

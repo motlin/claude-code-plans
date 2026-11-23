@@ -283,18 +283,42 @@ describe("BackgroundTasksList", () =>
 				label: label?.className,
 				caretFirst: label?.firstElementChild?.hasAttribute("data-task-caret"),
 				titleClass: label?.querySelector("[data-task-title]")?.className,
+				taskLine: row?.hasAttribute("data-task-line"),
+				listsPerSection: [...document.querySelectorAll("section")].map(
+					(section) => section.querySelectorAll("[role=list]").length,
+				),
+				items: screen.getAllByRole("listitem").map((item) => (
+				{
+					className: item.className,
+					list: item.parentElement?.getAttribute("role"),
+					taskId: item.firstElementChild?.getAttribute("data-task-id"),
+				})),
 			},
 		).toStrictEqual(
 			{
 				wrapper: "contents",
 				pieces: 2,
 				piece: "relative flex min-w-0 flex-col rounded-t-[10px] rounded-b-[10px] bg-fill-card",
-				row: "group/row relative flex h-11 min-w-0 items-center px-1.5",
+				row: "group/row relative flex h-11 min-w-0 items-center px-1.5 scroll-mb-24",
 				step: "0",
 				opener: "flex h-9 w-full min-w-0 items-center gap-g5 rounded ps-[calc(var(--task-step,0)*1.25rem+0.375rem)] pe-1.5 text-start text-body comfortable:gap-g6 cursor-pointer hover:bg-fill-ghost-hover focus-visible:shadow-focus focus-visible:outline-hidden active:bg-alpha-2 not-touch:group-has-[[data-task-stop]:hover]/row:bg-fill-ghost-hover",
 				label: "flex min-w-0 flex-1 items-center gap-1 text-start text-body-medium text-primary",
 				caretFirst: true,
 				titleClass: "flex min-w-0",
+				taskLine: true,
+				listsPerSection: [1, 0],
+				items: [
+					{
+						className: "first:scroll-mt-7",
+						list: "list",
+						taskId: "bfab1serve",
+					},
+					{
+						className: "first:scroll-mt-7",
+						list: "list",
+						taskId: "afab1review",
+					},
+				],
 			},
 		);
 	});
@@ -794,8 +818,9 @@ describe("BackgroundTasksList list limit", () =>
 				count: ids.length,
 				tail: ids.slice(-3),
 				lastBeforeToggle:
-					showMore()?.previousElementSibling?.getAttribute("data-task-id") ??
-					showMore()?.previousElementSibling,
+					showMore()?.previousElementSibling?.lastElementChild?.firstElementChild?.getAttribute(
+						"data-task-id",
+					),
 			},
 		).toStrictEqual(
 			{
