@@ -4895,6 +4895,16 @@ html[data-reduce-motion="true"] [data-cds="ShimmerText"][data-shimmer-mode="fall
 	line-height: round(calc(var(--code-size) * 1.5 + 0.01px), 1px);
 }
 
+/* Upstream `.epitaxy-root .epitaxy-diff.epitaxy-file-rows`: the Files pane rows lead code at ×1.5 rounded at
+   every density, so 13px source lines are 20px, not the density's 19px text-code leading. */
+@supports (line-height: round(1px, 1px))
+{
+	.epitaxy-diff.epitaxy-file-rows
+	{
+		--upstream-leading-code: round(calc(var(--upstream-text-code) * 1.5 + 0.01px), 1px);
+	}
+}
+
 /* Upstream exempts the markdown document view and approval cards from the code font size. */
 [data-code-font-size]
 	:is(.epitaxy-document-prose, [data-fixed-code-size])

@@ -114,6 +114,10 @@ describe("code typography", () =>
 				fileRows: styles.includes(
 					"[data-code-font-size] .epitaxy-file-rows { font-size: var(--code-size); line-height: round(calc(var(--code-size) * 1.5 + 0.01px), 1px); }",
 				),
+				// Upstream `.epitaxy-root .epitaxy-diff.epitaxy-file-rows`: 13px code rounds to a 20px line, not 19px.
+				fileRowsLeading: styles.includes(
+					"@supports (line-height: round(1px, 1px)) { .epitaxy-diff.epitaxy-file-rows { --upstream-leading-code: round(calc(var(--upstream-text-code) * 1.5 + 0.01px), 1px); } }",
+				),
 				// Upstream `.epitaxy-root .epitaxy-diff`: pierre's [data-code] pads by the density's pad-xs, not 8px.
 				diffGaps: ruleDeclarations(styles, ".epitaxy-diff"),
 			},
@@ -123,6 +127,7 @@ describe("code typography", () =>
 				exempt: true,
 				globalFallback: false,
 				fileRows: true,
+				fileRowsLeading: true,
 				diffGaps:
 				{
 					"--diffs-gap-block": "var(--cds-pad-xs)",
