@@ -1,6 +1,8 @@
+import {useContext} from "react";
 import type {MetaStatus, SessionMetaLine} from "../../lib/session-meta-line";
 import {TOUCH_QUERY} from "../../lib/touch-reveal";
 import {useMediaQuery} from "../../lib/use-phone-sheet";
+import {RowHoverCardContext} from "../row-hover-card-context";
 import {Tooltip} from "../ui/tooltip";
 
 const ITEM_CLASS = "shrink-0 whitespace-nowrap";
@@ -29,11 +31,12 @@ function slotsOverflow(anchor: HTMLElement): boolean
 }
 
 /**
- * A described row's second line (upstream `gM`): the status word and message, then the place. With
- * `overflowTooltip` (upstream's `u`: a hover-capable device, and no awaiting row's card live over the row) the
- * list moves from the native title to a tooltip that opens only while the slots overflow.
+ * A described row's second line (upstream shared-59 `Jy`): the status word and message, then the place. In
+ * tooltip mode (upstream's `u = nu() && !F$() && !ls`: a hover-capable device, not already inside a live tooltip
+ * trigger, and no hover card live over the row) the list moves from the native title to a tooltip that opens only
+ * while the slots overflow. Local lines never sit inside another tooltip's trigger, so `F$` needs no check.
  */
-export function MetaLine({line, overflowTooltip = false}: {line: SessionMetaLine; overflowTooltip?: boolean})
+export function MetaLine({line}: {line: SessionMetaLine})
 {
 	const {word, text, place} = line;
 	const wordLabel = word === undefined ? undefined : STATUS_WORDS[word];
@@ -41,7 +44,8 @@ export function MetaLine({line, overflowTooltip = false}: {line: SessionMetaLine
 	// Upstream hides the line when nothing in it would be spoken: a non-Idle word is in the row's sr text already.
 	const silent = word !== "idle" && text === undefined && place?.spoken !== true;
 	const touch = useMediaQuery(TOUCH_QUERY);
-	const tooltipMode = overflowTooltip && !touch;
+	const cardLive = useContext(RowHoverCardContext);
+	const tooltipMode = !touch && !cardLive;
 	const slots = (
 		<span
 			className="df-meta-slots flex min-w-0 flex-1 items-center gap-2 text-ink-muted"

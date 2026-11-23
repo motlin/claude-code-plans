@@ -2,6 +2,8 @@
 
 import {cleanup, render} from "@testing-library/react";
 import {afterEach, describe, expect, it} from "vite-plus/test";
+import type {ReactElement} from "react";
+import {RowHoverCardContext} from "../src/components/row-hover-card-context";
 import {MetaLine} from "../src/components/sidebar/meta-line";
 
 afterEach(cleanup);
@@ -11,23 +13,28 @@ const LINE = "df-meta-line flex min-w-0 flex-1 items-center gap-2";
 const ITEM = "shrink-0 whitespace-nowrap";
 const PLACE = "df-meta-place shrink-0 whitespace-nowrap";
 
+/** Inside a row whose hover card is live (upstream's `ls`), the line keeps its native title. */
+const underLiveCard = (line: ReactElement) => <RowHoverCardContext.Provider value>{line}</RowHoverCardContext.Provider>;
+
 describe("MetaLine", () =>
 {
 	it("renders upstream's slots: the warning Waiting word, the reason bdi, then the place bdi", () =>
 	{
 		const {container} = render(
-			<MetaLine
-				line={
-				{
-					word: "blocked",
-					text: "Asked a question",
-					place:
+			underLiveCard(
+				<MetaLine
+					line={
 					{
-						text: "ccp",
-						spoken: true,
-					},
-				}}
-			/>,
+						word: "blocked",
+						text: "Asked a question",
+						place:
+						{
+							text: "ccp",
+							spoken: true,
+						},
+					}}
+				/>,
+			),
 		);
 		expect(container.innerHTML).toBe(
 			`<span class="${SLOTS}" title="Waiting, Asked a question, ccp">` +
@@ -40,11 +47,10 @@ describe("MetaLine", () =>
 		);
 	});
 
-	it("drops the native title for a row in tooltip mode, as upstream's idle rows do", () =>
+	it("drops the native title on a hover device when no hover card is live over the row, as upstream's `u` does", () =>
 	{
 		const {container} = render(
 			<MetaLine
-				overflowTooltip
 				line={
 				{
 					text: "Replied ok",
@@ -71,12 +77,14 @@ describe("MetaLine", () =>
 	it("leaves the Idle word spoken", () =>
 	{
 		const {container} = render(
-			<MetaLine
-				line={
-				{
-					word: "idle",
-				}}
-			/>,
+			underLiveCard(
+				<MetaLine
+					line={
+					{
+						word: "idle",
+					}}
+				/>,
+			),
 		);
 		expect(container.innerHTML).toBe(
 			`<span class="${SLOTS}" title="Idle">` +
@@ -90,16 +98,18 @@ describe("MetaLine", () =>
 	it("hides the whole line from assistive tech when it holds only an unspoken place", () =>
 	{
 		const {container} = render(
-			<MetaLine
-				line={
-				{
-					place:
+			underLiveCard(
+				<MetaLine
+					line={
 					{
-						text: "ccp",
-						spoken: false,
-					},
-				}}
-			/>,
+						place:
+						{
+							text: "ccp",
+							spoken: false,
+						},
+					}}
+				/>,
+			),
 		);
 		expect(container.innerHTML).toBe(
 			`<span class="${SLOTS}" title="ccp" aria-hidden="true">` +
