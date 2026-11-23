@@ -42,15 +42,13 @@ export function GhostCopyButton({
 	const comfortable = useDensity() === "comfortable";
 	const box = comfortable ? "size-7" : size === "base" ? "size-6" : "size-5";
 	const radius = comfortable ? "rounded-r6" : "rounded-r5";
-	// Upstream's base copy button is a primary-ink ghost with a 20px glyph; the small row button stays muted.
-	const ink = size === "base" ? "text-primary" : "text-ink-muted hover:text-primary";
 	const shown = copied ? "Copied" : label;
 	return (
 		<Tooltip content={shown} closeOnClick={false}>
 			<button
 				type="button"
 				aria-label={shown}
-				className={`inline-flex ${box} shrink-0 cursor-pointer items-center justify-center ${radius} ${ink} transition-colors hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus`}
+				className={`inline-flex ${box} shrink-0 cursor-pointer items-center justify-center ${radius} text-primary transition-colors hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus`}
 				onMouseDown={(event) =>
 				{
 					event.preventDefault();

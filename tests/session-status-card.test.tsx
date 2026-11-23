@@ -444,11 +444,19 @@ describe("SessionStatusCard", () =>
 		);
 	});
 
-	it("sizes the ghost buttons 24px and 20px with a 6px radius when compact and 28px with 8px when comfortable", () =>
+	it("sizes the ghost buttons 24px and 20px with a 6px radius when compact and 28px with 8px when comfortable, both in primary ink", () =>
 	{
 		const sizes = () =>
 			[...card().querySelectorAll("button")].map((button) =>
-				button.className.split(" ").filter((c) => c.startsWith("size-") || c.startsWith("rounded-")),
+				button.className
+					.split(" ")
+					.filter(
+						(c) =>
+							c.startsWith("size-") ||
+							c.startsWith("rounded-") ||
+							c.includes("text-primary") ||
+							c.includes("text-ink"),
+					),
 			);
 		const {rerender} = render(
 			<DensityContext.Provider value="compact">
@@ -470,12 +478,12 @@ describe("SessionStatusCard", () =>
 		).toStrictEqual(
 			{
 				compact: [
-					["size-6", "rounded-r5"],
-					["size-5", "rounded-r5"],
+					["size-6", "rounded-r5", "text-primary"],
+					["size-5", "rounded-r5", "text-primary"],
 				],
 				comfortable: [
-					["size-7", "rounded-r6"],
-					["size-7", "rounded-r6"],
+					["size-7", "rounded-r6", "text-primary"],
+					["size-7", "rounded-r6", "text-primary"],
 				],
 			},
 		);
