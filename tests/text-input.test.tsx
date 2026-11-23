@@ -13,6 +13,7 @@ const SHELL = [
 	"rounded",
 	"bg-fill-field",
 	"shadow-field-ring",
+	"field-fill",
 	"data-[invalid]:shadow-field-invalid",
 	"font-sans",
 	"text-body",
@@ -33,6 +34,7 @@ const TAIL = [
 	"data-[invalid]:has-[:focus-visible]:shadow-focus-danger",
 	"has-[input:disabled]:opacity-disabled",
 	"[&:hover:not(:focus-visible):not(:has(:focus-visible)):not([data-invalid]):not([data-disabled])]:shadow-field-hover",
+	"field-fill-hover",
 ];
 function noop()
 {
@@ -586,6 +588,7 @@ describe("TextInput", () =>
 					"disabled:opacity-disabled",
 					"focus-visible:shadow-focus",
 					"data-[invalid]:focus-visible:shadow-focus-danger",
+					"field-fill-hover",
 				],
 			},
 		);

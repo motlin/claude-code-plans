@@ -1014,7 +1014,7 @@ describe("settings search", () =>
 					controls: true,
 				},
 				// Upstream's own field shell (not the cds TextInput), on the density tokens: h-control, gap-sm, px-sm, rounded.
-				field: "flex h-control w-full cursor-text items-center gap-sm rounded px-sm bg-fill-field shadow-field-ring transition duration-fast [&:hover:not(:focus-within)]:shadow-field-hover has-[:focus-visible]:shadow-focus",
+				field: "flex h-control w-full cursor-text items-center gap-sm rounded px-sm bg-fill-field shadow-field-ring field-fill transition duration-fast [&:hover:not(:focus-within)]:shadow-field-hover has-[:focus-visible]:shadow-focus field-fill-hover",
 				// Upstream's md Search glyph: 20px at a 1.25px stroke (wght 433.3).
 				icon:
 				{

@@ -343,7 +343,7 @@ export function SettingsSearch({
 				{/* oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- upstream's pointer shortcut; the input inside is the keyboard control */}
 				<div
 					onClick={() => inputRef.current?.focus()}
-					className="flex h-control w-full cursor-text items-center gap-sm rounded px-sm bg-fill-field shadow-field-ring transition duration-fast [&:hover:not(:focus-within)]:shadow-field-hover has-[:focus-visible]:shadow-focus"
+					className="flex h-control w-full cursor-text items-center gap-sm rounded px-sm bg-fill-field shadow-field-ring field-fill transition duration-fast [&:hover:not(:focus-within)]:shadow-field-hover has-[:focus-visible]:shadow-focus field-fill-hover"
 				>
 					<Icon name="Search" className="shrink-0 text-muted-as-secondary" />
 					<input

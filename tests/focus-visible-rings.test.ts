@@ -293,12 +293,78 @@ describe("upstream focus shadow tokens", () =>
 				focus: [
 					"inset 0 0 0 1px var(--upstream-page), 0 0 0 1px #257de0, 0 0 6px 1px color-mix(in srgb, #257de0 12%, transparent)",
 					"inset 0 0 0 1px var(--upstream-page), 0 0 0 1px #257de0, 0 0 6px 1px rgb(23 87 172 / 0.6)",
+					// The field-fill utility's ring-less light override.
+					"var(--field-fill-focus-shadow)",
 				],
 				danger: [
 					"inset 0 0 0 1px var(--upstream-page), 0 0 0 1px #dc3c3d, 0 0 6px 1px #fad6d6",
 					"inset 0 0 0 1px var(--upstream-page), 0 0 0 1px #dc3c3d, 0 0 6px 1px rgb(142 38 38 / 0.6)",
+					"var(--field-fill-focus-shadow-danger)",
 				],
 				utility: ["var(--focus-shadow-danger)"],
+			},
+		);
+	});
+});
+
+describe("upstream field-fill paint", () =>
+{
+	const css = readFileSync("src/styles/globals.css", "utf8");
+	const values = (name: string) =>
+		[...css.matchAll(new RegExp(`${name}:\\s*([^;]+);`, "g"))].map((m) => m[1]?.replace(/\s+/g, " "));
+	// The formatter wraps long selectors inside :not( … ), so match on whitespace-collapsed CSS.
+	const flat = css.replace(/\(\s+/g, "(").replace(/\s+\)/g, ")").replace(/\s+/g, " ");
+	const body = (selector: string) =>
+	{
+		const start = ruleStart(flat, selector);
+		const end = flat.indexOf("}", start);
+		return start === -1
+			? null
+			: flat
+					.slice(flat.lastIndexOf("{", end) + 1, end)
+					.split(";")
+					.map((d) => d.replace(/\s+/g, " ").trim())
+					.filter(Boolean);
+	};
+
+	it("fills cds fields with 5% ink, a transparent edge and a ring-less light focus, and darkens the fill on hover", () =>
+	{
+		expect(
+			{
+				fill: body(
+					"@utility field-fill { &.bg-fill-field:is(.shadow-field-ring, .shadow-field-invalid, .shadow-focus, .shadow-focus-danger)",
+				),
+				hover: body(
+					'@utility field-fill-hover { @media (hover: hover) { &.bg-fill-field.shadow-field-ring:hover:not(:focus-visible):not(:has(:focus-visible)):not([data-invalid]):not([aria-invalid="true"]):not([data-disabled]):not(:disabled)',
+				),
+				alpha1: values("--upstream-alpha-1"),
+				hoverFill: values("--field-fill-hover"),
+				edge: values("--field-edge"),
+				edgeHover: values("--field-edge-hover"),
+				focus: values("--field-fill-focus-shadow"),
+				danger: values("--field-fill-focus-shadow-danger"),
+			},
+		).toStrictEqual(
+			{
+				fill: [
+					"--upstream-fill-field: var(--upstream-alpha-1)",
+					"--field-ring-shadow: inset 0 0 0 1px var(--field-edge)",
+					"--field-hover-shadow: inset 0 0 0 1px var(--field-edge-hover)",
+					"--focus-shadow: var(--field-fill-focus-shadow)",
+					"--focus-shadow-danger: var(--field-fill-focus-shadow-danger)",
+				],
+				hover: ["--upstream-fill-field: var(--field-fill-hover)"],
+				alpha1: ["rgb(11 11 11 / 0.05)", "rgb(255 255 255 / 0.05)"],
+				hoverFill: ["#00000013", "#ffffff13"],
+				// Upstream --cds-field-edge(-hover): transparent, --cds-alpha-5 / -6 under prefers-contrast: more.
+				edge: ["transparent", "#0b0b0b80", "#ffffff80"],
+				edgeHover: ["transparent", "#0b0b0b99", "#ffffff99"],
+				// Upstream --cds-field-focus-light drops the inset page ring; dark sets it to initial, keeping --cds-focus-shadow.
+				focus: [
+					"0 0 0 1px #257de0, 0 0 6px 1px color-mix(in srgb, #257de0 12%, transparent)",
+					"var(--focus-shadow)",
+				],
+				danger: ["0 0 0 1px #dc3c3d, 0 0 6px 1px #fad6d6", "var(--focus-shadow-danger)"],
 			},
 		);
 	});

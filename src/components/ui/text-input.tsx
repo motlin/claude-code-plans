@@ -102,8 +102,10 @@ export function Field({className, validationMode = "onBlur", ...props}: Componen
 	);
 }
 
-/** Upstream `fG`: the field paint. */
-const FIELD_PAINT = "bg-fill-field shadow-field-ring data-[invalid]:shadow-field-invalid";
+/** Upstream `fG`: the field paint, with upstream's `field-fill` (5% ink fill, transparent edge, ring-less light focus). */
+const FIELD_PAINT = "bg-fill-field shadow-field-ring field-fill data-[invalid]:shadow-field-invalid";
+/** Upstream's `field-fill-hover`, last on both forms: the hover fill. */
+const FIELD_FILL_HOVER = "field-fill-hover";
 /** Upstream `Ab`: the hover ring, off while focused, invalid or disabled. */
 const FIELD_HOVER =
 	"[&:hover:not(:focus-visible):not(:has(:focus-visible)):not([data-invalid]):not([data-disabled])]:shadow-field-hover";
@@ -303,7 +305,7 @@ export function TextInput({
 						onChange={change}
 						onKeyDown={keyDown}
 						className={withConsumer(
-							`cds-input cds-reset ${TEXT_INPUT_SHELL} pe-md${fullWidth ? " w-full" : ""} placeholder:text-ink-muted outline-none focus-visible:outline-hidden enabled:[&:hover:not(:focus):not([data-invalid])]:shadow-field-hover disabled:opacity-disabled ${FOCUS_SELF}`,
+							`cds-input cds-reset ${TEXT_INPUT_SHELL} pe-md${fullWidth ? " w-full" : ""} placeholder:text-ink-muted outline-none focus-visible:outline-hidden enabled:[&:hover:not(:focus):not([data-invalid])]:shadow-field-hover disabled:opacity-disabled ${FOCUS_SELF} ${FIELD_FILL_HOVER}`,
 							className,
 						)}
 					/>
@@ -340,6 +342,7 @@ export function TextInput({
 			FOCUS_WITHIN,
 			"has-[input:disabled]:opacity-disabled",
 			...(disabled ? [] : [FIELD_HOVER]),
+			FIELD_FILL_HOVER,
 		].join(" "),
 		className,
 	);

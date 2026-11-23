@@ -825,6 +825,13 @@ html[data-interface-font="dyslexic"]
 	);
 	/* Upstream --cds-focus-shadow-danger: page-bg, --cds-red-450 fill, --cds-red-100 bg. */
 	--focus-shadow-danger: inset 0 0 0 1px var(--upstream-page), 0 0 0 1px #dc3c3d, 0 0 6px 1px #fad6d6;
+	/* Upstream field-fill tokens: --cds-bg-neutral-hover, --cds-field-edge(-hover) and the ring-less
+	   --cds-field-focus-light / --cds-field-focus-danger-light (fill-accent / fill-danger edge, 12% accent / bg-danger glow). */
+	--field-fill-hover: #00000013;
+	--field-edge: transparent;
+	--field-edge-hover: transparent;
+	--field-fill-focus-shadow: 0 0 0 1px #257de0, 0 0 6px 1px color-mix(in srgb, #257de0 12%, transparent);
+	--field-fill-focus-shadow-danger: 0 0 0 1px #dc3c3d, 0 0 6px 1px #fad6d6;
 	/* Upstream --accent-100 = --_blue-500 (light). */
 	--focus-outline-color: hsl(212.824 70.8333% 47.0588%);
 
@@ -1153,6 +1160,10 @@ html[data-interface-font="dyslexic"]
 	/* Upstream dark glow is hsl(from --cds-role-accent-600 / --cds-role-danger-600 h s l / 60%); accent-600 = #1757ac (live read 2026-10-29). */
 	--focus-shadow: inset 0 0 0 1px var(--upstream-page), 0 0 0 1px #257de0, 0 0 6px 1px rgb(23 87 172 / 0.6);
 	--focus-shadow-danger: inset 0 0 0 1px var(--upstream-page), 0 0 0 1px #dc3c3d, 0 0 6px 1px rgb(142 38 38 / 0.6);
+	/* Upstream dark --cds-field-focus-light / -danger-light are initial: fields keep the full focus shadow. */
+	--field-fill-hover: #ffffff13;
+	--field-fill-focus-shadow: var(--focus-shadow);
+	--field-fill-focus-shadow-danger: var(--focus-shadow-danger);
 	/* Upstream --accent-100 = --_blue-350 (dark). */
 	--focus-outline-color: hsl(211.154 81.25% 62.3529%);
 
@@ -1545,6 +1556,23 @@ html[data-interface-font="dyslexic"]
 		--checkbox-edge-hover: #ffffff99;
 		--composer-ring: #ffffff80;
 		--upstream-placeholder: #ffffff91;
+	}
+}
+
+/* Upstream `@media (prefers-contrast:more)` `.cds-root` `--cds-field-edge: var(--cds-alpha-5); --cds-field-edge-hover:
+   var(--cds-alpha-6)`: field-fill fields get their edge back. */
+@media (prefers-contrast: more)
+{
+	:root
+	{
+		--field-edge: #0b0b0b80;
+		--field-edge-hover: #0b0b0b99;
+	}
+
+	:root.dark
+	{
+		--field-edge: #ffffff80;
+		--field-edge-hover: #ffffff99;
 	}
 }
 
@@ -2029,6 +2057,37 @@ html[data-interface-font="dyslexic"]
 @utility text-button-disabled
 {
 	color: var(--upstream-text-button-disabled, var(--upstream-text-disabled, currentColor));
+}
+
+/*
+ * Upstream `.field-fill.bg-fill-field:is(.shadow-field-ring,.shadow-field-invalid,.shadow-focus,.shadow-focus-danger)`:
+ * --cds-fill-field = --cds-bg-neutral (--cds-alpha-1), the rest and hover rings = --cds-field-edge(-hover)
+ * (transparent), and --cds-focus-shadow(-danger) = the ring-less light field focus (dark keeps the full shadow).
+ */
+@utility field-fill
+{
+	&.bg-fill-field:is(.shadow-field-ring, .shadow-field-invalid, .shadow-focus, .shadow-focus-danger)
+	{
+		--upstream-fill-field: var(--upstream-alpha-1);
+		--field-ring-shadow: inset 0 0 0 1px var(--field-edge);
+		--field-hover-shadow: inset 0 0 0 1px var(--field-edge-hover);
+		--focus-shadow: var(--field-fill-focus-shadow);
+		--focus-shadow-danger: var(--field-fill-focus-shadow-danger);
+	}
+}
+
+/* Upstream `field-fill-hover`: --cds-fill-field = --cds-bg-neutral-hover while hovered, not focused, invalid or disabled. */
+@utility field-fill-hover
+{
+	@media (hover: hover)
+	{
+		&.bg-fill-field.shadow-field-ring:hover:not(:focus-visible):not(:has(:focus-visible)):not([data-invalid]):not(
+				[aria-invalid="true"]
+			):not([data-disabled]):not(:disabled)
+		{
+			--upstream-fill-field: var(--field-fill-hover);
+		}
+	}
 }
 
 /* Upstream `bg-fill-disabled`: var(--cds-fill-disabled). */
