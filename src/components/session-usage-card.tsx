@@ -658,7 +658,7 @@ export function SessionUsageCard({
 			tabIndex={-1}
 			role="group"
 			aria-label="Usage"
-			className="flex flex-col gap-[24px] p-[16px] pt-lg rounded-lg w-[360px] max-w-full card-ring outline-none"
+			className="flex flex-col gap-[24px] p-[16px] pt-lg rounded-lg w-[360px] max-w-full card-ring forced-colors:not-focus-visible:outline-1 forced-colors:not-focus-visible:outline-solid forced-colors:not-focus-visible:outline-[CanvasText] outline-none"
 		>
 			{showPlan || hasModels || result !== null ? (
 				<>

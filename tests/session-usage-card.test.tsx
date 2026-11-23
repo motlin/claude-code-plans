@@ -121,14 +121,20 @@ describe("SessionUsageCard plan section", () =>
 				{
 					className: header?.className,
 					text: header?.textContent,
-					copy: screen
-						.getByRole(
+					copy: (() =>
+					{
+						const button = screen.getByRole(
 							"button",
 							{
 								name: "Copy report",
 							},
-						)
-						.getAttribute("aria-label"),
+						);
+						return {
+							label: button.getAttribute("aria-label"),
+							className: button.className,
+							iconSize: button.querySelector("svg")?.style.fontSize,
+						};
+					})(),
 				},
 				row:
 				{
@@ -166,14 +172,20 @@ describe("SessionUsageCard plan section", () =>
 				root:
 				{
 					className:
-						"flex flex-col gap-[24px] p-[16px] pt-lg rounded-lg w-[360px] max-w-full card-ring outline-none",
+						"flex flex-col gap-[24px] p-[16px] pt-lg rounded-lg w-[360px] max-w-full card-ring forced-colors:not-focus-visible:outline-1 forced-colors:not-focus-visible:outline-solid forced-colors:not-focus-visible:outline-[CanvasText] outline-none",
 					tabIndex: "-1",
 				},
 				header:
 				{
 					className: "flex items-center justify-between text-footnote text-primary pb-xs",
 					text: "Usage",
-					copy: "Copy report",
+					copy:
+					{
+						label: "Copy report",
+						className:
+							"inline-flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-r6 text-primary transition-colors hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus",
+						iconSize: "calc(1.25rem * var(--cds-rem-scale, 1))",
+					},
 				},
 				row:
 				{
