@@ -1291,8 +1291,8 @@ html[data-interface-font="dyslexic"]
 	--upstream-fill-primary-layer: #ffffff26;
 	/* Upstream `--cds-fizzy-lake-color-plain-secondary`: the message toolbar's button ink. */
 	--upstream-plain-secondary: #0009;
-	/* Upstream `--cds-text-warning` (pre-rollout yellow-600 / yellow-300). */
-	--upstream-warning: #794c02;
+	/* Upstream fizzy `--cds-text-warning`: `var(--cds-yellow-550)` (pre-rollout role-warning-600 #794c02). */
+	--upstream-warning: #895902;
 	/* Upstream `--cds-bg-tint-blue`, the same in both modes: the ⌘K palette's committed filter chips. */
 	--upstream-tint-blue: #257de01f;
 	/* Upstream fizzy `--cds-bg-tint-<hue>` / `--cds-text-tint-<hue>`: the ArtifactMark tiles (`vL`) and bare glyph inks (`NH`)

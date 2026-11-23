@@ -206,7 +206,7 @@ describe("fizzy-lake color tokens (upstream data-cds-fizzy-lake~=color)", () =>
 		);
 	});
 
-	it("--upstream-warning is upstream's fizzy --cds-text-warning, #794c02 light and #e49c06 dark", () =>
+	it("--upstream-warning is upstream's fizzy --cds-text-warning, #895902 light and #e49c06 dark", () =>
 	{
 		const names = ["--upstream-warning"] as const;
 		expect(
@@ -228,7 +228,7 @@ describe("fizzy-lake color tokens (upstream data-cds-fizzy-lake~=color)", () =>
 				},
 				light:
 				{
-					"--upstream-warning": "#794c02",
+					"--upstream-warning": "#895902",
 				},
 				dark:
 				{
