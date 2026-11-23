@@ -29,7 +29,6 @@ describe("reply-type prose tables (cds-type-experiment-gate T5)", () =>
 				`@media (forced-colors: none) { ${S} table { border-width: 0; border-radius: 0; } }`,
 				`${S} :is(th, td) { background: transparent; border-radius: 0; padding-block: calc(0.4375em + 1px); padding-inline: 0; border-color: var(--message-line, var(--color-border)); }`,
 				`${S} :is(th, td) + :is(th, td) { padding-inline-start: 1.5em; }`,
-				`${S} th { font-weight: var(--font-weight-header, 520); }`,
 			]),
 		).toStrictEqual([]);
 	});
@@ -42,16 +41,17 @@ describe("reply-type prose tables (cds-type-experiment-gate T5)", () =>
 
 describe("reply-type inline code and weights (cds-type-experiment-gate T6)", () =>
 {
-	it("draws the ghost-wash primary-ink chip and upstream's 501 / 520 weights", () =>
+	it("draws the ghost-wash primary-ink chip, semibold headings and bold strong / th held on the semibold axis", () =>
 	{
 		expect(
 			missing(markdown, [
 				`@media screen and (forced-colors: none) { ${S} code:not(pre code) { background: var(--upstream-fill-ghost-hover); color: var(--upstream-text-primary); border: 0; border-radius: 4px; padding: 1px 4px; } }`,
-				`${S} :is(strong, b) { font-weight: 501; }`,
-				`${S} :is(h1, h2, h3, h4, h5, h6), ${S} :is(h1, h2, h3, h4, h5, h6, th) :is(strong, b) { font-weight: var(--font-weight-header, 520); }`,
+				`${S} :is(h1, h2, h3, h4, h5, h6) { font-weight: 580; }`,
+				`${S} :is(th, strong, b) { font-weight: 600; --cds-font-axis-wght: "wght" 580, var(--cds-font-axis-wght-semibold,); font-variation-settings: var(--font-opsz-axis,) var(--cds-font-axis-wght,) "GRAD" var(--cds-font-grad, 0); }`,
 				`${S} :is(code, kbd):not([class]) { font-weight: inherit; }`,
 			]),
 		).toStrictEqual([]);
+		expect([...markdown.matchAll(/font-weight: (?:501|var\(--font-weight-header, 520\));/g)]).toStrictEqual([]);
 	});
 
 	it("leaves the base chip for markdown outside a reply", () =>

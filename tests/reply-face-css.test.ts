@@ -5,8 +5,8 @@ import {describe, expect, it} from "vite-plus/test";
 const css = readFileSync("src/components/markdown-article.module.css", "utf8").replace(/\s+/g, " ");
 
 const GATE =
-	':global(html[data-cds-fizzy-lake~="type"]:not([data-interface-font="dyslexic"]):not([data-reply-face="interface"])) :global([data-transcript-prose]) .markdown :is(h1, h2, h3, h4, h5, h6, th)';
-const SELECTOR = `${GATE}, ${GATE} strong`;
+	':global(html[data-cds-fizzy-lake~="type"]:not([data-interface-font="dyslexic"]):not([data-reply-face="interface"])) :global([data-transcript-prose]) .markdown :is(h1, h2, h3, h4, h5, h6)';
+const SELECTOR = GATE;
 
 function ruleBody(selector: string): string | null
 {
@@ -18,18 +18,29 @@ function ruleBody(selector: string): string | null
 
 describe("serif reply heading weight reset (upstream html[data-reply-face] rule 1)", () =>
 {
-	it("puts transcript prose headings and th at semibold 580 unless the reply face is the interface font", () =>
+	it("puts transcript prose headings at semibold 580 unless the reply face is the interface font, leaving th and strong bold", () =>
 	{
-		expect(ruleBody(SELECTOR)).toBe("font-weight: 580;");
+		expect(
+			{
+				heading: ruleBody(SELECTOR),
+				thOrStrongRules: [...css.matchAll(/data-reply-face[^{]*\{/g)]
+					.map((match) => match[0])
+					.filter((selector) => /\bth\b|\bstrong\b/.test(selector)),
+			},
+		).toStrictEqual(
+			{
+				heading: "font-weight: 580;",
+				thOrStrongRules: [],
+			},
+		);
 	});
 
-	it("comes after the base heading and th weights and leaves strong alone", () =>
+	it("comes after the base heading weights and leaves strong alone", () =>
 	{
 		const reset = css.indexOf(` ${SELECTOR} {`);
 		expect(
 			{
 				afterHeadings: reset > css.indexOf(" .markdown h6 {"),
-				afterTh: reset > css.indexOf(" .markdown th {"),
 				strongRules: [...css.matchAll(/data-reply-face[^{]*\{/g)]
 					.map((match) => match[0])
 					.filter((selector) => /\.markdown strong\b/.test(selector)),
@@ -38,7 +49,6 @@ describe("serif reply heading weight reset (upstream html[data-reply-face] rule 
 		).toStrictEqual(
 			{
 				afterHeadings: true,
-				afterTh: true,
 				strongRules: [],
 				strongWeight: "font-weight: 600;",
 			},

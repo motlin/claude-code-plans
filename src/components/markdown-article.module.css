@@ -635,14 +635,6 @@
 	padding-inline-start: 1.5em;
 }
 
-/* Upstream's header weight (`--cds-font-weight-header`, 520 under type). */
-:global([data-cds-reply-type])
-	.markdown:not(:global([data-cds-reply-type] :is([data-cds]:not([data-cds-reply-type]), [data-tool-row])) *)
-	th
-{
-	font-weight: var(--font-weight-header, 520);
-}
-
 /* Upstream's reply code chip: the ghost-hover wash in primary ink, 4px radius, 1px 4px padding. Size and
    leading stay the base chip's. */
 @media screen and (forced-colors: none)
@@ -659,25 +651,27 @@
 	}
 }
 
-/* Upstream `--_reply-weight`: strong is medium + 1 (501); headings, and strong inside them or a th, take the
-   header weight. Its Windows/Linux `--cds-reply-weight-floor` has no macOS meaning and is left out; the dark
-   wght axes belong to fizzy-type-dark-wght-axes. */
+/* Upstream's prose weights (c6a992d55): headings take semibold (`--_prose-role:
+   var(--_prose-heading-weight, var(--cds-font-weight-semibold,580))`; the 520 `--cds-font-weight-header` token is
+   not read by prose), and `:where(.prose) strong {font-weight:var(--cds-font-weight-bold,600)}` with th taking the
+   same bold label weight. th and strong hold the semibold axis (`--_prose-bold-held: "wght"
+   var(--cds-font-weight-semibold,580), var(--cds-font-axis-wght-semibold,)` feeds `--cds-font-axis-wght-bold`), so
+   they compute 600 drawn at wght 580, or the dark semibold axis where it is set. Strong inside a heading or th is
+   bold too. Upstream's Windows/Linux `--cds-reply-weight-floor` has no macOS meaning and is left out. */
 :global([data-cds-reply-type])
 	.markdown:not(:global([data-cds-reply-type] :is([data-cds]:not([data-cds-reply-type]), [data-tool-row])) *)
-	:is(strong, b)
+	:is(h1, h2, h3, h4, h5, h6)
 {
-	font-weight: 501;
+	font-weight: 580;
 }
 
 :global([data-cds-reply-type])
 	.markdown:not(:global([data-cds-reply-type] :is([data-cds]:not([data-cds-reply-type]), [data-tool-row])) *)
-	:is(h1, h2, h3, h4, h5, h6),
-:global([data-cds-reply-type])
-	.markdown:not(:global([data-cds-reply-type] :is([data-cds]:not([data-cds-reply-type]), [data-tool-row])) *)
-	:is(h1, h2, h3, h4, h5, h6, th)
-	:is(strong, b)
+	:is(th, strong, b)
 {
-	font-weight: var(--font-weight-header, 520);
+	font-weight: 600;
+	--cds-font-axis-wght: "wght" 580, var(--cds-font-axis-wght-semibold,);
+	font-variation-settings: var(--font-opsz-axis,) var(--cds-font-axis-wght,) "GRAD" var(--cds-font-grad, 0);
 }
 
 /* Inline code inherits the surrounding reply weight (upstream `var(--_reply-weight, inherit)`). */
@@ -1112,20 +1106,14 @@
 /* Upstream's serif reply heading reset (shared-styles BM0lMNTW, c6a992d55):
    `html[data-cds-fizzy-lake~=type]:not([data-atkinson-font],[data-dyslexic-font]):not([data-reply-face=interface])
    .prose:not([data-prose-font]) { --cds-font-weight-header: initial; --cds-font-axis-wght-header: initial }`.
-   Reply-type headings, th and their strong read
-   `var(--cds-font-weight-header, var(--_prose-heading-weight, var(--cds-font-weight-semibold,580)))`, so a serif
-   reply face falls past the fizzy header weight to semibold 580. Strong (501) is untouched. Deliberately left out:
+   Live prose (2026-11-21) no longer reads that token, so the reset only lands headings on the same semibold 580;
+   th and strong stay at the reply-type bold 600 above. Deliberately left out:
    the Windows/Linux `--cds-reply-weight-floor` rules (no local OS meaning) and the System-font role weight and
    axis reset (rule 3), since local prose has no role weights to reset. */
 :global(html[data-cds-fizzy-lake~="type"]:not([data-interface-font="dyslexic"]):not([data-reply-face="interface"]))
 	:global([data-transcript-prose])
 	.markdown
-	:is(h1, h2, h3, h4, h5, h6, th),
-:global(html[data-cds-fizzy-lake~="type"]:not([data-interface-font="dyslexic"]):not([data-reply-face="interface"]))
-	:global([data-transcript-prose])
-	.markdown
-	:is(h1, h2, h3, h4, h5, h6, th)
-	strong
+	:is(h1, h2, h3, h4, h5, h6)
 {
 	font-weight: 580;
 }
