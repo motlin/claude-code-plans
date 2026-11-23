@@ -8,7 +8,7 @@ import {buildPatchFromHunks, buildUnifiedHunk, type PatchHunk} from "../../lib/d
 import {railsPostRender} from "../changes/diff-rails";
 import {DIFFS_HOST_CLASS, INLINE_DIFFS_STYLE_OVERRIDES, diffsInjectedCss} from "../changes/diffs-config";
 import {useResolvedTheme} from "../theme-context";
-import {type PureSide, TintedPureSideFile} from "./pure-side-diff";
+import {type PureSide, PureSideFile} from "./pure-side-diff";
 
 type InlineDiffView =
 	|
@@ -113,7 +113,7 @@ export function InlineDiff({
 	const view = useMemo(() => inlineDiffView(filePath, oldStr, newStr, patch), [filePath, oldStr, newStr, patch]);
 	if (view.kind === "pure")
 	{
-		return <TintedPureSideFile path={filePath} content={view.content} side={view.side} excerpt={excerpt} />;
+		return <PureSideFile path={filePath} content={view.content} side={view.side} excerpt={excerpt} />;
 	}
 	// Upstream's `epitaxy-diff` hook class carries Settings ▸ Code font size into the diff; the cds FileDiff
 	// div (`Va`) inside it carries the host style.

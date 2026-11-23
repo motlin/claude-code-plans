@@ -4,26 +4,25 @@ import {type CSSProperties, useMemo} from "react";
 import {useCodeThemes} from "../../hooks/use-code-themes";
 import {pureSideRailsCss} from "../changes/diff-rails";
 import {DIFFS_HOST_CLASS, INLINE_DIFFS_STYLE_OVERRIDES} from "../changes/diffs-config";
+import {TOKEN_FONT_CSS} from "../../lib/code-tile";
 import {useResolvedTheme} from "../theme-context";
 
 export type PureSide = "additions" | "deletions";
 
-/** Upstream's `Fx`: the headerless file's base sheet. */
+/**
+ * Upstream's headerless file sheet: `Fx` (ligatures on, letter-spacing snapped to 1/64px), the token font
+ * rules, then the RTL file view's bidi rule.
+ */
 const FILE_BASE_CSS =
-	"[data-line]{min-height:1lh} [data-code]{padding-bottom:var(--diffs-gap-block, var(--diffs-gap-fallback));overflow:clip}";
+	'[data-file] { letter-spacing: calc(round(up, 1ch, 1px / 64) - 1ch); font-feature-settings: "liga", "clig", "calt"; } [data-line] { min-height: 1lh; } [data-code] { padding-bottom: var(--diffs-gap-block, var(--diffs-gap-fallback)); overflow: clip; } ' +
+	TOKEN_FONT_CSS +
+	"[data-line] { unicode-bidi: var(--epitaxy-file-line-bidi, revert); }";
 
 /** Upstream's sign glyphs `pc`: a plus, and U+2212 for deletions. */
 const SIGN: Record<PureSide, string> =
 {
 	additions: "+ ",
 	deletions: "− ",
-};
-
-/** Upstream's `--cds-bg-git-added` / `--cds-bg-git-removed`: the side's git ink at 20%. */
-const PURE_SIDE_TINT: Record<PureSide, string> =
-{
-	additions: "color-mix(in srgb, var(--upstream-git-added) 20%, transparent)",
-	deletions: "color-mix(in srgb, var(--upstream-git-removed) 20%, transparent)",
 };
 
 /** Upstream's `ao`: the sign's ink. */
@@ -97,6 +96,8 @@ export function PureSideFile({
 		() => (
 		{
 			...INLINE_DIFFS_STYLE_OVERRIDES,
+			// Upstream leaves it unset on the pure host, so the gutter keeps pierre's 2px base border.
+			"--diffs-gap-style": undefined,
 			...hostStyle,
 		}),
 		[hostStyle],
@@ -104,32 +105,6 @@ export function PureSideFile({
 	return (
 		<div data-cds="FileDiff" dir="ltr" className={DIFFS_HOST_CLASS} style={style}>
 			<File file={file} options={options} disableWorkerPool />
-		</div>
-	);
-}
-
-/** Upstream's transcript `ES`: the pure-side file on its side's git tint. */
-export function TintedPureSideFile({
-	path,
-	content,
-	side,
-	excerpt,
-}: {
-	path: string;
-	content: string;
-	side: PureSide;
-	excerpt: boolean;
-})
-{
-	return (
-		<div
-			data-pure-side={side}
-			style={
-			{
-				background: PURE_SIDE_TINT[side],
-			}}
-		>
-			<PureSideFile path={path} content={content} side={side} excerpt={excerpt} />
 		</div>
 	);
 }

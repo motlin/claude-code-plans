@@ -2,7 +2,7 @@
  * Upstream c91a5e4a6 `w` (exported `o`, built from its `x`/`b` helpers): the token weight and decoration rules,
  * where only the current mode's `--code-font-skip-*` var lets its token value through.
  */
-const TOKEN_FONT_CSS =
+export const TOKEN_FONT_CSS =
 	'[data-line] span[style*="-font-weight"]{font-weight:var(--code-font-skip-dark,var(--diffs-token-dark-font-weight,inherit)) var(--code-font-skip-light,var(--diffs-token-light-font-weight,inherit))}' +
 	'[data-line] span[style*="-text-decoration"]{text-decoration:var(--code-font-skip-dark,var(--diffs-token-dark-text-decoration,inherit)) var(--code-font-skip-light,var(--diffs-token-light-text-decoration,inherit))}' +
 	'[data-line] span[style*="-dark-font-weight:bold"]{--code-font-dark-axes:normal}' +

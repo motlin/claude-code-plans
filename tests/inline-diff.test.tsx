@@ -7,6 +7,7 @@ import {EditRenderer} from "../src/components/tool-renderers/edit-renderer";
 import {WriteRenderer} from "../src/components/tool-renderers/write-renderer";
 import type {ClientToolCall} from "../src/components/tool-renderers/types";
 import {OA, SA, WA} from "../src/components/changes/diffs-config";
+import {TOKEN_FONT_CSS} from "../src/lib/code-tile";
 import type {PatchHunk} from "../src/lib/diff-utils";
 
 class FakeResizeObserver
@@ -104,8 +105,16 @@ interface PureSideMarkup
 	sign: string | null;
 	excerpt: boolean;
 	tint: string | undefined;
+	base: string;
+	gapStyle: string | undefined;
 	rails: string;
 }
+
+/** Upstream's live pure-side sheet before the tint (2026-11-22): `Fx`, the token font rules, then the bidi rule. */
+const PURE_SIDE_BASE_CSS =
+	'[data-file] { letter-spacing: calc(round(up, 1ch, 1px / 64) - 1ch); font-feature-settings: "liga", "clig", "calt"; } [data-line] { min-height: 1lh; } [data-code] { padding-bottom: var(--diffs-gap-block, var(--diffs-gap-fallback)); overflow: clip; } ' +
+	TOKEN_FONT_CSS +
+	"[data-line] { unicode-bidi: var(--epitaxy-file-line-bidi, revert); }";
 
 const RAIL_VARS =
 	":host{--diff-rail-added:light-dark(color-mix(in lab,var(--diffs-addition-base) 86%,black),color-mix(in lab,var(--diffs-addition-base) 80%,var(--diffs-bg)));--diff-rail-removed:light-dark(color-mix(in lab,var(--diffs-deletion-base) 90%,black),color-mix(in lab,var(--diffs-deletion-base) 76%,white))}";
@@ -120,12 +129,20 @@ function pureSideMarkup(container: HTMLElement): PureSideMarkup
 	const pre = root?.querySelector("pre[data-file]");
 	if (!root || !pre?.querySelector("[data-line]")) throw new Error("no rendered file yet");
 	const css = [...root.querySelectorAll("style")].map((style) => style.textContent).join("");
+	const unsafe = (root.querySelector("style[data-unsafe-css]")?.textContent ?? "").replace(
+		/^[^]*?@layer unsafe\s*\{\s*/,
+		"",
+	);
 	return {
 		lines: [...root.querySelectorAll("[data-content] > [data-line]")].map((line) => line.textContent),
 		diff: pre.hasAttribute("data-diff"),
 		sign: /\[data-line-number-content\]::before\{content:"([^"]*)"/.exec(css)?.[1] ?? null,
 		excerpt: css.includes("[data-line-number-content]{visibility:hidden;}"),
 		tint: container.querySelector<HTMLElement>("[data-pure-side]")?.style.background,
+		base: unsafe.slice(0, unsafe.indexOf("[data-line]{background:")),
+		gapStyle: container
+			.querySelector<HTMLElement>("[data-cds=FileDiff]")
+			?.style.getPropertyValue("--diffs-gap-style"),
 		rails: css.slice(
 			css.indexOf(":host{--diff-rail-added"),
 			css.indexOf(RAIL_FORCED_COLORS) + RAIL_FORCED_COLORS.length,
@@ -536,7 +553,9 @@ describe("inline Edit/Write diffs render with @pierre/diffs", () =>
 					diff: false,
 					sign: "+ ",
 					excerpt: false,
-					tint: "color-mix(in srgb, var(--upstream-git-added) 20%, transparent)",
+					tint: undefined,
+					base: PURE_SIDE_BASE_CSS,
+					gapStyle: "",
 					// Upstream cb6930dae Vd("additions"), appended after the sign rule.
 					rails: [
 						RAIL_VARS,
@@ -576,7 +595,9 @@ describe("inline Edit/Write diffs render with @pierre/diffs", () =>
 					diff: false,
 					sign: "− ",
 					excerpt: true,
-					tint: "color-mix(in srgb, var(--upstream-git-removed) 20%, transparent)",
+					tint: undefined,
+					base: PURE_SIDE_BASE_CSS,
+					gapStyle: "",
 					// Upstream cb6930dae Vd("deletions"): U+2212, the 90%/82% mix and the striped rail.
 					rails: [
 						RAIL_VARS,
