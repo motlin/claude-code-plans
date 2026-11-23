@@ -101,6 +101,7 @@ async function openPalette(
 	seed: (queryClient: QueryClient) => void = () =>
 	{
 	},
+	panels = false,
 )
 {
 	const queryClient = new QueryClient(
@@ -166,11 +167,8 @@ async function openPalette(
 		},
 	);
 	await router.load();
-	render(
-		<PanelsOff>
-			<RouterProvider router={router} />
-		</PanelsOff>,
-	);
+	const app = <RouterProvider router={router} />;
+	render(panels ? app : <PanelsOff>{app}</PanelsOff>);
 	const composer = await screen.findByRole(
 		"textbox",
 		{
@@ -210,9 +208,9 @@ async function openPalette(
 	};
 }
 
-async function openCard()
+async function openCard(panels = false)
 {
-	const opened = await openPalette();
+	const opened = await openPalette(undefined, undefined, panels);
 	fireEvent.keyDown(
 		opened.input,
 		{
@@ -926,6 +924,26 @@ describe("palette row actions card", () =>
 				inlineRenames: [],
 			},
 		);
+	});
+
+	it("titles the palette Rename dialog's band Rename session under panels", async () =>
+	{
+		const {card} = await openCard(true);
+		fireEvent.click(
+			within(card).getByRole(
+				"menuitem",
+				{
+					name: /^Rename/,
+				},
+			),
+		);
+		const rename = await screen.findByRole(
+			"dialog",
+			{
+				name: "Rename session",
+			},
+		);
+		expect(rename.querySelector("[data-cds-part=band] h2")?.textContent).toBe("Rename session");
 	});
 
 	it("disables Save while the rename field is blank", async () =>

@@ -319,7 +319,7 @@ describe("dialog header band under panels (dialog-header-panels-band)", () =>
 				{
 					band: "band",
 					children: ["H2"],
-					title: "Rename",
+					title: "Rename session",
 					body: true,
 				},
 				groupOn:

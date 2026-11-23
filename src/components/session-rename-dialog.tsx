@@ -6,7 +6,6 @@ import {DialogHeader} from "./ui/dialog-header";
 import {DIALOG_FOOTER_CLASS, useDialogPad} from "./ui/dialog-pad";
 import {DialogPopup} from "./ui/dialog-popup";
 import {DIALOG_NESTED_SCRIM_BLUR_CLASS} from "./ui/dialog-classes";
-import {useFizzyLake} from "../lib/fizzy-lake";
 
 const BUTTON_BASE_CLASS =
 	"h-8 rounded-r6 px-3 text-body font-medium transition-colors hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
@@ -51,9 +50,8 @@ export function SessionRenameDialog({
 	const trimmed = name.trim();
 	const pad = useDialogPad();
 	const bandBody = useDialogBandBodyClass();
-	// Upstream's `renameDialogTitle` is "Rename" in the session vocabulary; the flag-off copy keeps "Rename session".
-	const sessionTitle = useFizzyLake("panels") ? "Rename" : "Rename session";
-	const title = titleOverride ?? sessionTitle;
+	// Upstream's palette caller passes no copy, so its rename dialog keeps the default "Rename session" at every flag state.
+	const title = titleOverride ?? "Rename session";
 
 	const submit = (event: SubmitEvent<HTMLFormElement>) =>
 	{
