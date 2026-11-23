@@ -355,6 +355,9 @@ describe("useRewindRequest + RewindConfirm", () =>
 			"stacks:[&[aria-haspopup][aria-expanded=true]]:layers-2-fill-button-layer",
 			"stacks:hover:[&[aria-haspopup][aria-expanded=true]]:layers-3-fill-button-layer",
 			"stacks:active:layers-2-fill-button-layer",
+			"aria-pressed:bg-upstream-accent-pressed",
+			"hover:aria-pressed:bg-upstream-accent-pressed",
+			"hover:aria-pressed:layers-1-upstream-accent-layer",
 			CDS_BUTTON_DISABLED_FILL,
 			...CDS_BUTTON_DISABLED_OPEN_FILL.split(" "),
 		]);

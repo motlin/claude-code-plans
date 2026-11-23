@@ -111,4 +111,61 @@ describe("cdsButtonClass fizzy paints (upstream sT, Ct)", () =>
 			"stacks:[&:disabled:not([aria-busy])]:[&[aria-haspopup][aria-expanded=true]]:bg-none",
 		]);
 	});
+
+	it("paints a pressed secondary or ghost with upstream's accent, with the disabled fills winning", async () =>
+	{
+		// Tailwind emits aria-pressed: before the stacks: paints, so the pressed hover wins on specificity instead
+		// (`:hover[aria-pressed]` outranks `stacks:hover`), and the disabled fills, which tie it, come later.
+		const pressed = [
+			"aria-pressed:bg-upstream-accent-pressed",
+			"hover:aria-pressed:bg-upstream-accent-pressed",
+			"hover:aria-pressed:layers-1-upstream-accent-layer",
+		];
+		for (const variant of ["secondary", "ghost"] as const)
+		{
+			expect(cdsButtonClass(variant).split(" ")).toEqual(expect.arrayContaining(pressed));
+		}
+		expect(await compileAll(pressed)).toStrictEqual(
+			{
+				"aria-pressed:bg-upstream-accent-pressed": String.raw`.aria-pressed\:bg-upstream-accent-pressed[aria-pressed="true"] { background-color: var(--upstream-accent-pressed); }`,
+				"hover:aria-pressed:bg-upstream-accent-pressed": String.raw`@media (hover: hover) { .hover\:aria-pressed\:bg-upstream-accent-pressed:hover[aria-pressed="true"] { background-color: var(--upstream-accent-pressed); } }`,
+				"hover:aria-pressed:layers-1-upstream-accent-layer": String.raw`@media (hover: hover) { .hover\:aria-pressed\:layers-1-upstream-accent-layer:hover[aria-pressed="true"] { background-image: linear-gradient(var(--color-upstream-accent-layer) 0 0); } }`,
+			},
+		);
+		const secondary = cdsButtonClass("secondary")
+			.split(" ")
+			.filter((name) => /(bg|layers-\d)-(fill|none|upstream-accent)/.test(name));
+		expect(await ruleOrder(secondary.toReversed())).toStrictEqual([
+			"bg-fill-secondary",
+			"hover:bg-fill-secondary-hover",
+			"aria-pressed:bg-upstream-accent-pressed",
+			"hover:aria-pressed:bg-upstream-accent-pressed",
+			"hover:aria-pressed:layers-1-upstream-accent-layer",
+			"stacks:hover:bg-fill-secondary",
+			"stacks:hover:layers-1-fill-button-layer",
+			"stacks:active:layers-2-fill-button-layer",
+			"stacks:[&:disabled:not([aria-busy])]:bg-fill-disabled",
+			"stacks:[&[aria-haspopup][aria-expanded=true]]:bg-fill-secondary",
+			"stacks:[&[aria-haspopup][aria-expanded=true]]:layers-2-fill-button-layer",
+			"stacks:hover:[&[aria-haspopup][aria-expanded=true]]:layers-3-fill-button-layer",
+			"stacks:[&:disabled:not([aria-busy])]:[&[aria-haspopup][aria-expanded=true]]:bg-fill-disabled",
+			"stacks:[&:disabled:not([aria-busy])]:[&[aria-haspopup][aria-expanded=true]]:bg-none",
+		]);
+		const ghost = cdsButtonClass("ghost")
+			.split(" ")
+			.filter((name) => /(bg|layers-\d)-(fill|none|transparent|upstream-accent)/.test(name));
+		expect(await ruleOrder(ghost.toReversed())).toStrictEqual([
+			"hover:bg-fill-ghost-hover",
+			"aria-pressed:bg-upstream-accent-pressed",
+			"hover:aria-pressed:bg-upstream-accent-pressed",
+			"hover:aria-pressed:layers-1-upstream-accent-layer",
+			"stacks:hover:bg-fill-button-ghost-hover",
+			"stacks:active:bg-fill-button-ghost-hover",
+			"stacks:active:layers-1-fill-button-layer",
+			"stacks:[&:disabled:not([aria-busy])]:bg-transparent",
+			"stacks:[&[aria-haspopup][aria-expanded=true]]:bg-fill-button-ghost-hover",
+			"stacks:hover:[&[aria-haspopup][aria-expanded=true]]:layers-1-fill-button-layer",
+			"stacks:[&:disabled:not([aria-busy])]:[&[aria-haspopup][aria-expanded=true]]:bg-transparent",
+		]);
+	});
 });

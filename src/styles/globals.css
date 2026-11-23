@@ -2141,6 +2141,12 @@ input.cds-input::-webkit-search-cancel-button
 		linear-gradient(var(--color-fill-button-layer) 0 0);
 }
 
+/* Upstream `layers-1-accent-layer`: one accent-layer gradient over a pressed (aria-pressed) cds Button's accent paint. */
+@utility layers-1-upstream-accent-layer
+{
+	background-image: linear-gradient(var(--color-upstream-accent-layer) 0 0);
+}
+
 /* Upstream `layers-1-fill-primary-layer`: one fill-primary-layer gradient over a pressed primary paint. */
 @utility layers-1-fill-primary-layer
 {
