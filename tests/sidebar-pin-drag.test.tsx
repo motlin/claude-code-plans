@@ -267,6 +267,8 @@ function dropRow(container: HTMLElement)
 			"opacity-80",
 			"bg-[var(--sb-hover)]",
 			"text-secondary",
+			"text-primary",
+			"[--sb-icon-rest:currentColor]",
 		].filter((name) => row.classList.contains(name)),
 	};
 }
@@ -316,7 +318,7 @@ describe("sidebar drag to pin", () =>
 					text: "Drop here",
 					hot: false,
 					iconTilted: true,
-					ink: ["text-muted-as-secondary"],
+					ink: ["text-muted-as-secondary", "[--sb-icon-rest:currentColor]"],
 				},
 			},
 		);
@@ -327,7 +329,7 @@ describe("sidebar drag to pin", () =>
 				text: "Let go",
 				hot: true,
 				iconTilted: true,
-				ink: ["bg-[var(--sb-hover)]", "text-secondary"],
+				ink: ["bg-[var(--sb-hover)]", "text-primary", "[--sb-icon-rest:currentColor]"],
 			},
 		);
 

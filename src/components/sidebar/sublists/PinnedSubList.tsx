@@ -151,7 +151,7 @@ function PinDropRow({
 			ref={ref}
 			data-pin-drop-row
 			data-hot={state === "hot" ? "" : undefined}
-			className={`${ROW_CLASS} ${stacked ? "mt-[var(--sb-row-stack-gap)]" : ""} ${state === "hot" ? "bg-[var(--sb-hover)] text-secondary" : "text-muted-as-secondary"}`}
+			className={`${ROW_CLASS} ${stacked ? "mt-[var(--sb-row-stack-gap)]" : ""} [--sb-icon-rest:currentColor] ${state === "hot" ? "bg-[var(--sb-hover)] text-primary" : "text-muted-as-secondary"}`}
 		>
 			<span className="df-leading-slot">
 				<Pin
