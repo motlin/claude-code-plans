@@ -6,6 +6,7 @@ import {act, cleanup, fireEvent, render} from "@testing-library/react";
 import {createRef} from "react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {SourceEditor, type SourceEditorHandle, type SourceEditorProps} from "../src/components/files/source-editor";
+import {sourceEditorThemeSpec} from "../src/components/files/source-editor-extensions";
 import type {SaveReason} from "../src/lib/source-save";
 
 afterEach(() =>
@@ -39,6 +40,15 @@ describe("SourceEditor read-only", () =>
 	{
 		const {container} = render(<SourceEditor value={"a\nb"} readOnly />);
 		expect(container.querySelectorAll(".cm-gutter.cm-lineNumbers").length).toBe(1);
+		// Upstream's git change-marks gutter rule pads each number cell 0 10px 0 24px.
+		expect(sourceEditorThemeSpec[".cm-gutters .cm-lineNumbers .cm-gutterElement"]).toStrictEqual(
+			{
+				padding: "0 10px 0 24px",
+				minWidth: "2rem",
+				cursor: "default",
+				userSelect: "none",
+			},
+		);
 	});
 
 	it("marks the first line active before focus", () =>

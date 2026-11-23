@@ -16,192 +16,193 @@ import {findMatches} from "../../lib/find-in-file";
 import {shikiMarks} from "../../lib/shiki-cm-marks";
 
 /** Upstream's code theme (`ͼ3w`, overridden by `ͼo`) and File editor decorations, in local tokens. */
-export const sourceEditorTheme = EditorView.theme(
+export const sourceEditorThemeSpec =
+{
+	"&":
 	{
-		"&":
+		flex: "1 1 0%",
+		minHeight: 0,
+		height: "100%",
+		backgroundColor: "var(--code-theme-bg, var(--color-surface-1))",
+		color: "var(--code-theme-fg, var(--color-primary))",
+	},
+	"&.cm-focused":
+	{
+		outline: "none",
+	},
+	".cm-scroller":
+	{
+		fontFamily: "var(--font-mono)",
+		lineHeight: "inherit",
+		overflow: "auto",
+	},
+	".cm-content":
+	{
+		padding: "8px 0",
+	},
+	".cm-line":
+	{
+		padding: "0 12px 0 4px",
+	},
+	".cm-gutters":
+	{
+		backgroundColor: "inherit",
+		color: "var(--muted-as-secondary)",
+		border: "none",
+	},
+	".cm-gutters .cm-lineNumbers .cm-gutterElement":
+	{
+		padding: "0 10px 0 24px",
+		minWidth: "2rem",
+		cursor: "default",
+		userSelect: "none",
+	},
+	// Upstream paints rgba(255,255,255,.05) on its dark theme; currentColor keeps light themes legible.
+	".cm-activeLine":
+	{
+		backgroundColor: "color-mix(in srgb, currentColor 5%, transparent)",
+	},
+	".cm-activeLineGutter":
+	{
+		backgroundColor: "transparent",
+		color: "inherit",
+	},
+	".cm-selectionBackground, &.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground":
+	{
+		background: "rgba(0,153,255,.3)",
+	},
+	".cm-selectionMatch":
+	{
+		backgroundColor: "rgba(0,153,255,.14)",
+	},
+	":where(.cm-shikiItalic)":
+	{
+		fontStyle: "italic",
+	},
+	":where(.cm-shikiBold)":
+	{
+		fontWeight: "bold",
+		fontVariationSettings: "normal",
+	},
+	":where(.cm-shikiUnderline)":
+	{
+		textDecoration: "underline",
+	},
+	":where(.cm-shikiStrikethrough)":
+	{
+		textDecoration: "line-through",
+	},
+	":where(.cm-shikiUnderline.cm-shikiStrikethrough)":
+	{
+		textDecoration: "underline line-through",
+	},
+	".cm-epitaxyJumpRange":
+	{
+		backgroundColor: "color-mix(in srgb, currentColor 8%, transparent)",
+	},
+	".cm-foldGutter .cm-gutterElement":
+	{
+		width: "12px",
+		display: "flex",
+		alignItems: "flex-start",
+		justifyContent: "center",
+		padding: 0,
+	},
+	".cm-foldGutter span":
+	{
+		display: "flex",
+		alignItems: "center",
+		height: "1lh",
+		padding: 0,
+		cursor: "pointer",
+	},
+	".cm-fold-open svg":
+	{
+		transform: "rotate(90deg)",
+	},
+	"@media (hover: hover) and (pointer: fine)":
+	{
+		".cm-fold-open":
 		{
-			flex: "1 1 0%",
-			minHeight: 0,
-			height: "100%",
-			backgroundColor: "var(--code-theme-bg, var(--color-surface-1))",
-			color: "var(--code-theme-fg, var(--color-primary))",
+			opacity: 0,
+			transition: "opacity var(--cds-dur-base, 150ms) ease-out",
 		},
-		"&.cm-focused":
-		{
-			outline: "none",
-		},
-		".cm-scroller":
-		{
-			fontFamily: "var(--font-mono)",
-			lineHeight: "inherit",
-			overflow: "auto",
-		},
-		".cm-content":
-		{
-			padding: "8px 0",
-		},
-		".cm-line":
-		{
-			padding: "0 12px 0 4px",
-		},
-		".cm-gutters":
-		{
-			backgroundColor: "inherit",
-			color: "var(--muted-as-secondary)",
-			border: "none",
-		},
-		".cm-gutters .cm-lineNumbers .cm-gutterElement":
-		{
-			padding: "0 0 0 18px",
-			minWidth: "2rem",
-			cursor: "default",
-			userSelect: "none",
-		},
-		// Upstream paints rgba(255,255,255,.05) on its dark theme; currentColor keeps light themes legible.
-		".cm-activeLine":
-		{
-			backgroundColor: "color-mix(in srgb, currentColor 5%, transparent)",
-		},
-		".cm-activeLineGutter":
-		{
-			backgroundColor: "transparent",
-			color: "inherit",
-		},
-		".cm-selectionBackground, &.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground":
-		{
-			background: "rgba(0,153,255,.3)",
-		},
-		".cm-selectionMatch":
-		{
-			backgroundColor: "rgba(0,153,255,.14)",
-		},
-		":where(.cm-shikiItalic)":
-		{
-			fontStyle: "italic",
-		},
-		":where(.cm-shikiBold)":
-		{
-			fontWeight: "bold",
-			fontVariationSettings: "normal",
-		},
-		":where(.cm-shikiUnderline)":
-		{
-			textDecoration: "underline",
-		},
-		":where(.cm-shikiStrikethrough)":
-		{
-			textDecoration: "line-through",
-		},
-		":where(.cm-shikiUnderline.cm-shikiStrikethrough)":
-		{
-			textDecoration: "underline line-through",
-		},
-		".cm-epitaxyJumpRange":
-		{
-			backgroundColor: "color-mix(in srgb, currentColor 8%, transparent)",
-		},
-		".cm-foldGutter .cm-gutterElement":
-		{
-			width: "12px",
-			display: "flex",
-			alignItems: "flex-start",
-			justifyContent: "center",
-			padding: 0,
-		},
-		".cm-foldGutter span":
-		{
-			display: "flex",
-			alignItems: "center",
-			height: "1lh",
-			padding: 0,
-			cursor: "pointer",
-		},
-		".cm-fold-open svg":
-		{
-			transform: "rotate(90deg)",
-		},
-		"@media (hover: hover) and (pointer: fine)":
-		{
-			".cm-fold-open":
-			{
-				opacity: 0,
-				transition: "opacity var(--cds-dur-base, 150ms) ease-out",
-			},
-			".cm-gutters:hover .cm-fold-open":
-			{
-				opacity: 1,
-			},
-		},
-		"&.cm-focused .cm-activeLineGutter .cm-fold-open":
+		".cm-gutters:hover .cm-fold-open":
 		{
 			opacity: 1,
 		},
-		"@media (prefers-reduced-motion: reduce)":
-		{
-			".cm-fold-open":
-			{
-				transition: "none",
-			},
-		},
-		"[data-reduce-motion=true] & .cm-fold-open":
+	},
+	"&.cm-focused .cm-activeLineGutter .cm-fold-open":
+	{
+		opacity: 1,
+	},
+	"@media (prefers-reduced-motion: reduce)":
+	{
+		".cm-fold-open":
 		{
 			transition: "none",
 		},
-		".cm-foldPlaceholder":
-		{
-			background: "transparent",
-			border: "none",
-			color: "var(--muted-as-secondary)",
-			padding: "0 var(--cds-pad-xs, 4px)",
-			cursor: "pointer",
-		},
-		".cm-epitaxyFindMatch:not(.cm-epitaxyFindMatch-active)":
-		{
-			backgroundColor: "rgba(255,213,0,.18)",
-			borderRadius: "2px",
-		},
-		".cm-epitaxyFindMatch-active":
-		{
-			backgroundColor: "rgba(255,213,0,.55)",
-			borderRadius: "2px",
-			color: "#000",
-			outline: "1px solid color-mix(in srgb, currentColor 60%, transparent)",
-			outlineOffset: "-1px",
-		},
-		".cm-line .cm-epitaxyFindMatch-active span":
-		{
-			color: "#000",
-		},
-		".cm-epitaxyBracketPair0, .cm-epitaxyBracketPair0 span":
-		{
-			color: "rgb(255,208,20)",
-		},
-		".cm-epitaxyBracketPair1, .cm-epitaxyBracketPair1 span":
-		{
-			color: "rgb(243,192,211)",
-		},
-		".cm-epitaxyBracketPair2, .cm-epitaxyBracketPair2 span":
-		{
-			color: "rgb(59,189,140)",
-		},
-		"&.cm-focused .cm-matchingBracket":
-		{
-			backgroundColor: "rgba(0,153,255,.14)",
-			outline: "1px solid color-mix(in srgb, currentColor 45%, transparent)",
-			outlineOffset: "-1px",
-		},
-		".cm-highlightSpace":
-		{
-			backgroundImage:
-				"radial-gradient(circle, color-mix(in srgb, currentColor 25%, transparent 75%) 1px, transparent 1.25px)",
-		},
-		// A data-URI svg can't read currentColor, so the tab arrow keeps CodeMirror's stroke.
-		".cm-highlightTab":
-		{
-			backgroundPosition: "left center",
-		},
 	},
-);
+	"[data-reduce-motion=true] & .cm-fold-open":
+	{
+		transition: "none",
+	},
+	".cm-foldPlaceholder":
+	{
+		background: "transparent",
+		border: "none",
+		color: "var(--muted-as-secondary)",
+		padding: "0 var(--cds-pad-xs, 4px)",
+		cursor: "pointer",
+	},
+	".cm-epitaxyFindMatch:not(.cm-epitaxyFindMatch-active)":
+	{
+		backgroundColor: "rgba(255,213,0,.18)",
+		borderRadius: "2px",
+	},
+	".cm-epitaxyFindMatch-active":
+	{
+		backgroundColor: "rgba(255,213,0,.55)",
+		borderRadius: "2px",
+		color: "#000",
+		outline: "1px solid color-mix(in srgb, currentColor 60%, transparent)",
+		outlineOffset: "-1px",
+	},
+	".cm-line .cm-epitaxyFindMatch-active span":
+	{
+		color: "#000",
+	},
+	".cm-epitaxyBracketPair0, .cm-epitaxyBracketPair0 span":
+	{
+		color: "rgb(255,208,20)",
+	},
+	".cm-epitaxyBracketPair1, .cm-epitaxyBracketPair1 span":
+	{
+		color: "rgb(243,192,211)",
+	},
+	".cm-epitaxyBracketPair2, .cm-epitaxyBracketPair2 span":
+	{
+		color: "rgb(59,189,140)",
+	},
+	"&.cm-focused .cm-matchingBracket":
+	{
+		backgroundColor: "rgba(0,153,255,.14)",
+		outline: "1px solid color-mix(in srgb, currentColor 45%, transparent)",
+		outlineOffset: "-1px",
+	},
+	".cm-highlightSpace":
+	{
+		backgroundImage:
+			"radial-gradient(circle, color-mix(in srgb, currentColor 25%, transparent 75%) 1px, transparent 1.25px)",
+	},
+	// A data-URI svg can't read currentColor, so the tab arrow keeps CodeMirror's stroke.
+	".cm-highlightTab":
+	{
+		backgroundPosition: "left center",
+	},
+} satisfies Parameters<typeof EditorView.theme>[0];
+
+export const sourceEditorTheme = EditorView.theme(sourceEditorThemeSpec);
 
 /* ---------- Shiki syntax colors ---------- */
 
