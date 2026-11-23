@@ -42,12 +42,13 @@ function pureSideCss(side: PureSide, excerpt: boolean, signColor: string): strin
 }
 
 /**
- * Upstream's `s()` makes a final newline end the last line; local's `File` would draw that newline as one
- * more empty line, so it drops it instead.
+ * Upstream sanitises the text to LF line endings and its `s()` makes a final line ending end the last line;
+ * local's `File` would draw a leftover `\r` or final newline as one more empty line, so it drops them instead.
  */
-function withoutFinalNewline(text: string): string
+function drawnLines(text: string): string
 {
-	return text.endsWith("\n") ? text.slice(0, -1) : text;
+	const lf = text.replace(/\r\n/g, "\n");
+	return lf.endsWith("\n") || lf.endsWith("\r") ? lf.slice(0, -1) : lf;
 }
 
 /**
@@ -74,7 +75,7 @@ export function PureSideFile({
 	const theme = useCodeThemes();
 	const file = useMemo(() =>
 	{
-		const contents = withoutFinalNewline(content);
+		const contents = drawnLines(content);
 		return {
 			name: path.replace(/^.*[\\/]/, ""),
 			contents,

@@ -275,6 +275,32 @@ describe("PermissionFileChangePreview, input only", () =>
 			},
 		);
 	});
+
+	it("draws a CRLF Write's pure-additions file without a phantom empty last row", async () =>
+	{
+		serveFile(404);
+		const {container} = preview(
+			"Write",
+			{
+				file_path: "/repo/a.ts",
+				content: "a\r\nb\r\n",
+			},
+		);
+		const markup = await diffMarkup(container);
+		expect(
+			{
+				rows: markup.rows,
+				numbers: markup.numbers,
+				minHeight: scroller(container.querySelector("[data-file-change-body]")!).minHeight,
+			},
+		).toStrictEqual(
+			{
+				rows: ["context:a", "context:b"],
+				numbers: ["1", "2"],
+				minHeight: "32px",
+			},
+		);
+	});
 });
 
 /** A file API that never answers, so the read stays pending. */
