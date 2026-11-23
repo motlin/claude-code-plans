@@ -1009,7 +1009,7 @@ describe("sidebar session families", () =>
 					"hover:bg-[var(--sb-hover)]",
 					"hide-focus-ring",
 					"focus-visible:outline-hidden",
-					"focus-visible:shadow-[inset_0_0_0_1px_var(--color-accent-100),0_0_6px_0_color-mix(in_srgb,var(--color-accent-100)_20%,transparent)]",
+					"focus-visible:shadow-[inset_0_0_0_1px_var(--upstream-fill-accent),0_0_6px_0_color-mix(in_srgb,var(--upstream-fill-accent)_20%,transparent)]",
 				],
 				painted: ["hover:bg-[var(--sb-hover)]"],
 			},
