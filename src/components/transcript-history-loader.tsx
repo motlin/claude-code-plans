@@ -2,7 +2,7 @@ import {useQueryClient} from "@tanstack/react-query";
 import {Loader2} from "lucide-react";
 import {useCallback, useEffect, useRef, useState} from "react";
 import {fetchEarlierTranscript, useHasEarlierTranscript} from "../lib/api/sessions";
-import {CHAT_COLUMN_CLASS} from "../lib/transcript-width";
+import {CHAT_LIST_COLUMN_CLASS} from "../lib/transcript-width";
 import {findScrollContainer, toObserverRoot} from "./scroll-container";
 
 interface TranscriptHistoryLoaderProps
@@ -142,7 +142,7 @@ export function TranscriptHistoryLoader({sessionId, startIndex, chainVersion}: T
 		<div
 			ref={sentinelRef}
 			data-testid="transcript-history-loader"
-			className={`${CHAT_COLUMN_CLASS} flex flex-col items-center gap-1 pt-4 text-xs text-t6`}
+			className={`${CHAT_LIST_COLUMN_CLASS} flex flex-col items-center gap-1 pt-4 text-xs text-t6`}
 		>
 			{/* The spinner's row stays reserved while idle: nothing anchors the transcript against it appearing or going. */}
 			<div data-testid="transcript-history-spinner-slot" className="flex h-4 justify-center">

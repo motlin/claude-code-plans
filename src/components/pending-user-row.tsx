@@ -1,6 +1,6 @@
 import {X} from "lucide-react";
 import {useState, type MouseEvent, type ReactNode} from "react";
-import {CHAT_COLUMN_CLASS} from "../lib/transcript-width";
+import {CHAT_LIST_COLUMN_CLASS} from "../lib/transcript-width";
 import {useRovingToolbar} from "../lib/use-roving-toolbar";
 import {shimmerPhaseDelay} from "../lib/shimmer";
 import {ShimmerText} from "./shimmer-text";
@@ -160,7 +160,7 @@ function PendingUserRowShell({
 })
 {
 	return (
-		<div className={`${CHAT_COLUMN_CLASS} flex flex-col gap-2 pb-[var(--chat-turn-gap)]`}>
+		<div className={`${CHAT_LIST_COLUMN_CLASS} flex flex-col gap-2 pb-[var(--chat-turn-gap)]`}>
 			<div
 				className={`group/msg flex w-full justify-end${rowClass === "" ? "" : ` ${rowClass}`}`}
 				data-delivery-status={deliveryStatus}

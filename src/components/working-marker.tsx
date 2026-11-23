@@ -4,7 +4,7 @@ import {useEventStreamConnecting} from "../hooks/use-claude-events";
 import {useRestInk} from "../lib/fizzy-lake";
 import {useReducedMotion} from "../lib/reduced-motion";
 import {useRowCut} from "../lib/use-row-cut";
-import {CHAT_COLUMN_CLASS} from "../lib/transcript-width";
+import {CHAT_LIST_COLUMN_CLASS} from "../lib/transcript-width";
 import
 {
 	clockHidden,
@@ -433,7 +433,7 @@ export function WorkingMarker({
 			{line}
 		</div>
 	) : (
-		<div data-perf-row="marker" className={CHAT_COLUMN_CLASS}>
+		<div data-perf-row="marker" className={CHAT_LIST_COLUMN_CLASS}>
 			{line}
 		</div>
 	);

@@ -1,20 +1,20 @@
 import type {KeyboardEvent, ReactNode, Ref} from "react";
 
-import {CHAT_COLUMN_CLASS} from "../lib/transcript-width";
+import {CHAT_LIST_COLUMN_CLASS} from "../lib/transcript-width";
 
 /** Upstream's sticky top (c4a70913c `y`): below the top fade, the suggested-task chip and the sticky prompt. */
 const TRANSCRIPT_STICKY_TOP_CLASS =
 	"top-[calc(max(var(--epitaxy-top-fade-height,0px),var(--fade-top,0px),var(--epitaxy-suggested-task-end,0px),var(--epitaxy-sticky-prompt-end,0px))+5px)]";
 
 /** Upstream `hTe`: the inline approval cards stick under the top fade, and fall below the tail when one holds a tool card in flow. */
-const CARDS_CLASS = `${CHAT_COLUMN_CLASS} w-full sticky has-[.epitaxy-tool-card-in-flow]:order-last ${TRANSCRIPT_STICKY_TOP_CLASS} bg-[var(--epitaxy-transcript-surface,var(--color-surface-1))]`;
+const CARDS_CLASS = `${CHAT_LIST_COLUMN_CLASS} w-full sticky has-[.epitaxy-tool-card-in-flow]:order-last ${TRANSCRIPT_STICKY_TOP_CLASS} bg-[var(--epitaxy-transcript-surface,var(--color-surface-1))]`;
 
 const SHOWN_ACTIONS = "[[data-transcript-tail-turn]:has(>[data-transcript-last-row-controls]:not(:empty))+&]";
 
 /** Upstream `mTe`: a turn gap above the chrome, or `mt-xs` under a tail turn whose actions are shown. */
-const CHROME_CLASS = `${CHAT_COLUMN_CLASS} flex w-full flex-col gap-[var(--chat-turn-gap)] pt-[var(--chat-turn-gap)] ${SHOWN_ACTIONS}:pt-0 ${SHOWN_ACTIONS}:mt-xs empty:hidden`;
+const CHROME_CLASS = `${CHAT_LIST_COLUMN_CLASS} flex w-full flex-col gap-[var(--chat-turn-gap)] pt-[var(--chat-turn-gap)] ${SHOWN_ACTIONS}:pt-0 ${SHOWN_ACTIONS}:mt-xs empty:hidden`;
 
-const PART_CLASS = `${CHAT_COLUMN_CLASS} w-full empty:hidden`;
+const PART_CLASS = `${CHAT_LIST_COLUMN_CLASS} w-full empty:hidden`;
 
 /** Upstream `Xt`: Home and End inside a card stay in the card instead of jumping the feed. */
 function stopHomeEnd(event: KeyboardEvent)

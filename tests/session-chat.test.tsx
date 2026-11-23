@@ -225,7 +225,7 @@ describe("SessionChat body typography", () =>
 				secondaryTextColor: "var(--upstream-text-secondary)",
 				legacyPrimaryTextColor: null,
 				legacySecondaryTextColor: null,
-				sessionColumnClassName: "chat-column pt-4 pb-4 text-body transcript-text",
+				sessionColumnClassName: "chat-column chat-list-column pt-4 pb-4 text-body transcript-text",
 				userBubbleClassName:
 					"user-message-bubble relative flex min-w-0 flex-col gap-[6px] comfortable:gap-[8px] rounded-r7 comfortable:rounded-card px-3 py-2 comfortable:px-4 comfortable:py-3 text-heading font-normal break-words select-text text-user-msg-text max-w-[85%] bg-user-msg-bg",
 				assistantProseClassName: "relative min-w-0 text-body text-primary",

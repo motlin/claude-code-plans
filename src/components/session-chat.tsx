@@ -195,7 +195,7 @@ import {useStepCollapseFocusReturn} from "../hooks/use-step-collapse-focus-retur
 import {useLabelUnclip} from "../hooks/use-label-unclip";
 import {useOpenTextRow} from "../hooks/use-open-text-row";
 import {useTranscriptSelectionAttach} from "../hooks/use-transcript-selection-attach";
-import {CHAT_COLUMN_CLASS} from "../lib/transcript-width";
+import {CHAT_LIST_COLUMN_CLASS} from "../lib/transcript-width";
 import {glideScrollTo} from "../lib/glide-scroll";
 import {isMotionReduced} from "../lib/reduced-motion";
 import {stickyPromptText} from "../lib/sticky-prompt";
@@ -1304,7 +1304,7 @@ export const SessionChat = React.memo(function SessionChat({
 													<StaleCompactTailContext.Provider value={staleCompactTail}>
 														<div
 															ref={containerRef}
-															className={`${CHAT_COLUMN_CLASS} pt-4 pb-4 text-body transcript-text`}
+															className={`${CHAT_LIST_COLUMN_CLASS} pt-4 pb-4 text-body transcript-text`}
 														>
 															{summary !== null && summary !== "" && (
 																<p

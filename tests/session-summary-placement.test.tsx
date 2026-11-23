@@ -1850,7 +1850,7 @@ describe("SessionPage dock composition", () =>
 			},
 		).toStrictEqual(
 			{
-				slot: ["chat-column w-full empty:hidden", true],
+				slot: ["chat-column chat-list-column w-full empty:hidden", true],
 				items: ["completed", "in_progress"],
 				spinning: 1,
 				lines: 1,

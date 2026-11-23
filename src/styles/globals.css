@@ -5491,6 +5491,14 @@ html[data-reduce-motion="true"] [data-cds="SkeletonGroup"][data-hold="delayed"]
 		padding-inline-end: var(--chat-column-end, 16px);
 	}
 
+	/* Upstream shared-38 `jw`: the transcript list column sits a further --chat-list-inset (unset, so 1rem) inside the
+	   gutters on both sides, inside the same max width; the composer dock column does not. */
+	.chat-list-column
+	{
+		padding-inline-start: calc(var(--chat-column-start, 16px) + var(--chat-list-inset, 1rem));
+		padding-inline-end: calc(var(--chat-column-end, 16px) + var(--chat-list-inset, 1rem));
+	}
+
 	/* The composer dock's column. Upstream docks it outside the scrollport, so it
 	   spans the scrollbar gutters the transcript loses; inside the scroller it
 	   takes them back from its padding and max width. */
@@ -5568,6 +5576,12 @@ html[data-reduce-motion="true"] [data-cds="SkeletonGroup"][data-hold="delayed"]
 		{
 			padding-inline-start: var(--chat-column-start, 32px);
 			padding-inline-end: var(--chat-column-end, 32px);
+		}
+
+		.chat-list-column
+		{
+			padding-inline-start: calc(var(--chat-column-start, 32px) + var(--chat-list-inset, 1rem));
+			padding-inline-end: calc(var(--chat-column-end, 32px) + var(--chat-list-inset, 1rem));
 		}
 
 		.chat-dock-column
@@ -5792,6 +5806,32 @@ html[data-reduce-motion="true"] [data-cds="SkeletonGroup"][data-hold="delayed"]
 		var(--chat-gutter) + var(--tiles-padding)
 	);
 	--chat-column-start: calc(var(--chat-column-end) - var(--tiles-padding));
+}
+
+/* Upstream shared-38 `jw` on a panel with a shaved side: the list inset shrinks to whatever room the column leaves
+   beside its max width, so a narrow shaved panel's list lines up with its dock. */
+[data-tiles-line]
+	[data-session-tile]:is([data-chat-gutter-start="shave"], [data-chat-gutter-end="shave"])
+	.chat-list-column
+{
+	padding-inline-start: calc(
+		var(--chat-column-start) +
+			clamp(
+				0px,
+				(100% - (var(--max-content-width, 768px) + var(--chat-column-start) + var(--chat-column-end))) / 2 +
+					var(--chat-list-inset, 1rem),
+				var(--chat-list-inset, 1rem)
+			)
+	);
+	padding-inline-end: calc(
+		var(--chat-column-end) +
+			clamp(
+				0px,
+				(100% - (var(--max-content-width, 768px) + var(--chat-column-start) + var(--chat-column-end))) / 2 +
+					var(--chat-list-inset, 1rem),
+				var(--chat-list-inset, 1rem)
+			)
+	);
 }
 
 /* Upstream shared-18 `Z8`: rail end = max(0, edge - tiles-padding - tiles-border - 1px), edge .5rem with an end

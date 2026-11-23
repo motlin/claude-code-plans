@@ -4,7 +4,7 @@ import type {QueuedPrompt} from "../lib/composer-queue";
 import {useFizzyLake} from "../lib/fizzy-lake";
 import {recordPickup} from "../lib/pickup-settling";
 import {messageHeading} from "../lib/transcript-action-targets";
-import {CHAT_COLUMN_CLASS} from "../lib/transcript-width";
+import {CHAT_LIST_COLUMN_CLASS} from "../lib/transcript-width";
 import {WaitingMessageActions} from "./message-actions";
 import {Spinner} from "./ui/spinner";
 import {USER_MESSAGE_CLASS} from "./user-bubble";
@@ -257,7 +257,7 @@ export function OptimisticWaitingTurn({
 })
 {
 	return (
-		<div className={`${CHAT_COLUMN_CLASS} flex flex-col gap-2 pb-[var(--chat-turn-gap)]`}>
+		<div className={`${CHAT_LIST_COLUMN_CLASS} flex flex-col gap-2 pb-[var(--chat-turn-gap)]`}>
 			<WaitingUserTurn
 				entryId="optimistic"
 				text={prompt}
@@ -293,7 +293,7 @@ export function HeldSteerTurns({
 {
 	if (items.length === 0) return null;
 	return (
-		<div className={`${CHAT_COLUMN_CLASS} flex flex-col gap-2 pb-[var(--chat-turn-gap)]`}>
+		<div className={`${CHAT_LIST_COLUMN_CLASS} flex flex-col gap-2 pb-[var(--chat-turn-gap)]`}>
 			{items.map((item, index) => (
 				<WaitingUserTurn
 					key={item.id}
@@ -330,7 +330,7 @@ export function ParkedWaitingTurns({
 {
 	if (items.length === 0) return null;
 	return (
-		<div className={`${CHAT_COLUMN_CLASS} flex flex-col gap-2 pb-[var(--chat-turn-gap)]`}>
+		<div className={`${CHAT_LIST_COLUMN_CLASS} flex flex-col gap-2 pb-[var(--chat-turn-gap)]`}>
 			{items.map((item) => (
 				<WaitingUserTurn
 					key={item.id}

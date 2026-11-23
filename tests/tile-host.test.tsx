@@ -3894,6 +3894,22 @@ describe("TileHost line-mode chat shell inset (upstream shared-20 it / cc43287c9
 		).toStrictEqual([]);
 	});
 
+	it("insets the transcript list column 1rem inside the chat gutters, clamped on a shaved side, as upstream shared-38 jw does", () =>
+	{
+		const styles = readFileSync("src/styles/globals.css", "utf8").replaceAll(/\s+/g, " ");
+		const shaved =
+			'[data-tiles-line] [data-session-tile]:is([data-chat-gutter-start="shave"], [data-chat-gutter-end="shave"]) .chat-list-column';
+		const room =
+			"(100% - (var(--max-content-width, 768px) + var(--chat-column-start) + var(--chat-column-end))) / 2";
+		expect(
+			[
+				".chat-list-column { padding-inline-start: calc(var(--chat-column-start, 16px) + var(--chat-list-inset, 1rem)); padding-inline-end: calc(var(--chat-column-end, 16px) + var(--chat-list-inset, 1rem)); }",
+				".chat-list-column { padding-inline-start: calc(var(--chat-column-start, 32px) + var(--chat-list-inset, 1rem)); padding-inline-end: calc(var(--chat-column-end, 32px) + var(--chat-list-inset, 1rem)); }",
+				`${shaved} { padding-inline-start: calc( var(--chat-column-start) + clamp( 0px, ${room} + var(--chat-list-inset, 1rem), var(--chat-list-inset, 1rem) ) ); padding-inline-end: calc( var(--chat-column-end) + clamp( 0px, ${room} + var(--chat-list-inset, 1rem), var(--chat-list-inset, 1rem) ) ); }`,
+			].filter((rule) => !styles.includes(rule)),
+		).toStrictEqual([]);
+	});
+
 	it("sets the docked rail's end inset by the end gutter attribute, as upstream shared-18 Z8 resolves it", () =>
 	{
 		const styles = readFileSync("src/styles/globals.css", "utf8").replaceAll(/\s+/g, " ");

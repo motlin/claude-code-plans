@@ -27,3 +27,6 @@ export function transcriptWidthStyle(width: TranscriptWidth): CSSProperties
 
 /** Shared message/dock measure. Tile shells override the desktop gutters to 32px/40px. */
 export const CHAT_COLUMN_CLASS = "chat-column";
+
+/** The transcript list's column: the chat column plus upstream's 1rem chat-list inset on both sides. */
+export const CHAT_LIST_COLUMN_CLASS = `${CHAT_COLUMN_CLASS} chat-list-column`;

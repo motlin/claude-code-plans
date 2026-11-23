@@ -8,7 +8,8 @@ import {TranscriptAfterRows} from "../src/components/transcript-after-rows";
 import {jumpToMessage, releaseEndFollow} from "../src/lib/jump-to-message";
 import {setScrollTop} from "../src/lib/scroll-setter";
 import type {SessionLine} from "../src/lib/sessions";
-import {CHAT_COLUMN_CLASS} from "../src/lib/transcript-width";
+import {SESSION_DOCK_COLUMN_CLASS} from "../src/components/dock-tokens";
+import {CHAT_LIST_COLUMN_CLASS} from "../src/lib/transcript-width";
 
 vi.mock("../src/components/settings-context", () => (
 {
@@ -183,7 +184,7 @@ afterEach(() =>
 
 describe("SessionChat column measure", () =>
 {
-	it("lays the transcript out on the chat column shared with the composer dock", () =>
+	it("lays the transcript out on the chat column shared with the composer dock, inset by upstream's chat-list-inset", () =>
 	{
 		const view = render(
 			<SessionChat
@@ -194,9 +195,18 @@ describe("SessionChat column measure", () =>
 			/>,
 		);
 
-		expect(view.container.firstElementChild?.className).toBe(
-			`${CHAT_COLUMN_CLASS} pt-4 pb-4 text-body transcript-text`,
+		expect(
+			{
+				transcript: view.container.firstElementChild?.className,
+				dockHasListInset: SESSION_DOCK_COLUMN_CLASS.split(" ").includes("chat-list-column"),
+			},
+		).toStrictEqual(
+			{
+				transcript: "chat-column chat-list-column pt-4 pb-4 text-body transcript-text",
+				dockHasListInset: false,
+			},
 		);
+		expect(CHAT_LIST_COLUMN_CLASS).toBe("chat-column chat-list-column");
 	});
 
 	it("gives feed articles upstream's 8px keyboard-nav scroll margins, widened by any edge fade", () =>

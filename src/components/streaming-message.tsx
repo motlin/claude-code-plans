@@ -4,7 +4,7 @@ import {UserPlainText} from "./user-plain-text";
 import {getHighlighterSync, getHighlighterVersion, subscribeHighlighter} from "../hooks/use-shiki";
 import {useCodeThemes} from "../hooks/use-code-themes";
 import {handleCodeCopyClick} from "../lib/code-copy";
-import {CHAT_COLUMN_CLASS} from "../lib/transcript-width";
+import {CHAT_LIST_COLUMN_CLASS} from "../lib/transcript-width";
 import styles from "./markdown-article.module.css";
 import {USER_MESSAGE_CLASS} from "./user-bubble";
 import {UserBubbleBox} from "./user-bubble-box";
@@ -53,7 +53,7 @@ export function StreamingMessage({text, isComplete, error, forkedSessionId, sent
 	}, [text, codeThemes, highlighterVersion]);
 
 	return (
-		<div className={`${CHAT_COLUMN_CLASS} py-4`}>
+		<div className={`${CHAT_LIST_COLUMN_CLASS} py-4`}>
 			{sentPrompt && (
 				<div className={`${USER_MESSAGE_CLASS} mb-6`} data-perf-pending-prompt="">
 					<UserBubbleBox>
