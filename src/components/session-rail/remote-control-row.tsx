@@ -17,7 +17,8 @@ import {RailGlyph} from "./rail-row";
 /*
  * Upstream's desktop Remote Control setting row (`RA` in the flat-rail Environment card): the Cursor icon, a
  * label that clicks its xs switch, and, while bridged, a hover-revealed "…" menu (also on right-click) to open
- * the bridged session or copy its link.
+ * the bridged session or copy its link. Its label, like upstream's setting-row name, is a plain `truncate`
+ * span or label, not RailRowContent's clipped-only OverflowTooltip.
  */
 
 const ROW_CLASS = "group/setting flex min-h-8 w-full min-w-0 items-center gap-2.5 px-2 text-body";

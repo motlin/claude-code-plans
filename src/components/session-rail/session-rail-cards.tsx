@@ -162,7 +162,10 @@ function gitHubBranchUrl(repoUrl: string, branch: string): string
 	return `${repoUrl}/tree/${branch.split("/").map(encodeURIComponent).join("/")}`;
 }
 
-/** Upstream's folder and branch rows: a ghost menu button padded past the icon, which overlays it without taking clicks. */
+/**
+ * Upstream's folder and branch rows: a ghost menu button padded past the icon, which overlays it without taking clicks.
+ * Upstream's label (`Qn`) is a plain `truncate` span, not RailRowContent's clipped-only OverflowTooltip.
+ */
 function EnvironmentMenuRow({
 	glyph,
 	icon,
