@@ -127,21 +127,26 @@ function GoalActions({sessionId, goal}: {sessionId: string; goal: SessionGoal})
 }
 
 /**
- * Upstream `Wt` on the two lines: whether either is cut by its clamp, re-measured as they resize and once fonts
- * load. Frozen while expanded, so the toggle stays even if the text later shortens.
+ * Upstream `Wt` on the two lines: whether either is cut by its clamp, re-measured as they resize, once fonts load,
+ * and whenever their text changes (upstream passes the content as a dependency). Frozen while expanded, so the
+ * toggle stays even if the text later shortens.
  */
-function useClampCut(frozen: boolean)
+function useClampCut(frozen: boolean, texts: readonly [string, string])
 {
 	const lines = useRef<(HTMLElement | null)[]>([]);
 	const [cut, setCut] = useState(false);
+	const measure = useCallback(() =>
+	{
+		setCut(lines.current.some((line) => line !== null && line.scrollHeight > line.clientHeight));
+	}, []);
+	const [condition, status] = texts;
+	useLayoutEffect(() =>
+	{
+		if (!frozen) measure();
+	}, [frozen, measure, condition, status]);
 	useLayoutEffect(() =>
 	{
 		if (frozen) return undefined;
-		const measure = () =>
-		{
-			setCut(lines.current.some((line) => line !== null && line.scrollHeight > line.clientHeight));
-		};
-		measure();
 		let live = true;
 		const fonts = document.fonts as FontFaceSet | undefined;
 		fonts?.ready
@@ -162,7 +167,7 @@ function useClampCut(frozen: boolean)
 			live = false;
 			observer.disconnect();
 		};
-	}, [frozen]);
+	}, [frozen, measure]);
 	const lineRef = useCallback(
 		(index: number) => (element: HTMLElement | null) =>
 		{
@@ -181,7 +186,8 @@ export function GoalBody({sessionId, goal}: {sessionId: string; goal: SessionGoa
 {
 	const hasComposer = useHasComposer(sessionId);
 	const showMore = useShowMore();
-	const {cut, lineRef} = useClampCut(showMore.expanded);
+	const status = goalStatusLine(goal);
+	const {cut, lineRef} = useClampCut(showMore.expanded, [goal.condition, status]);
 	const clamp = showMore.expanded ? "" : " line-clamp-2";
 	return (
 		<>
@@ -191,7 +197,7 @@ export function GoalBody({sessionId, goal}: {sessionId: string; goal: SessionGoa
 						{goal.condition}
 					</bdi>
 					<bdi ref={lineRef(1)} className={`text-footnote text-muted-as-secondary${clamp}`}>
-						{goalStatusLine(goal)}
+						{status}
 					</bdi>
 				</div>
 				{hasComposer && <GoalActions sessionId={sessionId} goal={goal} />}

@@ -1631,14 +1631,32 @@ describe("Goal card", () =>
 		);
 	});
 
-	it("offers Show more when a line is cut, which drops both clamps and reads Show less", async () =>
+	it("offers Show more once a line is cut, even by new text under the same goal, and toggles both clamps", async () =>
 	{
-		vi.spyOn(HTMLElement.prototype, "scrollHeight", "get").mockReturnValue(60);
+		const scrollHeight = vi.spyOn(HTMLElement.prototype, "scrollHeight", "get").mockReturnValue(40);
 		vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockReturnValue(40);
-		await renderCards(
+		const rerender = await renderCards(
 			{
 				...BASE,
 				goal: GOAL,
+			},
+		);
+		const fits = within(goalSection()).queryByRole(
+			"button",
+			{
+				name: "Show more",
+			},
+		);
+		scrollHeight.mockReturnValue(60);
+		rerender(
+			{
+				...BASE,
+				goal:
+				{
+					...GOAL,
+					iterations: 7,
+					lastReason: "fake long reason",
+				},
 			},
 		);
 		const toggle = within(goalSection()).getByRole(
@@ -1652,6 +1670,7 @@ describe("Goal card", () =>
 
 		expect(
 			{
+				fits,
 				collapsed,
 				expanded: toggle.getAttribute("aria-expanded"),
 				label: toggle.textContent,
@@ -1659,6 +1678,7 @@ describe("Goal card", () =>
 			},
 		).toStrictEqual(
 			{
+				fits: null,
 				collapsed: "false",
 				expanded: "true",
 				label: "Show less",
