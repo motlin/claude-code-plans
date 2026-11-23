@@ -4707,7 +4707,7 @@ describe("SessionChat usage-limit card", () =>
 				shell: "card-outline-layer flex w-fit min-w-[min(480px,100%)] max-w-full flex-col overflow-clip rounded-card select-text",
 				header: "flex items-start gap-md px-lg py-md bg-alpha-1 text-body contain-inline-size",
 				body: "flex flex-col gap-md px-lg pt-lg pb-md last:pb-lg empty:hidden contain-inline-size",
-				icon: "lucide lucide-gauge size-4 shrink-0 text-danger-000",
+				icon: "lucide lucide-gauge size-4 shrink-0 text-danger",
 				headline: "Weekly limit reached",
 				hint: true,
 				settings: null,

@@ -1151,8 +1151,8 @@ html[data-interface-font="dyslexic"]
 
 	--upstream-text-muted: #898781;
 	--upstream-code-ink: #ec7e7e;
-	/* Upstream --cds-text-danger / --cds-text-success (dark). */
-	--upstream-text-danger: #f17778;
+	/* Upstream --cds-text-danger (dark, read live 2026-11-21) / --cds-text-success (dark). */
+	--upstream-text-danger: #fa8080;
 	--upstream-text-success: #53c556;
 	--git-opened: #32d74b;
 	--git-draft: #a6a6a6;

@@ -31,7 +31,7 @@ interface ErrorCardShellProps
 	children?: ReactNode;
 }
 
-const ICON_CLASS = "size-4 shrink-0 text-danger-000";
+const ICON_CLASS = "size-4 shrink-0 text-danger";
 
 /*
  * Upstream's cds density spacing, verbatim: the CSS density scope picks the values (under

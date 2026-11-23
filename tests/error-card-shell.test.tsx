@@ -89,7 +89,7 @@ describe("ErrorCardShell", () =>
 				icon:
 				{
 					className:
-						"lucide lucide-triangle-exclamation-point lucide-alert-triangle lucide-triangle-alert size-4 shrink-0 text-danger-000",
+						"lucide lucide-triangle-exclamation-point lucide-alert-triangle lucide-triangle-alert size-4 shrink-0 text-danger",
 					hidden: "true",
 				},
 				headline:
@@ -208,7 +208,7 @@ describe("ErrorCardShell", () =>
 					"flex flex-col gap-md px-lg pt-lg pb-md last:pb-lg empty:hidden contain-inline-size",
 				],
 				header: ["flex h-[1lh] shrink-0 items-center", "min-w-0 grow text-primary break-words"],
-				icon: "lucide lucide-gauge size-4 shrink-0 text-danger-000",
+				icon: "lucide lucide-gauge size-4 shrink-0 text-danger",
 				busy: null,
 				buttons: 0,
 				alerts: 0,

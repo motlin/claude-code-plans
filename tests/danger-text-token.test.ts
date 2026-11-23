@@ -17,7 +17,7 @@ describe("danger text token", () =>
 		).toStrictEqual(
 			{
 				color: "var(--upstream-text-danger)",
-				values: ["#a42528", "#f17778"],
+				values: ["#a42528", "#fa8080"],
 			},
 		);
 	});
