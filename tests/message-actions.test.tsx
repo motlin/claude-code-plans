@@ -170,7 +170,12 @@ describe("AssistantMessageActions", () =>
 				.split(" ")
 				.filter((name) => /^(?:touch:|comfortable:|h-|w-|size-|min-h-|rounded-)/.test(name));
 		const assistant = render(
-			<AssistantMessageActions message={MESSAGE} text="Hello" timestamp={TIMESTAMP} details={[]} />,
+			withActions(
+				{
+					pinChapter: vi.fn<NonNullable<TranscriptActions["pinChapter"]>>(),
+				},
+				<AssistantMessageActions message={MESSAGE} text="Hello" timestamp={TIMESTAMP} details={[]} />,
+			),
 		).container;
 		const user = render(
 			<UserMessageActions message={MESSAGE} text="Hello" timestamp={TIMESTAMP} details={[]} readByClaude />,
@@ -1050,7 +1055,7 @@ describe("UserMessageActions", () =>
 		);
 	});
 
-	it("keeps focus where it was when a toolbar button is pressed, as upstream's onMouseDown preventDefault", () =>
+	it("lets a pressed toolbar button take focus and the roving stop, as upstream's onMouseDown does not preventDefault", () =>
 	{
 		const {container} = render(
 			<>
@@ -1064,22 +1069,39 @@ describe("UserMessageActions", () =>
 				)}
 			</>,
 		);
-		const composer = container.querySelector("textarea")!;
-		composer.focus();
+		container.querySelector("textarea")!.focus();
 
 		const prevented = ["Copy", "Rewind to here", "Fork from here"].map(
 			(label) => !fireEvent.mouseDown(button(container, label)),
 		);
 
+		const assistant = render(
+			withActions(
+				{
+					pinChapter: vi.fn<NonNullable<TranscriptActions["pinChapter"]>>(),
+				},
+				<AssistantMessageActions message={MESSAGE} text="Hello" timestamp={TIMESTAMP} details={[]} />,
+			),
+		).container;
+		const pin = button(assistant, "Pin as chapter");
+		const pinPrevented = !fireEvent.mouseDown(pin);
+		pin.focus();
+
 		expect(
 			{
 				prevented,
-				focused: document.activeElement === composer,
+				pinPrevented,
+				focused: document.activeElement?.getAttribute("aria-label") ?? null,
+				pinTabIndex: pin.tabIndex,
+				copyTabIndex: button(assistant, "Copy").tabIndex,
 			},
 		).toStrictEqual(
 			{
-				prevented: [true, true, true],
-				focused: true,
+				prevented: [false, false, false],
+				pinPrevented: false,
+				focused: "Pin as chapter",
+				pinTabIndex: 0,
+				copyTabIndex: -1,
 			},
 		);
 	});
@@ -1425,7 +1447,12 @@ describe("message action toolbar sizing and reveal", () =>
 	it("sizes buttons on the xs control with the xs radius and 16px icons, the assistant time an xs-control 13px/19px flex box and the user time 11px/17px, each padded on its inner side", () =>
 	{
 		const assistant = render(
-			<AssistantMessageActions message={MESSAGE} text="Hello" timestamp={TIMESTAMP} details={[]} />,
+			withActions(
+				{
+					pinChapter: vi.fn<NonNullable<TranscriptActions["pinChapter"]>>(),
+				},
+				<AssistantMessageActions message={MESSAGE} text="Hello" timestamp={TIMESTAMP} details={[]} />,
+			),
 		).container;
 		const copy = button(assistant, "Copy");
 		const assistantTime = assistant.querySelector("time")!.className.split(" ");

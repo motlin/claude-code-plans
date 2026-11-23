@@ -209,8 +209,6 @@ function ActionButton({
 							tabIndex,
 						})}
 				disabled={onClick === undefined || blocked}
-				// Pressing keeps focus where it was (the composer), as upstream's toolbar buttons do.
-				onMouseDown={preventFocusSteal}
 				onClick={blocked ? undefined : onClick}
 				className={BUTTON_CLASS}
 			>
