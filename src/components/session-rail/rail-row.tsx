@@ -117,7 +117,7 @@ const RAIL_CARD_DIVIDER_CLASS =
 /** Upstream's lined card (`epitaxy-rail-lined`): py-md 8px, pb-sm 6px while open, the card ring, and the flat-rail hairline. */
 export const RAIL_CARD_CLASS = `group/railcard epitaxy-rail-lined flex shrink-0 flex-col pt-2 pb-2 data-open:pb-1.5 ${RAIL_CARD_RING_CLASS} ${RAIL_CARD_DIVIDER_CLASS}`;
 
-/** Upstream's rail Show more / Show less toggle. */
+/** Upstream's rail Show more / Show less toggle (`ae`): its `min-h-6.5 px-xs` computes to 32px / 8px because the lined rail rewrites `min-h-6.5` to `min-h-list-row` and sets `--rail-row-pad` to 8px, so `min-h-8 px-2` is the exact match. */
 const SHOW_MORE_CLASS =
 	"flex min-h-8 w-full min-w-0 cursor-pointer items-center rounded px-2 text-start text-body text-muted-as-secondary hover:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
 

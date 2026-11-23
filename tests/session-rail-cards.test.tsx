@@ -2724,7 +2724,7 @@ describe("Background tasks card", () =>
 		);
 	});
 
-	it("lines the task rows and Show more at upstream's 32px with an 8px row pad", async () =>
+	it("lines the task rows and Show more at upstream's 32px with an 8px row pad (the lined rail's min-h-6.5 to list-row rewrite)", async () =>
 	{
 		await renderCards(withTasks(SIX));
 		const picked = (element: Element | null | undefined) =>
