@@ -201,7 +201,10 @@ function EnvironmentMenuRow({
 						</span>
 					)}
 				</MenuTrigger>
-				<MenuContent>{children}</MenuContent>
+				{/* Upstream's row dropdown: end-aligned 6px below the row, never narrower than it. */}
+				<MenuContent align="end" sideOffset={6} className="!min-w-[var(--anchor-width)]">
+					{children}
+				</MenuContent>
 			</Menu>
 			<span className="pointer-events-none absolute inset-y-0 start-0 flex items-center ps-2">
 				<RailGlyph glyph={glyph}>

@@ -1468,7 +1468,9 @@ describe("Environment card", () =>
 
 		const notPrevented = fireEvent.contextMenu(trigger);
 		const menu = await screen.findByRole("menu");
+		const positioner = menu.parentElement;
 
+		// Upstream's row dropdown: end-aligned, 6px below the row, and at least the row's width.
 		expect(
 			{
 				prevented: !notPrevented,
@@ -1476,12 +1478,18 @@ describe("Environment card", () =>
 				items: within(menu)
 					.getAllByRole("menuitem")
 					.map((item) => item.textContent),
+				align: positioner?.getAttribute("data-align"),
+				sideOffset: positioner?.getAttribute("data-side-offset"),
+				anchorWidth: menu.classList.contains("!min-w-[var(--anchor-width)]"),
 			},
 		).toStrictEqual(
 			{
 				prevented: true,
 				expanded: "true",
 				items: ["Copy branch name", "Open branch on GitHub"],
+				align: "end",
+				sideOffset: "6",
+				anchorWidth: true,
 			},
 		);
 	});
