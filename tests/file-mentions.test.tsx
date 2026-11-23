@@ -17,6 +17,7 @@ import
 import {preloadComposerSurfaces} from "../src/components/composer-surfaces-entry";
 import {PanelsOff} from "./fizzy-lake-off";
 import {MentionMenu} from "../src/components/mention-menu";
+import {DensityProvider} from "../src/components/ui/density";
 import
 {
 	fileMentionOption,
@@ -2451,6 +2452,45 @@ describe("MentionMenu providers", () =>
 					fontSize: "calc(1rem * var(--cds-rem-scale, 1))",
 				},
 				width: "560px",
+			},
+		);
+	});
+
+	it("sizes an agent row's glyph auto (20px comfortable, 16px compact) and keeps session glyphs at 16px", () =>
+	{
+		const agent: MentionOption =
+		{
+			id: "code-reviewer",
+			providerId: "ccp-agents",
+			label: "code-reviewer",
+			renderedText: "code-reviewer",
+			category: "Agents",
+			kind: "agent",
+		};
+		const glyphSizes = () =>
+			screen.getAllByRole("option").map((row) => (row.firstElementChild as SVGElement | null)?.style.fontSize);
+		const menu = (
+			<MentionMenu
+				id="mentions"
+				options={[agent, SESSION_OPTION]}
+				highlighted={0}
+				onHighlight={() => undefined}
+				onAccept={() => undefined}
+			/>
+		);
+		const {rerender} = render(<DensityProvider density="comfortable">{menu}</DensityProvider>);
+		const comfortable = glyphSizes();
+		rerender(<DensityProvider density="compact">{menu}</DensityProvider>);
+
+		expect(
+			{
+				comfortable,
+				compact: glyphSizes(),
+			},
+		).toStrictEqual(
+			{
+				comfortable: ["calc(1.25rem * var(--cds-rem-scale, 1))", "calc(1rem * var(--cds-rem-scale, 1))"],
+				compact: ["calc(1rem * var(--cds-rem-scale, 1))", "calc(1rem * var(--cds-rem-scale, 1))"],
 			},
 		);
 	});

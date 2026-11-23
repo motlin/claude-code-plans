@@ -31,7 +31,7 @@ const SKELETON_WIDTHS = [160, 128, 144] as const;
 
 function OptionIcon({option, icons}: {option: MentionOption; icons: FileTypeIconModule | undefined})
 {
-	if (option.kind === "agent") return <Icon name="Agent" size="sm" className="text-ink-muted" />;
+	if (option.kind === "agent") return <Icon name="Agent" size="auto" className="text-ink-muted" />;
 	if (option.kind === "session") return <Icon name="ChatSimple" size="sm" className="text-ink-muted" />;
 	if (option.kind === "directory") return <Folder aria-hidden="true" className="size-4 shrink-0 text-ink-muted" />;
 	if (icons === undefined) return <span aria-hidden="true" className="size-4 shrink-0" />;
