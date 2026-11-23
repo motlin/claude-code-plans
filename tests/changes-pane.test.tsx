@@ -939,13 +939,17 @@ describe("ChangesPaneView", () =>
 						},
 					)
 					.getAttribute("aria-disabled"),
+				itemContextMenuPrevented: !fireEvent.contextMenu(screen.getAllByRole("menuitemcheckbox")[0]!),
+				popupContextMenuPrevented: !fireEvent.contextMenu(screen.getByRole("menu")),
 			},
-		).toEqual(
+		).toStrictEqual(
 			{
 				parentRole: "none",
 				description: "This diff is too large to expand at once. Select a file to expand it.",
 				disabled: "true",
 				collapseDisabled: null,
+				itemContextMenuPrevented: true,
+				popupContextMenuPrevented: true,
 			},
 		);
 

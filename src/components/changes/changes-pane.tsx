@@ -496,7 +496,7 @@ function SettingsMenu({
 			<MenuTrigger aria-label="Changes settings" className={PANE_HEADER_ICON_BUTTON_CLASS}>
 				<Icon name="DotsVertical" size="sm" />
 			</MenuTrigger>
-			<MenuContent align="end">
+			<MenuContent align="end" popupProps={SUPPRESS_NATIVE_MENU_POPUP_PROPS}>
 				{hasFiles && (
 					<>
 						<PrefCheckboxItem prefKey="diffShowTree" shortcut={showFilesKeys.keys}>
