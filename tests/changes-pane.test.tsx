@@ -32,7 +32,7 @@ import {clearDiffComments, openDiffCommentDraft, saveDiffComment} from "../src/l
 import {clearDiffScrollTarget, diffScrollTarget, scrollToDiffLine} from "../src/lib/diff-scroll-target";
 import type {ReviewFinding} from "../src/lib/review-diff";
 import {reviewQueryOptions, type ReviewBundle} from "../src/lib/api/reviews";
-import {formatApplyFindingsPrompt, openReviewInChanges} from "../src/lib/changes-review";
+import {formatApplyFindingsPrompt, openReviewInChanges, transcriptReviewFindings} from "../src/lib/changes-review";
 import {clearReviewFindingCursor} from "../src/lib/review-finding-cursor";
 import {parseReportFindings} from "../src/lib/report-findings";
 import
@@ -3533,6 +3533,90 @@ describe("ChangesPane transcript review findings (upstream cc8941b7b setReviewFi
 			{
 				label: "Fixes applied",
 				sent: [["/code-review high"]],
+			},
+		);
+	});
+
+	it("sends Apply fixes through the live terminal for the open findings and marks them fixing", async () =>
+	{
+		seed(["greet.ts", "src/greet.ts", "greet.ts"]);
+		const saved = JSON.parse(localStorage.getItem(REVIEW_FINDINGS_STORAGE_KEY) ?? "{}");
+		saved.findingStatusBySession[SESSION] =
+		{
+			"finding-tool-1-2": "fixing",
+		};
+		localStorage.setItem(REVIEW_FINDINGS_STORAGE_KEY, JSON.stringify(saved));
+		reloadReviewFindingsStore();
+		const send = vi.fn<(text: string) => void>();
+		renderPane(send);
+		fireEvent.click(
+			await screen.findByRole(
+				"button",
+				{
+					name: "Apply fixes",
+				},
+			),
+		);
+		const open = transcriptReviewFindings(reviewFindingsSnapshot().findingsBySession[SESSION] ?? [], {}, [
+			"src/greet.ts",
+		]).slice(0, 2);
+
+		expect(
+			{
+				sent: send.mock.calls,
+				statuses: reviewFindingsSnapshot().findingStatusBySession[SESSION],
+				label: screen
+					.getByRole(
+						"toolbar",
+						{
+							name: "Code review controls",
+						},
+					)
+					.querySelector("[role=status]")?.textContent,
+			},
+		).toStrictEqual(
+			{
+				sent: [[formatApplyFindingsPrompt(open)]],
+				statuses:
+				{
+					"finding-tool-1-0": "fixing",
+					"finding-tool-1-1": "fixing",
+					"finding-tool-1-2": "fixing",
+				},
+				label: "Applying fixes…",
+			},
+		);
+	});
+
+	it("reopens the findings and toasts when the Apply fixes send fails", async () =>
+	{
+		seed(["greet.ts"]);
+		const send = vi.fn<(text: string) => void>(() =>
+		{
+			throw new Error("terminal gone");
+		});
+		renderPane(send);
+		fireEvent.click(
+			await screen.findByRole(
+				"button",
+				{
+					name: "Apply fixes",
+				},
+			),
+		);
+
+		expect(
+			{
+				statuses: reviewFindingsSnapshot().findingStatusBySession[SESSION],
+				toast: (await screen.findByText("Couldn’t send the fixes. Try again.")).textContent,
+			},
+		).toStrictEqual(
+			{
+				statuses:
+				{
+					"finding-tool-1-0": "open",
+				},
+				toast: "Couldn’t send the fixes. Try again.",
 			},
 		);
 	});

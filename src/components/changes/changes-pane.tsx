@@ -80,6 +80,8 @@ import
 {
 	clearReviewFindings,
 	dismissReviewFinding,
+	markReviewFindingsFixing,
+	reopenReviewFindings,
 	resolveReviewFindingPaths,
 	useReviewFindingsState,
 } from "../../lib/review-findings-store";
@@ -2315,7 +2317,7 @@ function useTranscriptFindings(sessionId: string, diff: SessionDiffResponse | un
 
 /**
  * The working-copy review findings shown on the Uncommitted scope, with
- * "Fix this one" and "Apply fixes" (sent to the chat input), "Dismiss finding" (saved as resolved)
+ * "Fix this one" (sent to the chat input), "Apply fixes" (sent to the live terminal, else the chat input), "Dismiss finding" (saved as resolved)
  * and the findings bar's Close (hidden until the review is opened again).
  */
 function useReviewFindings(sessionId: string, scope: string, diff: SessionDiffResponse | undefined)
@@ -2409,9 +2411,36 @@ function useReviewFindings(sessionId: string, scope: string, diff: SessionDiffRe
 		},
 		dismiss: (finding: ReviewFinding) => void dismiss(finding),
 		statuses: transcript === null ? NO_STATUSES : statuses,
+		// Upstream `KT` Apply fixes: the open findings go fixing and their prompt goes through the live terminal (a failed
+		// send reopens them); with no live terminal the prompt lands in the composer instead.
 		applyFixes: () =>
 		{
-			insert(formatApplyFindingsPrompt(findings.filter((finding) => !finding.resolved)));
+			const open = findings.filter((finding) =>
+				transcript === null ? !finding.resolved : (statuses[finding.id] ?? "open") === "open",
+			);
+			if (open.length === 0) return;
+			const prompt = formatApplyFindingsPrompt(open);
+			if (send === null)
+			{
+				insert(prompt);
+				return;
+			}
+			const ids = transcript === null ? [] : open.map((finding) => finding.id);
+			markReviewFindingsFixing(sessionId, ids);
+			try
+			{
+				send(prompt);
+			}
+			catch
+			{
+				reopenReviewFindings(sessionId, ids);
+				toast(
+					{
+						kind: "error",
+						message: "Couldn’t send the fixes. Try again.",
+					},
+				);
+			}
 		},
 		// Upstream `KT` Re-run review: `/code-review {level}` through the live terminal, else into the composer.
 		rerunReview:
