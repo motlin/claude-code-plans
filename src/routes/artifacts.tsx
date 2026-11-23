@@ -959,12 +959,6 @@ const COVER_FRONT_FINISH: Record<CoverKind, string> =
 const COVER_SHEET =
 	"absolute overflow-hidden border border-[color:var(--color-border-line)] bg-white text-primary dark:bg-surface-1 dark:bg-clip-padding after:pointer-events-none after:absolute after:inset-0 after:content-['']";
 
-const COVER_FADE_WIDTH: Record<CoverKind, string> =
-{
-	file: "max-w-[268px]",
-	document: "max-w-[240px] group-has-[img]/cover:max-w-[290px]",
-};
-
 /** Upstream's thumbnail img classes: a file crops from its top-left; a Docs page from its top. */
 const COVER_THUMB_IMG: Record<CoverKind, string> =
 {
@@ -982,22 +976,7 @@ const COVER_LIGHT: Record<CoverKind, string> =
 /** Upstream's grid loads the first 6 thumbnails of the leading unpinned section eagerly (`cabf52553` `se`). */
 const PRIORITY_THUMBS = 6;
 
-/** Upstream's bottom fade (`he`): an eased 16-stop ramp from clear at 67% to 30% of the cover hue, with 12px side fades. */
-const COVER_FADE_EASING = [
-	0, 0.013, 0.049, 0.104, 0.175, 0.259, 0.352, 0.45, 0.55, 0.648, 0.741, 0.825, 0.896, 0.951, 0.987, 1,
-];
-const COVER_FADE_MASK =
-{
-	maskImage: [
-		`linear-gradient(to bottom, transparent, ${COVER_FADE_EASING.map(
-			(step, index) => `rgb(0 0 0 / ${(step * 0.3).toFixed(3)}) ${(67 + index * 2.2).toFixed(1)}%`,
-		).join(", ")})`,
-		"linear-gradient(to right, transparent, #000 12px, #000 calc(100% - 12px), transparent)",
-	].join(", "),
-	maskComposite: "intersect",
-} as const;
-
-/** Upstream's cover wash: the surface laid over the hue at 40% (35% dark), on the cover and again inside its fade. */
+/** Upstream's cover wash: the surface laid over the hue at 40% (35% dark). */
 const COVER_SURFACE_WASH = "absolute inset-0 bg-surface-2 opacity-40 dark:opacity-35";
 
 /** An upstream blank-drawing box: `[x, y, width, height, rx?]`, where a missing rx rounds it into a pill. */
@@ -1142,7 +1121,7 @@ function CoverWash({src, filterId}: {src: string | undefined; filterId: string})
 }
 
 /**
- * Upstream's card cover (`Ae`): a tinted wash with a floating front sheet and a masked bottom fade. The sheet shows
+ * Upstream's card cover (`Ae`): a tinted wash with a floating front sheet and a 1px bottom hairline. The sheet shows
  * the artifact's screenshot when it has one, falling back to the blank drawing when it fails to load. A Docs cover
  * also draws a faint crayon doodle and a back sheet leaning 4° behind the front (always to the right, even in RTL).
  */
@@ -1153,7 +1132,6 @@ function ArtifactCover({artifact, priority}: {artifact: ArtifactSummary; priorit
 	const [washSrc, setWashSrc] = useState<string>();
 	const thumbnailSrc = artifact.thumbnailUrl;
 	const blank = <CoverBlank artifact={artifact} />;
-	const wash = thumbnailSrc !== null && <CoverWash src={washSrc} filterId={filterId} />;
 	return (
 		<div
 			data-artifact-cover={kind}
@@ -1161,7 +1139,7 @@ function ArtifactCover({artifact, priority}: {artifact: ArtifactSummary; priorit
 		>
 			<div className={COVER_SURFACE_WASH} />
 			{thumbnailSrc !== null && <CoverWashFilter id={filterId} />}
-			{wash}
+			{thumbnailSrc !== null && <CoverWash src={washSrc} filterId={filterId} />}
 			{kind === "document" && (
 				<div
 					data-cover-back=""
@@ -1199,14 +1177,7 @@ function ArtifactCover({artifact, priority}: {artifact: ArtifactSummary; priorit
 					</div>
 				)}
 			</div>
-			<div
-				aria-hidden="true"
-				className={`pointer-events-none absolute inset-0 isolate z-3 mx-auto overflow-hidden group-has-[[data-cover-front]>img]/cover:opacity-50 ${COVER_FADE_WIDTH[kind]} ${COVER_HUE[kind]}`}
-				style={COVER_FADE_MASK}
-			>
-				<div className={COVER_SURFACE_WASH} />
-				{wash}
-			</div>
+			<div className="absolute inset-x-0 bottom-0 z-3 h-px bg-alpha-2" />
 		</div>
 	);
 }

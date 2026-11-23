@@ -1328,8 +1328,8 @@ describe("artifacts route", () =>
 							? "front"
 							: child.tagName === "SPAN"
 								? "doodle"
-								: child.getAttribute("aria-hidden") === "true"
-									? "fade"
+								: child.classList.contains("h-px")
+									? "hairline"
 									: "wash",
 				),
 				back: back && [back.getAttribute("dir"), back.getAttribute("class"), back.childElementCount],
@@ -1346,7 +1346,7 @@ describe("artifacts route", () =>
 			{
 				docs:
 				{
-					layers: ["wash", "back", "front", "fade"],
+					layers: ["wash", "back", "front", "hairline"],
 					back: [
 						"ltr",
 						"absolute overflow-hidden border border-[color:var(--color-border-line)] bg-white text-primary dark:bg-surface-1 dark:bg-clip-padding after:pointer-events-none after:absolute after:inset-0 after:content-[''] start-[14.15%] top-[11.76%] h-full w-[76.34%] origin-top-left rotate-[2.2deg] rounded-r6 after:bg-gray-900/5 z-2 bg-clip-padding",
@@ -1356,7 +1356,7 @@ describe("artifacts route", () =>
 				},
 				html:
 				{
-					layers: ["wash", "front", "fade"],
+					layers: ["wash", "front", "hairline"],
 					back: null,
 					doodle: null,
 				},
@@ -1364,7 +1364,7 @@ describe("artifacts route", () =>
 		);
 	});
 
-	it("draws upstream's blank skeletons overflowing the sheet, with a fading sheen copy and pill text lines, under an eased bottom fade", async () =>
+	it("draws upstream's blank skeletons overflowing the sheet, with a fading sheen copy and pill text lines, over upstream's bottom hairline", async () =>
 	{
 		storage.removeItem(ARTIFACTS_LAYOUT_STORAGE_KEY);
 		await renderArtifactsPage("/artifacts", true);
@@ -1417,39 +1417,15 @@ describe("artifacts route", () =>
 				})),
 			};
 		};
-		const describeFade = (cover: HTMLElement) =>
+		const describeEnd = (cover: HTMLElement) => (
 		{
-			const fade = cover.lastElementChild as HTMLElement | null;
-			return {
-				mask: fade?.style.maskImage,
-				composite: fade?.style.maskComposite,
-				children: [...(fade?.children ?? [])].map((child) => child.className),
-			};
-		};
+			hairline: cover.lastElementChild?.getAttribute("class"),
+			masked: [...cover.querySelectorAll<HTMLElement>("*")].filter((element) => element.style.maskImage !== "")
+				.length,
+		});
 
 		const other = describeBlank(coverFor("Asap Ladder Queue"));
 		const doc = describeBlank(coverFor("Quarterly plan"));
-		// The eased ramp's alphas as jsdom serializes them: quantized to 8 bits, in the shortest form that keeps them.
-		const ramp = [
-			"0",
-			"0.004",
-			"0.016",
-			"0.03",
-			"0.05",
-			"0.08",
-			"0.106",
-			"0.133",
-			"0.165",
-			"0.192",
-			"0.224",
-			"0.247",
-			"0.27",
-			"0.286",
-			"0.294",
-			"0.3",
-		]
-			.map((alpha, index) => `rgba(0, 0, 0, ${alpha}) ${Number((67 + index * 2.2).toFixed(1))}%`)
-			.join(", ");
 		const blankClass =
 			"pointer-events-none absolute top-0 overflow-visible fill-current start-1/2 -translate-x-1/2 rtl:translate-x-1/2 text-[color:var(--skeleton-base)]";
 		const defs =
@@ -1479,7 +1455,7 @@ describe("artifacts route", () =>
 			{
 				other,
 				doc,
-				fade: describeFade(coverFor("Asap Ladder Queue")),
+				end: describeEnd(coverFor("Asap Ladder Queue")),
 			},
 		).toStrictEqual(
 			{
@@ -1525,11 +1501,10 @@ describe("artifacts route", () =>
 						},
 					],
 				},
-				fade:
+				end:
 				{
-					mask: `linear-gradient(transparent, ${ramp}), linear-gradient(to right, transparent, rgb(0, 0, 0) 12px, rgb(0, 0, 0) calc(100% - 12px), transparent)`,
-					composite: "intersect",
-					children: ["absolute inset-0 bg-surface-2 opacity-40 dark:opacity-35"],
+					hairline: "absolute inset-x-0 bottom-0 z-3 h-px bg-alpha-2",
+					masked: 0,
 				},
 			},
 		);
@@ -4210,7 +4185,7 @@ describe("artifact cover thumbnails", () =>
 				light: [light?.getAttribute("data-cover-light"), light?.getAttribute("class")],
 				img: [img?.tagName, img?.getAttribute("class"), img?.getAttribute("src")],
 				blank: front?.querySelector("svg[data-artifact-cover-blank]") ?? null,
-				fade: cover.lastElementChild?.getAttribute("class"),
+				hairline: cover.lastElementChild?.getAttribute("class"),
 			},
 		).toStrictEqual(
 			{
@@ -4226,12 +4201,12 @@ describe("artifact cover thumbnails", () =>
 					),
 				],
 				blank: null,
-				fade: "pointer-events-none absolute inset-0 isolate z-3 mx-auto overflow-hidden group-has-[[data-cover-front]>img]/cover:opacity-50 max-w-[268px] bg-cds-gray-100 text-cds-gray-600 dark:bg-cds-gray-700 dark:text-cds-gray-200",
+				hairline: "absolute inset-x-0 bottom-0 z-3 h-px bg-alpha-2",
 			},
 		);
 	});
 
-	it("inverts a Docs thumbnail in dark mode and widens its fade, as upstream", async () =>
+	it("inverts a Docs thumbnail in dark mode and ends the cover with the hairline, as upstream", async () =>
 	{
 		await renderArtifactsPage("/artifacts", true, thumbFor);
 		const cover = coverFor("Quarterly plan");
@@ -4243,7 +4218,7 @@ describe("artifact cover thumbnails", () =>
 				front: front?.getAttribute("class"),
 				light: [light?.getAttribute("data-cover-light"), light?.getAttribute("class")],
 				img: light?.querySelector("img")?.getAttribute("class"),
-				fade: cover.lastElementChild?.getAttribute("class"),
+				hairline: cover.lastElementChild?.getAttribute("class"),
 			},
 		).toStrictEqual(
 			{
@@ -4253,7 +4228,7 @@ describe("artifact cover thumbnails", () =>
 					"h-full dark:has-[>img]:mix-blend-screen dark:has-[>img]:hue-rotate-180 dark:has-[>img]:invert",
 				],
 				img: "block w-full object-cover object-top",
-				fade: "pointer-events-none absolute inset-0 isolate z-3 mx-auto overflow-hidden group-has-[[data-cover-front]>img]/cover:opacity-50 max-w-[240px] group-has-[img]/cover:max-w-[290px] bg-cds-blue-100 text-cds-blue-600 dark:bg-cds-blue-700 dark:text-cds-blue-200",
+				hairline: "absolute inset-x-0 bottom-0 z-3 h-px bg-alpha-2",
 			},
 		);
 	});
@@ -4277,8 +4252,8 @@ describe("artifact cover thumbnails", () =>
 									? "wash filter"
 									: child.tagName === "SPAN"
 										? "doodle"
-										: child.getAttribute("aria-hidden") === "true"
-											? "fade"
+										: child.classList.contains("h-px")
+											? "hairline"
 											: "surface wash",
 				),
 				back: [back?.getAttribute("dir"), back?.getAttribute("class")],
@@ -4286,7 +4261,7 @@ describe("artifact cover thumbnails", () =>
 			},
 		).toStrictEqual(
 			{
-				layers: ["surface wash", "wash filter", "cover wash", "back", "front", "fade"],
+				layers: ["surface wash", "wash filter", "cover wash", "back", "front", "hairline"],
 				back: [
 					"ltr",
 					"absolute overflow-hidden border border-[color:var(--color-border-line)] bg-white text-primary dark:bg-surface-1 dark:bg-clip-padding after:pointer-events-none after:absolute after:inset-0 after:content-[''] start-[14.15%] top-[11.76%] h-full w-[76.34%] origin-top-left rotate-[2.2deg] rounded-r6 after:bg-gray-900/5 z-2 bg-clip-padding",
@@ -4296,7 +4271,7 @@ describe("artifact cover thumbnails", () =>
 		);
 	});
 
-	it("fades the hue wash in under the sheet and inside the fade once the thumbnail loads, and out again on error", async () =>
+	it("fades the single hue wash in under the sheet once the thumbnail loads, and out again on error", async () =>
 	{
 		await renderArtifactsPage("/artifacts", true, thumbFor);
 		const cover = coverFor("Asap Ladder Queue");
@@ -4338,7 +4313,8 @@ describe("artifact cover thumbnails", () =>
 				washClass: cover.querySelector("[data-cover-wash]")?.getAttribute("class"),
 				placement: [
 					cover.querySelector(":scope > [data-cover-wash]") !== null,
-					cover.lastElementChild?.lastElementChild?.hasAttribute("data-cover-wash"),
+					[...cover.querySelectorAll<HTMLElement>("*")].filter((element) => element.style.maskImage !== "")
+						.length,
 				],
 				before,
 				loaded,
@@ -4353,15 +4329,15 @@ describe("artifact cover thumbnails", () =>
 		).toStrictEqual(
 			{
 				svg: "absolute size-0",
-				filter: ["sRGB", [true, true], ["one", "tiles", "mean", "above", "below", "spread", "strength", "in"]],
+				filter: ["sRGB", [true], ["one", "tiles", "mean", "above", "below", "spread", "strength", "in"]],
 				washClass:
 					"pointer-events-none absolute -inset-[8px] z-1 mix-blend-hue transition-opacity duration-base motion-reduce:transition-none opacity-0",
-				placement: [true, true],
-				before: [resting, resting],
-				loaded: [shown, shown],
+				placement: [true, 0],
+				before: [resting],
+				loaded: [shown],
 				errored:
 				{
-					washes: [resting, resting],
+					washes: [resting],
 					blank: "other",
 				},
 			},
