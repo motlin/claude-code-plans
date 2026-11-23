@@ -2,6 +2,7 @@ import type {FileOptions} from "@pierre/diffs/react";
 import {File} from "@pierre/diffs/react";
 import {type CSSProperties, useMemo} from "react";
 import {useCodeThemes} from "../../hooks/use-code-themes";
+import {pureSideRailsCss} from "../changes/diff-rails";
 import {DIFFS_HOST_CLASS, INLINE_DIFFS_STYLE_OVERRIDES} from "../changes/diffs-config";
 import {useResolvedTheme} from "../theme-context";
 
@@ -25,20 +26,21 @@ const PURE_SIDE_TINT: Record<PureSide, string> =
 	deletions: "color-mix(in srgb, var(--upstream-git-removed) 20%, transparent)",
 };
 
-/** Upstream's `ho`: the sign's ink in the transcript. */
-const TRANSCRIPT_SIGN_COLOR = "var(--cds-text-secondary)";
+/** Upstream's `ao`: the sign's ink. */
+const SIGN_COLOR = "var(--cds-text-secondary)";
 
 /**
- * Upstream's pure-side tint (`ES`/`QS`): every line on the side's diff background and the side's sign before
- * each line number; an `excerpt` hides the numbers and keeps only the sign.
+ * Upstream's pure-side tint (`cy`): every line on the side's diff background and the side's sign before each
+ * line number (an `excerpt` hides the numbers and keeps only the sign), then `Vd(side)`'s rails and full-row tint.
  */
-function pureSideCss(side: PureSide, excerpt: boolean, signColor: string): string
+function pureSideCss(side: PureSide, excerpt: boolean): string
 {
 	const background = side === "additions" ? "var(--diffs-bg-addition)" : "var(--diffs-bg-deletion)";
-	const tint = `[data-line]{background:${background};}[data-line-number-content]::before{content:"${SIGN[side]}";display:inline-block;min-width:1ch;color:${signColor};}`;
-	return excerpt
-		? `${tint}[data-line-number-content]{visibility:hidden;}[data-line-number-content]::before{visibility:visible;}`
-		: tint;
+	const tint = `[data-line]{background:${background};}[data-line-number-content]::before{content:"${SIGN[side]}";display:inline-block;min-width:1ch;color:${SIGN_COLOR};}`;
+	const numbers = excerpt
+		? "[data-line-number-content]{visibility:hidden;}[data-line-number-content]::before{visibility:visible;}"
+		: "";
+	return tint + numbers + pureSideRailsCss(side);
 }
 
 /**
@@ -60,14 +62,12 @@ export function PureSideFile({
 	content,
 	side,
 	excerpt = false,
-	signColor = TRANSCRIPT_SIGN_COLOR,
 	hostStyle,
 }: {
 	path: string;
 	content: string;
 	side: PureSide;
 	excerpt?: boolean;
-	signColor?: string;
 	hostStyle?: CSSProperties;
 })
 {
@@ -89,9 +89,9 @@ export function PureSideFile({
 			themeType,
 			disableFileHeader: true,
 			overflow: "wrap",
-			unsafeCSS: FILE_BASE_CSS + pureSideCss(side, excerpt, signColor),
+			unsafeCSS: FILE_BASE_CSS + pureSideCss(side, excerpt),
 		}),
-		[theme, themeType, side, excerpt, signColor],
+		[theme, themeType, side, excerpt],
 	);
 	const style = useMemo(
 		() => (

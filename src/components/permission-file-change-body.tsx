@@ -369,18 +369,9 @@ function FileChangeBody({path, view}: {path: string; view: FileChangeView})
 				{view.kind === "patch" ? (
 					<InlinePatchDiff patch={view.patch} disableLineNumbers={!view.numbered} hostStyle={hostStyle} />
 				) : (
-					<PureSideFile
-						path={path}
-						content={view.content}
-						side="additions"
-						signColor={PERMISSION_SIGN_COLOR}
-						hostStyle={hostStyle}
-					/>
+					<PureSideFile path={path} content={view.content} side="additions" hostStyle={hostStyle} />
 				)}
 			</div>
 		</div>
 	);
 }
-
-/** Upstream's `ro` sign ink in a permission card, measured rgba(0,0,0,.6) in light. */
-const PERMISSION_SIGN_COLOR = "light-dark(rgb(0 0 0 / 0.6),rgb(255 255 255 / 0.6))";

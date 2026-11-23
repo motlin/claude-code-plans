@@ -104,7 +104,14 @@ interface PureSideMarkup
 	sign: string | null;
 	excerpt: boolean;
 	tint: string | undefined;
+	rails: string;
 }
+
+const RAIL_VARS =
+	":host{--diff-rail-added:light-dark(color-mix(in lab,var(--diffs-addition-base) 86%,black),color-mix(in lab,var(--diffs-addition-base) 80%,var(--diffs-bg)));--diff-rail-removed:light-dark(color-mix(in lab,var(--diffs-deletion-base) 90%,black),color-mix(in lab,var(--diffs-deletion-base) 76%,white))}";
+const RAIL_BOX = 'content:"";position:absolute;left:0;width:6px;top:0;bottom:0;pointer-events:none';
+const RAIL_FORCED_COLORS =
+	"@media (forced-colors:active){[data-column-number]::after{forced-color-adjust:none;--diff-rail-added:CanvasText;--diff-rail-removed:CanvasText}}";
 
 /** Upstream's `ES` pure-side view: a `File` (no `data-diff`) tinted one side, its sign drawn before each number. */
 function pureSideMarkup(container: HTMLElement): PureSideMarkup
@@ -119,6 +126,10 @@ function pureSideMarkup(container: HTMLElement): PureSideMarkup
 		sign: /\[data-line-number-content\]::before\{content:"([^"]*)"/.exec(css)?.[1] ?? null,
 		excerpt: css.includes("[data-line-number-content]{visibility:hidden;}"),
 		tint: container.querySelector<HTMLElement>("[data-pure-side]")?.style.background,
+		rails: css.slice(
+			css.indexOf(":host{--diff-rail-added"),
+			css.indexOf(RAIL_FORCED_COLORS) + RAIL_FORCED_COLORS.length,
+		),
 	};
 }
 
@@ -526,6 +537,16 @@ describe("inline Edit/Write diffs render with @pierre/diffs", () =>
 					sign: "+ ",
 					excerpt: false,
 					tint: "color-mix(in srgb, var(--upstream-git-added) 20%, transparent)",
+					// Upstream cb6930dae Vd("additions"), appended after the sign rule.
+					rails: [
+						RAIL_VARS,
+						'[data-line-number-content]::before{content:"+ " / "added";opacity:var(--diff-sign-opacity,0)}',
+						"@media (forced-colors:active),(prefers-contrast:more){[data-line-number-content]::before{opacity:1}}",
+						":is([data-line],[data-column-number]){background:light-dark(color-mix(in lab,var(--diffs-bg) 88%,var(--diffs-addition-base)),color-mix(in lab,var(--diffs-bg) 85%,var(--diffs-addition-base)))}",
+						"[data-column-number]{border-color:transparent;color:var(--cds-text-secondary)}",
+						`[data-column-number]::after{${RAIL_BOX};background:var(--diff-rail-added)}`,
+						RAIL_FORCED_COLORS,
+					].join(""),
 				},
 			);
 		});
@@ -556,6 +577,16 @@ describe("inline Edit/Write diffs render with @pierre/diffs", () =>
 					sign: "− ",
 					excerpt: true,
 					tint: "color-mix(in srgb, var(--upstream-git-removed) 20%, transparent)",
+					// Upstream cb6930dae Vd("deletions"): U+2212, the 90%/82% mix and the striped rail.
+					rails: [
+						RAIL_VARS,
+						'[data-line-number-content]::before{content:"\u2212 " / "removed";opacity:var(--diff-sign-opacity,0)}',
+						"@media (forced-colors:active),(prefers-contrast:more){[data-line-number-content]::before{opacity:1}}",
+						":is([data-line],[data-column-number]){background:light-dark(color-mix(in lab,var(--diffs-bg) 90%,var(--diffs-deletion-base)),color-mix(in lab,var(--diffs-bg) 82%,var(--diffs-deletion-base)))}",
+						"[data-column-number]{border-color:transparent;color:var(--cds-text-secondary)}",
+						`[data-column-number]::after{${RAIL_BOX};background:linear-gradient(135deg,var(--diff-rail-removed) 25%,transparent 25% 50%,var(--diff-rail-removed) 50% 75%,transparent 75%) 0 0/calc(var(--diffs-line-height,20px) / 4) calc(var(--diffs-line-height,20px) / 4)}`,
+						RAIL_FORCED_COLORS,
+					].join(""),
 				},
 			);
 		});

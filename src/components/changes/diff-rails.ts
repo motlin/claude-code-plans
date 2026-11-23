@@ -73,6 +73,33 @@ export const DIFF_RAILS_CSS = `@supports ${SUPPORTS}{${[
 	`[data-content-buffer]{opacity:max(.7,${B})}${z}{[data-content-buffer]{opacity:1}}`,
 ].join("")}}`;
 
+/** Upstream ca9e46d28 `Z()`: the glyphs' CSS alt words. */
+const WORD =
+{
+	additions: '"added"',
+	deletions: '"removed"',
+} as const;
+
+/**
+ * Upstream cb6930dae `Vd(side)` (ca9e46d28 `ie`): appended after the pure-side view's sign rule, it hides the
+ * glyph behind alt text, tints the line and number cells alike and draws the side's rail on every number
+ * cell. Upstream's trailing token-contrast clamp sheet (`N()`) has no local counterpart.
+ */
+export function pureSideRailsCss(side: "additions" | "deletions"): string
+{
+	const base = `var(--diffs-${side === "additions" ? "addition" : "deletion"}-base)`;
+	const mix = (percent: string): string => `color-mix(in lab,var(--diffs-bg) ${percent},${base})`;
+	return [
+		U,
+		`[data-line-number-content]::before{content:"${V[side]} " / ${WORD[side]};opacity:${B}}`,
+		`${z}{[data-line-number-content]::before{opacity:1}}`,
+		`:is([data-line],[data-column-number]){background:light-dark(${mix(H[side].light)},${mix(H[side].dark)})}`,
+		"[data-column-number]{border-color:transparent;color:var(--cds-text-secondary)}",
+		`[data-column-number]::after{${K.box};${K[side]}}`,
+		`@media (forced-colors:active){[data-column-number]::after{${K.forcedColors}}}`,
+	].join("");
+}
+
 /** Upstream `Q()`'s host style: the alt words the rails sheet's `content: … / var(--diff-word-*)` reads. */
 export const DIFF_WORD_STYLE =
 {
