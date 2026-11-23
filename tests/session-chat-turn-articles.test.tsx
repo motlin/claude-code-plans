@@ -164,7 +164,7 @@ describe("SessionChat turn articles", () =>
 		]);
 	});
 
-	it("explains the arrow-key navigation once for screen readers, describing the feed and skipped by find", () =>
+	it("explains the arrow-key navigation once for screen readers, describing the feed with only id and class like upstream", () =>
 	{
 		const container = renderRecords([userRecord(1), assistantRecord(1)]);
 		const hints = Array.from(container.querySelectorAll(".sr-only"))
@@ -179,9 +179,7 @@ describe("SessionChat turn articles", () =>
 			},
 		).toStrictEqual(
 			{
-				hints: [
-					'<p class="sr-only select-none" data-find-omitted="">Use the up and down arrow keys to move between messages.</p>',
-				],
+				hints: ['<p class="sr-only select-none">Use the up and down arrow keys to move between messages.</p>'],
 				describedIsHint: true,
 			},
 		);

@@ -195,10 +195,11 @@ function renderTranscript(): HTMLElement
 /**
  * Upstream (claude.ai/code live 2026-11-21) leaves message actions' sr-only reveal button and
  * empty copy-status live region unmarked; only the tail-actions slot the last bar portals into is
- * omitted. Mirror that rather than marking them.
+ * omitted. Mirror that rather than marking them. The feed's arrow-key hint is likewise rendered
+ * with only id and class upstream (live 2026-11-21).
  */
 const UPSTREAM_UNMARKED =
-	'button.sr-only[aria-label^="Show message actions for"], [data-cds=MessageActions] [role=status]';
+	'button.sr-only[aria-label^="Show message actions for"], [data-cds=MessageActions] [role=status], [role=feed] > p.sr-only';
 
 function unmarkedHiddenCopy(container: HTMLElement): string[]
 {

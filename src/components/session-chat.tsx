@@ -5114,7 +5114,7 @@ function VirtualizedSessionEntries({
 						reusableRef.current = false;
 				}}
 			>
-				<p id={feedHintId} className="sr-only select-none" data-find-omitted="">
+				<p id={feedHintId} className="sr-only select-none">
 					Use the up and down arrow keys to move between messages.
 				</p>
 				<div
