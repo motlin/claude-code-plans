@@ -248,7 +248,7 @@ describe("xs control tokens", () =>
 					["--cds-switch-h", "var(--cds-switch-h--xs)"],
 				],
 				panelsFine: [
-					["--cds-button-pad-max--xs", "calc(0.375rem * var(--cds-rem-scale, 1))"],
+					["--cds-button-pad-max--xs", "calc(0.5rem * var(--cds-rem-scale, 1))"],
 					["--cds-h-control", "var(--cds-h-control--xs)"],
 					["--cds-button-pad-max", "var(--cds-button-pad-max--xs)"],
 				],

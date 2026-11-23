@@ -4915,12 +4915,13 @@ html[data-reduce-motion="true"] [data-cds="ShimmerText"][data-shimmer-mode="fall
 	--cds-switch-h: var(--cds-switch-h--xs);
 }
 
-/* Upstream's panels fine-pointer [data-size=xs]: an xs control keeps the xs height and caps its pad at 6px. */
+/* Upstream's fine-pointer [data-size=xs]: an xs control keeps the xs height and caps its pad at 8px (the composer
+   chin narrows its own pad-md to 6px on the trailing wrapper). */
 @media (hover: hover) and (pointer: fine), (hover: hover) and (pointer: none)
 {
 	[data-cds-fizzy-lake~="panels"]
 	{
-		--cds-button-pad-max--xs: calc(0.375rem * var(--cds-rem-scale, 1));
+		--cds-button-pad-max--xs: calc(0.5rem * var(--cds-rem-scale, 1));
 	}
 	[data-cds-fizzy-lake~="panels"] [data-size="xs"]
 	{

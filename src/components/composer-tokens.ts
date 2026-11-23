@@ -42,7 +42,7 @@ export const COMPOSER_CHIN_LEADING_CLASS = "flex items-center self-start";
 
 /** The chin's trailing slot wrapper (upstream `my`): it scales the body type to 13px/20px through the variables. */
 export const COMPOSER_CHIN_TRAILING_CLASS =
-	"ms-auto flex min-w-0 items-center gap-1 ps-2 [--upstream-text-body:calc(0.8125rem*var(--cds-rem-scale,1))] [--upstream-leading-body:calc(1.25rem*var(--cds-rem-scale,1))]";
+	"ms-auto flex min-w-0 items-center gap-1 ps-2 [--upstream-text-body:calc(0.8125rem*var(--cds-rem-scale,1))] [--upstream-leading-body:calc(1.25rem*var(--cds-rem-scale,1))] [--cds-pad-md:calc(0.375rem*var(--cds-rem-scale,1))]";
 
 /** A leading-less chin's narrow-container pads (upstream `gj` on the row, `d0` on the trailing wrapper). */
 export const CHIN_LEADING_LESS_ROW_CLASS = "@max-[24rem]:px-0";
