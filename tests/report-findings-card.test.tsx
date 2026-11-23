@@ -309,6 +309,7 @@ describe("ReportFindingsCard (upstream c3fef5c6f iC/rC)", () =>
 			expanded: row.querySelector("button")?.getAttribute("aria-expanded"),
 			body: [...row.querySelectorAll(".whitespace-pre-wrap")].map((node) => node.textContent),
 			location: row.querySelector(".text-footnote.text-secondary")?.textContent,
+			locationRowClass: row.querySelector(".text-footnote.text-secondary")?.parentElement?.className,
 			lineClass: row.querySelector(".text-footnote.text-secondary > .shrink-0")?.className,
 			locationTitle: row.querySelector(".text-footnote.text-secondary")?.getAttribute("title"),
 			path: pathLabel(row.querySelector(".text-footnote.text-secondary")?.firstElementChild),
@@ -328,6 +329,7 @@ describe("ReportFindingsCard (upstream c3fef5c6f iC/rC)", () =>
 				expanded: "true",
 				body: ["The first finding is real.", "Alice sees the first failure."],
 				location: "src/a/index.ts:12",
+				locationRowClass: "flex min-w-0 items-center gap-2",
 				lineClass: "shrink-0 font-control text-primary",
 				locationTitle: null,
 				path:

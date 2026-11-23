@@ -188,7 +188,7 @@ function FindingRow({
 							{finding.failure_scenario}
 						</span>
 					)}
-					<span className="flex min-w-0 items-center gap-1.5">
+					<span className="flex min-w-0 items-center gap-2">
 						<span className="flex min-w-0 text-footnote text-secondary">
 							<PathLabel label={finding.file} title={finding.file} />
 							{finding.line !== undefined && (
