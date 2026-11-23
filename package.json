@@ -47,7 +47,7 @@
 		"cmdk": "^1.1.1",
 		"dompurify": "^3.4.17",
 		"drizzle-orm": "^0.45.4",
-		"fuse.js": "7.0.0",
+		"fuse.js": "7.5.0",
 		"ghostty-web": "0.4.0",
 		"jsonc-parser": "3.3.1",
 		"lucide-react": "^1.72.0",
