@@ -2589,7 +2589,7 @@ describe("AttachedContextChips quote rows", () =>
 		);
 	});
 
-	it("opens an overflowing quote's tooltip above the row's Card, its text in a break-words span", () =>
+	it("opens an overflowing quote's tooltip above the quote's truncated span, as upstream anchors it, its text in a break-words span", () =>
 	{
 		onTestFinished(() =>
 		{
@@ -2606,8 +2606,10 @@ describe("AttachedContextChips quote rows", () =>
 		const {container} = renderChips([REPLY]);
 		const card = container.querySelector<HTMLElement>("[data-cds=Card]");
 		const link = container.querySelector<HTMLElement>("[data-cds=CardLink]");
-		if (card === null || link === null) throw new Error("no reply Card");
+		const quote = container.querySelector<HTMLElement>("blockquote span[dir=auto]");
+		if (card === null || link === null || quote === null) throw new Error("no reply Card");
 		vi.spyOn(card, "getBoundingClientRect").mockReturnValue(new DOMRect(404, 511, 722, 40));
+		vi.spyOn(quote, "getBoundingClientRect").mockReturnValue(new DOMRect(442, 520, 592, 22));
 		fireEvent.focus(link);
 		const tip = screen.getByRole("tooltip");
 		const box = tip.parentElement;
@@ -2622,7 +2624,7 @@ describe("AttachedContextChips quote rows", () =>
 				side: "top",
 				box: [
 					["fixed", "pointer-events-none", "z-[140]"],
-					"left: 404px; top: 511px; width: 722px; height: 40px;",
+					"left: 442px; top: 520px; width: 592px; height: 22px;",
 				],
 				content: "The build step runs vitest first and then the typecheck.",
 			},

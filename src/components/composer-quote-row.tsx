@@ -16,10 +16,13 @@ const ROW_FILL_CLASS =
 const ROW_REMOVE_CLASS =
 	"inline-flex shrink-0 cursor-pointer items-center justify-center aspect-square w-control h-control px-0 rounded-[var(--cds-radius--xs)] text-secondary hover:text-primary focus-visible:text-primary hover:bg-fill-ghost-hover outline-none focus-visible:shadow-focus";
 
-/** The row's Card, which the truncated-quote tooltip sits above since its `display: contents` anchor has no box. */
-function rowCard(anchor: HTMLElement): Element | null
+/**
+ * The row's truncated quote span, which the tooltip sits above (its `display: contents` anchor has no box), as
+ * upstream passes the passage ref as the CardLink tooltip's `anchor`: centred on the text, not the whole row.
+ */
+function quoteSpanOf(anchor: HTMLElement): Element | null
 {
-	return anchor.closest("[data-cds=Card]");
+	return anchor.closest("[data-cds=Card]")?.querySelector("blockquote > span[dir=auto]") ?? null;
 }
 
 /**
@@ -88,7 +91,7 @@ export function QuoteRow({
 							content={content}
 							side="top"
 							className="contents"
-							placeOver={rowCard}
+							placeOver={quoteSpanOf}
 							openWhen={() => quoteSpan !== null && quoteSpan.scrollWidth > quoteSpan.clientWidth}
 						>
 							<span
