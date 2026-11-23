@@ -25,6 +25,10 @@ const ACTION_INLINE = "min-h-control my-[calc((1lh-var(--cds-h-control))/2)] ms-
 const ACTION_CHILD_BUTTONS =
 	"cds-child-Button:h-auto cds-child-Button:min-h-control cds-child-Button:shrink cds-child-Button:py-[calc((var(--cds-h-control)-1lh)/2)] cds-child-Button:text-balance cds-child-Button:wrap-anywhere cds-child-Button:whitespace-normal";
 
+/* Upstream `ah`'s text column: an action caps it at 37.5rem; `[text-wrap:pretty]` is unconditional. */
+const TEXT_WITH_ACTION = "min-w-0 flex-auto max-w-[min(100%,calc(37.5rem*var(--cds-rem-scale,1)))] [text-wrap:pretty]";
+const TEXT_ALONE = "max-w-full min-w-0 flex-auto [text-wrap:pretty]";
+
 /*
  * Upstream Banner's Dismiss: a cds ghost iconOnly Button (`h-control aspect-square w-control px-0`, the cds
  * radius, `text-secondary`), 28px square with an 8px radius in the dock's comfortable scope.
@@ -156,7 +160,8 @@ function useCtaLayout(hasAction: boolean, calibrated: boolean)
  * pad-md+2px block padding, `px-md`, `rounded-composer`, the icon's `ms-[4px] -me-[4px]`, the keyline
  * body offset and a `-me-[2px]` Dismiss margin. The current `ah` reads no fizzy-lake part or density.
  * `keyline` defaults to `glyph`, the local composer having a leading "+" button; `keyline={null}` is
- * the uncalibrated Banner outside the composer (`px-lg`, `rounded-card`, `!py-lg`, the `b9` end margin). The region's list is the live region, so the card's role defaults to `none`.
+ * the uncalibrated Banner outside the composer (`px-lg`, `rounded-card`, `!py-lg`, the `b9` end margin). The region's list is the live region, so the card's role defaults to `none`,
+ * which (like `ah`) renders no role attribute.
  * `data-cta-layout` is measured (`inline` / `wrapped` / keyline `stacked`). Upstream hides only its default
  * variant glyph when stacked; every local card passes its icon (or `null`), so the slot never hides.
  */
@@ -194,7 +199,7 @@ export function NoticeBanner({
 			data-banner-variant="neutral"
 			data-composer-keyline={keyline ?? undefined}
 			data-testid={testId}
-			role={role}
+			role={role === "none" ? undefined : role}
 			className={`${rootClass(keyline, layout, dismissible)} ${NOTICE_SURFACE_CLASS} @container`}
 		>
 			{icon !== null && (
@@ -202,7 +207,7 @@ export function NoticeBanner({
 				<span className={`flex min-h-[1lh] shrink-0 items-center${iconOffset} text-secondary`}>{icon}</span>
 			)}
 			<div className={bodyClass(keyline, layout, dismissible)}>
-				<div ref={textRef} className="max-w-full min-w-0 flex-auto">
+				<div ref={textRef} className={hasAction ? TEXT_WITH_ACTION : TEXT_ALONE}>
 					{children}
 				</div>
 				{hasAction && (

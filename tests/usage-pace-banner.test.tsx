@@ -823,7 +823,6 @@ describe("usage band as a notice card", () =>
 						"data-banner-variant": "neutral",
 						"data-composer-keyline": "glyph",
 						"data-testid": "usage-limit-reached-card",
-						role: "none",
 						class: BANNER_CLASS,
 					},
 					childCount: 2,
@@ -832,7 +831,7 @@ describe("usage band as a notice card", () =>
 					gauge: "usage-limit-card-gauge",
 					glyph: [USAGE_GAUGE_ARC, "m12 14 5.2-2.6"],
 					body: "flex min-w-0 flex-wrap items-start gap-y-sm gap-x-md flex-1 ms-[4px]",
-					content: "max-w-full min-w-0 flex-auto",
+					content: "max-w-full min-w-0 flex-auto [text-wrap:pretty]",
 					words:
 					{
 						tag: "SPAN",

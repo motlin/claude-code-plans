@@ -45,6 +45,8 @@ function metrics(wrap: (banner: ReactNode) => ReactNode, keyline?: "glyph" | "te
 		root: banner?.className,
 		iconSlot: banner?.children[0]?.className,
 		body: banner?.children[1]?.className,
+		text: banner?.children[1]?.children[0]?.className,
+		role: banner?.getAttribute("role") ?? null,
 		dismissSlot: banner?.lastElementChild?.className,
 		dismiss: banner?.querySelector('button[aria-label="Dismiss"]')?.className,
 		scope: banner?.closest("[data-density]")?.getAttribute("data-density") ?? null,
@@ -63,6 +65,9 @@ const CARD =
 	root: `${LEAD} py-[calc(var(--cds-pad-md)+2px)] ${TYPE} ${FIZZY_SURFACE}`,
 	iconSlot: ICON_SLOT,
 	body: GLYPH_BODY,
+	// Upstream `ah`'s text column without an action; `role="none"` renders no role attribute.
+	text: "max-w-full min-w-0 flex-auto [text-wrap:pretty]",
+	role: null,
 	dismissSlot: "-me-[2px] flex h-[1lh] shrink-0 items-center",
 	// Upstream's cds ghost iconOnly Button: control-high square, the cds radius, text-secondary ink.
 	dismiss:
@@ -159,7 +164,7 @@ function actionMetrics(banner: ReactNode)
 	const root = container.querySelector('[data-cds="Banner"]');
 	const body = root?.querySelector(":scope > div");
 	return {
-		role: root?.getAttribute("role"),
+		role: root?.getAttribute("role") ?? null,
 		variant: root?.getAttribute("data-banner-variant"),
 		parts: [...(root?.querySelectorAll("[data-cds-part]") ?? [])].map((part) => part.getAttribute("data-cds-part")),
 		keyline: root?.getAttribute("data-composer-keyline") ?? null,
@@ -171,7 +176,8 @@ function actionMetrics(banner: ReactNode)
 	};
 }
 
-const textDiv = "div.max-w-full min-w-0 flex-auto";
+/* Upstream `ah` caps the text column at 37.5rem when the banner has an action. */
+const textDiv = "div.min-w-0 flex-auto max-w-[min(100%,calc(37.5rem*var(--cds-rem-scale,1)))] [text-wrap:pretty]";
 
 describe("NoticeBanner action slot", () =>
 {
@@ -193,7 +199,7 @@ describe("NoticeBanner action slot", () =>
 			),
 		).toStrictEqual(
 			{
-				role: "none",
+				role: null,
 				variant: "neutral",
 				parts: ["action", "dismiss"],
 				keyline: "glyph",
