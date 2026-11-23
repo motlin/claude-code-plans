@@ -11,7 +11,7 @@ import
 	RouterProvider,
 } from "@tanstack/react-router";
 import {readFileSync} from "node:fs";
-import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
+import {cleanup, render, screen, waitFor, within} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
 import {SettingsProvider} from "../src/components/settings-provider";
 import {DEFAULTS} from "../src/components/settings-context";
@@ -140,7 +140,7 @@ beforeEach(() =>
 
 describe("sidebar footer", () =>
 {
-	it("lays out upstream's df-footer-row: a content-width account button and the Code settings gear in the aux", async () =>
+	it("lays out upstream's df-footer-row: the account button alone, with an empty aux and no Code settings gear", async () =>
 	{
 		await renderSidebar();
 
@@ -152,12 +152,7 @@ describe("sidebar footer", () =>
 		const dot = within(footer).getByText("·");
 		const plan = within(footer).getByText("Max");
 		const caret = account.querySelector("[data-cds=Icon]");
-		const gear = within(footer).getByRole(
-			"button",
-			{
-				name: "Code settings",
-			},
-		);
+		const aux = footer.querySelector(".df-footer-aux");
 		const classes = (element: Element | null | undefined) => element?.getAttribute("class")?.split(" ") ?? [];
 
 		expect(
@@ -179,8 +174,13 @@ describe("sidebar footer", () =>
 				caret: classes(caret).includes("df-user-menu-caret"),
 				caretWrapper: classes(caret?.parentElement),
 				buttonCount: within(footer).getAllByRole("button").length,
-				gearInAux: gear.closest(".df-footer-aux") !== null,
-				gear: ["df-chrome-btn", "size-7", "rounded-r6"].every((token) => classes(gear).includes(token)),
+				auxChildren: aux?.childElementCount,
+				gear: within(footer).queryByRole(
+					"button",
+					{
+						name: "Code settings",
+					},
+				),
 				search: within(footer).queryByRole(
 					"button",
 					{
@@ -202,60 +202,37 @@ describe("sidebar footer", () =>
 				plan: ["df-footer-suffix-text", "text-[length:calc(var(--sb-row-font)-2px)]/5"],
 				caret: true,
 				caretWrapper: ["-me-1", "inline-flex"],
-				buttonCount: 2,
-				gearInAux: true,
-				gear: true,
+				buttonCount: 1,
+				auxChildren: 0,
+				gear: null,
 				search: null,
 			},
 		);
 	});
 
-	it("opens Settings at the Code tab from the gear", async () =>
+	it("draws the tray hairline, stretches the account button with an end-pinned caret, and fades cut footer words as upstream", () =>
 	{
-		const router = await renderSidebar();
-
-		fireEvent.click(
-			await screen.findByRole(
-				"button",
-				{
-					name: "Code settings",
-				},
-			),
-		);
-
-		await waitFor(() =>
-		{
-			expect(router.state.location.hash).toBe("settings/claude-code");
-		});
-	});
-
-	it("shows a Code settings tooltip with no shortcut when the gear is focused", async () =>
-	{
-		await renderSidebar();
-
-		const gear = await screen.findByRole(
-			"button",
-			{
-				name: "Code settings",
-			},
-		);
-		act(() =>
-		{
-			gear.focus();
-		});
-
-		expect((await screen.findByRole("tooltip")).textContent).toBe("Code settings");
-	});
-
-	it("draws the tray hairline and fades cut footer words as upstream", () =>
-	{
-		const styles = readFileSync("src/styles/globals.css", "utf8").replaceAll(/\s+/g, " ");
+		const styles = readFileSync("src/styles/globals.css", "utf8")
+			.replaceAll(/\s+/g, " ")
+			.replaceAll("( ", "(")
+			.replaceAll(" )", ")");
 
 		expect(
 			[
 				'.df-bottom-tray::before { content: ""; position: absolute; inset-inline: 0; top: -0.5px; z-index: 1; border-top: 0.5px solid var(--color-border); }',
 				".df-footer-suffix { padding-right: 2px; mask-image: linear-gradient(90deg, #000 calc(100% - 12px), transparent); }",
+				".df-footer-row > :first-child .df-footer-suffix { --df-footer-words-max: calc(100cqw - var(--sb-row-px) - var(--sb-rail-shift, 0px) - var(--sb-leading-slot) - 2 * var(--sb-row-gap) - 0.75rem - var(--df-footer-btn-end)); mask-image: linear-gradient(to right, black calc(var(--df-footer-words-max) - 12px), transparent var(--df-footer-words-max)); }",
 				"--df-footer-gap: 6px;",
+				".df-bottom-tray { --df-footer-btn-size: 32px; --df-tray-caret-col: calc(8px + var(--df-footer-btn-size) / 2); }",
+				".df-footer-row { --df-footer-btn-end: calc(var(--df-tray-caret-col) - 8px - 0.375rem); }",
+				".df-footer-row > :first-child { container-type: inline-size; }",
+				".df-footer-aux:empty { display: none; }",
+				".df-footer-row .df-user-menu-btn { width: 100%; }",
+				".df-footer-row .df-user-menu-caret { position: absolute; inset-block: 0; margin-block: auto; inset-inline-end: var(--df-footer-btn-end); }",
+				".df-footer-row .df-user-menu-words { margin-inline-end: calc(var(--df-footer-btn-end) + var(--sb-row-gap)); }",
+				".df-footer-row:has(> .df-footer-aux > *) .df-user-menu-btn { width: auto; }",
+				".df-footer-row:has(> .df-footer-aux > *) .df-user-menu-caret { position: static; }",
+				".df-footer-row:has(> .df-footer-aux > *) .df-user-menu-words { margin-inline-end: 0; }",
 			].filter((rule) => !styles.includes(rule)),
 		).toStrictEqual([]);
 	});

@@ -204,7 +204,7 @@ describe("footer account button", () =>
 		).toStrictEqual(
 			{
 				tooltip: "Craig · Max",
-				cut: "",
+				cut: "true",
 				truncate: false,
 			},
 		);

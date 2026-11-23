@@ -900,7 +900,7 @@ html[data-interface-font="dyslexic"]
 	--sb-iconless-pad: 8px;
 	--sb-icon: 20px;
 	--sb-leading-slot: 28px;
-	/* Upstream comfortable .dframe-sidebar --df-footer-gap: the account button to the Code settings gear. */
+	/* Upstream comfortable .dframe-sidebar --df-footer-gap: the account button to any .df-footer-aux content. */
 	--df-footer-gap: 6px;
 	--sb-row-ctl: 24px;
 	/* Upstream .dframe-root --df-described-tuck and .df-session-list --df-described-trim (two-line described rows) */
@@ -6119,6 +6119,81 @@ html[data-reduce-motion="true"] [data-cds="SkeletonGroup"][data-hold="delayed"]
 {
 	padding-right: 2px;
 	mask-image: linear-gradient(90deg, #000 calc(100% - 12px), transparent);
+}
+
+/* Upstream .df-bottom-tray --df-tray-caret-col: the tray's caret column, centred on a 32px footer button. */
+.df-bottom-tray
+{
+	--df-footer-btn-size: 32px;
+	--df-tray-caret-col: calc(8px + var(--df-footer-btn-size) / 2);
+}
+
+/* Upstream .df-footer-row --df-footer-btn-end: the caret's inset from the account button's end (10px). */
+.df-footer-row
+{
+	--df-footer-btn-end: calc(var(--df-tray-caret-col) - 8px - 0.375rem);
+}
+
+/* Upstream .df-footer-row > :first-child: the account slot is the container the words' fade measures against. */
+.df-footer-row > :first-child
+{
+	container-type: inline-size;
+}
+
+/* Upstream .df-footer-row .df-footer-suffix (LTR): the fade sits at the widest the words can be, so words
+   that fit never fade. */
+.df-footer-row > :first-child .df-footer-suffix
+{
+	--df-footer-words-max: calc(
+		100cqw - var(--sb-row-px) - var(--sb-rail-shift, 0px) - var(--sb-leading-slot) - 2 * var(--sb-row-gap) -
+			0.75rem - var(--df-footer-btn-end)
+	);
+	mask-image: linear-gradient(
+		to right,
+		black calc(var(--df-footer-words-max) - 12px),
+		transparent var(--df-footer-words-max)
+	);
+}
+
+/* Upstream .df-footer-aux:empty: the Code tab renders no gear, so the aux takes no room. */
+.df-footer-aux:empty
+{
+	display: none;
+}
+
+/* Upstream .df-footer-row: with no aux content the account button spans the row and its caret pins to the end. */
+.df-footer-row .df-user-menu-btn
+{
+	width: 100%;
+}
+
+.df-footer-row .df-user-menu-caret
+{
+	position: absolute;
+	inset-block: 0;
+	margin-block: auto;
+	inset-inline-end: var(--df-footer-btn-end);
+}
+
+.df-footer-row .df-user-menu-words
+{
+	margin-inline-end: calc(var(--df-footer-btn-end) + var(--sb-row-gap));
+}
+
+/* Upstream .df-footer-row:has(> .df-footer-aux > *): with aux content the button returns to content width. */
+.df-footer-row:has(> .df-footer-aux > *) .df-user-menu-btn
+{
+	width: auto;
+}
+
+.df-footer-row:has(> .df-footer-aux > *) .df-user-menu-caret
+{
+	position: static;
+}
+
+.df-footer-row:has(> .df-footer-aux > *) .df-user-menu-words
+{
+	margin-inline-end: 0;
 }
 
 /* Upstream .dframe-sidebar .df-on-rail: a leading slot that follows the hub rail's shift. */

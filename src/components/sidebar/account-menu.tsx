@@ -134,7 +134,7 @@ export function AccountMenu()
 
 	return (
 		<Menu>
-			<Tooltip content={tooltip} side="top" openWhen={measureCut} className="max-w-full min-w-0 align-top">
+			<Tooltip content={tooltip} side="top" openWhen={measureCut} className="w-full max-w-full min-w-0 align-top">
 				<MenuTrigger
 					data-testid="user-menu-button"
 					data-prefetch="settings"
@@ -171,7 +171,7 @@ export function AccountMenu()
 										·
 									</span>
 									<span
-										data-cut={cut ? "" : undefined}
+										data-cut={cut || undefined}
 										className="df-footer-suffix-text text-[length:calc(var(--sb-row-font)-2px)]/5 min-w-0 whitespace-nowrap text-ink-muted"
 									>
 										{planLabel}
