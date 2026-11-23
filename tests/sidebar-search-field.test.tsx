@@ -387,7 +387,7 @@ describe("sidebar Search row", () =>
 	});
 });
 
-// Upstream's `R8` aside hard-codes data-flat-look="" and carries data-hub-rail in the hub layout, and its
+// Upstream's aside (2026-11-21) carries no data-flat-look; the nav keeps data-hub-rail for its .df-hub-rail class, and its
 // graduated header has no Search field above New, whatever fizzy-lake parts are on.
 describe("sidebar root attributes with fizzy-lake panels off", () =>
 {
@@ -410,7 +410,7 @@ describe("sidebar root attributes with fizzy-lake panels off", () =>
 				phoneSheet: true,
 			},
 		},
-	])("marks the $mode nav data-flat-look and data-hub-rail, with no Search field", async ({props}) =>
+	])("marks the $mode nav data-hub-rail but no data-flat-look, with no Search field", async ({props}) =>
 	{
 		await renderSidebar(
 			{
@@ -428,7 +428,7 @@ describe("sidebar root attributes with fizzy-lake panels off", () =>
 			},
 		).toStrictEqual(
 			{
-				flatLook: "",
+				flatLook: null,
 				hubRail: "",
 				field: null,
 			},

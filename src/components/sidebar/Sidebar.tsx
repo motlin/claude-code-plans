@@ -222,7 +222,6 @@ export function Sidebar({
 				<nav
 					aria-label="Sidebar"
 					data-density={density}
-					data-flat-look=""
 					data-code-list=""
 					data-hub-rail=""
 					data-focus-region="navigation"
@@ -284,7 +283,6 @@ export function Sidebar({
 			<nav
 				aria-label="Sidebar"
 				data-density={density}
-				data-flat-look=""
 				data-code-list=""
 				data-hub-rail=""
 				data-focus-region="navigation"
@@ -807,7 +805,6 @@ function CollapsedSidebar({
 				data-testid="sidebar-peek"
 				aria-label="Sidebar"
 				data-density={density}
-				data-flat-look=""
 				data-code-list=""
 				data-hub-rail=""
 				data-focus-region="navigation"

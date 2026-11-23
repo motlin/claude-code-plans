@@ -455,8 +455,8 @@ describe("sidebar Artifacts template launcher", () =>
 		expect(readMarks(menu)).toStrictEqual(MARKS);
 	});
 
-	// Upstream's `R8` aside hard-codes data-flat-look="" and carries data-hub-rail in the hub layout.
-	it("marks the sidebar nav data-flat-look and data-hub-rail whatever fizzy-lake parts are on", async () =>
+	// Upstream's aside (2026-11-21) carries no data-flat-look; the nav keeps data-hub-rail for its .df-hub-rail class.
+	it("marks the sidebar nav data-hub-rail but no data-flat-look whatever fizzy-lake parts are on", async () =>
 	{
 		const attributes = async (parts: readonly FizzyLakePart[]) =>
 		{
@@ -484,12 +484,12 @@ describe("sidebar Artifacts template launcher", () =>
 			{
 				panels:
 				{
-					flatLook: "",
+					flatLook: null,
 					hubRail: "",
 				},
 				off:
 				{
-					flatLook: "",
+					flatLook: null,
 					hubRail: "",
 				},
 			},

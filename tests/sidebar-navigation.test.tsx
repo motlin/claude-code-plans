@@ -1092,7 +1092,7 @@ describe("sidebar New row", () =>
 			newInScroller: true,
 			searchRowInScroller: true,
 			navBlockClass: "-mt-1 shrink-0",
-			flatLook: "",
+			flatLook: null,
 		};
 
 		expect(
