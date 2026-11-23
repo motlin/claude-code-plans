@@ -330,12 +330,24 @@ describe("sidebar Group and sort menu", () =>
 		);
 	});
 
-	it("styles the trigger like upstream: radius 6 (r5)", async () =>
+	// Upstream paints the hovered/open chrome button with fill-button-ghost-hover (10% ink), a darker chip
+	// on the 5% header pill; --sb-hover would match the pill and hide the chip.
+	it("styles the trigger like upstream: radius 6 (r5), 10% ghost-hover chip when hovered or open", async () =>
 	{
 		await renderSidebarGroups();
 
 		const classes = filterButton().className.split(" ");
-		expect(classes.filter((token) => token.startsWith("rounded"))).toStrictEqual(["rounded-r5"]);
+		expect(
+			{
+				radius: classes.filter((token) => token.startsWith("rounded")),
+				background: classes.filter((token) => token.includes("bg-")),
+			},
+		).toStrictEqual(
+			{
+				radius: ["rounded-r5"],
+				background: ["hover:bg-fill-button-ghost-hover", "data-[popup-open]:bg-fill-button-ghost-hover"],
+			},
+		);
 	});
 
 	// Upstream: the whole header rests in --df-heading-ink (muted), turns secondary on header hover, and a

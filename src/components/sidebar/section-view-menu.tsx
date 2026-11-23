@@ -209,7 +209,7 @@ export function GroupSortTrigger({
 				data-row-action=""
 				data-row-glyph=""
 				data-held={held ? "" : undefined}
-				className="aria-expanded:touch-none relative flex size-6 shrink-0 items-center justify-center rounded-r5 text-[color:var(--sb-heading-ink,var(--color-secondary))] hover:text-primary data-[popup-open]:text-primary aria-expanded:text-primary hover:bg-[var(--sb-hover)] hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus data-[popup-open]:bg-[var(--sb-hover)]"
+				className="aria-expanded:touch-none relative flex size-6 shrink-0 items-center justify-center rounded-r5 text-[color:var(--sb-heading-ink,var(--color-secondary))] hover:text-primary data-[popup-open]:text-primary aria-expanded:text-primary hover:bg-fill-button-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus data-[popup-open]:bg-fill-button-ghost-hover"
 			>
 				<SlidersVertical aria-hidden="true" className="size-5" />
 			</MenuTrigger>
