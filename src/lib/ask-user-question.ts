@@ -321,19 +321,6 @@ export const OUTCOME_LABEL =
 	timedOut: "Not answered",
 } as const;
 
-/**
- * The label upstream's `le` adds to a receipt whose every question timed out.
- * TODO-live: upstream's copy is intl id `1jpu27a` (shared-39 `_d2`), which has no default message in the bundle;
- * resolve it from the live IntlProvider. Until then this is a stand-in.
- */
-export const ALL_TIMED_OUT_LABEL = "No response";
-
-/** Upstream's `ce`: every question of the receipt timed out. */
-export function allQuestionsTimedOut(entries: readonly QuestionOutcomeEntry[]): boolean
-{
-	return entries.length > 0 && entries.every((entry) => entry.unanswered === "timedOut");
-}
-
 const SKIPPED_ANSWERS: ReadonlySet<string> = new Set([
 	"",
 	"[No preference]",

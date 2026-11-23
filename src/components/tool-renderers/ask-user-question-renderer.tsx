@@ -15,8 +15,6 @@ import {removeMemoryTags} from "../../lib/task-checklist";
 import {clearSentQuestionCard, isQuestionCardSent, useQuestionCardSent} from "../../lib/question-card-store";
 import
 {
-	ALL_TIMED_OUT_LABEL,
-	allQuestionsTimedOut,
 	describeAskUserQuestionResult,
 	isNoAnswerResult,
 	isWithdrawnQuestion,
@@ -232,13 +230,11 @@ export function AskUserQuestionRenderer({toolCall}: ToolRendererProps)
 				</div>
 			);
 		}
-		return (
-			<QuestionReceipt
-				enters={receiptEntersRef.current ?? false}
-				rows={rows}
-				label={allQuestionsTimedOut(receipt) ? ALL_TIMED_OUT_LABEL : undefined}
-			/>
-		);
+		// Upstream's `le` labels a receipt whose every question timed out with intl `1jpu27a`, but the live catalog has
+		// no such key, so it draws no label. If that copy ever ships, upstream places it as a lead line inside the FIRST
+		// row (c1c1ec7b9 `KL`: div[dir=auto].text-body.text-secondary.break-words above div.flex.flex-col.gap-0.5, in
+		// div.flex.flex-col.gap-sm.px-lg.py-md), not as a separate text-footnote row.
+		return <QuestionReceipt enters={receiptEntersRef.current ?? false} rows={rows} />;
 	}
 
 	// Upstream's `Ev` sends any other question call with a result (an error) down the generic tool body.

@@ -4,7 +4,6 @@ import {cleanup, render} from "@testing-library/react";
 import {afterEach, describe, expect, it} from "vite-plus/test";
 import {AskUserQuestionRenderer} from "../src/components/tool-renderers/ask-user-question-renderer";
 import type {ClientToolCall} from "../src/components/tool-renderers/types";
-import {ALL_TIMED_OUT_LABEL} from "../src/lib/ask-user-question";
 import {markQuestionCardSeen, markQuestionCardSent} from "../src/lib/question-card-store";
 
 afterEach(cleanup);
@@ -973,7 +972,7 @@ describe("AskUserQuestionRenderer", () =>
 			);
 		});
 
-		it("draws a timeout with nothing selected as every question Not answered under the all-timed-out label", () =>
+		it("draws a timeout with nothing selected as every question Not answered with no label, as upstream withholds intl 1jpu27a", () =>
 		{
 			expect(
 				draw(
@@ -992,7 +991,7 @@ describe("AskUserQuestionRenderer", () =>
 						["Which color?", "Not answered"],
 						["Which size?", "Not answered"],
 					],
-					label: ALL_TIMED_OUT_LABEL,
+					label: null,
 					status: null,
 					rawBoilerplate: false,
 				},
