@@ -593,7 +593,8 @@ export function FileView({
 		},
 	);
 	const sourceMode = edit.editor === null && content !== undefined && content !== "" && (!markdown || showSource);
-	const language = fileViewerLanguage(path);
+	// detectLanguage leaves markdown out for diffs; source mode still highlights it like upstream.
+	const language = fileViewerLanguage(path) ?? (markdown ? "markdown" : null);
 	const tokens = useHighlightedLines(sourceMode ? content : "", language);
 	const find = useFindInFile(
 		{
@@ -769,7 +770,7 @@ export function FileView({
 								showWhitespace={settings.filesShowWhitespace}
 								scrollPastEnd={settings.filesScrollPastEnd}
 								tokens={tokens}
-								language={language ?? (markdown ? "markdown" : null)}
+								language={language}
 								line={line}
 								endLine={endLine}
 								hashNavigation={hashNavigation}

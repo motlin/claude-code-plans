@@ -22,7 +22,18 @@ vi.mock("../src/lib/clipboard", () => (
 vi.mock("../src/hooks/use-shiki", async (importOriginal) => (
 {
 	...(await importOriginal<typeof import("../src/hooks/use-shiki")>()),
-	useHighlightedLines: () => null,
+	// Markdown gets one bold colored token per line, proving source mode asks for its grammar.
+	useHighlightedLines: (code: string, language: string | null) =>
+		language === "markdown"
+			? code.split("\n").map((content) => [
+					{
+						content,
+						offset: 0,
+						color: "#0000ff",
+						fontStyle: 2,
+					},
+				])
+			: null,
 }));
 
 // The fence island is covered elsewhere; here only that the preview draws it under a lightbox store matters.
@@ -244,6 +255,7 @@ describe("markdown files", () =>
 				),
 				firstSourceLine: sourceLines()[0],
 				language: document.querySelector(".cm-content")?.getAttribute("data-language"),
+				headingMarkClasses: [...(document.querySelector(".cm-line [class*=cm-shiki]")?.classList ?? [])],
 			},
 		).toStrictEqual(
 			{
@@ -252,6 +264,7 @@ describe("markdown files", () =>
 				heading: null,
 				firstSourceLine: "# Alice notes",
 				language: "markdown",
+				headingMarkClasses: ["cm-shikiColor1", "cm-shikiBold"],
 			},
 		);
 	});
