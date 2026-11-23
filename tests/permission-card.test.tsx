@@ -7300,6 +7300,7 @@ describe("PermissionCard read gates", () =>
 			{
 				...state(container),
 				box: scroller.parentElement?.className,
+				dir: scroller.parentElement?.getAttribute("dir"),
 				maxHeight: scroller.style.maxHeight,
 				tabIndex: scroller.getAttribute("tabindex"),
 				role: scroller.getAttribute("role"),
@@ -7336,6 +7337,7 @@ describe("PermissionCard read gates", () =>
 						hint: COMMAND_HINT,
 						hintHidden: false,
 						box: "bg-alpha-1 rounded-lg py-md px-lg text-code text-secondary whitespace-pre-wrap break-words select-text [unicode-bidi:plaintext] has-[:focus-visible]:shadow-focus",
+						dir: "ltr",
 						maxHeight: "114px",
 						tabIndex: "0",
 						role: "group",
@@ -7354,6 +7356,20 @@ describe("PermissionCard read gates", () =>
 					},
 				},
 			);
+			cleanup();
+			const spoofed = renderCard(
+				{
+					...COMMAND_CARD,
+					detail: "echo safe\nrm -rf /tmp/\u202Egpj.sh",
+				},
+			).container.querySelector("[data-testid=approval-read-detail]")!;
+			expect(
+				[...spoofed.querySelectorAll("span")].map((span) => [
+					span.getAttribute("dir"),
+					span.className,
+					span.textContent,
+				]),
+			).toStrictEqual([["ltr", "[unicode-bidi:isolate-override]", "rm -rf /tmp/[U+202E]gpj.sh"]]);
 		});
 
 		it("never offers the persistent option, and ⇧⌘⏎ does nothing", () =>

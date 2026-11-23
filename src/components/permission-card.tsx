@@ -180,7 +180,7 @@ export function PermissionCard({
 	detailLang?: PermissionDetailLang | null;
 	/** Upstream's `clampTitle`: the title value is clamped to two lines. */
 	clampTitle?: boolean;
-	/** Upstream's `detailIsPath`: the detail is a path, drawn left-to-right through `PathDetailLines`. */
+	/** Upstream's `detailIsPath`: the detail is a path, drawn left-to-right through `BidiControlLines`. */
 	detailIsPath?: boolean;
 	/** Upstream's footnote under the detail ("Keeps running in the background."). */
 	detailNote?: string | null;
@@ -517,7 +517,7 @@ export function PermissionCard({
 
 	const pathDetail = (path: string) => (
 		<div data-permission-detail data-approval-value className={DETAIL_CLASS} dir={detailIsPath ? "ltr" : undefined}>
-			{detailIsPath ? <PathDetailLines path={path} /> : path}
+			{detailIsPath ? <BidiControlLines text={path} /> : path}
 		</div>
 	);
 	/** Upstream's `a(note)` for a previewed change: the path, grouped with its note when there is one. */
@@ -1131,13 +1131,13 @@ function usePermissionDigitKeys(
 const BIDI_CONTROL_RE = /\p{Bidi_Control}/u;
 
 /**
- * Upstream's `Np` line renderer for a path detail: a line holding a bidi control is drawn as a
- * left-to-right isolate-override span with its spoofing characters shown; any other line as itself.
+ * Upstream's `Np`/`Fp` line renderer for a path or gated command detail: a line holding a bidi control is drawn
+ * as a left-to-right isolate-override span with its spoofing characters shown; any other line as itself.
  */
-function PathDetailLines({path}: {path: string})
+function BidiControlLines({text}: {text: string})
 {
-	return path.split("\n").map((line, index) => (
-		// oxlint-disable-next-line react/no-array-index-key -- the lines are fixed for one path
+	return text.split("\n").map((line, index) => (
+		// oxlint-disable-next-line react/no-array-index-key -- the lines are fixed for one detail
 		<Fragment key={index}>
 			{index > 0 && "\n"}
 			{BIDI_CONTROL_RE.test(line) ? (
@@ -1199,7 +1199,7 @@ function CommandReadGate({
 	/** Upstream's `detailWarning`: at least one read-line (the warning) must exist. */
 	warned?: boolean;
 	onReadState: (state: ReadGateState) => void;
-	children: ReactNode;
+	children: string;
 })
 {
 	const detailRef = useRef<HTMLDivElement>(null);
@@ -1285,7 +1285,7 @@ function CommandReadGate({
 		};
 	}, [onReadState, warned]);
 	const gate = (
-		<div data-approval-value className={GATED_DETAIL_CLASS}>
+		<div data-approval-value dir="ltr" className={GATED_DETAIL_CLASS}>
 			<div
 				ref={detailRef}
 				data-testid="approval-read-detail"
@@ -1299,7 +1299,7 @@ function CommandReadGate({
 						}
 					: {})}
 			>
-				{children}
+				<BidiControlLines text={children} />
 			</div>
 		</div>
 	);
