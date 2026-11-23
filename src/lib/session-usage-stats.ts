@@ -89,7 +89,7 @@ export const EMPTY_SESSION_USAGE_STATS: SessionUsageStats =
 const TOKEN_UNITS: ReadonlyArray<readonly [number, string]> = [
 	[1e9, "B"],
 	[1e6, "M"],
-	[1e3, "k"],
+	[1e3, "K"],
 ];
 
 /** One decimal with ".0" stripped. */
@@ -99,7 +99,7 @@ function oneDecimal(value: number): string
 }
 
 /**
- * Upstream's `ic` token count: "999", "12.3k", "3.5M", "1.2B", one decimal with ".0" stripped. A value that rounds
+ * Upstream's `ic` token count: "999", "12.3K", "3.5M", "1.2B", one decimal with ".0" stripped. A value that rounds
  * up to 1000 of a unit rolls over to the next one (999999 → "1M").
  */
 export function formatTokensShort(count: number): string

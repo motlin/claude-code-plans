@@ -389,7 +389,7 @@ describe("SessionUsageCard plan section", () =>
 							`- five_hour: 80% (resets ${new Date((NOW_S + 7500) * 1000).toISOString()})`,
 							"",
 							"Session:",
-							"- Opus 5.5: 1.2k in / 3k out / 12.3k cache read / 0 cache write",
+							"- Opus 5.5: 1.2K in / 3K out / 12.3K cache read / 0 cache write",
 							"- Cost: $3.46 | API 10m | Wall 30m",
 						].join("\n"),
 					],
@@ -501,16 +501,23 @@ describe("SessionUsageCard session section", () =>
 		expect(
 			{
 				rowClass: firstRow?.className,
-				chip: [chip?.className, chip?.firstElementChild?.className, chip?.lastElementChild?.className],
+				chip: [
+					chip?.className,
+					chip?.firstElementChild?.className,
+					chip?.firstElementChild?.firstElementChild?.className,
+					chip?.lastElementChild?.className,
+				],
 				rows: chipRows(),
 				lines: [screen.getByText("+12").className, screen.getByText("−3").className],
 			},
 		).toStrictEqual(
 			{
-				rowClass: "grid grid-cols-3 gap-x-2.5 py-0.75 text-footnote first:pt-0 border-b-[0.5px] border-alpha-3",
+				rowClass:
+					"grid grid-cols-3 max-sm:grid-cols-1 gap-x-2.5 py-0.75 text-footnote first:pt-0 border-b-[0.5px] border-alpha-3",
 				chip: [
 					"inline-flex min-w-0 items-center gap-0.75 whitespace-nowrap",
 					"min-w-0 text-secondary",
+					"block min-w-0 overflow-x-clip text-ellipsis whitespace-nowrap",
 					"shrink-0 tabular-nums text-muted-as-secondary",
 				],
 				rows: [
@@ -545,18 +552,37 @@ describe("SessionUsageCard session section", () =>
 			},
 		);
 
+		const grid = screen.getByText("Breakdown").parentElement!;
+		const modelHeader = screen.getByText("Opus 5.5").parentElement!;
+
+		expect(
+			{
+				wrapper: grid.parentElement?.className,
+				grid: grid.className,
+				modelHeader: [modelHeader.className, modelHeader.firstElementChild?.className],
+			},
+		).toStrictEqual(
+			{
+				wrapper: "rounded has-[>:focus-visible]:shadow-focus has-[>:focus-visible]:outline-hidden",
+				grid: "grid items-center overflow-x-auto scroll-fade-x whitespace-nowrap tabular-nums focus-visible:outline-hidden gap-x-xs gap-y-0.75 text-footnote",
+				modelHeader: [
+					"min-w-11 pb-0.5 text-end text-muted-as-secondary",
+					"block min-w-0 overflow-x-clip text-ellipsis whitespace-nowrap",
+				],
+			},
+		);
 		expect(breakdown()).toStrictEqual(
 			{
-				columns: "max-content repeat(1, minmax(0px, 1fr))",
+				columns: "max-content repeat(1, 1fr)",
 				cells: [
 					"Breakdown",
 					"Opus 5.5",
 					"Input",
-					"1.2k",
+					"1.2K",
 					"Output",
-					"3k",
+					"3K",
 					"Cache read",
-					"12.3k",
+					"12.3K",
 					"Cache write",
 					"1M",
 				],
@@ -609,16 +635,16 @@ describe("SessionUsageCard session section", () =>
 
 		expect(breakdown()).toStrictEqual(
 			{
-				columns: "max-content repeat(3, minmax(0px, 1fr))",
+				columns: "max-content repeat(3, 1fr)",
 				cells: [
 					"Breakdown",
 					"Opus 5.5",
 					"Haiku 4.5",
 					"Total",
 					"Input",
-					"2k",
+					"2K",
 					"1",
-					"2k",
+					"2K",
 					"Output",
 					"0",
 					"0",

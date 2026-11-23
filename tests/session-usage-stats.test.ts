@@ -467,9 +467,9 @@ describe("formatTokensShort", () =>
 	{
 		expect([999, 1000, 1049, 12_345, 999_999, 1_000_000, 3_450_000, 1.2e9].map(formatTokensShort)).toEqual([
 			"999",
-			"1k",
-			"1k",
-			"12.3k",
+			"1K",
+			"1K",
+			"12.3K",
 			"1M",
 			"1M",
 			"3.5M",
@@ -531,7 +531,7 @@ describe("usageReport", () =>
 				"- seven_day: 51% (resets 2026-11-08T15:00:00Z)",
 				"",
 				"Session:",
-				"- Opus 5.5: 1.2k in / 3k out / 12.3k cache read / 0 cache write",
+				"- Opus 5.5: 1.2K in / 3K out / 12.3K cache read / 0 cache write",
 				"- Cost: $3.46 | API 10m | Wall 30m",
 			].join("\n"),
 		);

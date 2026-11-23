@@ -153,7 +153,9 @@ function StatChip({label, children}: {label: string; children: ReactNode})
 {
 	return (
 		<span className="inline-flex min-w-0 items-center gap-0.75 whitespace-nowrap">
-			<span className="min-w-0 text-secondary">{label}</span>
+			<span className="min-w-0 text-secondary">
+				<span className={ELLIPSIS}>{label}</span>
+			</span>
 			<span className="shrink-0 tabular-nums text-muted-as-secondary">{children}</span>
 		</span>
 	);
@@ -241,6 +243,9 @@ function shareChips(
 		);
 	return chips;
 }
+
+/** Upstream's single-line label that clips with an ellipsis. */
+const ELLIPSIS = "block min-w-0 overflow-x-clip text-ellipsis whitespace-nowrap";
 
 const RULE = <span aria-hidden="true" className="col-span-full border-b-[0.5px] border-alpha-3" />;
 
@@ -357,7 +362,7 @@ function SessionSection({
 								// The rows are positional chunks of a fixed chip order.
 								// eslint-disable-next-line react/no-array-index-key
 								key={index}
-								className="grid grid-cols-3 gap-x-2.5 py-0.75 text-footnote first:pt-0 border-b-[0.5px] border-alpha-3"
+								className="grid grid-cols-3 max-sm:grid-cols-1 gap-x-2.5 py-0.75 text-footnote first:pt-0 border-b-[0.5px] border-alpha-3"
 							>
 								{row}
 							</div>
@@ -366,47 +371,49 @@ function SessionSection({
 				)}
 			</div>
 			{hasTokens && (
-				<div
-					className="grid items-center gap-x-xs gap-y-0.75 text-footnote tabular-nums"
-					style={
-					{
-						gridTemplateColumns: `max-content repeat(${columns}, minmax(0, 1fr))`,
-					}}
-				>
-					<span className="pb-0.5 text-footnote text-primary">Breakdown</span>
-					{models.map((row) => (
-						<span key={row.model} className="min-w-0 pb-0.5 text-end text-muted-as-secondary">
-							<span className="block truncate">{modelName(row.model)}</span>
-						</span>
-					))}
-					{totalColumn && <span className="pb-0.5 text-end text-muted-as-secondary">Total</span>}
-					{RULE}
-					{BREAKDOWN_ROWS.map((breakdown) => (
-						<BreakdownRow key={breakdown.key} label={breakdown.label}>
-							{models.map((row) => (
-								<span key={row.model} className="text-end text-muted-as-secondary">
-									{formatTokensShort(breakdown.pick(row))}
-								</span>
-							))}
-							{totalColumn && (
-								<span className="text-end text-muted-as-secondary">
-									{formatTokensShort(breakdown.pick(totals))}
-								</span>
-							)}
-						</BreakdownRow>
-					))}
-					{costRow && (
-						<BreakdownRow label="Cost">
-							{models.map((row) => (
-								<span key={row.model} className="text-end text-muted-as-secondary">
-									{costOf(row.model) > 0 ? USD.format(costOf(row.model)) : NO_COST}
-								</span>
-							))}
-							{totalColumn && (
-								<span className="text-end text-muted-as-secondary">{USD.format(totalCost)}</span>
-							)}
-						</BreakdownRow>
-					)}
+				<div className="rounded has-[>:focus-visible]:shadow-focus has-[>:focus-visible]:outline-hidden">
+					<div
+						className="grid items-center overflow-x-auto scroll-fade-x whitespace-nowrap tabular-nums focus-visible:outline-hidden gap-x-xs gap-y-0.75 text-footnote"
+						style={
+						{
+							gridTemplateColumns: `max-content repeat(${columns}, 1fr)`,
+						}}
+					>
+						<span className="pb-0.5 text-footnote text-primary">Breakdown</span>
+						{models.map((row) => (
+							<span key={row.model} className="min-w-11 pb-0.5 text-end text-muted-as-secondary">
+								<span className={ELLIPSIS}>{modelName(row.model)}</span>
+							</span>
+						))}
+						{totalColumn && <span className="pb-0.5 text-end text-muted-as-secondary">Total</span>}
+						{RULE}
+						{BREAKDOWN_ROWS.map((breakdown) => (
+							<BreakdownRow key={breakdown.key} label={breakdown.label}>
+								{models.map((row) => (
+									<span key={row.model} className="text-end text-muted-as-secondary">
+										{formatTokensShort(breakdown.pick(row))}
+									</span>
+								))}
+								{totalColumn && (
+									<span className="text-end text-muted-as-secondary">
+										{formatTokensShort(breakdown.pick(totals))}
+									</span>
+								)}
+							</BreakdownRow>
+						))}
+						{costRow && (
+							<BreakdownRow label="Cost">
+								{models.map((row) => (
+									<span key={row.model} className="text-end text-muted-as-secondary">
+										{costOf(row.model) > 0 ? USD.format(costOf(row.model)) : NO_COST}
+									</span>
+								))}
+								{totalColumn && (
+									<span className="text-end text-muted-as-secondary">{USD.format(totalCost)}</span>
+								)}
+							</BreakdownRow>
+						)}
+					</div>
 				</div>
 			)}
 			{unknownCost && (
