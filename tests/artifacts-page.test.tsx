@@ -3537,7 +3537,7 @@ describe("artifacts route", () =>
 		expect(scrollTo.mock.calls).toStrictEqual([]);
 	});
 
-	it("reads ?type= and ?owner= items trimmed and lowercased but Date opened exactly, as upstream's codec", async () =>
+	it("reads ?type= and ?owner= items trimmed and lowercased but Date opened exactly, leaving the URL as typed, as upstream's codec", async () =>
 	{
 		const router = await renderArtifactsPage(
 			"/artifacts?type=Docs,%20SLIDES&owner=%20ME%20&opened=Today",
@@ -3554,30 +3554,24 @@ describe("artifacts route", () =>
 		);
 		const menu = await screen.findByRole("menu");
 
+		// Upstream derives the state without a URL replace: the address bar stays exactly as typed.
 		expect(
 			{
-				search:
-				{
-					...router.state.location.search,
-				},
+				href: router.history.location.href,
 				rows: menuRows(menu).slice(2, 5),
 			},
 		).toStrictEqual(
 			{
-				search:
-				{
-					type: "docs,slides",
-					owner: "me",
-					opened: "Today",
-				},
+				href: "/artifacts?type=Docs,%20SLIDES&owner=%20ME%20&opened=Today",
 				rows: ["menuitem:Owner=You", "menuitem:Type=2 picked", "menuitem:Date opened=Any time"],
 			},
 		);
 	});
 
-	it("reads legacy ?tab=pinned as the Pinned filter and rewrites it to pinned=1 on the next pick", async () =>
+	it("reads legacy ?tab=pinned as the Pinned filter without rewriting the URL, then writes pinned=1 on the next pick", async () =>
 	{
 		const router = await renderArtifactsPage("/artifacts?tab=pinned", seedMixedGallery);
+		const loadedHref = router.state.location.href;
 		const tab = screen.getByRole(
 			"tab",
 			{
@@ -3626,11 +3620,13 @@ describe("artifacts route", () =>
 
 		expect(
 			{
+				loadedHref,
 				tab,
 				pinned,
 			},
 		).toStrictEqual(
 			{
+				loadedHref: "/artifacts?tab=pinned",
 				tab: "All",
 				pinned: "true",
 			},

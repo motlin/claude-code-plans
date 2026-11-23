@@ -78,21 +78,43 @@ import {Icon} from "../components/ui/icon";
 import {findScrollContainer} from "../components/scroll-container";
 import {Tooltip} from "../components/ui/tooltip";
 
-/** The gallery's URL state: upstream's `?search=` and `?tab=`, plus the local Filter and sort picks. */
+/** A query param as the router parsed it: a string, or a number/boolean when the raw text was JSON. */
+type RawParam = string | number | boolean;
+
+/**
+ * The gallery's URL state: upstream's `?search=` and `?tab=`, plus the local Filter and sort picks. validateSearch
+ * keeps each param exactly as parsed, so the router has nothing to write back on load (upstream derives its state
+ * without a URL replace); the readers below normalise, and searchFromState writes the canonical form.
+ */
 export interface ArtifactsSearch
 {
-	search?: string;
-	tab?: ArtifactTabParam;
+	search?: RawParam;
+	/** `mine` / `shared`, or the legacy `pinned` read as the Pinned filter. */
+	tab?: RawParam;
+	/** The legacy `?view=yours|shared`. */
+	view?: RawParam;
 	/** Comma list of Type keys (`docs,other`); a single `?type=docs` reads the same. */
-	type?: string;
+	type?: RawParam;
 	/** The URL's own sort; the Sort by radio omits it for "Last opened", but an explicit `?sort=opened` is kept. */
-	sort?: ArtifactSort;
+	sort?: RawParam;
 	/** Comma list of `me` / `others`. */
-	owner?: string;
-	opened?: Exclude<ArtifactOpenedRange, "any">;
-	sharing?: Exclude<ArtifactSharing, "any">;
-	pinned?: 1;
+	owner?: RawParam;
+	opened?: RawParam;
+	sharing?: RawParam;
+	pinned?: RawParam;
 }
+
+const ARTIFACTS_SEARCH_KEYS = [
+	"search",
+	"tab",
+	"view",
+	"type",
+	"sort",
+	"owner",
+	"opened",
+	"sharing",
+	"pinned",
+] as const;
 
 export const Route = createFileRoute("/artifacts")(
 	{
@@ -103,64 +125,16 @@ export const Route = createFileRoute("/artifacts")(
 		},
 		validateSearch: (search: Record<string, unknown>): ArtifactsSearch =>
 		{
-			const query = search["search"];
-			const tab = tabParamFromSearch(search);
-			const types = parseList(search["type"], ARTIFACT_TYPE_KEYS);
-			const owners = parseList(search["owner"], ARTIFACT_OWNERS);
-			const opened = search["opened"];
-			const sharing = search["sharing"];
-			const pinned = search["pinned"];
-			return {
-				...(typeof query === "string" && query !== ""
-					?
-						{
-							search: query,
-						}
-					: {}),
-				...(tab === undefined
-					? {}
-					:
-						{
-							tab,
-						}),
-				...(types.length === 0
-					? {}
-					:
-						{
-							type: types.join(","),
-						}),
-				...(isOneOf(search["sort"], ARTIFACT_SORTS)
-					?
-						{
-							sort: search["sort"],
-						}
-					: {}),
-				...(owners.length === 0
-					? {}
-					:
-						{
-							owner: owners.join(","),
-						}),
-				...(isOneOf(opened, ARTIFACT_OPENED_RANGES) && opened !== "any"
-					?
-						{
-							opened,
-						}
-					: {}),
-				...(isOneOf(sharing, ARTIFACT_SHARINGS) && sharing !== "any"
-					?
-						{
-							sharing,
-						}
-					: {}),
-				// Upstream reads the legacy `?tab=pinned` as the Pinned filter; the next write drops the `tab`.
-				...(pinned === 1 || pinned === "1" || pinned === true || search["tab"] === "pinned"
-					?
-						{
-							pinned: 1 as const,
-						}
-					: {}),
-			};
+			const kept: ArtifactsSearch = {};
+			for (const key of ARTIFACTS_SEARCH_KEYS)
+			{
+				const value = search[key];
+				if (typeof value === "string" || typeof value === "number" || typeof value === "boolean")
+				{
+					kept[key] = value;
+				}
+			}
+			return kept;
 		},
 		loader: async ({context: {queryClient}}) =>
 			queryClient.query(
@@ -199,11 +173,10 @@ function parseList<T extends string>(value: unknown, options: readonly T[]): T[]
 type ArtifactTabParam = "mine" | "shared";
 
 /** Reads `?tab=mine|shared`, falling back to the legacy `?view=yours|shared` so old links keep working. */
-function tabParamFromSearch(search: Record<string, unknown>): ArtifactTabParam | undefined
+function tabParamFromSearch(search: ArtifactsSearch): ArtifactTabParam | undefined
 {
-	const tab = search["tab"];
+	const {tab, view} = search;
 	if (tab === "mine" || tab === "shared") return tab;
-	const view = search["view"];
 	if (view === "yours") return "mine";
 	if (view === "shared") return "shared";
 	return undefined;
@@ -228,18 +201,23 @@ function isArtifactView(value: unknown): value is ArtifactView
 	return VIEW_TABS.some((tab) => tab.view === value);
 }
 
-/*
- * Route.useSearch merges the validated search over the root route's raw one, so a dropped `?opened=Today` or
- * `?sort=foo` still reaches the page: read each param through its codec again.
- */
+/** The search box text; a numeric `?search=123` parses as a number, so read it back as text. */
+function queryFromSearch(search: ArtifactsSearch): string
+{
+	return search.search === undefined ? "" : String(search.search);
+}
+
+/** Each filter param read through upstream's codec; unknown values read as the filter being off. */
 function filtersFromSearch(search: ArtifactsSearch): ArtifactFilters
 {
+	const {pinned} = search;
 	return {
 		types: parseList(search.type, ARTIFACT_TYPE_KEYS),
 		owners: parseList(search.owner, ARTIFACT_OWNERS),
 		opened: isOneOf(search.opened, ARTIFACT_OPENED_RANGES) ? search.opened : "any",
 		sharing: isOneOf(search.sharing, ARTIFACT_SHARINGS) ? search.sharing : "any",
-		pinned: search.pinned === 1,
+		// Upstream reads the legacy `?tab=pinned` as the Pinned filter; the next write drops the `tab`.
+		pinned: pinned === 1 || pinned === "1" || pinned === true || search.tab === "pinned",
 	};
 }
 
@@ -437,8 +415,8 @@ function ArtifactsPage()
 {
 	const {data: artifacts} = useSuspenseQuery(artifactsQueryOptions);
 	const params = Route.useSearch();
-	const {search = "", tab: tabParam} = params;
-	const view = viewFromTabParam(tabParam);
+	const search = queryFromSearch(params);
+	const view = viewFromTabParam(tabParamFromSearch(params));
 	const filters = filtersFromSearch(params);
 	// Upstream's `He`: the URL's sort wins, then the pick remembered in this browser.
 	const storedSort = useStoredArtifactsSort();
