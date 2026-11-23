@@ -199,7 +199,12 @@ export function DiagramLightbox({store}: {store: DiagramLightboxStore})
 		});
 	};
 	const actions: ReactNode = (
-		<div role="group" aria-label="Diagram zoom" className="inline-flex w-fit shrink-0 items-center">
+		<div
+			data-cds="ButtonGroup"
+			role="group"
+			aria-label="Diagram zoom"
+			className="relative inline-flex w-fit shrink-0 items-stretch gap-xs"
+		>
 			<ZoomButton
 				label="Zoom out"
 				icon="ZoomOut"
