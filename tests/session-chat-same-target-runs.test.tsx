@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
 
+import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {act, cleanup, fireEvent, render, waitFor} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
+import {FileRefsProvider} from "../src/components/file-refs-context";
 import {SessionChat} from "../src/components/session-chat";
 import {TurnWorkingContext} from "../src/components/turn-working-context";
 import {processTranscript} from "../src/lib/transcript";
@@ -360,6 +362,81 @@ describe("same-target run row", () =>
 });
 
 /** A row's label pieces: its label slot's showing face, then its meta, range and outcome, in document order. */
+/** Wraps `element` in a file-refs provider whose server says every path exists. */
+function linked(element: React.ReactElement): React.ReactElement
+{
+	vi.stubGlobal(
+		"fetch",
+		vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) =>
+		{
+			const {paths} = JSON.parse(String(init?.body)) as
+			{
+				paths: string[];
+			};
+			return Promise.resolve(
+				Response.json(
+					{
+						statuses: Object.fromEntries(paths.map((path) => [path, "exists"])),
+					},
+				),
+			);
+		}),
+	);
+	const client = new QueryClient(
+		{
+			defaultOptions:
+			{
+				queries:
+				{
+					retry: false,
+				},
+			},
+		},
+	);
+	return (
+		<QueryClientProvider client={client}>
+			<FileRefsProvider
+				value={
+				{
+					sessionId: "test-session",
+					cwd: "/repo",
+					sessionPaths: [],
+					open: vi.fn<() => void>(),
+				}}
+			>
+				{element}
+			</FileRefsProvider>
+		</QueryClientProvider>
+	);
+}
+
+/** Upstream's row subject FileLink on a run row's file meta (`data-cds-row-subject`, the full path, a linked bdi). */
+async function fileMeta(container: HTMLElement): Promise<Record<string, unknown>>
+{
+	const meta = container.querySelector<HTMLElement>("[data-tool-row] [id$='-meta']");
+	await waitFor(() =>
+	{
+		expect(meta?.querySelector("[data-file-ref] > bdi")).not.toBeNull();
+	});
+	return {
+		subject: meta?.getAttribute("data-cds-row-subject"),
+		title: meta?.getAttribute("title"),
+		className: meta?.className,
+		link: meta?.querySelector("[data-file-ref]")?.getAttribute("data-file-path"),
+		name: meta?.querySelector("bdi")?.textContent,
+	};
+}
+
+const FILE_META =
+{
+	subject: "",
+	title: "/repo/a.ts",
+	className:
+		"min-w-0 overflow-x-clip text-ellipsis whitespace-nowrap py-[0.125em] -my-[0.125em] text-body text-secondary group-hover/tool:text-primary group-focus-visible/tool:text-primary group-has-[:focus-visible]/tool:text-primary",
+	link: "/repo/a.ts",
+	name: "a.ts",
+};
+
 function rowParts(container: HTMLElement): string[]
 {
 	const row = container.querySelector('[data-tool-row] > [role="button"], [data-tool-row] > button');
@@ -419,6 +496,13 @@ describe("busy same-target run row (upstream mergeLiveLoneStep)", () =>
 				steps: ["e1", "e2"],
 			},
 		);
+		cleanup();
+		const busyMeta = await fileMeta(render(linked(chat([edit("e1", "a", "b"), pendingEdit("e2")]))).container);
+		cleanup();
+		const settledMeta = await fileMeta(
+			render(linked(chat([edit("e1", "a", "b"), edit("e2", "c", "d")]))).container,
+		);
+		expect([busyMeta, settledMeta]).toStrictEqual([FILE_META, FILE_META]);
 	});
 
 	it("keeps the merged row while the member in flight waits on a permission prompt", () =>

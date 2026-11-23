@@ -8310,6 +8310,47 @@ function ReviewCardOrRow({call, sessionId, row}: {call: ClientToolCall; sessionI
 	);
 }
 
+/**
+ * A row subject's file name: a file link once the file is confirmed to exist, else a plain bdi
+ * (inked primary with `inkPlain`, as upstream's tool row keeps its name primary while unlinked).
+ */
+function RowFileName({
+	path,
+	name,
+	unclipped = false,
+	inkPlain = false,
+}: {
+	path: string;
+	name: string;
+	unclipped?: boolean;
+	inkPlain?: boolean;
+})
+{
+	return (
+		<FileRefTarget
+			path={path}
+			render={(props) =>
+				props === null ? (
+					inkPlain ? (
+						<span className="text-primary">
+							<bdi>{name}</bdi>
+						</span>
+					) : (
+						<bdi>{name}</bdi>
+					)
+				) : (
+					<span
+						{...props}
+						className={`${unclipped ? "min-w-0 break-all" : "block min-w-0 truncate"} text-primary hover:underline underline-offset-[3px] focus-visible:outline-hidden hide-focus-ring focus-visible:shadow-focus rounded-sm`}
+					>
+						<bdi>{name}</bdi>
+					</span>
+				)
+			}
+		/>
+	);
+}
+
 function ToolCallRow({
 	call,
 	run = NO_RUN,
@@ -8742,12 +8783,15 @@ function ToolCallRow({
 									<bdi>{displayParam}</bdi>
 								</span>
 							) : isFileParam ? (
+								// Upstream's row subject FileLink: the full path as its title, the name a file link.
 								<span
 									ref={metaCut}
 									id={`${statusId}-meta`}
-									className={`text-body text-primary ${metaClip}`}
+									data-cds-row-subject=""
+									title={call.param}
+									className={`${unclipped ? metaClip : "min-w-0 overflow-x-clip text-ellipsis whitespace-nowrap"} py-[0.125em] -my-[0.125em] text-body text-secondary group-hover/tool:text-primary group-focus-visible/tool:text-primary group-has-[:focus-visible]/tool:text-primary`}
 								>
-									{paramContent}
+									<RowFileName path={call.param} name={displayParam} unclipped={unclipped} inkPlain />
 								</span>
 							) : (
 								<InkedLabel
@@ -9507,21 +9551,7 @@ function ToolCallSummary({
 						className="min-w-0 overflow-x-clip text-ellipsis whitespace-nowrap py-[0.125em] -my-[0.125em] text-secondary group-hover/tool:text-primary group-has-[:focus-visible]/tool:text-primary"
 						title={fileMeta.file.path}
 					>
-						<FileRefTarget
-							path={fileMeta.file.path}
-							render={(props) =>
-								props === null ? (
-									<bdi>{fileMeta.name}</bdi>
-								) : (
-									<span
-										{...props}
-										className="block min-w-0 truncate text-primary hover:underline underline-offset-[3px] focus-visible:outline-hidden hide-focus-ring focus-visible:shadow-focus rounded-sm"
-									>
-										<bdi>{fileMeta.name}</bdi>
-									</span>
-								)
-							}
-						/>
+						<RowFileName path={fileMeta.file.path} name={fileMeta.name} />
 					</span>
 				</span>
 			)}

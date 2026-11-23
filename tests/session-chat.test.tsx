@@ -1079,13 +1079,18 @@ describe("SessionChat grouped tool card", () =>
 // list stops before `cursor-pointer` and the row focus ring.
 const TOOL_ROW = /group\/tool[^"]*"[^>]*>([\s\S]*?)<\/div>/g;
 
-/** Class of a tool row's argument span, e.g. the filename on a Read row. */
-const ARGUMENT = "text-body text-primary truncate min-w-0";
+/** Class of a file tool row's subject span (upstream's row subject FileLink), e.g. the filename on a Read row. */
+const ARGUMENT =
+	"min-w-0 overflow-x-clip text-ellipsis whitespace-nowrap py-[0.125em] -my-[0.125em] text-body text-secondary group-hover/tool:text-primary group-focus-visible/tool:text-primary group-has-[:focus-visible]/tool:text-primary";
 
 /** [class, text] of every label span in one tool row's markup. */
 function labelSpans(row: string): [string, string][]
 {
-	return [...row.matchAll(/<span (?:id="[^"]*" )?class="([^"]+)">([^<]*)<\/span>/g)]
+	return [
+		...row.matchAll(
+			/<span (?:id="[^"]*" )?(?:data-cds-row-subject="" title="[^"]*" )?class="([^"]+)">(?:<span class="text-primary"><bdi>)?([^<]*)<\/(?:bdi|span)>/g,
+		),
+	]
 		.filter((match) => match[1]!.includes("text-body") || match[1]!.includes("text-code"))
 		.map((match): [string, string] => [match[1]!, match[2]!]);
 }
@@ -2495,7 +2500,7 @@ describe("SessionChat failed tool row label", () =>
 			},
 			{
 				text: "pages.tsx",
-				className: "text-body text-primary truncate min-w-0",
+				className: ARGUMENT,
 			},
 			FAILED_SUFFIX,
 		]);
@@ -2649,7 +2654,7 @@ describe("SessionChat failed tool row label text", () =>
 						"shrink-0 text-body text-secondary group-hover/tool:text-secondary group-focus-visible/tool:text-secondary",
 						"Editing",
 					],
-					["text-body text-primary truncate min-w-0", "cache.ts"],
+					[ARGUMENT, "cache.ts"],
 					["shrink-0 text-body text-danger", "Failed"],
 				],
 				okEdit: [
@@ -2657,7 +2662,7 @@ describe("SessionChat failed tool row label text", () =>
 						"shrink-0 text-body text-secondary group-hover/tool:text-secondary group-focus-visible/tool:text-secondary",
 						"Edited",
 					],
-					["text-body text-primary truncate min-w-0", "cache.ts"],
+					[ARGUMENT, "cache.ts"],
 				],
 				failedGrep: [
 					[
