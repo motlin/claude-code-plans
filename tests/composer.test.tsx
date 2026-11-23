@@ -2340,6 +2340,74 @@ describe("Composer", () =>
 			};
 		}
 
+		it("keeps the editor focused on a mouse press of the Send, Stop and nested Stop faces, in tab order", () =>
+		{
+			function press(testId: string)
+			{
+				textbox().focus();
+				const face = screen.getByTestId(testId);
+				const prevented = !fireEvent.mouseDown(face);
+				return {
+					prevented,
+					focused: document.activeElement === textbox(),
+					tabIndex: face.tabIndex,
+				};
+			}
+			const {unmount} = render(ui({}));
+			type("hi");
+			const sendPress = press("code-prompt-send");
+			unmount();
+			const running = render(
+				ui(
+					{
+						onStop: () =>
+						{
+						},
+					},
+				),
+			);
+			const stopPress = press("code-prompt-stop");
+			running.unmount();
+			render(
+				<Composer
+					variant="session"
+					draftKey="handoff-nested"
+					onSend={() =>
+					{
+					}}
+					nestedStop={
+					{
+						label: "Stop background agents",
+						stopping: false,
+						stoppingLabel: "Stopping",
+						onStop: () =>
+						{
+						},
+					}}
+				/>,
+			);
+			const nestedPress = press("code-prompt-stop-nested");
+			const kept =
+			{
+				prevented: true,
+				focused: true,
+				tabIndex: 0,
+			};
+			expect(
+				{
+					sendPress,
+					stopPress,
+					nestedPress,
+				},
+			).toStrictEqual(
+				{
+					sendPress: kept,
+					stopPress: kept,
+					nestedPress: kept,
+				},
+			);
+		});
+
 		it("hands a keyboard-focused Send that goes unusable to the editor and swallows the Enter that follows", () =>
 		{
 			expect(

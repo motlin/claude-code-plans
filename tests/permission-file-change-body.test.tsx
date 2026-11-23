@@ -8,6 +8,11 @@ import {PermissionFileChangePreview} from "../src/components/permission-file-cha
 import {plainFileChangeParts} from "../src/lib/permission-file-change";
 import {customProperties, DEFAULT_CODE_THEME_VARS} from "./helpers/code-theme-vars";
 
+// The first test asserts the scroller before the code themes load, but use-code-theme-background caches loaded
+// themes per module. This call routes the file to the module-reset project (scripts/vitest-isolation.ts), so it
+// starts with none of an earlier file's themes loaded.
+vi.resetModules();
+
 class FakeResizeObserver
 {
 	observe()

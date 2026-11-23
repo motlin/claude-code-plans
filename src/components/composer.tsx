@@ -2,6 +2,7 @@ import
 {
 	cloneElement,
 	type CSSProperties,
+	type MouseEvent as ReactMouseEvent,
 	Fragment,
 	memo,
 	type ReactElement,
@@ -638,6 +639,11 @@ type SendFace = "stop" | "nested" | "send";
 /** Upstream's `od`: a plain Send tap this soon after a Stop click is the same finger landing twice. */
 const STOP_TAP_GUARD_MS = 500;
 const noop = () => undefined;
+/** Upstream's face `onMouseDown` (`Sl`): a mouse press on Send or Stop leaves focus in the editor. */
+const keepEditorFocus = (event: ReactMouseEvent) =>
+{
+	event.preventDefault();
+};
 /* The coarse spacer's inert split never opens, but its menu holds the working items so it measures the same. */
 const SPACER_SPLIT_ITEMS: SplitItem[] = [
 	{
@@ -936,6 +942,7 @@ const SendSlot = memo(function SendSlot({
 					type="button"
 					aria-label="Send"
 					data-testid="code-prompt-send"
+					onMouseDown={keepEditorFocus}
 					onClick={(event) =>
 					{
 						if (Date.now() - stopClickAtRef.current < STOP_TAP_GUARD_MS) return;
@@ -1062,6 +1069,7 @@ const SendSlot = memo(function SendSlot({
 							type="button"
 							aria-label={nestedStop.stopping ? nestedStop.stoppingLabel : nestedStop.label}
 							data-testid="code-prompt-stop-nested"
+							onMouseDown={keepEditorFocus}
 							onClick={() =>
 							{
 								if (nestedStop.stopping || Date.now() - faceGuardAtRef.current < STOP_TAP_GUARD_MS)
@@ -1111,6 +1119,7 @@ const SendSlot = memo(function SendSlot({
 							aria-label="Stop"
 							aria-keyshortcuts={isStreaming ? undefined : "Escape"}
 							data-testid="code-prompt-stop"
+							onMouseDown={keepEditorFocus}
 							onClick={isStreaming ? cancel : stop}
 							className={ICON_BUTTON_CLASS}
 						>
