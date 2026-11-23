@@ -130,6 +130,28 @@ function finishedToggle()
 	);
 }
 
+/** The caret's cds Icon: its lucide glyph classes (CaretDown → chevron-down), motion, and 16px (1rem, rem-scaled) box. */
+function caretGlyph(caret: Element | null | undefined)
+{
+	const icon = caret?.querySelector("[data-cds=Icon]");
+	return {
+		className: icon?.getAttribute("class"),
+		fontSize: icon instanceof SVGElement ? icon.style.fontSize : null,
+	};
+}
+
+const CARET_ICON_CLASS = "lucide lucide-chevron-down transition-transform duration-fast motion-reduce:transition-none";
+const OPEN_CARET =
+{
+	className: CARET_ICON_CLASS,
+	fontSize: "calc(1rem * var(--cds-rem-scale, 1))",
+};
+const CLOSED_CARET =
+{
+	className: `${CARET_ICON_CLASS} -rotate-90 page-rtl:rotate-90`,
+	fontSize: "calc(1rem * var(--cds-rem-scale, 1))",
+};
+
 const POLL_GROUPS: BackgroundTaskGroups =
 {
 	running: [],
@@ -216,6 +238,7 @@ describe("BackgroundTasksList", () =>
 			{
 				expanded: toggle.getAttribute("aria-expanded"),
 				caretFirst: toggle.firstElementChild?.hasAttribute("data-task-caret"),
+				caret: caretGlyph(toggle.firstElementChild),
 				parts: [...toggle.children].slice(1).map((part) => [part.textContent, part.className]),
 				className: toggle.className,
 				heading: toggle.closest("h3")?.className,
@@ -224,6 +247,7 @@ describe("BackgroundTasksList", () =>
 			{
 				expanded: "true",
 				caretFirst: true,
+				caret: OPEN_CARET,
 				parts: [
 					["Finished", ""],
 					["1", "text-ink-muted"],
@@ -295,6 +319,7 @@ describe("BackgroundTasksList", () =>
 				opener: opener?.className,
 				label: label?.className,
 				caretFirst: label?.firstElementChild?.hasAttribute("data-task-caret"),
+				caret: caretGlyph(label?.firstElementChild),
 				titleClass: label?.querySelector("[data-task-title]")?.className,
 				taskLine: row?.hasAttribute("data-task-line"),
 				listsPerSection: [...document.querySelectorAll("section")].map(
@@ -317,6 +342,7 @@ describe("BackgroundTasksList", () =>
 				opener: "flex h-9 w-full min-w-0 items-center gap-g5 rounded ps-[calc(var(--task-step,0)*1.25rem+0.375rem)] pe-1.5 text-start text-body comfortable:gap-g6 cursor-pointer hover:bg-fill-ghost-hover focus-visible:shadow-focus focus-visible:outline-hidden active:bg-alpha-2 not-touch:group-has-[[data-task-stop]:hover]/row:bg-fill-ghost-hover",
 				label: "flex min-w-0 flex-1 items-center gap-1 text-start text-body-medium text-primary",
 				caretFirst: true,
+				caret: CLOSED_CARET,
 				titleClass: "flex min-w-0",
 				taskLine: true,
 				listsPerSection: [1, 0],

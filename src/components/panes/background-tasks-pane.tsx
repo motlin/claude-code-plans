@@ -1,6 +1,5 @@
 import {useQuery} from "@tanstack/react-query";
 import {Link} from "@tanstack/react-router";
-import {ChevronRight} from "lucide-react";
 import {type RefObject, useEffect, useId, useLayoutEffect, useRef, useState} from "react";
 
 import {type BackgroundTaskStop, useStoppingTaskIds} from "../../hooks/use-background-task-stop";
@@ -58,6 +57,8 @@ const OPENER_ACTION =
 const LABEL = "flex min-w-0 flex-1 items-center gap-1 text-start";
 /** Upstream `WC` + `nw`: the disclosure caret's box. */
 const CARET = "flex h-[1lh] w-4 shrink-0 items-center justify-center text-ink-muted";
+/** Upstream's cds Collapsible caret motion: a 60ms turn, none under reduced motion. */
+const CARET_ICON_MOTION = "transition-transform duration-fast motion-reduce:transition-none";
 /** Upstream `gw`: the trailing status column. */
 const STATUS = "shrink-0 text-end text-footnote text-muted-as-secondary tabular-nums";
 /** Upstream `HC`: the Stop's slot over the row's end. */
@@ -124,9 +125,11 @@ function Caret({open}: {open: boolean})
 {
 	return (
 		<span data-task-caret="" className={CARET}>
-			<ChevronRight
+			<Icon
+				name="CaretDown"
+				size="sm"
 				aria-hidden="true"
-				className={`size-3 transition-transform motion-reduce:transition-none ${open ? "rotate-90" : ""}`}
+				className={open ? CARET_ICON_MOTION : `${CARET_ICON_MOTION} -rotate-90 page-rtl:rotate-90`}
 			/>
 		</span>
 	);
