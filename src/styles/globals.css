@@ -695,8 +695,8 @@ html[data-interface-font="dyslexic"]
 	/* Upstream `--cds-fill-accent-hover` / `--cds-on-accent` (read live from .cds-root 2026-10-29), the same in both modes. */
 	--upstream-fill-accent-hover: #2171ca;
 	--upstream-on-accent: #fff;
-	/* Upstream `--cds-fill-brand` / `hover:bg-fill-brand-hover` (the palette's running dot and the Compose Send), the same in both modes. */
-	--upstream-fill-brand: #c6613f;
+	/* Upstream `--cds-fill-brand` (= `--cds-clay-emphasized`, read live 2026-11-21) / `hover:bg-fill-brand-hover` (the palette's running dot and the Compose Send), the same in both modes. */
+	--upstream-fill-brand: #ba5b3c;
 	--upstream-fill-brand-hover: #d97757;
 	/* Upstream `--cds-fill-success` (read live 2026-11-06): the usage ring's reset Pulse and connector dots. */
 	--upstream-fill-success: #10a122;
@@ -1086,8 +1086,8 @@ html[data-interface-font="dyslexic"]
 	/* Upstream `--cds-fill-accent-hover` / `--cds-on-accent` (read live from .cds-root 2026-10-29), the same in both modes. */
 	--upstream-fill-accent-hover: #2171ca;
 	--upstream-on-accent: #fff;
-	/* Upstream `--cds-fill-brand` / `hover:bg-fill-brand-hover` (the palette's running dot and the Compose Send), the same in both modes. */
-	--upstream-fill-brand: #c6613f;
+	/* Upstream `--cds-fill-brand` (= `--cds-clay-emphasized`, read live 2026-11-21) / `hover:bg-fill-brand-hover` (the palette's running dot and the Compose Send), the same in both modes. */
+	--upstream-fill-brand: #ba5b3c;
 	--upstream-fill-brand-hover: #d97757;
 	--upstream-warning: rgb(219 147 0);
 	--upstream-accent-pressed: #032042;

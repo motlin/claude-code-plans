@@ -232,12 +232,12 @@ describe("brand fill tokens (upstream --cds-fill-brand / -hover, the ⌘K Compos
 			{
 				light:
 				{
-					"--upstream-fill-brand": "#c6613f",
+					"--upstream-fill-brand": "#ba5b3c",
 					"--upstream-fill-brand-hover": "#d97757",
 				},
 				dark:
 				{
-					"--upstream-fill-brand": "#c6613f",
+					"--upstream-fill-brand": "#ba5b3c",
 					"--upstream-fill-brand-hover": "#d97757",
 				},
 			},

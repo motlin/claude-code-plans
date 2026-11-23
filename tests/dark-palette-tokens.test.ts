@@ -147,7 +147,7 @@ describe("dark palette", () =>
 		);
 	});
 
-	it("defines upstream's fill-brand as #c6613f in both modes", () =>
+	it("defines upstream's fill-brand as #ba5b3c in both modes", () =>
 	{
 		expect(
 			{
@@ -163,11 +163,11 @@ describe("dark palette", () =>
 				},
 				light:
 				{
-					"--upstream-fill-brand": "#c6613f",
+					"--upstream-fill-brand": "#ba5b3c",
 				},
 				dark:
 				{
-					"--upstream-fill-brand": "#c6613f",
+					"--upstream-fill-brand": "#ba5b3c",
 				},
 			},
 		);
