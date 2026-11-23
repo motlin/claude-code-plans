@@ -3437,7 +3437,7 @@ describe("TurnChangesCard artifact lead row (upstream eQ with artifactPage)", ()
 		).toStrictEqual(
 			{
 				text: "Open",
-				cls: "inline-flex h-5 shrink-0 cursor-pointer items-center rounded-r4 px-1.5 text-footnote text-secondary bg-fill-secondary shadow-[inset_0_0_0_1px_var(--color-border),0_1px_2px_rgb(0_0_0/0.05)] transition-shadow hover:bg-fill-secondary-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus",
+				cls: "inline-flex h-5 shrink-0 cursor-pointer items-center rounded-r4 px-1.5 text-footnote text-primary bg-fill-secondary shadow-[inset_0_0_0_1px_var(--color-border),0_1px_2px_rgb(0_0_0/0.05)] transition-shadow hover:bg-fill-secondary-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus",
 				calls: [[URL, "_blank", "noopener,noreferrer"]],
 			},
 		);

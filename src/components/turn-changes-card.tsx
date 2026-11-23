@@ -162,11 +162,11 @@ function UndoButton({
 }
 
 /**
- * Upstream's artifact row Open: cds secondary Button `size="xxs"` (`data-step="1"`: 20px tall, 6px padding) with
- * its `text-footnote text-secondary` override.
+ * Upstream's artifact row Open: cds secondary Button `size="xxs"` (`data-step="1"`: 20px tall, 6px padding);
+ * upstream now passes only `shrink-0 text-footnote`, so Open takes cds secondary's `text-primary` ink.
  */
 const OPEN_ARTIFACT_CLASS =
-	"inline-flex h-5 shrink-0 cursor-pointer items-center rounded-r4 px-1.5 text-footnote text-secondary bg-fill-secondary shadow-[inset_0_0_0_1px_var(--color-border),0_1px_2px_rgb(0_0_0/0.05)] transition-shadow hover:bg-fill-secondary-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
+	"inline-flex h-5 shrink-0 cursor-pointer items-center rounded-r4 px-1.5 text-footnote text-primary bg-fill-secondary shadow-[inset_0_0_0_1px_var(--color-border),0_1px_2px_rgb(0_0_0/0.05)] transition-shadow hover:bg-fill-secondary-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
 
 const UNTITLED_ARTIFACT = "Untitled artifact";
 
