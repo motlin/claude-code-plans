@@ -4613,7 +4613,30 @@ describe("SessionGroups described rows (Show ▸ Metadata)", () =>
 				},
 			),
 		);
-		const byState = describeRows((await renderGroups(described)).container);
+		const byStateContainer = (await renderGroups(described)).container;
+		const byState = describeRows(byStateContainer);
+		// Upstream's tooltip mode: an overflowing idle row's slots open the list as a tooltip instead of a title.
+		const idleSlots = [...byStateContainer.querySelectorAll<HTMLElement>(".df-meta-slots")].find(
+			(slots) => slots.textContent === "Fixed the login bug.claude-code-plans",
+		);
+		Object.defineProperty(
+			idleSlots,
+			"scrollWidth",
+			{
+				configurable: true,
+				value: 200,
+			},
+		);
+		Object.defineProperty(
+			idleSlots,
+			"clientWidth",
+			{
+				configurable: true,
+				value: 100,
+			},
+		);
+		fireEvent.pointerEnter(idleSlots?.parentElement ?? byStateContainer);
+		const idleTooltip = (await screen.findByRole("tooltip")).innerHTML;
 		cleanup();
 		const byProject = describeRows(
 			(
@@ -4631,7 +4654,7 @@ describe("SessionGroups described rows (Show ▸ Metadata)", () =>
 			).container,
 		);
 
-		const line = (text: string, title: string) => (
+		const line = (text: string, title: string | null) => (
 		{
 			described: true,
 			oneLine: false,
@@ -4648,6 +4671,7 @@ describe("SessionGroups described rows (Show ▸ Metadata)", () =>
 				off,
 				byState,
 				byProject,
+				idleTooltip,
 			},
 		).toStrictEqual(
 			{
@@ -4664,20 +4688,19 @@ describe("SessionGroups described rows (Show ▸ Metadata)", () =>
 					"Pinned on main": oneLine,
 					"Blocked asking": line("Run the testsproject-b1", "Run the tests, project-b1"),
 					"Permission ask": line("Needs permissionproject-b2", "Needs permission, project-b2"),
-					"Idle on main": line(
-						"Fixed the login bug.claude-code-plans",
-						"Fixed the login bug., claude-code-plans",
-					),
-					"No branch": line("project-n1", "project-n1"),
+					"Idle on main": line("Fixed the login bug.claude-code-plans", null),
+					"No branch": line("project-n1", null),
 				},
 				byProject:
 				{
 					"Pinned on main": oneLine,
 					"Blocked asking": line("WaitingRun the tests", "Waiting, Run the tests"),
 					"Permission ask": line("WaitingNeeds permission", "Waiting, Needs permission"),
-					"Idle on main": line("Fixed the login bug.", "Fixed the login bug."),
-					"No branch": line("Idle", "Idle"),
+					"Idle on main": line("Fixed the login bug.", null),
+					"No branch": line("Idle", null),
 				},
+				idleTooltip:
+					'<span class="min-w-0 break-words"><span dir="auto" class="block">Fixed the login bug., claude-code-plans</span></span>',
 			},
 		);
 	});

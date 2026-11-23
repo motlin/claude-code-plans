@@ -1434,7 +1434,8 @@ function SessionRowLink({
 								id={descriptionId}
 								className="df-row-description flex min-w-0 items-center text-ink-muted ps-2"
 							>
-								<MetaLine line={metaLine} />
+								{/* Upstream's `ls`: an awaiting row's live card keeps the line on its native title */}
+								<MetaLine line={metaLine} overflowTooltip={!blocked} />
 							</span>
 						</>
 					)}

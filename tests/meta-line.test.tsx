@@ -40,6 +40,34 @@ describe("MetaLine", () =>
 		);
 	});
 
+	it("drops the native title for a row in tooltip mode, as upstream's idle rows do", () =>
+	{
+		const {container} = render(
+			<MetaLine
+				overflowTooltip
+				line={
+				{
+					text: "Replied ok",
+					place:
+					{
+						text: "ccp",
+						spoken: true,
+					},
+				}}
+			/>,
+		);
+		expect(container.innerHTML).toBe(
+			`<span class="relative flex min-w-0 flex-1">` +
+				`<span class="${SLOTS}">` +
+				`<span class="${LINE}">` +
+				`<bdi class="${ITEM}">Replied ok</bdi>` +
+				`</span>` +
+				`<bdi class="${PLACE}">ccp</bdi>` +
+				`</span>` +
+				`</span>`,
+		);
+	});
+
 	it("leaves the Idle word spoken", () =>
 	{
 		const {container} = render(
