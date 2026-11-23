@@ -197,7 +197,7 @@ describe("findPendingPermission", () =>
 				detailReadGate:
 				{
 					label: "Command",
-					hint: "Scroll through the whole command to allow it.",
+					hint: "Scroll through the command to allow it.",
 				},
 				perUseOnly: true,
 			},
@@ -223,7 +223,7 @@ describe("findPendingPermission", () =>
 				detailReadGate:
 				{
 					label: "Command",
-					hint: "Scroll through the whole command to allow it.",
+					hint: "Scroll through the command to allow it.",
 				},
 				perUseOnly: true,
 			},
@@ -6300,7 +6300,7 @@ describe("PermissionCard after a landing", () =>
 describe("PermissionCard read gates", () =>
 {
 	const ROWS_HINT = "Scroll to the end to allow this.";
-	const COMMAND_HINT = "Scroll through the whole command to allow it.";
+	const COMMAND_HINT = "Scroll through the command to allow it.";
 	const HINT_CLASS =
 		"epitaxy-approval-read-hint text-footnote text-muted-as-secondary text-end text-balance @max-[420px]:text-center";
 

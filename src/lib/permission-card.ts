@@ -441,7 +441,7 @@ export interface DetailReadGate
 const COMMAND_READ_GATE: DetailReadGate =
 {
 	label: "Command",
-	hint: "Scroll through the whole command to allow it.",
+	hint: "Scroll through the command to allow it.",
 };
 
 /** Upstream's rows gate hint (`Q_.rowsHint`). */
