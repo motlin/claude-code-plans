@@ -334,6 +334,9 @@ describe("ReportFindingsCard (upstream c3fef5c6f iC/rC)", () =>
 					WALK_THROUGH_CLASS.endsWith(" shrink-0 text-footnote") &&
 					!WALK_THROUGH_CLASS.includes(" text-secondary"),
 				applyHover: applyClass.includes("hover:text-primary") && !applyClass.includes("hover:text-secondary"),
+				xxsRadius: [WALK_THROUGH_CLASS, VIEW_IN_CHANGES_CLASS, applyClass].map((name) =>
+					name.split(" ").filter((token) => token.startsWith("[--upstream-radius:")),
+				),
 			},
 		).toStrictEqual(
 			{
@@ -342,6 +345,11 @@ describe("ReportFindingsCard (upstream c3fef5c6f iC/rC)", () =>
 				terminal: true,
 				className: true,
 				applyHover: true,
+				xxsRadius: [
+					["[--upstream-radius:0.3125rem]"],
+					["[--upstream-radius:0.3125rem]"],
+					["[--upstream-radius:0.3125rem]"],
+				],
 			},
 		);
 	});
