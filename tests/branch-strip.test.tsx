@@ -234,7 +234,7 @@ describe("BranchStrip", () =>
 			{
 				dir: "ltr",
 				title: "View changes",
-				stat: '<span dir="ltr" class="tabular-nums contents text-body-medium"><span class="sr-only">3,093 additions, 1 deletion</span><span aria-hidden="true" class="contents"><span class="text-git-added">+3,093</span><span class="text-git-removed">−1</span></span></span>',
+				stat: '<span dir="ltr" class="tabular-nums [font-feature-settings:\'case\'] contents text-body-medium"><span class="sr-only">3,093 additions, 1 deletion</span><span aria-hidden="true" class="contents"><span class="text-git-added">+3,093</span><span class="text-git-removed">−1</span></span></span>',
 			},
 		);
 	});

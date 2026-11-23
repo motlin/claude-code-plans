@@ -2105,7 +2105,7 @@ describe("cards from local data", () =>
 			).toStrictEqual(
 				{
 					label: "Open changes, 120 added, 8 removed",
-					stat: '<span dir="ltr" class="tabular-nums inline-flex shrink-0 gap-1 text-body"><span class="sr-only">120 additions, 8 deletions</span><span aria-hidden="true" class="contents"><span class="text-git-added">+120</span><span class="text-git-removed">−8</span></span></span>',
+					stat: '<span dir="ltr" class="tabular-nums [font-feature-settings:\'case\'] inline-flex shrink-0 gap-1 text-body"><span class="sr-only">120 additions, 8 deletions</span><span aria-hidden="true" class="contents"><span class="text-git-added">+120</span><span class="text-git-removed">−8</span></span></span>',
 				},
 			);
 		});
@@ -2469,7 +2469,7 @@ describe("cards from local data", () =>
 					wrap: "-my-0.5 flex h-5 min-w-0 flex-wrap content-start items-center gap-x-1.5 gap-y-1 overflow-y-clip focus-within:flex-nowrap focus-within:overflow-y-visible",
 					number: ["SPAN", "", "flex h-5 min-w-0 items-center gap-1", '<span class="shrink-0">#42</span>'],
 					statWrapper: "-my-0.5 flex shrink-0",
-					statClass: "tabular-nums inline-flex shrink-0 gap-1 text-footnote",
+					statClass: "tabular-nums [font-feature-settings:'case'] inline-flex shrink-0 gap-1 text-footnote",
 					statName: "Open changes, 120 added, 8 removed",
 					rowForm: null,
 					uncommitted: null,

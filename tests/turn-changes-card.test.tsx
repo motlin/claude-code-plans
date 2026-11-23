@@ -2279,10 +2279,10 @@ describe("TurnChangesCard", () =>
 				icon: "lucide lucide-code-xml lucide-code-2 shrink-0",
 				iconSize: ["16px", "16px"],
 				name: "min-w-0 truncate text-primary",
-				stats: "tabular-nums flex shrink-0 items-center gap-0.5 text-body",
+				stats: "tabular-nums [font-feature-settings:'case'] flex shrink-0 items-center gap-0.5 text-body",
 				statColors: ["text-git-added", "text-git-removed"],
 				seeAll: "min-w-0 truncate text-primary",
-				seeAllStats: "tabular-nums flex shrink-0 items-center gap-0.5",
+				seeAllStats: "tabular-nums [font-feature-settings:'case'] flex shrink-0 items-center gap-0.5",
 			},
 		);
 	});

@@ -20,7 +20,7 @@ describe("DiffStat", () =>
 	it("renders upstream's et block with grouped digits and a real-count sr line", () =>
 	{
 		expect(renderToStaticMarkup(<DiffStat added={1234} removed={5} className="flex" />)).toStrictEqual(
-			'<span dir="ltr" class="tabular-nums flex"><span class="sr-only">1,234 additions, 5 deletions</span><span aria-hidden="true" class="contents"><span class="text-git-added">+1,234</span><span class="text-git-removed">−5</span></span></span>',
+			'<span dir="ltr" class="tabular-nums [font-feature-settings:&#x27;case&#x27;] flex"><span class="sr-only">1,234 additions, 5 deletions</span><span aria-hidden="true" class="contents"><span class="text-git-added">+1,234</span><span class="text-git-removed">−5</span></span></span>',
 		);
 	});
 
@@ -30,8 +30,8 @@ describe("DiffStat", () =>
 			renderToStaticMarkup(<DiffStat added={1} removed={1} />),
 			renderToStaticMarkup(<DiffStat added={0} removed={0} />),
 		]).toStrictEqual([
-			'<span dir="ltr" class="tabular-nums"><span class="sr-only">1 addition, 1 deletion</span><span aria-hidden="true" class="contents"><span class="text-git-added">+1</span><span class="text-git-removed">−1</span></span></span>',
-			'<span dir="ltr" class="tabular-nums"><span class="sr-only">0 additions, 0 deletions</span><span aria-hidden="true" class="contents"><span class="text-git-added">+0</span><span class="text-git-removed">−0</span></span></span>',
+			'<span dir="ltr" class="tabular-nums [font-feature-settings:&#x27;case&#x27;]"><span class="sr-only">1 addition, 1 deletion</span><span aria-hidden="true" class="contents"><span class="text-git-added">+1</span><span class="text-git-removed">−1</span></span></span>',
+			'<span dir="ltr" class="tabular-nums [font-feature-settings:&#x27;case&#x27;]"><span class="sr-only">0 additions, 0 deletions</span><span aria-hidden="true" class="contents"><span class="text-git-added">+0</span><span class="text-git-removed">−0</span></span></span>',
 		]);
 	});
 });
@@ -52,12 +52,16 @@ describe("PrDiffStat", () =>
 
 describe("git stat colors", () =>
 {
-	it("compiles text-git-added / text-git-removed to upstream's cds git tokens", async () =>
+	it("compiles text-git-added / text-git-removed to upstream's cds git tokens and the stat root's case feature", async () =>
 	{
-		expect(await compileAll(["text-git-added", "text-git-removed"])).toStrictEqual(
+		expect(
+			await compileAll(["text-git-added", "text-git-removed", "[font-feature-settings:'case']"]),
+		).toStrictEqual(
 			{
 				"text-git-added": ".text-git-added { color: var(--upstream-git-added); }",
 				"text-git-removed": ".text-git-removed { color: var(--upstream-git-removed); }",
+				"[font-feature-settings:'case']":
+					".\\[font-feature-settings\\:\\'case\\'\\] { font-feature-settings: 'case'; }",
 			},
 		);
 	});
@@ -105,9 +109,9 @@ describe("AnimatedDiffStat", () =>
 			},
 		).toStrictEqual(
 			{
-				mount: '<span dir="ltr" class="tabular-nums"><span class="sr-only">10 additions, 110 deletions</span><span aria-hidden="true" class="contents"><span class="text-git-added">+10</span><span class="text-git-removed">−110</span></span></span>',
-				mid: '<span dir="ltr" class="tabular-nums"><span class="sr-only">110 additions, 10 deletions</span><span aria-hidden="true" class="contents"><span class="text-git-added">+98</span><span class="text-git-removed">−23</span></span></span>',
-				end: '<span dir="ltr" class="tabular-nums"><span class="sr-only">110 additions, 10 deletions</span><span aria-hidden="true" class="contents"><span class="text-git-added">+110</span><span class="text-git-removed">−10</span></span></span>',
+				mount: '<span dir="ltr" class="tabular-nums [font-feature-settings:\'case\']"><span class="sr-only">10 additions, 110 deletions</span><span aria-hidden="true" class="contents"><span class="text-git-added">+10</span><span class="text-git-removed">−110</span></span></span>',
+				mid: '<span dir="ltr" class="tabular-nums [font-feature-settings:\'case\']"><span class="sr-only">110 additions, 10 deletions</span><span aria-hidden="true" class="contents"><span class="text-git-added">+98</span><span class="text-git-removed">−23</span></span></span>',
+				end: '<span dir="ltr" class="tabular-nums [font-feature-settings:\'case\']"><span class="sr-only">110 additions, 10 deletions</span><span aria-hidden="true" class="contents"><span class="text-git-added">+110</span><span class="text-git-removed">−10</span></span></span>',
 			},
 		);
 	});

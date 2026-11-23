@@ -17,6 +17,9 @@ function srCounts(added: number, removed: number): string
 	]);
 }
 
+/** Upstream `tt` root: tabular digits plus the `case` feature (case-sensitive forms for the +/− glyphs). */
+const DIFF_STAT_CLASS = "tabular-nums [font-feature-settings:'case']";
+
 interface DiffStatProps
 {
 	added: number;
@@ -41,7 +44,7 @@ function DiffStatView({
 })
 {
 	return (
-		<span dir="ltr" className={className === undefined ? "tabular-nums" : `tabular-nums ${className}`}>
+		<span dir="ltr" className={className === undefined ? DIFF_STAT_CLASS : `${DIFF_STAT_CLASS} ${className}`}>
 			<span className="sr-only">{srCounts(added, removed)}</span>
 			<span aria-hidden="true" className="contents">
 				<span className="text-git-added">+{numberFormat.format(shownAdded)}</span>
