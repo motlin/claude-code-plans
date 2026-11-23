@@ -27,7 +27,7 @@ import {clearJumpHints, setJumpHintsForTest} from "../src/lib/sidebar-jump-hints
 import {holdAnswered, noteAnsweredSummary, releaseAnswered} from "../src/lib/answered-sessions";
 import {__unreadStoreTesting, syncUnseenFromSummaries} from "../src/lib/unread-store";
 import {__awaitingAckTesting, ack} from "../src/lib/awaiting-ack-store";
-import {registerLiveApproval} from "../src/lib/live-approval-sessions";
+import {__liveApprovalTesting, registerLiveApproval} from "../src/lib/live-approval-sessions";
 import {installLocalStorage} from "./fake-storage";
 import
 {
@@ -405,6 +405,7 @@ beforeEach(() =>
 	vi.setSystemTime(NOW);
 	installLocalStorage();
 	__awaitingAckTesting.reset();
+	__liveApprovalTesting.reset();
 });
 
 describe("sidebar SessionGroups", () =>
@@ -2377,9 +2378,10 @@ describe("sidebar SessionGroups", () =>
 		);
 	});
 
-	it("keeps an acked row in Needs input while this tab holds its approval card live, and moves it to Idle when the card goes", async () =>
+	it("keeps an acked row in Needs input while this tab holds its approval card live, still after the card unmounts, until the session stops waiting", async () =>
 	{
 		const blocked = session("b1", "Blocked one", "blocked", 3);
+		const done = session("d1", "Completed newest", "done", 5);
 		ack("b1", Date.parse(blocked.mtime));
 		let dispose = () =>
 		{
@@ -2388,23 +2390,87 @@ describe("sidebar SessionGroups", () =>
 		{
 			dispose = registerLiveApproval("b1");
 		});
-		const {container} = await renderGroups([blocked, session("d1", "Completed newest", "done", 5)]);
-		const where = () => (
+		const {container, queryClient} = await renderGroups([blocked, done]);
+		const where = () =>
 		{
-			blocked: rowTitlesIn(container, "state-blocked"),
-			idle: rowTitlesIn(container, "state-done"),
-		});
+			const link = [...container.querySelectorAll<HTMLElement>("a[data-row-main-button]")].find(
+				(node) => rowTitle(node) === "Blocked one",
+			);
+			return {
+				blocked: rowTitlesIn(container, "state-blocked"),
+				idle: rowTitlesIn(container, "state-done"),
+				attention: link?.querySelector("[data-row-label] .relative")?.getAttribute("data-attention") ?? null,
+			};
+		};
+		const push = async (bucket: "blocked" | "done") =>
+		{
+			await act(async () =>
+			{
+				queryClient.setQueryData(
+					recentSessionsInfiniteQueryOptions(undefined, "active").queryKey,
+					{
+						pages: [
+							RecentSessionsResponse.parse(
+								{
+									sessions: [
+										{
+											...blocked,
+											bucket,
+											state: bucket === "blocked" ? "waiting" : "idle",
+										},
+										done,
+									],
+									nextCursor: null,
+								},
+							),
+						],
+						pageParams: [null],
+					},
+				);
+				// The query cache notifies its observers on a timeout.
+				await new Promise((resolve) =>
+				{
+					setTimeout(resolve, 0);
+				});
+			});
+		};
 		const live = where();
 		act(() =>
 		{
 			dispose();
 		});
-		const gone = where();
+		const unmounted = where();
+		fireEvent.contextMenu(
+			screen.getByText("Blocked one"),
+			{
+				clientX: 40,
+				clientY: 50,
+			},
+		);
+		const menu = await waitFor(() => screen.getByRole("menu"));
+		const unmountedItems = [...menu.querySelectorAll('[role="menuitem"]')]
+			.map((node) => node.textContent)
+			.filter((text) => text.startsWith("Mark as"));
+		fireEvent.keyDown(
+			menu,
+			{
+				key: "Escape",
+			},
+		);
+		await waitFor(() =>
+		{
+			expect(screen.queryByRole("menu")).toBeNull();
+		});
+		await push("done");
+		await push("blocked");
+		const released = where();
 
 		expect(
 			{
 				live,
-				gone,
+				unmounted,
+				unmountedItems,
+				released,
 			},
 		).toStrictEqual(
 			{
@@ -2412,11 +2478,20 @@ describe("sidebar SessionGroups", () =>
 				{
 					blocked: ["Blocked one"],
 					idle: ["Completed newest"],
+					attention: "waiting",
 				},
-				gone:
+				unmounted:
+				{
+					blocked: ["Blocked one"],
+					idle: ["Completed newest"],
+					attention: "waiting",
+				},
+				unmountedItems: ["Mark as unreadU"],
+				released:
 				{
 					blocked: [],
 					idle: ["Blocked one", "Completed newest"],
+					attention: null,
 				},
 			},
 		);

@@ -9,7 +9,7 @@ import {recentSessionsInfiniteQueryOptions, type SessionListItem} from "../../li
 import {withAwaitingAck} from "../../lib/awaiting-ack-overlay";
 import {ackedAt, useAwaitingAckVersion} from "../../lib/awaiting-ack-store";
 import {withFailedError} from "../../lib/failed-error-overlay";
-import {useLiveApprovalIds} from "../../lib/live-approval-sessions";
+import {releaseLiveApprovals, useLiveApprovalIds} from "../../lib/live-approval-sessions";
 import {closeDragPinHint} from "../../lib/drag-pin-hint";
 import {readPinState, unpin, usePins, writePinState} from "../../lib/pin-store";
 import {mergeProjectOrder, moveProjectIndex, moveProjectKey} from "../../lib/project-order";
@@ -210,6 +210,17 @@ export function SessionGroups({
 	// row draws the error, read or not, until that ack (upstream `Q$`).
 	const ackVersion = useAwaitingAckVersion();
 	const liveApprovalIds = useLiveApprovalIds();
+	// A session that stopped waiting no longer holds its live approval, as upstream sweeps a resolved request.
+	useEffect(() =>
+	{
+		if (data === undefined) return;
+		releaseLiveApprovals(
+			data.pages
+				.flatMap((page) => page.sessions)
+				.filter((session) => session.bucket !== "blocked")
+				.map((session) => session.id),
+		);
+	}, [data]);
 	const pendingLaunches = usePendingLaunches();
 	// A pending launch whose session's row has arrived settles: the skeleton row gives way to the real one.
 	useEffect(() =>
