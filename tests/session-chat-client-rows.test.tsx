@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import {act, cleanup, render} from "@testing-library/react";
+import {act, cleanup, fireEvent, render} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {SessionChat} from "../src/components/session-chat";
 import {appendClientRow, clearClientRows, type ClientRow} from "../src/lib/client-rows-store";
@@ -17,6 +17,11 @@ vi.mock("../src/components/settings-context", () => (
 			codeThemeDark: "github-dark",
 		},
 	}),
+}));
+const writeClipboardText = vi.hoisted(() => vi.fn<(text: string, html?: string) => Promise<boolean>>());
+vi.mock("../src/lib/clipboard", () => (
+{
+	writeClipboardText,
 }));
 vi.mock("../src/lib/hmr-persist", () => (
 {
@@ -303,6 +308,58 @@ describe("SessionChat client rows (/status and /usage)", () =>
 			"user: /usage",
 			"card: Usage no stats",
 		]);
+	});
+
+	it("draws each client row's command as the slash chip with a Copy-only action bar", () =>
+	{
+		writeClipboardText.mockResolvedValue(true);
+		const {container} = render(chat(THREE_LINES));
+		append("status", "/status", "u-2");
+		append("usage", "/cost", "u-2");
+
+		const clientRows = [...container.querySelectorAll('[data-testid="transcript-row"]')]
+			.slice(3)
+			.filter((row) => row.querySelector(".user-message-bubble") !== null);
+		const drawn = clientRows.map((row) => (
+		{
+			chip: row.querySelector("[data-slash-command-chip]")?.textContent,
+			reveal: row.querySelector("button.sr-only[aria-label^='Show message actions']")?.getAttribute("aria-label"),
+			buttons: [...row.querySelectorAll('[data-testid="user-message-actions"] button')].map((button) => (
+			{
+				name: button.getAttribute("aria-label"),
+				testId: button.getAttribute("data-testid"),
+			})),
+			time: row.querySelector('[data-testid="user-message-actions"] time'),
+		}));
+		expect(drawn).toStrictEqual([
+			{
+				chip: "/status",
+				reveal: "Show message actions for You said: /status",
+				buttons: [
+					{
+						name: "Copy",
+						testId: "user-message-copy",
+					},
+				],
+				time: null,
+			},
+			{
+				chip: "/cost",
+				reveal: "Show message actions for You said: /cost",
+				buttons: [
+					{
+						name: "Copy",
+						testId: "user-message-copy",
+					},
+				],
+				time: null,
+			},
+		]);
+
+		const copy = clientRows[0]?.querySelector<HTMLButtonElement>('[data-testid="user-message-copy"]');
+		if (copy === null || copy === undefined) throw new Error("no Copy button");
+		fireEvent.click(copy);
+		expect(writeClipboardText.mock.calls).toStrictEqual([["/status"]]);
 	});
 
 	it("draws another session's rows nowhere but in that session", () =>

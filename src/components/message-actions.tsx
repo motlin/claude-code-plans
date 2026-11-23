@@ -742,6 +742,23 @@ export function UserMessageActions({
 	);
 }
 
+/**
+ * Upstream's bar under a client-only user row (the injected `/status` or `/usage` prompt): Copy alone, with no
+ * time, Rewind or Fork, since the row is no transcript message.
+ */
+export function CopyOnlyUserMessageActions({text}: {text: string})
+{
+	return (
+		<ActionBar
+			className={`${BAR_CLASS} justify-end self-end`}
+			label={`Show message actions for ${messageHeading("user", text)}`}
+			testId="user-message-actions"
+		>
+			<CopyAction text={text} first testId={USER_COPY_TEST_ID} />
+		</ActionBar>
+	);
+}
+
 /*
  * Upstream drives an always-visible bar's `[data-cds-reveal-on-hover]` children from the bar's reveal
  * timing: out in 60ms with no delay, hover in over 120ms after 100ms, focus anywhere in the row in over 120ms at once.

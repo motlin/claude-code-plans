@@ -98,7 +98,13 @@ import {TranscriptRowBoundary} from "./transcript-row-boundary";
 import {TranscriptMessageMenu} from "./transcript-context-menu";
 import {TranscriptSelectionBar} from "./transcript-selection-bar";
 import {TranscriptActionsContext, type TranscriptMessageRef} from "./transcript-actions-context";
-import {AssistantMessageActions, QuoteCopyAction, UserMessageActions} from "./message-actions";
+import
+{
+	AssistantMessageActions,
+	CopyOnlyUserMessageActions,
+	QuoteCopyAction,
+	UserMessageActions,
+} from "./message-actions";
 import
 {
 	TURN_STATUS_CELLS_CLASS,
@@ -6388,8 +6394,9 @@ function ClientUserRow({row}: {row: ClientRow})
 		<UserTurn text={row.text} turnKey={row.id}>
 			<UserMessageColumn turnKey={row.id} className={USER_MESSAGE_CLASS}>
 				<UserBubbleBox className={USER_BUBBLE_CLASS}>
-					<p className={USER_PARAGRAPH_CLASS}>{row.text}</p>
+					<UserPromptText text={row.text} leading derived />
 				</UserBubbleBox>
+				<CopyOnlyUserMessageActions text={row.text} />
 			</UserMessageColumn>
 		</UserTurn>
 	);
