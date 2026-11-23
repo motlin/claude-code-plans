@@ -343,7 +343,7 @@ export function WorkingMarker({
 						"aria-hidden": true,
 					}
 				: {})}
-			className={`${lineQuiet && turnWorking ? "invisible " : ""}flex min-h-6 flex-col comfortable:min-h-8`}
+			className={`${lineQuiet && turnWorking ? "invisible " : ""}flex min-h-control flex-col`}
 		>
 			{waitingOnUser && <BlockedStatus reduceMotion={reduceMotion} />}
 			{held.state === "busy" && (

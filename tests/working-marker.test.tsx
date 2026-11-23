@@ -1264,7 +1264,7 @@ describe("WorkingMarker", () =>
 				status: null,
 				row: true,
 				turnWorking: "false",
-				className: "flex min-h-6 flex-col comfortable:min-h-8",
+				className: "flex min-h-control flex-col",
 				turnStatus: null,
 				mark: null,
 				oldAnnouncer: null,
@@ -1368,7 +1368,7 @@ describe("WorkingMarker", () =>
 			},
 		).toStrictEqual(
 			{
-				className: "invisible flex min-h-6 flex-col comfortable:min-h-8",
+				className: "invisible flex min-h-control flex-col",
 				hidden: "true",
 				quiet: "true",
 				turnWorking: "true",
@@ -1788,7 +1788,7 @@ describe("useWorkingMarkerState", () =>
 		).toStrictEqual(
 			{
 				turnWorking: "false",
-				lineClass: "flex min-h-6 flex-col comfortable:min-h-8",
+				lineClass: "flex min-h-control flex-col",
 				state: "blocked",
 				title: "Needs your input",
 				mark: "blocked",
