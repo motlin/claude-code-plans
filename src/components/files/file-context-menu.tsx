@@ -227,21 +227,21 @@ export function TabMenuItems({path, preview, cwd, onAttachContext, onRevealInTre
 /** The source editor's actions, when the right-click landed in it. */
 export interface SourceEditorMenuActions
 {
-	/** The selection when the menu opened; Copy is disabled while it is empty. */
+	/** The selection when the menu opened; copying an empty one is a no-op, like upstream. */
 	selectedText: string;
 	onSelectAll: () => void;
 	onGoToLine: () => void;
 }
 
-/** Upstream `Md`'s editor rows: Copy ⌘C · Select all ⌘A · Go to line ⌃G. */
+/** Upstream `Md`'s editor rows, each in its own group: Copy ⌘C · Select all ⌘A · Go to line ⌃G. */
 function SourceEditorItems({selectedText, onSelectAll, onGoToLine}: SourceEditorMenuActions)
 {
 	const copy = useCopyToClipboard();
 	return (
 		<>
+			<MenuSeparator />
 			<MenuItem
 				shortcut="cmd+c"
-				disabled={selectedText === ""}
 				onSelect={() =>
 				{
 					copy(selectedText);
@@ -249,12 +249,15 @@ function SourceEditorItems({selectedText, onSelectAll, onGoToLine}: SourceEditor
 			>
 				Copy
 			</MenuItem>
+			<MenuSeparator />
 			<MenuItem shortcut="cmd+a" onSelect={onSelectAll}>
 				Select all
 			</MenuItem>
+			<MenuSeparator />
 			<MenuItem shortcut="ctrl+g" onSelect={onGoToLine}>
 				Go to line
 			</MenuItem>
+			<MenuSeparator />
 		</>
 	);
 }

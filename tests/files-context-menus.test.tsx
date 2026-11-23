@@ -845,9 +845,13 @@ describe("viewer context menu", () =>
 				rows: [
 					"Attach as context",
 					"Copy",
+					"─",
 					"Copy",
+					"─",
 					"Select all",
+					"─",
 					"Go to line",
+					"─",
 					"Copy file contents",
 					"Download file",
 					"─",
@@ -1018,7 +1022,7 @@ describe("viewer context menu editor items", () =>
 		});
 	}
 
-	it("offers Copy ⌘C (disabled without a selection), Select all ⌘A and Go to line ⌃G", async () =>
+	it("offers Copy ⌘C (enabled even without a selection, like upstream), Select all ⌘A and Go to line ⌃G", async () =>
 	{
 		render(wrap(<FileView path={AGENT} cwd={CWD} />));
 		await waitFor(() =>
@@ -1058,7 +1062,7 @@ describe("viewer context menu editor items", () =>
 		).toStrictEqual(
 			{
 				empty: [
-					["Copy", "Meta+c", true],
+					["Copy", "Meta+c", false],
 					["Select all", "Meta+a", false],
 					["Go to line", "Control+g", false],
 				],
