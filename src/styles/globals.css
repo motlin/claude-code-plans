@@ -909,7 +909,8 @@ html[data-interface-font="dyslexic"]
 	/* Upstream sets a row's trailing control flush with its end: a 272px row's slot at x=256 */
 	--sb-row-ctl-inset: 0px;
 	--sb-radius: 8px;
-	--sb-hover: #f0efec;
+	/* Upstream .dframe-sidebar --df-hover = --cds-fill-ghost-hover (#0000000d light), translucent like dark */
+	--sb-hover: var(--upstream-fill-ghost-hover);
 	--sb-selected: #edece8;
 	/* Unselected New circle: upstream's web --cds-neutral-70 */
 	--sb-new-circle: #eae9e4;

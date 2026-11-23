@@ -116,6 +116,28 @@ describe("fizzy-lake color tokens (upstream data-cds-fizzy-lake~=color)", () =>
 		);
 	});
 
+	it("the light sidebar hover is upstream's .dframe-sidebar --df-hover (--cds-fill-ghost-hover), translucent like dark", () =>
+	{
+		const names = ["--sb-hover"] as const;
+		expect(
+			{
+				light: tokens(block(":root"), names),
+				dark: tokens(block(".dark"), names),
+			},
+		).toStrictEqual(
+			{
+				light:
+				{
+					"--sb-hover": "var(--upstream-fill-ghost-hover)",
+				},
+				dark:
+				{
+					"--sb-hover": "hsl(0 0% 100% / 0.075)",
+				},
+			},
+		);
+	});
+
 	it("--upstream-accent-layer is upstream's fizzy --cds-bg-accent-layer, #257de0 at 6% in both modes", () =>
 	{
 		expect(
