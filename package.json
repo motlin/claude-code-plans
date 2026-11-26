@@ -50,7 +50,7 @@
 		"fuse.js": "7.0.0",
 		"ghostty-web": "0.4.0",
 		"jsonc-parser": "3.3.1",
-		"lucide-react": "^1.72.0",
+		"lucide-react": "^1.76.0",
 		"markdown-it": "^14.3.0",
 		"markdown-it-footnote": "^4.0.0",
 		"markdown-it-task-lists": "^2.1.1",
