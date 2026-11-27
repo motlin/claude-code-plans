@@ -263,8 +263,8 @@ importers:
         specifier: 3.3.1
         version: 3.3.1
       lucide-react:
-        specifier: ^1.72.0
-        version: 1.72.0(@types/react@19.3.0)(react@19.3.1)
+        specifier: ^1.77.0
+        version: 1.77.0(@types/react@19.3.0)(react@19.3.1)
       markdown-it:
         specifier: ^14.3.0
         version: 14.3.0
@@ -4933,8 +4933,8 @@ packages:
   lru_map@0.4.1:
     resolution: {integrity: sha512-I+lBvqMMFfqaV8CJCISjI3wbjmwVu/VyOoU7+qtu9d7ioW5klMgsTTiUOUp+DJvfTTzKXoPbyC6YfgkNcyPSOg==}
 
-  lucide-react@1.72.0:
-    resolution: {integrity: sha512-fbF5i1GU8GODETa3Q7rXqrJrcx3iPYrQtxthom103zGx+Z0BGwKYAW9s+9435ohYJ7hQm0av0PoZcqI1CRwNrg==}
+  lucide-react@1.77.0:
+    resolution: {integrity: sha512-VS6sOi8ZUH1qm6swBL/tpI4xAhB6pFTdHvw3pfCJD+DaTJwpyynVzfOS6mdyMZ+OCdY/GMSQbqinOMOPbNSrQA==}
     peerDependencies:
       '@types/react': '*'
       react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
@@ -10682,7 +10682,7 @@ snapshots:
 
   lru_map@0.4.1: {}
 
-  lucide-react@1.72.0(@types/react@19.3.0)(react@19.3.1):
+  lucide-react@1.77.0(@types/react@19.3.0)(react@19.3.1):
     dependencies:
       react: 19.3.1
     optionalDependencies:
